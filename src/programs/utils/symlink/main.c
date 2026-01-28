@@ -15,7 +15,7 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    if (symlink(argv[1], argv[2]) == _FAIL)
+    if (IS_ERR(symlink(argv[1], argv[2])))
     {
         fprintf(stderr, "symlink: failed to create symlink %s -> %s (%s)\n", argv[2], argv[1], strerror(errno));
         return EXIT_FAILURE;

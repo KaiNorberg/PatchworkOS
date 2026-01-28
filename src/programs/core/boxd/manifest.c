@@ -37,7 +37,7 @@ uint64_t manifest_parse(manifest_t* manifest, const char* path)
     FILE* file = fopen(path, "r");
     if (file == NULL)
     {
-        return _FAIL;
+        return PFAIL;
     }
 
     memset(manifest, 0, sizeof(manifest_t));
@@ -182,20 +182,20 @@ uint64_t manifest_get_integer(section_t* section, const char* key)
     char* value = manifest_get_value(section, key);
     if (value == NULL)
     {
-        return _FAIL;
+        return PFAIL;
     }
 
     size_t len = strlen(value);
     if (len == 0)
     {
-        return _FAIL;
+        return PFAIL;
     }
 
     for (size_t i = 0; i < len; i++)
     {
         if (!isdigit(value[i]))
         {
-            return _FAIL;
+            return PFAIL;
         }
     }
 

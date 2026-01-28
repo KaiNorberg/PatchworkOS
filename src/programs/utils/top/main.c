@@ -6,6 +6,7 @@
 #include <sys/proc.h>
 #include <threads.h>
 #include <time.h>
+#include <patchwork/patchwork.h>
 
 #define SAMPLE_INTERVAL (CLOCKS_PER_SEC)
 
@@ -36,7 +37,7 @@ static void terminal_size_get(void)
     char buffer[MAX_NAME] = {0};
     for (uint32_t i = 0; i < sizeof(buffer) - 1; i++)
     {
-        read(STDIN_FILENO, &buffer[i], 1);
+        read(STDIN_FILENO, &buffer[i], 1, NULL);
         if (buffer[i] == 'R')
         {
             break;
@@ -105,7 +106,7 @@ static uint64_t cpu_perf_count_cpus(void)
     FILE* file = fopen("/dev/perf/cpu", "r");
     if (file == NULL)
     {
-        return _FAIL;
+        return PFAIL;
     }
 
     uint64_t cpuCount = 0;
@@ -124,7 +125,7 @@ static uint64_t cpu_perf_read(cpu_perfs_t* cpuPerfs)
     FILE* file = fopen("/dev/perf/cpu", "r");
     if (file == NULL)
     {
-        return _FAIL;
+        return PFAIL;
     }
 
     char line[1024];
@@ -156,7 +157,7 @@ static uint64_t mem_perf_read(mem_perfs_t* memPerfs)
     FILE* file = fopen("/dev/perf/mem", "r");
     if (file == NULL)
     {
-        return _FAIL;
+        return PFAIL;
     }
 
     uint64_t totalPages = 0;
@@ -181,8 +182,8 @@ static uint64_t mem_perf_read(mem_perfs_t* memPerfs)
 
 static proc_perfs_t* proc_perfs_read(uint64_t* procAmount)
 {
-    fd_t procDir = open("/proc:directory");
-    if (procDir == _FAIL)
+    fd_t procDir;
+    if (IS_ERR(open(&procDir, "/proc:directory")))
     {
         return NULL;
     }
@@ -192,8 +193,9 @@ static proc_perfs_t* proc_perfs_read(uint64_t* procAmount)
     dirent_t buffer[128];
     while (1)
     {
-        size_t readAmount = getdents(procDir, (dirent_t*)buffer, sizeof(buffer));
-        if (readAmount == _FAIL)
+        size_t readAmount;
+        status_t status = getdents(procDir, (dirent_t*)buffer, sizeof(buffer), &readAmount);
+        if (IS_ERR(status))
         {
             free(procPerfs);
             close(procDir);
@@ -358,7 +360,7 @@ static void perfs_update(perfs_t* perfs)
         uint64_t previousScrollOffset = processScrollOffset;
 
         char c;
-        read(STDIN_FILENO, &c, 1);
+        read(STDIN_FILENO, &c, 1, NULL);
         switch (c)
         {
         case 'p':
@@ -422,13 +424,13 @@ static void perfs_update(perfs_t* perfs)
     perfs->prevProcPerfs = perfs->procPerfs;
     perfs->prevProcAmount = perfs->procAmount;
 
-    if (cpu_perf_read(perfs->cpuPerfs) == _FAIL)
+    if (cpu_perf_read(perfs->cpuPerfs) == PFAIL)
     {
         printf("Failed to read CPU performance data\n");
         abort();
     }
 
-    if (mem_perf_read(&perfs->memPerfs) == _FAIL)
+    if (mem_perf_read(&perfs->memPerfs) == PFAIL)
     {
         printf("Failed to read memory performance data\n");
         abort();
@@ -714,7 +716,7 @@ static void perfs_print(perfs_t* perfs)
 int main(void)
 {
     cpuAmount = cpu_perf_count_cpus();
-    if (cpuAmount == _FAIL)
+    if (cpuAmount == PFAIL)
     {
         printf("Failed to read CPU amount\n");
         abort();

@@ -305,9 +305,9 @@ static inline status_t seek(fd_t fd, ssize_t offset, seek_origin_t origin, size_
  * @brief System call for changing the cwd.
  *
  * @param path The path to the new directory.
- * @return An appropriate status value.
+ * @return On success, `0`. On failure, `-1`.
  */
-status_t chdir(const char* path);
+int chdir(const char* path);
 
 /**
  * @brief System call for extended driver behaviour.

@@ -53,7 +53,7 @@ typedef struct irp irp_t;
  *
  * When an IRP is cancelled or timed out the cancellation callback will be invoked and atomically exchanged with a
  * `IRP_CANCELLED` sentinel value. At which point the owner should perform whatever logic is needed to cancel the IRP,
- * if it is not possible immediately cancel the IRP it should return `_FAIL`.
+ * if it is not possible immediately cancel the IRP it should return `PFAIL`.
  *
  * Below is an example of how to implement a completion with an associated cancellation callback:
  *

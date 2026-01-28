@@ -19,12 +19,14 @@
  * - `out`: The file descriptor to write 9P messages to.
  * - `version`: The 9P protocol version to use, currently only `9P2000` is supported, the default is `9P2000`.
  *
+ * @todo Implement the 9P protocol.
+ * 
  * @see libstd_sys_9p for the 9P protocol definitions.
  * @see http://rfc.nop.hu/plan9/rfc9p.pdf for the 9P protocol specification.
  *
  * @{
  */
-
+/*
 typedef struct
 {
     file_t* in;
@@ -59,8 +61,8 @@ static dentry_t* ninep_mount(filesystem_t* fs, const char* options, void* data)
         return NULL;
     }
 
-    fd_t in = _FAIL;
-    fd_t out = _FAIL;
+    fd_t in = PFAIL;
+    fd_t out = PFAIL;
     const char* version = "9P2000";
 
     char* key;
@@ -86,7 +88,7 @@ static dentry_t* ninep_mount(filesystem_t* fs, const char* options, void* data)
         }
     }
 
-    if (in == _FAIL || out == _FAIL)
+    if (in == PFAIL || out == PFAIL)
     {
         errno = EINVAL;
         return NULL;
@@ -152,18 +154,18 @@ static dentry_t* ninep_mount(filesystem_t* fs, const char* options, void* data)
 static filesystem_t ninep = {
     .name = "9p",
     .mount = ninep_mount,
-};
+};*/
 
 /** @} */
 
-uint64_t _module_procedure(const module_event_t* event)
+/*uint64_t _module_procedure(const module_event_t* event)
 {
     switch (event->type)
     {
     case MODULE_EVENT_LOAD:
-        if (filesystem_register(&ninep) == _FAIL)
+        if (filesystem_register(&ninep) == PFAIL)
         {
-            return _FAIL;
+            return PFAIL;
         }
         break;
     case MODULE_EVENT_UNLOAD:
@@ -173,6 +175,6 @@ uint64_t _module_procedure(const module_event_t* event)
         break;
     }
     return 0;
-}
+}*/
 
 MODULE_INFO("9P Filesystem", "Kai Norberg", "A implementation of the 9P filesystem", OS_VERSION, "MIT", "BOOT_ALWAYS");

@@ -3,6 +3,7 @@
 #include <sys/fs.h>
 #include <sys/list.h>
 #include <sys/proc.h>
+#include <patchwork/patchwork.h>
 
 typedef struct
 {
@@ -25,7 +26,7 @@ typedef struct
     char status[MAX_PATH];
 } pipeline_t;
 
-uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd_t stdout, fd_t stderr);
+status_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd_t stdout, fd_t stderr);
 
 void pipeline_deinit(pipeline_t* pipeline);
 

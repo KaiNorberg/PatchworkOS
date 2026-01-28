@@ -280,7 +280,7 @@ typedef enum
         do \
         { \
             _retry = (_expr); \
-        } while (IS_ERR(_retry) && ST_CODE(_retry) == (_code)); \
+        } while (IS_ERR(_retry) && IS_CODE(_retry, _code)); \
         _retry; \
     })
 

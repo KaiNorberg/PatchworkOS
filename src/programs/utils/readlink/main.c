@@ -16,8 +16,9 @@ int main(int argc, char** argv)
     }
 
     char buffer[MAX_PATH];
-    uint64_t len = readlink(argv[1], buffer, sizeof(buffer) - 1);
-    if (len == _FAIL)
+    uint64_t len;
+    status_t status = readlink(argv[1], buffer, sizeof(buffer) - 1, &len);
+    if (IS_ERR(status))
     {
         fprintf(stderr, "readlink: failed to readlink %s (%s)\n", argv[1], strerror(errno));
         return EXIT_FAILURE;

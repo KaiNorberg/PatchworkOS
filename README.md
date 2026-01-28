@@ -91,11 +91,10 @@ Will this project ever reach its goals? Probably not, but that's not the point.
 ## Notable Future Plans
 
 - Implement 9P file servers.
-- Implement user system in user-space using namespaces.
 - Improve `share()` and `claim()` security by specifying a target PID when sharing.
-- Overhaul Desktop Window Manager to use the new security system and file servers?
+- Completely redo user-space to use new async and 9P, as the kernel has simply outgrown user-space.
 - Port LUA and use it for dynamic system configuration.
-- USB support.
+- Driver support, for example USB.
 
 ## Setup
 

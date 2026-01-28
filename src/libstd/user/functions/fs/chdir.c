@@ -5,7 +5,7 @@
 
 #include "user/common/syscalls.h"
 
-status_t chdir(const char* path)
+int chdir(const char* path)
 {
-    return writefiles("/proc/self/cwd", path);
+    return IS_ERR(writefiles("/proc/self/cwd", path)) ? -1 : 0;
 }

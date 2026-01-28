@@ -925,7 +925,7 @@ int main(void)
     window_set_visible(win, true);
 
     event_t event = {0};
-    while (display_next(disp, &event, CLOCKS_NEVER) != _FAIL)
+    while (display_next(disp, &event, CLOCKS_NEVER) != PFAIL)
     {
         display_dispatch(disp, &event);
     }

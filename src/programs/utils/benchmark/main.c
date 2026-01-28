@@ -9,13 +9,13 @@
 #ifdef _PATCHWORK_OS_
 #include <sys/fs.h>
 #include <sys/proc.h>
+#include <patchwork/patchwork.h>
 
 static fd_t zeroDev;
 
 static void init_generic()
 {
-    zeroDev = open("/dev/const/zero");
-    if (zeroDev == _FAIL)
+    if (IS_ERR(open(&zeroDev, "/dev/const/zero")))
     {
         perror("Failed to open /dev/const/zero");
         abort();
@@ -24,8 +24,8 @@ static void init_generic()
 
 static void* mmap_generic(size_t length)
 {
-    void* ptr = mmap(zeroDev, NULL, length, PROT_READ | PROT_WRITE);
-    if (ptr == NULL)
+    void* ptr = NULL;
+    if (mmap(zeroDev, &ptr, length, PROT_READ | PROT_WRITE))
     {
         return NULL;
     }
@@ -34,7 +34,7 @@ static void* mmap_generic(size_t length)
 
 static uint64_t munmap_generic(void* addr, size_t length)
 {
-    return munmap(addr, length) == NULL ? _FAIL : 0;
+    return IS_ERR(munmap(addr, length)) ? PFAIL : 0;
 }
 
 static void benchmark_getpid(void)
@@ -54,7 +54,7 @@ static void benchmark_getpid(void)
     char buffer[32];
     for (uint64_t i = 0; i < GETPID_ITER; i++)
     {
-        readfile("/proc/self/pid", buffer, sizeof(buffer), 0);
+        readfile("/proc/self/pid", buffer, sizeof(buffer), 0, NULL);
     }
 
     clock_t procEnd = clock();
@@ -68,7 +68,7 @@ static void benchmark_getpid(void)
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#define _FAIL ((uint64_t)-1)
+#define PFAIL ((uint64_t)-1)
 
 static void init_generic()
 {
@@ -87,7 +87,7 @@ static void* mmap_generic(size_t length)
 
 static uint64_t munmap_generic(void* addr, size_t length)
 {
-    return munmap(addr, length) == -1 ? _FAIL : 0;
+    return munmap(addr, length) == -1 ? PFAIL : 0;
 }
 
 #endif

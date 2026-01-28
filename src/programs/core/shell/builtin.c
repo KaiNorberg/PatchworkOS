@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/defs.h>
 #include <sys/fs.h>
+#include <patchwork/patchwork.h>
 #include <sys/proc.h>
 
 static uint64_t builtin_cd(uint64_t argc, const char** argv);
@@ -41,10 +42,10 @@ static uint64_t builtin_cd(uint64_t argc, const char** argv)
         return 0;
     }
 
-    if (chdir(argv[1]) == _FAIL)
+    if (chdir(argv[1]) < 0)
     {
         fprintf(stderr, "cd: %s\n", strerror(errno));
-        return _FAIL;
+        return PFAIL;
     }
 
     return 0;
@@ -114,5 +115,5 @@ uint64_t builtin_execute(uint64_t argc, const char** argv)
         }
     }
 
-    return _FAIL;
+    return PFAIL;
 }

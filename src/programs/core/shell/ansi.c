@@ -17,7 +17,7 @@ uint64_t ansi_parse(ansi_t* ansi, char input, ansi_result_t* result)
     if (ansi->length >= ANSI_MAX_LENGTH - 1)
     {
         ansi->length = 0;
-        return _FAIL;
+        return PFAIL;
     }
 
     if (ansi->length == 1)
@@ -52,7 +52,7 @@ uint64_t ansi_parse(ansi_t* ansi, char input, ansi_result_t* result)
             return 0;
         default:
             ansi->length = 0;
-            return _FAIL;
+            return PFAIL;
         }
     }
 
@@ -65,7 +65,7 @@ uint64_t ansi_parse(ansi_t* ansi, char input, ansi_result_t* result)
         else
         {
             ansi->length = 0;
-            return _FAIL;
+            return PFAIL;
         }
     }
 
@@ -133,5 +133,5 @@ uint64_t ansi_parse(ansi_t* ansi, char input, ansi_result_t* result)
     }
 
     ansi->length = 0;
-    return _FAIL;
+    return PFAIL;
 }

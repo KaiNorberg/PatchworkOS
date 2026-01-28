@@ -29,7 +29,7 @@ static uint64_t aml_tests_check_object_leak(void)
     if (totalObjects != rootChildren + 1)
     {
         LOG_ERR("memory leak detected, total objects %llu, but root has %llu children\n", totalObjects, rootChildren);
-        return _FAIL;
+        return PFAIL;
     }
     return 0;
 }
@@ -42,19 +42,19 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
     const uint8_t* end = (const uint8_t*)testAml + testAml->header.length;
 
     aml_state_t state;
-    if (aml_state_init(&state, NULL) == _FAIL)
+    if (aml_state_init(&state, NULL) == PFAIL)
     {
-        return _FAIL;
+        return PFAIL;
     }
 
     aml_object_t* root = aml_namespace_get_root();
     UNREF_DEFER(root);
 
-    if (aml_term_list_read(&state, root, testAml->definitionBlock, end, NULL) == _FAIL)
+    if (aml_term_list_read(&state, root, testAml->definitionBlock, end, NULL) == PFAIL)
     {
         LOG_ERR("test '%s' failed to parse AML\n", test->name);
         aml_state_deinit(&state);
-        return _FAIL;
+        return PFAIL;
     }
 
     // Set the "Settings number, used to adjust the aslts tests for different releases of ACPICA".
@@ -64,15 +64,15 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
     {
         LOG_ERR("test '%s' does not contain a valid SETN object\n", test->name);
         aml_state_deinit(&state);
-        return _FAIL;
+        return PFAIL;
     }
     UNREF_DEFER(setn);
 
-    if (aml_integer_set(setn, 6) == _FAIL)
+    if (aml_integer_set(setn, 6) == PFAIL)
     {
         LOG_ERR("test '%s' failed to set SETN value\n", test->name);
         aml_state_deinit(&state);
-        return _FAIL;
+        return PFAIL;
     }
 
     // We dont use the \MAIN method directly instead we use the \MN01 method which enables "slack mode".
@@ -83,7 +83,7 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
     {
         LOG_ERR("test '%s' does not contain a valid method\n", test->name);
         aml_state_deinit(&state);
-        return _FAIL;
+        return PFAIL;
     }
     UNREF_DEFER(mainObj);
 
@@ -92,7 +92,7 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
     {
         LOG_ERR("test '%s' method evaluation failed\n", test->name);
         aml_state_deinit(&state);
-        return _FAIL;
+        return PFAIL;
     }
     UNREF_DEFER(result);
 
@@ -101,13 +101,13 @@ static uint64_t aml_tests_acpica_do_test(const acpica_test_t* test)
     if (result->type != AML_INTEGER)
     {
         LOG_ERR("test '%s' method did not return an integer\n", test->name);
-        return _FAIL;
+        return PFAIL;
     }
 
     if (result->integer.value != 0)
     {
         LOG_ERR("test '%s' failed, returned %llu\n", test->name, result->integer.value);
-        return _FAIL;
+        return PFAIL;
     }
 
     LOG_INFO("test '%s' passed\n", test->name);
@@ -119,9 +119,9 @@ static uint64_t aml_tests_acpica_run_all(void)
     for (int32_t i = 0; i < ACPICA_TEST_COUNT; i++)
     {
         const acpica_test_t* test = &acpicaTests[i];
-        if (aml_tests_acpica_do_test(test) == _FAIL)
+        if (aml_tests_acpica_do_test(test) == PFAIL)
         {
-            return _FAIL;
+            return PFAIL;
         }
     }
     return 0;
@@ -129,26 +129,26 @@ static uint64_t aml_tests_acpica_run_all(void)
 
 TEST_DEFINE(aml)
 {
-    if (aml_tests_check_object_leak() == _FAIL)
+    if (aml_tests_check_object_leak() == PFAIL)
     {
-        return _FAIL;
+        return PFAIL;
     }
 
     uint64_t startingObjects = aml_object_get_total_count();
 
-    if (aml_tests_acpica_run_all() == _FAIL)
+    if (aml_tests_acpica_run_all() == PFAIL)
     {
         // For now this is definitely going to fail as we havent implemented everything yet.
         // So just log it and continue.
         LOG_WARN("ACPICA tests failed, this is expected until more AML features are implemented\n");
-        // return _FAIL;
+        // return PFAIL;
     }
 
     if (startingObjects != aml_object_get_total_count())
     {
         LOG_ERR("memory leak detected, total objects before test %llu, after test %llu\n", startingObjects,
             aml_object_get_total_count());
-        return _FAIL;
+        return PFAIL;
     }
 
     LOG_INFO("post parse all tests passed\n");

@@ -26,15 +26,14 @@ surface_t* surface_new(client_t* client, const char* name, const point_t* point,
     list_entry_init(&surface->clientEntry);
     surface->client = client;
     surface->pos = *point;
-    surface->shmem = open("/dev/shmem/new");
-    if (surface->shmem == _FAIL)
+    if (IS_ERR(open(&surface->shmem, "/dev/shmem/new")))
     {
         free(surface);
         printf("dwm surface error: failed to open shmem\n");
         return NULL;
     }
-    surface->buffer = mmap(surface->shmem, NULL, width * height * sizeof(pixel_t), PROT_READ | PROT_WRITE);
-    if (surface->buffer == NULL)
+    surface->buffer = NULL;
+    if (IS_ERR(mmap(surface->shmem, (void**)&surface->buffer, width * height * sizeof(pixel_t), PROT_READ | PROT_WRITE)))
     {
         close(surface->shmem);
         free(surface);

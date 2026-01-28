@@ -25,15 +25,15 @@ static region_t invalidRegion;
 static void frontbuffer_init(void)
 {
     char name[MAX_PATH] = {0};
-    if (readfile("/dev/fb/0/name", name, sizeof(name) - 1, 0) == _FAIL)
+    if (IS_ERR(readfile("/dev/fb/0/name", name, sizeof(name) - 1, 0, NULL)))
     {
-        printf("dwm: failed to read framebuffer name (%s)\n", strerror(errno));
+        printf("dwm: failed to read framebuffer name\n");
         abort();
     }
 
-    if (scanfile("/dev/fb/0/info", "%lu %lu %lu %s", &width, &height, &pitch, format) == _FAIL)
+    if (scanfile("/dev/fb/0/info", "%lu %lu %lu %s", &width, &height, &pitch, format) == PFAIL)
     {
-        printf("dwm: failed to read framebuffer info (%s)\n", strerror(errno));
+        printf("dwm: failed to read framebuffer info (%s)\n");
         abort();
     }
 
@@ -42,15 +42,15 @@ static void frontbuffer_init(void)
 
     stride = pitch / sizeof(pixel_t);
 
-    fd_t data = open("/dev/fb/0/data");
-    if (data == _FAIL)
+    fd_t data;
+    if (IS_ERR(open(&data, "/dev/fb/0/data")))
     {
         printf("dwm: failed to open framebuffer device (%s)\n", strerror(errno));
         abort();
     }
 
-    frontbuffer = mmap(data, NULL, height * pitch, PROT_READ | PROT_WRITE);
-    if (frontbuffer == NULL)
+    frontbuffer = NULL;
+    if (IS_ERR(mmap(data, &frontbuffer, height * pitch, PROT_READ | PROT_WRITE)))
     {
         printf("dwm: failed to map framebuffer memory (%s)\n", strerror(errno));
         abort();

@@ -30,15 +30,17 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
 
 int main(void)
 {
-    fd_t klog = open("/dev/klog");
-    if (klog == _FAIL)
+    fd_t klog;
+    if (IS_ERR(open(&klog, "/dev/klog")))
     {
-        printf("cursor: failed to open klog\n");
+        printf("taskbar: failed to open klog\n");
         return EXIT_FAILURE;
     }
-    if (dup(klog, STDOUT_FILENO) == _FAIL || dup(klog, STDERR_FILENO) == _FAIL)
+    fd_t stdoutFd = STDOUT_FILENO;
+    fd_t stderrFd = STDERR_FILENO;
+    if (IS_ERR(dup(klog, &stdoutFd)) || IS_ERR(dup(klog, &stderrFd)))
     {
-        printf("cursor: failed to redirect stdout/stderr to klog\n");
+        printf("taskbar: failed to redirect stdout/stderr to klog\n");
         close(klog);
         return EXIT_FAILURE;
     }
@@ -71,7 +73,7 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    if (window_set_visible(win, true) == _FAIL)
+    if (window_set_visible(win, true) == PFAIL)
     {
         printf("cursor: failed to show window\n");
         window_free(win);
@@ -80,7 +82,7 @@ int main(void)
     }
 
     event_t event = {0};
-    while (display_next(disp, &event, CLOCKS_NEVER) != _FAIL)
+    while (display_next(disp, &event, CLOCKS_NEVER) != PFAIL)
     {
         display_dispatch(disp, &event);
     }

@@ -39,17 +39,17 @@ static poll_ctx_t* pollCtx;
 
 static client_t* dwm_client_accept(void)
 {
-    fd_t fd = open(F("/net/local/%s/accept:nonblock", id));
-    if (fd == _FAIL)
+    fd_t fd;
+    if (IS_ERR(open(&fd, F("/net/local/%s/accept:nonblock", id))))
     {
-        printf("dwm: failed to open accept file (%s)\n", strerror(errno));
+        printf("dwm: failed to open accept file\n");
         return NULL;
     }
 
     client_t* client = client_new(fd);
     if (client == NULL)
     {
-        printf("dwm: failed to accept client (%s)\n", strerror(errno));
+        printf("dwm: failed to accept client\n");
         close(fd);
         return NULL;
     }
@@ -74,7 +74,7 @@ static void dwm_send_event_to_all(surface_id_t target, event_type_t type, void* 
     client_t* temp;
     LIST_FOR_EACH_SAFE(client, temp, &clients, entry)
     {
-        if (client_send_event(client, target, type, data, size) == _FAIL)
+        if (IS_ERR(client_send_event(client, target, type, data, size)))
         {
             dwm_client_disconnect(client);
         }
@@ -83,64 +83,60 @@ static void dwm_send_event_to_all(surface_id_t target, event_type_t type, void* 
 
 void dwm_init(void)
 {
-    fd_t klog = open("/dev/klog");
-    if (klog == _FAIL)
+    fd_t klog;
+    if (IS_ERR(open(&klog, "/dev/klog")))
     {
         abort();
     }
 
-    if (dup(klog, STDOUT_FILENO) == _FAIL)
+    fd_t stdoutFd = STDOUT_FILENO;
+    if (IS_ERR(dup(klog, &stdoutFd)))
     {
         close(klog);
         abort();
     }
     close(klog);
 
-    kbd = open("/dev/kbd/0/events:nonblock");
-    if (kbd == _FAIL)
+    if (IS_ERR(open(&kbd, "/dev/kbd/0/events:nonblock")))
     {
-        printf("dwm: failed to open keyboard (%s)\n", strerror(errno));
+        printf("dwm: failed to open keyboard\n");
         abort();
     }
 
-    char* name = readfiles("/dev/kbd/0/name");
-    if (name != NULL)
+    char* name;
+    if (!IS_ERR(readfiles(&name, "/dev/kbd/0/name")))
     {
         printf("dwm: using keyboard '%s'\n", name);
         free(name);
     }
 
-    mouse = open("/dev/mouse/0/events:nonblock");
-    if (mouse == _FAIL)
+    if (IS_ERR(open(&mouse, "/dev/mouse/0/events:nonblock")))
     {
-        printf("dwm: failed to open mouse (%s)\n", strerror(errno));
+        printf("dwm: failed to open mouse\n");
         abort();
     }
 
-    name = readfiles("/dev/mouse/0/name");
-    if (name != NULL)
+    if (!IS_ERR(readfiles(&name, "/dev/mouse/0/name")))
     {
         printf("dwm: using mouse '%s'\n", name);
         free(name);
     }
 
-    id = readfiles("/net/local/seqpacket:nonblock");
-    if (id == NULL)
+    if (IS_ERR(readfiles(&id, "/net/local/seqpacket:nonblock")))
     {
-        printf("dwm: failed to read seqpacket id (%s)\n", strerror(errno));
+        printf("dwm: failed to read seqpacket id\n");
         abort();
     }
 
-    if (writefiles(F("/net/local/%s/ctl", id), "bind dwm && listen") == _FAIL)
+    if (IS_ERR(writefiles(F("/net/local/%s/ctl", id), "bind dwm && listen")))
     {
-        printf("dwm: failed to bind socket (%s)\n", strerror(errno));
+        printf("dwm: failed to bind socket\n");
         abort();
     }
 
-    data = open(F("/net/local/%s/data:nonblock", id));
-    if (data == _FAIL)
+    if (IS_ERR(open(&data, F("/net/local/%s/data:nonblock", id))))
     {
-        printf("dwm: failed to open data file (%s)\n", strerror(errno));
+        printf("dwm: failed to open data file\n");
         abort();
     }
 
@@ -236,7 +232,7 @@ uint64_t dwm_attach(surface_t* surface)
         {
             printf("dwm: attach (cursor != NULL)\n");
             errno = EALREADY;
-            return _FAIL;
+            return -1;
         }
 
         cursor = surface;
@@ -248,7 +244,7 @@ uint64_t dwm_attach(surface_t* surface)
         {
             printf("dwm: attach (wall != NULL)\n");
             errno = EALREADY;
-            return _FAIL;
+            return -1;
         }
 
         wall = surface;
@@ -260,7 +256,7 @@ uint64_t dwm_attach(surface_t* surface)
         {
             printf("dwm: attach (fullscreen != NULL)\n");
             errno = EALREADY;
-            return _FAIL;
+            return -1;
         }
 
         fullscreen = surface;
@@ -271,7 +267,7 @@ uint64_t dwm_attach(surface_t* surface)
     {
         printf("dwm: attach (default)\n");
         errno = EINVAL;
-        return _FAIL;
+        return -1;
     }
     }
 
@@ -462,10 +458,10 @@ static void dwm_kbd_read(void)
 
     keycode_t code = -1;
     char suffix = -1;
-    int result = scan(kbd, "%u%c", &code, &suffix);
+    uint64_t result = scan(kbd, "%u%c", &code, &suffix);
     if (result != 2)
     {
-        printf("dwm: failed to read keyboard event (s)\n", strerror(errno));
+        printf("dwm: failed to read keyboard event\n");
         return;
     }
 
@@ -642,7 +638,7 @@ static void dwm_mouse_read(void)
         {
             if (errno != EAGAIN)
             {
-                printf("dwm: failed to read mouse event (s)\n", strerror(errno));
+                printf("dwm: failed to read mouse event\n");
             }
             break;
         }
@@ -732,10 +728,11 @@ static void dwm_poll(void)
         timeout = timer->timer.deadline > time ? timer->timer.deadline - time : 0;
     }
 
-    uint64_t events = poll((pollfd_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(pollfd_t) + clientAmount, timeout);
-    if (events == _FAIL)
+    uint64_t count;
+    status_t status = poll((pollfd_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(pollfd_t) + clientAmount, timeout, &count);
+    if (IS_ERR(status))
     {
-        printf("dwm: poll failed (%s)\n", strerror(errno));
+        printf("dwm: poll failed\n");
         abort();
     }
 
@@ -790,9 +787,9 @@ static void dwm_update(void)
         }
         else if (fd->revents & POLLIN)
         {
-            if (client_receive_cmds(client) == _FAIL)
+            if (IS_ERR(client_receive_cmds(client)))
             {
-                printf("dwm: client %d receive commands failed (%s)\n", client->fd, strerror(errno));
+                printf("dwm: client %d receive commands failed\n", client->fd);
                 dwm_client_disconnect(client);
             }
         }

@@ -37,7 +37,7 @@ int sscanf(const char* _RESTRICT s, const char* _RESTRICT format, ...)
         if (ret != rc) \
         { \
             LOG_ERR("_SCAN_TEST failed at line %d: expected %d, got %d\n", __LINE__, rc, ret); \
-            return _FAIL; \
+            return PFAIL; \
         } \
     } while (0)
 
@@ -149,7 +149,7 @@ TEST_DEFINE(scan)
 {
     for (int k = 0; k < 1; ++k)
     {
-        TEST_ASSERT(_test_scan_iter() != _FAIL);
+        TEST_ASSERT(_test_scan_iter() != PFAIL);
     }
 
     return 0;

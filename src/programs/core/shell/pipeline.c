@@ -10,13 +10,13 @@
 #include <sys/fs.h>
 #include <sys/proc.h>
 
-uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd_t stdout, fd_t stderr)
+status_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd_t stdout, fd_t stderr)
 {
     uint64_t tokenAmount;
     const char** tokens = argsplit(cmdline, UINT64_MAX, &tokenAmount);
     if (tokens == NULL)
     {
-        return _FAIL;
+        return ERR(USER, NOMEM);
     }
 
     if (tokenAmount == 0)
@@ -25,14 +25,14 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
         pipeline->capacity = tokenAmount;
         pipeline->amount = 0;
         free(tokens);
-        return 0;
+        return OK;
     }
 
     pipeline->cmds = malloc(sizeof(cmd_t) * tokenAmount);
     if (pipeline->cmds == NULL)
     {
         free(tokens);
-        return _FAIL;
+        return ERR(USER, NOMEM);
     }
 
     pipeline->capacity = tokenAmount;
@@ -50,7 +50,7 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
         cmd->shouldCloseStdin = false;
         cmd->shouldCloseStdout = false;
         cmd->shouldCloseStderr = false;
-        cmd->pid = _FAIL;
+        cmd->pid = PFAIL;
     }
 
     uint64_t currentCmd = 0;
@@ -60,7 +60,7 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
     {
         free(pipeline->cmds);
         free(tokens);
-        return _FAIL;
+        return ERR(USER, NOMEM);
     }
 
     for (uint64_t i = 0; i < tokenAmount; i++)
@@ -85,9 +85,10 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
             cmd->argc = currentArg;
 
             fd_t pipe[2];
-            if (open2("/dev/pipe/new", pipe) == _FAIL)
+            status_t status = open2("/dev/pipe/new", pipe);
+            if (IS_ERR(status))
             {
-                printf("shell: unable to open pipe (%s)\n", strerror(errno));
+                printf("shell: unable to open pipe (%s)\n", codetostr(ST_CODE(status)));
                 goto token_parse_error;
             }
 
@@ -115,10 +116,11 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
                 goto token_parse_error;
             }
 
-            fd_t fd = open(tokens[i + 1]);
-            if (fd == _FAIL)
+            fd_t fd;
+            status_t status = open(&fd, tokens[i + 1]);
+            if (IS_ERR(status))
             {
-                printf("shell: unable to open %s (%s)\n", tokens[i + 1], strerror(errno));
+                printf("shell: unable to open %s (%s)\n", tokens[i + 1], codetostr(ST_CODE(status)));
                 goto token_parse_error;
             }
 
@@ -140,10 +142,11 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
                 goto token_parse_error;
             }
 
-            fd_t fd = open(tokens[i + 1]);
-            if (fd == _FAIL)
+            fd_t fd;
+            status_t status = open(&fd, tokens[i + 1]);
+            if (IS_ERR(status))
             {
-                printf("shell: unable to open %s (%s)\n", tokens[i + 1], strerror(errno));
+                printf("shell: unable to open %s (%s)\n", tokens[i + 1], codetostr(ST_CODE(status)));
                 goto token_parse_error;
             }
 
@@ -165,10 +168,11 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
                 goto token_parse_error;
             }
 
-            fd_t fd = open(tokens[i + 1]);
-            if (fd == _FAIL)
+            fd_t fd;
+            status_t status = open(&fd, tokens[i + 1]);
+            if (IS_ERR(status))
             {
-                printf("shell: unable to open %s (%s)\n", tokens[i + 1], strerror(errno));
+                printf("shell: unable to open %s (%s)\n", tokens[i + 1], codetostr(ST_CODE(status)));
                 goto token_parse_error;
             }
 
@@ -219,7 +223,7 @@ uint64_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
 
     pipeline->amount = currentCmd;
     free(tokens);
-    return 0;
+    return OK;
 
 token_parse_error:
     if (currentArgv != NULL)
@@ -258,7 +262,7 @@ token_parse_error_no_current_argv:
     }
     free(pipeline->cmds);
     free(tokens);
-    return _FAIL;
+    return ERR(USER, INVAL);
 }
 
 void pipeline_deinit(pipeline_t* pipeline)
@@ -295,43 +299,46 @@ void pipeline_deinit(pipeline_t* pipeline)
 
 static pid_t pipeline_execute_cmd(cmd_t* cmd)
 {
-    pid_t result = _FAIL;
+    pid_t result = PFAIL;
 
-    fd_t originalStdin = dup(STDIN_FILENO);
-    if (originalStdin == _FAIL)
+    fd_t originalStdin = FD_NONE;
+    if (IS_ERR(dup(STDIN_FILENO, &originalStdin)))
     {
-        return _FAIL;
+        return PFAIL;
     }
-    fd_t originalStdout = dup(STDOUT_FILENO);
-    if (originalStdout == _FAIL)
+    fd_t originalStdout = FD_NONE;
+    if (IS_ERR(dup(STDOUT_FILENO, &originalStdout)))
     {
         close(originalStdin);
-        return _FAIL;
+        return PFAIL;
     }
-    fd_t originalStderr = dup(STDERR_FILENO);
-    if (originalStderr == _FAIL)
+    fd_t originalStderr = FD_NONE;
+    if (IS_ERR(dup(STDERR_FILENO, &originalStderr)))
     {
         close(originalStdin);
         close(originalStdout);
-        return _FAIL;
+        return PFAIL;
     }
 
-    if (dup(cmd->stdin, STDIN_FILENO) == _FAIL || dup(cmd->stdout, STDOUT_FILENO) == _FAIL ||
-        dup(cmd->stderr, STDERR_FILENO) == _FAIL)
+    fd_t stdinTarget = STDIN_FILENO;
+    fd_t stdoutTarget = STDOUT_FILENO;
+    fd_t stderrTarget = STDERR_FILENO;
+    if (IS_ERR(dup(cmd->stdin, &stdinTarget)) || IS_ERR(dup(cmd->stdout, &stdoutTarget)) ||
+        IS_ERR(dup(cmd->stderr, &stderrTarget)))
     {
         close(originalStdin);
         close(originalStdout);
         close(originalStderr);
-        return _FAIL;
+        return PFAIL;
     }
 
     const char** argv = cmd->argv;
     uint64_t argc = cmd->argc;
     if (builtin_exists(argv[0]))
     {
-        if (builtin_execute(cmd->argc, cmd->argv) == _FAIL)
+        if (builtin_execute(cmd->argc, cmd->argv) == PFAIL)
         {
-            result = _FAIL;
+            result = PFAIL;
         }
         else
         {
@@ -341,20 +348,27 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
     else if (strchr(argv[0], '/') != NULL)
     {
         stat_t info;
-        if (stat(argv[0], &info) != _FAIL && info.type != VDIR)
+        if (IS_OK(stat(argv[0], &info)) && info.type != VDIR)
         {
-            result = spawn(argv, SPAWN_STDIO_FDS);
+            if (IS_ERR(spawn(argv, SPAWN_STDIO_FDS, &result)))
+            {
+                result = PFAIL;
+            }
         }
         else
         {
             printf("shell: %s not found\n", argv[0]);
-            result = _FAIL;
+            result = PFAIL;
         }
     }
     else
     {
         bool isFound = false;
-        char* pathEnv = readfiles("/proc/self/env/PATH");
+        char* pathEnv = NULL;
+        if (IS_ERR(readfiles(&pathEnv, "/proc/self/env/PATH")))
+        {
+            pathEnv = NULL;
+        }
         if (pathEnv == NULL)
         {
             pathEnv = strdup("/bin:/usr/bin");
@@ -369,7 +383,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
                 if (snprintf(path, MAX_PATH, "%s/%s", token, argv[0]) < MAX_PATH)
                 {
                     stat_t info;
-                    if (stat(path, &info) != _FAIL && info.type != VDIR)
+                    if (IS_OK(stat(path, &info)) && info.type != VDIR)
                     {
                         const char* newArgv[argc + 1];
                         newArgv[0] = path;
@@ -378,7 +392,10 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
                             newArgv[k] = argv[k];
                         }
                         newArgv[argc] = NULL;
-                        result = spawn(newArgv, SPAWN_STDIO_FDS);
+                        if (IS_ERR(spawn(newArgv, SPAWN_STDIO_FDS, &result)))
+                        {
+                            result = PFAIL;
+                        }
                         isFound = true;
                         break;
                     }
@@ -391,14 +408,17 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
         if (!isFound)
         {
             fprintf(stderr, "shell: %s not found\n", argv[0]);
-            result = _FAIL;
+            result = PFAIL;
         }
     }
 
-    if (dup(originalStdin, STDIN_FILENO) == _FAIL || dup(originalStdout, STDOUT_FILENO) == _FAIL ||
-        dup(originalStderr, STDERR_FILENO) == _FAIL)
+    stdinTarget = STDIN_FILENO;
+    stdoutTarget = STDOUT_FILENO;
+    stderrTarget = STDERR_FILENO;
+    if (IS_ERR(dup(originalStdin, &stdinTarget)) || IS_ERR(dup(originalStdout, &stdoutTarget)) ||
+        IS_ERR(dup(originalStderr, &stderrTarget)))
     {
-        result = _FAIL;
+        result = PFAIL;
     }
 
     close(originalStdin);
@@ -438,7 +458,7 @@ void pipeline_wait(pipeline_t* pipeline)
     {
         cmd_t* cmd = &pipeline->cmds[i];
 
-        if (cmd->pid == _FAIL)
+        if (cmd->pid == PFAIL)
         {
             strcpy(pipeline->status, "-1");
             continue;
@@ -449,17 +469,18 @@ void pipeline_wait(pipeline_t* pipeline)
             continue;
         }
 
-        fd_t wait = open(F("/proc/%llu/wait", cmd->pid));
-        if (wait == _FAIL)
+        fd_t wait;
+        if (IS_ERR(open(&wait, F("/proc/%llu/wait", cmd->pid))))
         {
             strcpy(pipeline->status, "-1");
             continue;
         }
 
         memset(pipeline->status, 0, sizeof(pipeline->status));
-        size_t readCount = RETRY_EINTR(read(wait, pipeline->status, sizeof(pipeline->status)));
+        size_t readCount;
+        status_t st = RETRY_ON_CODE(read(wait, pipeline->status, sizeof(pipeline->status), &readCount), INTR);
         close(wait);
-        if (readCount == _FAIL)
+        if (IS_ERR(st))
         {
             strcpy(pipeline->status, "-1");
             continue;

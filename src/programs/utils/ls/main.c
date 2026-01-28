@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <patchwork/patchwork.h>
 #include <sys/fs.h>
 
 static bool showAll = false;
@@ -18,7 +19,7 @@ static uint64_t terminal_columns_get(void)
     char buffer[MAX_NAME] = {0};
     for (uint32_t i = 0; i < sizeof(buffer) - 1; i++)
     {
-        read(STDIN_FILENO, &buffer[i], 1);
+        read(STDIN_FILENO, &buffer[i], 1, NULL);
         if (buffer[i] == 'R')
         {
             break;
@@ -47,11 +48,11 @@ static int dirent_cmp(const void* a, const void* b)
 
 static uint64_t print_dir(const char* path)
 {
-    fd_t fd = open(path);
-    if (fd == _FAIL)
+    fd_t fd;
+    if (IS_ERR(open(&fd, path)))
     {
         fprintf(stderr, "ls: can't open directory %s (%s)\n", path, strerror(errno));
-        return _FAIL;
+        return PFAIL;
     }
 
     uint64_t capacity = 16;
@@ -61,7 +62,7 @@ static uint64_t print_dir(const char* path)
     {
         close(fd);
         fprintf(stderr, "ls: memory allocation failed\n");
-        return _FAIL;
+        return PFAIL;
     }
 
     while (true)
@@ -75,18 +76,19 @@ static uint64_t print_dir(const char* path)
                 free(entries);
                 close(fd);
                 fprintf(stderr, "ls: memory allocation failed\n");
-                return _FAIL;
+                return PFAIL;
             }
             entries = newEntries;
         }
 
-        uint64_t bytesRead = getdents(fd, &entries[count], sizeof(dirent_t) * (capacity - count));
-        if (bytesRead == _FAIL)
+        uint64_t bytesRead;
+        status_t status = getdents(fd, &entries[count], sizeof(dirent_t) * (capacity - count), &bytesRead);
+        if (IS_ERR(status))
         {
             free(entries);
             close(fd);
             fprintf(stderr, "ls: can't read directory %s (%s)\n", path, strerror(errno));
-            return _FAIL;
+            return PFAIL;
         }
         if (bytesRead == 0)
         {
@@ -240,7 +242,7 @@ int main(int argc, char** argv)
 
     if (i >= argc)
     {
-        if (print_dir(".") == _FAIL)
+        if (print_dir(".") == PFAIL)
         {
             return EXIT_FAILURE;
         }
@@ -249,7 +251,7 @@ int main(int argc, char** argv)
     {
         for (; i < argc; i++)
         {
-            if (print_dir(argv[i]) == _FAIL)
+            if (print_dir(argv[i]) == PFAIL)
             {
                 return EXIT_FAILURE;
             }

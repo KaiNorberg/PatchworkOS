@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/ioring.h>
 #include <sys/proc.h>
+#include <sys/status.h>
 
 #define SENTRIES 64
 #define CENTRIES 128
@@ -11,10 +12,10 @@ int main()
 {
     printf("setting up ring test...\n");
     ioring_t ring;
-    ioring_id_t id = ioring_setup(&ring, NULL, SENTRIES, CENTRIES);
-    if (id == _FAIL)
+    status_t status = ioring_setup(&ring, NULL, SENTRIES, CENTRIES);
+    if (IS_ERR(status))
     {
-        printf("failed to set up ring\n");
+        printf("failed to set up ring (%s, %s)\n", srctostr(ST_SRC(status)), codetostr(ST_CODE(status)));;
         return errno;
     }
 
@@ -31,9 +32,10 @@ int main()
     sqe_put(&ring);
 
     printf("entering ring...\n");
-    if (ioring_enter(id, 2, 0) == _FAIL)
+    status = ioring_enter(&ring, 2, 0, NULL);
+    if (IS_ERR(status))
     {
-        printf("failed to enter ring\n");
+        printf("failed to enter ring (%s, %s)\n", srctostr(ST_SRC(status)), codetostr(ST_CODE(status)));
         return errno;
     }
 
@@ -43,9 +45,10 @@ int main()
     sqe_put(&ring);
 
     printf("entering ring to submit cancel sqe...\n");
-    if (ioring_enter(id, 1, 0) == _FAIL)
+    status = ioring_enter(&ring, 1, 0, NULL);
+    if (IS_ERR(status))
     {
-        printf("failed to enter ring\n");
+        printf("failed to enter ring (%s, %s)\n", srctostr(ST_SRC(status)), codetostr(ST_CODE(status)));
         return errno;
     }
 
@@ -59,7 +62,7 @@ int main()
 
         printf("cqe data: %p\n", cqe->data);
         printf("cqe op: %d\n", cqe->op);
-        printf("cqe error: %s\n", strerror(cqe->error));
+        printf("cqe status: %s, %s\n", srctostr(ST_SRC(cqe->status)), codetostr(ST_CODE(cqe->status)));
         printf("cqe result: %llu\n", cqe->_result);
 
         cqe_put(&ring);
@@ -72,6 +75,6 @@ int main()
     }
 
     printf("tearing down ring...\n");
-    ioring_teardown(id);
+    ioring_teardown(&ring);
     return 0;
 }

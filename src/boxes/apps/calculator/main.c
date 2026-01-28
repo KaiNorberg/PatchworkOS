@@ -28,7 +28,7 @@ static uint64_t numpad_button_create(element_t* elem, font_t* font, uint64_t col
     element_t* button = button_new(elem, id, &rect, name, ELEMENT_NONE);
     if (button == NULL)
     {
-        return _FAIL;
+        return PFAIL;
     }
     element_get_text_props(button)->font = font;
 
@@ -52,7 +52,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         calculator_t* calc = malloc(sizeof(calculator_t));
         if (calc == NULL)
         {
-            return _FAIL;
+            return PFAIL;
         }
         calc->input = 0;
         calc->accumulator = 0;
@@ -61,7 +61,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         if (calc->largeFont == NULL)
         {
             free(calc);
-            return _FAIL;
+            return PFAIL;
         }
 
         for (uint64_t column = 0; column < 3; column++)
@@ -71,26 +71,26 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
                 element_id_t id = 9 - ((2 - column) + row * 3);
                 char name[2] = {'0' + id, '\0'};
 
-                if (numpad_button_create(elem, calc->largeFont, column, row, name, id) == _FAIL)
+                if (numpad_button_create(elem, calc->largeFont, column, row, name, id) == PFAIL)
                 {
                     font_free(calc->largeFont);
                     free(calc);
-                    return _FAIL;
+                    return PFAIL;
                 }
             }
         }
 
-        if (numpad_button_create(elem, calc->largeFont, 1, 3, "0", 0) == _FAIL ||
-            numpad_button_create(elem, calc->largeFont, 3, 0, "/", '/') == _FAIL ||
-            numpad_button_create(elem, calc->largeFont, 3, 1, "*", '*') == _FAIL ||
-            numpad_button_create(elem, calc->largeFont, 3, 2, "-", '-') == _FAIL ||
-            numpad_button_create(elem, calc->largeFont, 3, 3, "+", '+') == _FAIL ||
-            numpad_button_create(elem, calc->largeFont, 0, 3, "<", '<') == _FAIL ||
-            numpad_button_create(elem, calc->largeFont, 2, 3, "=", '=') == _FAIL)
+        if (numpad_button_create(elem, calc->largeFont, 1, 3, "0", 0) == PFAIL ||
+            numpad_button_create(elem, calc->largeFont, 3, 0, "/", '/') == PFAIL ||
+            numpad_button_create(elem, calc->largeFont, 3, 1, "*", '*') == PFAIL ||
+            numpad_button_create(elem, calc->largeFont, 3, 2, "-", '-') == PFAIL ||
+            numpad_button_create(elem, calc->largeFont, 3, 3, "+", '+') == PFAIL ||
+            numpad_button_create(elem, calc->largeFont, 0, 3, "<", '<') == PFAIL ||
+            numpad_button_create(elem, calc->largeFont, 2, 3, "=", '=') == PFAIL)
         {
             font_free(calc->largeFont);
             free(calc);
-            return _FAIL;
+            return PFAIL;
         }
 
         rect_t labelRect = RECT_INIT_DIM(NUMPAD_PADDING, NUMPAD_PADDING, LABEL_WIDTH, LABEL_HEIGHT);
@@ -99,7 +99,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         {
             font_free(calc->largeFont);
             free(calc);
-            return _FAIL;
+            return PFAIL;
         }
 
         text_props_t* props = element_get_text_props(label);
@@ -132,7 +132,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         element_t* label = element_find(elem, LABEL_ID);
         if (label == NULL)
         {
-            return _FAIL;
+            return PFAIL;
         }
 
         if (event->libAction.source <= 9)
@@ -208,7 +208,7 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    if (window_set_visible(win, true) == _FAIL)
+    if (window_set_visible(win, true) == PFAIL)
     {
         window_free(win);
         display_free(disp);
@@ -216,7 +216,7 @@ int main(void)
     }
 
     event_t event = {0};
-    while (display_next(disp, &event, CLOCKS_NEVER) != _FAIL)
+    while (display_next(disp, &event, CLOCKS_NEVER) != PFAIL)
     {
         display_dispatch(disp, &event);
     }

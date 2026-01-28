@@ -8,17 +8,18 @@
 
 #define BUFFER_SIZE 1024
 
-static size_t read_fd(fd_t fd, const char* name, bool hexOutput)
+static int read_fd(fd_t fd, const char* name, bool hexOutput)
 {
     while (1)
     {
         char buffer[BUFFER_SIZE];
-        uint64_t count = read(fd, buffer, BUFFER_SIZE - 1);
-        if (count == _FAIL)
+        uint64_t count;
+        status_t status = read(fd, buffer, BUFFER_SIZE - 1, &count);
+        if (IS_ERR(status))
         {
             printf("cat: failed to read %s (%s)\n", name, strerror(errno));
             close(fd);
-            return _FAIL;
+            return EOF;
         }
         if (count == 0)
         {
@@ -29,12 +30,12 @@ static size_t read_fd(fd_t fd, const char* name, bool hexOutput)
         {
             for (uint64_t i = 0; i < count; i++)
             {
-                writes(STDOUT_FILENO, F("%02x ", (unsigned char)buffer[i]));
+                writes(STDOUT_FILENO, F("%02x ", (unsigned char)buffer[i]), NULL);
             }
             continue;
         }
 
-        write(STDOUT_FILENO, buffer, count);
+        write(STDOUT_FILENO, buffer, count, NULL);
     }
 
     return 0;
@@ -57,14 +58,14 @@ int main(int argc, char** argv)
 
     for (; i < argc; i++)
     {
-        fd_t fd = open(argv[i]);
-        if (fd == _FAIL)
+        fd_t fd;
+        if (IS_ERR(open(&fd, argv[i])))
         {
             printf("cat: failed to open %s (%s)\n", argv[i], strerror(errno));
             return EXIT_FAILURE;
         }
 
-        if (read_fd(fd, argv[i], hexOutput) == _FAIL)
+        if (read_fd(fd, argv[i], hexOutput) == EOF)
         {
             return EXIT_FAILURE;
         }

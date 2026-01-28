@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/fs.h>
+#include <patchwork/patchwork.h>
 #include <sys/proc.h>
 
 static uint64_t cmdline_read(char* buffer, uint64_t size)
@@ -16,9 +17,9 @@ static uint64_t cmdline_read(char* buffer, uint64_t size)
     while (1)
     {
         char chr;
-        if (read(STDIN_FILENO, &chr, 1) == 0)
+        if (IS_ERR(read(STDIN_FILENO, &chr, 1, NULL)))
         {
-            return _FAIL;
+            return PFAIL;
         }
         else if (chr == '\n')
         {
@@ -57,9 +58,10 @@ static void join_args(char* buffer, uint64_t size, int argc, char* argv[])
 void execute_command(const char* cmdline)
 {
     pipeline_t pipeline;
-    if (pipeline_init(&pipeline, cmdline, STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO) == _FAIL)
+    status_t status = pipeline_init(&pipeline, cmdline, STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO);
+    if (IS_ERR(status))
     {
-        exits(F("shell: failed to initialize pipeline (%s)\n", strerror(errno)));
+        exits(F("shell: failed to initialize pipeline (%llu)\n", status));
     }
 
     pipeline_execute(&pipeline);

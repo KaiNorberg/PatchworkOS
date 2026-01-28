@@ -131,7 +131,7 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    if (window_set_visible(win, true) == _FAIL)
+    if (window_set_visible(win, true) == PFAIL)
     {
         window_free(win);
         display_free(disp);
@@ -139,7 +139,7 @@ int main(void)
     }
 
     event_t event = {0};
-    while (display_next(disp, &event, CLOCKS_NEVER) != _FAIL)
+    while (display_next(disp, &event, CLOCKS_NEVER) != PFAIL)
     {
         display_dispatch(disp, &event);
     }

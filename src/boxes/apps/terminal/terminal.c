@@ -222,7 +222,7 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t*
 
     if (ansi.length > 0)
     {
-        write(term->stdin[PIPE_WRITE], ansi.buffer, ansi.length);
+        write(term->stdin[PIPE_WRITE], ansi.buffer, ansi.length, NULL);
     }
 
     if (ansi.length == 1 && ansi.buffer[0] == '\003')
@@ -320,7 +320,7 @@ static void terminal_execute_ansi(terminal_t* term, element_t* elem, drawable_t*
         uint16_t cursorCol = term->cursor->col + 1;
         char response[MAX_NAME];
         int responseLen = snprintf(response, sizeof(response), "\033[%d;%dR", cursorRow, cursorCol);
-        write(term->stdin[PIPE_WRITE], response, responseLen);
+        write(term->stdin[PIPE_WRITE], response, responseLen, NULL);
     }
     break;
     case 's': // Save Cursor Position
@@ -555,26 +555,26 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         terminal_t* term = malloc(sizeof(terminal_t));
         if (term == NULL)
         {
-            return _FAIL;
+            return PFAIL;
         }
         term->win = win;
         term->font = ctx->font;
         term->cursorBlink = false;
         term->isCursorVisible = true;
 
-        if (open2("/dev/pipe/new", term->stdin) == _FAIL)
+        if (IS_ERR(open2("/dev/pipe/new", term->stdin)))
         {
             font_free(term->font);
             free(term);
-            return _FAIL;
+            return PFAIL;
         }
-        if (open2("/dev/pipe/new", term->stdout) == _FAIL)
+        if (IS_ERR(open2("/dev/pipe/new", term->stdout)))
         {
             close(term->stdin[0]);
             close(term->stdin[1]);
             font_free(term->font);
             free(term);
-            return _FAIL;
+            return PFAIL;
         }
 
         const theme_t* theme = element_get_theme(elem);
@@ -595,8 +595,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         term->prevCursor = &term->screen[0][0];
 
         const char* argv[] = {"/base/bin/shell", NULL};
-        term->shell = spawn(argv, SPAWN_SUSPEND | SPAWN_EMPTY_GROUP | SPAWN_COPY_NS);
-        if (term->shell == _FAIL)
+        if (IS_ERR(spawn(argv, SPAWN_SUSPEND | SPAWN_EMPTY_GROUP | SPAWN_COPY_NS, &term->shell)))
         {
             close(term->stdin[0]);
             close(term->stdin[1]);
@@ -604,12 +603,12 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
             close(term->stdout[1]);
             font_free(term->font);
             free(term);
-            return _FAIL;
+            return PFAIL;
         }
 
-        if (writefiles(F("/proc/%d/ctl", term->shell),
+        if (IS_ERR(writefiles(F("/proc/%d/ctl", term->shell),
                 F("dup %d 0 && dup %d 1 && dup %d 2 && close 3 -1 && start", term->stdin[0], term->stdout[1],
-                    term->stdout[1])) == _FAIL)
+                    term->stdout[1]))))
         {
             writefiles(F("/proc/%d/ctl", term->shell), "kill");
             close(term->stdin[0]);
@@ -618,7 +617,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
             close(term->stdout[1]);
             font_free(term->font);
             free(term);
-            return _FAIL;
+            return PFAIL;
         }
 
         element_set_private(elem, term);
@@ -721,7 +720,7 @@ window_t* terminal_new(display_t* disp)
         return NULL;
     }
 
-    if (window_set_visible(win, true) == _FAIL)
+    if (window_set_visible(win, true) == PFAIL)
     {
         window_free(win);
         font_free(ctx.font);
@@ -761,13 +760,13 @@ void terminal_loop(window_t* win)
             .fd = terminal->stdout[PIPE_READ],
             .events = POLLIN,
         }};
-        if (display_poll(disp, fds, 1, timeout) == _FAIL)
+        if (display_poll(disp, fds, 1, timeout) == PFAIL)
         {
             break;
         }
 
         event_t event = {0};
-        while (display_next(disp, &event, 0) != _FAIL)
+        while (display_next(disp, &event, 0) != PFAIL)
         {
             display_dispatch(disp, &event);
         }
@@ -789,8 +788,9 @@ void terminal_loop(window_t* win)
 
         if (fds[0].revents & POLLIN)
         {
-            size_t readCount = read(terminal->stdout[PIPE_READ], &buffer[length], TERMINAL_MAX_DATA - length);
-            if (readCount == _FAIL || readCount == 0)
+            size_t readCount;
+            status_t status = read(terminal->stdout[PIPE_READ], &buffer[length], TERMINAL_MAX_DATA - length, &readCount);
+            if (IS_ERR(status) || readCount == 0)
             {
                 break;
             }

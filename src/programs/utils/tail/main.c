@@ -40,8 +40,8 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    fd_t file = open(filename);
-    if (file == _FAIL)
+    fd_t file;
+    if (IS_ERR(open(&file, filename)))
     {
         fprintf(stderr, "tail: cannot open file '%s'\n", filename);
         return EXIT_FAILURE;
@@ -52,10 +52,11 @@ int main(int argc, char* argv[])
         if (poll1(file, POLLIN, follow ? CLOCKS_NEVER : 0) != 0)
         {
             char buffer[1024];
-            uint64_t bytesRead = read(file, buffer, sizeof(buffer));
+            uint64_t bytesRead;
+            status_t status = read(file, buffer, sizeof(buffer), &bytesRead);
             if (bytesRead > 0)
             {
-                write(STDOUT_FILENO, buffer, bytesRead);
+                write(STDOUT_FILENO, buffer, bytesRead, NULL);
             }
         }
         else if (!follow)

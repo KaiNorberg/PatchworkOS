@@ -57,7 +57,7 @@ int snprintf(char* _RESTRICT s, size_t n, const char* _RESTRICT format, ...)
         { \
             LOG_ERR("_PRINT_TEST failed at line %d: expected (%d, \"%s\"), got (%d, \"%s\")\n", __LINE__, rc, \
                 expected, ret, buffer); \
-            return _FAIL; \
+            return PFAIL; \
         } \
     })
 
@@ -501,7 +501,7 @@ TEST_DEFINE(print)
 {
     for (int k = 0; k < 1; ++k)
     {
-        TEST_ASSERT(_test_print_iter() != _FAIL);
+        TEST_ASSERT(_test_print_iter() != PFAIL);
     }
 
     return 0;
