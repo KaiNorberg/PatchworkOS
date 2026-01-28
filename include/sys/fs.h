@@ -616,21 +616,15 @@ static inline status_t share(char* key, uint64_t size, fd_t fd, clock_t timeout)
  */
 static inline status_t sharefile(char* key, uint64_t size, const char* path, clock_t timeout)
 {
-    UNUSED(key);
-    UNUSED(size);
-    UNUSED(path);
-    UNUSED(timeout);
-
-    /*fd_t fd = open(path);
-    if (fd == _FAIL)
+    fd_t fd;
+    status_t status = open(&fd, path);
+    if (IS_ERR(status))
     {
-        return _FAIL;
+        return status;
     }
-
-    uint64_t result = share(key, size, fd, timeout);
+    status = share(key, size, fd, timeout);
     close(fd);
-    return result;*/
-    return OK;
+    return status;
 }
 
 /**

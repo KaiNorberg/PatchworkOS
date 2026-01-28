@@ -73,6 +73,7 @@ typedef enum
     ST_SRC_SYSCALL, ///< Syscall.
     ST_SRC_ACPI,    ///< ACPI.
     ST_SRC_TEST,   ///< Testing.
+    ST_SRC_PROTO, ///< Networking Protocol.
 } st_src_t;
 
 /**
@@ -150,6 +151,7 @@ typedef enum
     ST_CODE_DEADLOCK,             ///< Deadlock detected.
     ST_CODE_NO_BOOT_INFO,     ///< Bootloader did not provide needed info.
     ST_CODE_TEST_FAIL,        ///< Test failure.
+    ST_CODE_ADDRINUSE,       ///< Address already in use.
 } st_code_t;
 
 /**

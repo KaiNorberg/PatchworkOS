@@ -13,7 +13,6 @@ local_conn_t* local_conn_new(local_listen_t* listen)
 {
     if (listen == NULL)
     {
-        errno = EINVAL;
         return NULL;
     }
 
@@ -53,7 +52,6 @@ void local_conn_free(local_conn_t* conn)
 {
     if (conn == NULL)
     {
-        errno = EINVAL;
         return;
     }
 

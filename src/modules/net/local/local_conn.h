@@ -43,7 +43,7 @@ typedef struct local_conn
  * @brief Allocate and initialize a new local connection.
  *
  * @param listen Pointer to the local listener this connection is associated with.
- * @return On success, a pointer to the new local connection. On failure, `NULL` and `errno` is set.
+ * @return On success, a pointer to the new local connection. On failure, `NULL`.
  */
 local_conn_t* local_conn_new(local_listen_t* listen);
 

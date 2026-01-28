@@ -20,6 +20,8 @@ const char* _sourceStrings[] = {
     [ST_SRC_PORT] = "port",
     [ST_SRC_SYSCALL] = "syscall",
     [ST_SRC_ACPI] = "acpi",
+    [ST_SRC_TEST] = "test",
+    [ST_SRC_PROTO] = "proto",
 };
 
 const char* srctostr(st_src_t src)

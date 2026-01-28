@@ -1,11 +1,10 @@
 #pragma once
 
-#include <_libstd/MAX_PATH.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
-#include <kernel/utils/map.h>
 #include <kernel/utils/ref.h>
+#include <sys/status.h>
 
 #include <stdint.h>
 #include <sys/fs.h>
@@ -46,9 +45,10 @@ typedef struct local_listen
  * @brief Allocate and initialize a new local listener.
  *
  * @param address Address to listen on.
- * @return On success, a pointer to the new local listener. On failure, `NULL` and `errno` is set.
+ * @param out Output pointer for the local listener.
+ * @return An appropriate status value.
  */
-local_listen_t* local_listen_new(const char* address);
+status_t local_listen_new(const char* address, local_listen_t** out);
 
 /**
  * @brief Free and deinitialize a local listener.
@@ -61,8 +61,9 @@ void local_listen_free(local_listen_t* listen);
  * @brief Find a local listener by its address.
  *
  * @param address Address of the local listener to find.
- * @return On success, reference to the local listener. On failure, `NULL` and `errno` is set.
+ * @param out Output pointer for the local listener.
+ * @return An appropriate status value.
  */
-local_listen_t* local_listen_find(const char* address);
+status_t local_listen_find(const char* address, local_listen_t** out);
 
 /** @} */

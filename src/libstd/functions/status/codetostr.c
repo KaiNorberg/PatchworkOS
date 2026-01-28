@@ -67,11 +67,12 @@ const char* _codeStrings[] = {
     [ST_CODE_INVAL_ACPI_TABLE] = "invalid acpi table",
     [ST_CODE_DEADLOCK] = "deadlock detected",
     [ST_CODE_NO_BOOT_INFO] = "bootloader did not provide needed info",
+    [ST_CODE_ADDRINUSE] = "address already in use",
 };
 
 const char* codetostr(st_code_t code)
 {
-    if (code < ST_CODE_NONE || code > ST_CODE_ACQUIRED)
+    if (code < ST_CODE_NONE || code > ST_CODE_ADDRINUSE)
     {
         return "unknown";
     }
