@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/defs.h>
+#include <sys/status.h>
 
 #include "digits.h"
 
@@ -37,9 +38,13 @@
  * write it as arguments.
  *
  * The macros should return the number of bytes written, or `EOF` on error.
- *
+ * 
  * @todo Implement floating point printing.
  *
+ * ## Format Specifiers
+ * 
+ * In addition to the standard specifiers, the implementation provides the `%Y` specifier for formatting `status_t` values.
+ * 
  * @see https://cplusplus.com/reference/cstdio/printf/ for details on the format specifiers.
  *
  * @{
@@ -419,6 +424,76 @@ static inline int _print_format_string(_print_ctx_t* ctx, _print_format_ctx_t* f
     return _print_padding_right(ctx, format, padding);
 }
 
+static inline int _print_format_status(_print_ctx_t* ctx, _print_format_ctx_t* format)
+{
+    status_t status = va_arg(ctx->arg, status_t);
+
+    st_sev_t sev = ST_SEV(status);
+    st_src_t src = ST_SRC(status);
+    st_code_t code = ST_CODE(status);
+
+    const char* sevStr = sevtostr(sev);
+    const char* srcStr = srctostr(src);
+    const char* codeStr = codetostr(code);
+
+    if (sevStr == NULL)
+    {
+        sevStr = "unknown";
+    }
+    if (srcStr == NULL)
+    {
+        srcStr = "unknown";
+    }
+    if (codeStr == NULL)
+    {
+        codeStr = "unknown";
+    }
+
+    size_t sevLen = strlen(sevStr);
+    size_t srcLen = strlen(srcStr);
+    size_t codeLen = strlen(codeStr);
+    int len = 1 + (int)srcLen + 1 + (int)sevLen + 2 + (int)codeLen + 1;
+
+    int padding = _print_padding_left(ctx, format, len);
+    if (padding < 0)
+    {
+        return EOF;
+    }
+
+    if (_PRINT_WRITE(ctx, "(", 1) == EOF)
+    {
+        return EOF;
+    }
+    if (_PRINT_WRITE(ctx, srcStr, srcLen) == EOF)
+    {
+        return EOF;
+    }
+    if (_PRINT_WRITE(ctx, " ", 1) == EOF)
+    {
+        return EOF;
+    }
+    if (_PRINT_WRITE(ctx, sevStr, sevLen) == EOF)
+    {
+        return EOF;
+    }
+    if (_PRINT_WRITE(ctx, ": ", 2) == EOF)
+    {
+        return EOF;
+    }
+    if (_PRINT_WRITE(ctx, codeStr, codeLen) == EOF)
+    {
+        return EOF;
+    }
+    if (_PRINT_WRITE(ctx, ")", 1) == EOF)
+    {
+        return EOF;
+    }
+
+    ctx->written += len;
+
+    return _print_padding_right(ctx, format, padding);
+}
+
 static inline int _print_format_written(_print_ctx_t* ctx)
 {
     signed int* written = va_arg(ctx->arg, signed int*);
@@ -593,6 +668,9 @@ flags_done:
     case 's':
         format.flags &= ~_PRINT_PAD_ZERO;
         ret = _print_format_string(ctx, &format);
+        break;
+    case 'Y':
+        ret = _print_format_status(ctx, &format);
         break;
     case 'p':
         format.length = _PRINT_Z;

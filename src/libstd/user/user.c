@@ -13,22 +13,27 @@
 
 static void _populate_std_descriptors(void)
 {
-    for (uint64_t i = 0; i <= STDERR_FILENO; i++)
+    for (fd_t i = 0; i <= STDERR_FILENO; i++)
     {
-        status_t status = write(i, NULL, 0, NULL);
-        if (!(IS_ERR(status) && ST_CODE(status) == ST_CODE_BADFD))
+        status_t status = seek(i, 0, SEEK_CUR, NULL);
+        if (status != ERR(VFS, BADFD))
         {
             continue;
         }
+
         fd_t nullFd;
-        status = open(&nullFd, "/dev/const/null");
+        status = open(&nullFd, "/dev/const/null:rw");
         if (IS_ERR(status))
         {
             continue;
         }
-        fd_t newFd = i;
-        dup(nullFd, &newFd);
-        close(nullFd);
+
+        fd_t targetFd = i;
+        if (nullFd != targetFd)
+        {
+            dup(nullFd, &targetFd);
+            close(nullFd);
+        }
     }
 }
 

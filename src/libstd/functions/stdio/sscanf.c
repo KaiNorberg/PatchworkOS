@@ -37,7 +37,7 @@ int sscanf(const char* _RESTRICT s, const char* _RESTRICT format, ...)
         if (ret != rc) \
         { \
             LOG_ERR("_SCAN_TEST failed at line %d: expected %d, got %d\n", __LINE__, rc, ret); \
-            return PFAIL; \
+            return ERR(TEST, TEST_FAIL); \
         } \
     } while (0)
 
@@ -142,17 +142,17 @@ static inline uint64_t _test_scan_iter(void)
     _SCAN_TEST(1, "foo", "%5c", buffer);
     TEST_ASSERT(memcmp(buffer, "foo", 3) == 0);
 
-    return 0;
+    return OK;
 }
 
 TEST_DEFINE(scan)
 {
     for (int k = 0; k < 1; ++k)
     {
-        TEST_ASSERT(_test_scan_iter() != PFAIL);
+        TEST_ASSERT(IS_OK(_test_scan_iter()));
     }
 
-    return 0;
+    return OK;
 }
 
 #endif

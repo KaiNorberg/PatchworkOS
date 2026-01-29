@@ -40,7 +40,7 @@ static poll_ctx_t* pollCtx;
 static client_t* dwm_client_accept(void)
 {
     fd_t fd;
-    if (IS_ERR(open(&fd, F("/net/local/%s/accept:nonblock", id))))
+    if (IS_ERR(open(&fd, F("/net/local/%s/accept", id))))
     {
         printf("dwm: failed to open accept file\n");
         return NULL;
@@ -97,7 +97,7 @@ void dwm_init(void)
     }
     close(klog);
 
-    if (IS_ERR(open(&kbd, "/dev/kbd/0/events:nonblock")))
+    if (IS_ERR(open(&kbd, "/dev/kbd/0/events")))
     {
         printf("dwm: failed to open keyboard\n");
         abort();
@@ -110,7 +110,7 @@ void dwm_init(void)
         free(name);
     }
 
-    if (IS_ERR(open(&mouse, "/dev/mouse/0/events:nonblock")))
+    if (IS_ERR(open(&mouse, "/dev/mouse/0/events")))
     {
         printf("dwm: failed to open mouse\n");
         abort();
@@ -122,7 +122,7 @@ void dwm_init(void)
         free(name);
     }
 
-    if (IS_ERR(readfiles(&id, "/net/local/seqpacket:nonblock")))
+    if (IS_ERR(readfiles(&id, "/net/local/seqpacket")))
     {
         printf("dwm: failed to read seqpacket id\n");
         abort();
@@ -134,7 +134,7 @@ void dwm_init(void)
         abort();
     }
 
-    if (IS_ERR(open(&data, F("/net/local/%s/data:nonblock", id))))
+    if (IS_ERR(open(&data, F("/net/local/%s/data", id))))
     {
         printf("dwm: failed to open data file\n");
         abort();
@@ -630,16 +630,12 @@ static void dwm_mouse_read(void)
 
     int64_t x = 0;
     int64_t y = 0;
-    while (1)
+    while (poll1(mouse, POLLIN, 0) & POLLIN)
     {
         int64_t value;
         char suffix;
         if (scan(mouse, "%lld%c", &value, &suffix) != 2)
         {
-            if (errno != EAGAIN)
-            {
-                printf("dwm: failed to read mouse event\n");
-            }
             break;
         }
 

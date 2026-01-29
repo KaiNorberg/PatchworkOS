@@ -23,7 +23,7 @@ status_t aml_def_alias_read(aml_term_list_ctx_t* ctx)
         return ERR(ACPI, ILSEQ);
     }
 
-    aml_object_t* source;
+    aml_object_t* source = NULL;
     status_t status = aml_name_string_read_and_resolve(ctx, &source);
     if (source == NULL)
     {
@@ -122,7 +122,7 @@ status_t aml_def_scope_read(aml_term_list_ctx_t* ctx)
         return status;
     }
 
-    aml_object_t* scope;
+    aml_object_t* scope = NULL;
     status = aml_name_string_read_and_resolve(ctx, &scope);
     if (IS_ERR(status))
     {

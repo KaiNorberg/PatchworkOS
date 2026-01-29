@@ -116,7 +116,7 @@ void thread_free(thread_t* thread)
 
 status_t thread_kernel_create(thread_kernel_entry_t entry, void* arg, tid_t* out)
 {
-    if (out == NULL || entry == NULL)
+    if (entry == NULL)
     {
         return ERR(SCHED, INVAL);
     }

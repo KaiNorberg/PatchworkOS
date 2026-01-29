@@ -17,6 +17,8 @@ foreground = true
 [namespace]
 /app:rx = $BOX
 /cfg:r = /cfg
+/base:rwcd = 
 /base/data:r = /base/data
 /net:rw = /net
+/dev:rwcd = 
 /dev/const:rw = /dev/const

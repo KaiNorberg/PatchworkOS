@@ -7,6 +7,7 @@
 #include <kernel/acpi/aml/encoding/term.h>
 #include <kernel/acpi/aml/token.h>
 #include <kernel/log/log.h>
+#include <kernel/acpi/aml/to_string.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -137,28 +138,27 @@ status_t aml_name_path_read(aml_term_list_ctx_t* ctx, aml_name_path_t* out)
         out->segmentCount = 1;
         return aml_name_seg_read(ctx, &out->segments);
     }
-    else if (firstToken.num == AML_DUAL_NAME_PREFIX)
+
+    if (firstToken.num == AML_DUAL_NAME_PREFIX)
     {
         out->segmentCount = 2;
         return aml_dual_name_path_read(ctx, &out->segments);
     }
-    else if (firstToken.num == AML_MULTI_NAME_PREFIX)
+
+    if (firstToken.num == AML_MULTI_NAME_PREFIX)
     {
         return aml_multi_name_path_read(ctx, &out->segments, &out->segmentCount);
     }
-    else if (firstToken.num == AML_NULL_NAME)
+
+    if (firstToken.num == AML_NULL_NAME)
     {
         out->segmentCount = 0;
         out->segments = NULL;
         return aml_null_name_read(ctx);
     }
-    else
-    {
-        AML_DEBUG_ERROR(ctx, "Invalid name that starts with 0x%x", firstToken.num);
-        return ERR(ACPI, ILSEQ);
-    }
 
-    return OK;
+    AML_DEBUG_ERROR(ctx, "Invalid name that starts with 0x%x", firstToken.num);
+    return ERR(ACPI, ILSEQ);
 }
 
 status_t aml_prefix_path_read(aml_term_list_ctx_t* ctx, aml_prefix_path_t* out)
@@ -235,15 +235,15 @@ status_t aml_name_string_read(aml_term_list_ctx_t* ctx, aml_name_string_t* out)
 
 status_t aml_name_string_read_and_resolve(aml_term_list_ctx_t* ctx, aml_object_t** out)
 {
-    aml_name_string_t nameStringLocal;
-    status_t status = aml_name_string_read(ctx, &nameStringLocal);
+    aml_name_string_t nameString;
+    status_t status = aml_name_string_read(ctx, &nameString);
     if (IS_ERR(status))
     {
         AML_DEBUG_ERROR(ctx, "Failed to read NameString");
         return status;
     }
 
-    aml_object_t* obj = aml_namespace_find_by_name_string(&ctx->state->overlay, ctx->scope, &nameStringLocal);
+    aml_object_t* obj = aml_namespace_find_by_name_string(&ctx->state->overlay, ctx->scope, &nameString);
     if (obj == NULL)
     {
         obj = aml_object_new();
@@ -259,6 +259,7 @@ status_t aml_name_string_read_and_resolve(aml_term_list_ctx_t* ctx, aml_object_t
             return status;
         }
 
+        LOG_DEBUG("name '%s' not found, creating default object\n", aml_name_string_to_string(&nameString));
         *out = obj; // Transfer ownership
         return OK;
     }

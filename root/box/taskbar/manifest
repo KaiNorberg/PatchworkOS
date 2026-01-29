@@ -20,5 +20,6 @@ foreground = false
 /base:rx = /base
 /net:rw = /net
 /proc:rw = /proc
+/dev:rwcd = 
 /dev/const:rw = /dev/const
 /dev/klog:rw = /dev/klog

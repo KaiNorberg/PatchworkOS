@@ -387,11 +387,6 @@ status_t namespace_mount(namespace_t* ns, path_t* target, filesystem_t* fs, cons
 
     RWLOCK_WRITE_SCOPE(&ns->lock);
 
-    if (!DENTRY_IS_POSITIVE(root) || (target != NULL && !DENTRY_IS_POSITIVE(target->dentry)))
-    {
-        return ERR(VFS, NOENT);
-    }
-
     mount_t* mount = mount_new(root->superblock, root, target != NULL ? target->dentry : NULL,
         target != NULL ? target->mount : NULL, mode);
     if (mount == NULL)
@@ -537,6 +532,10 @@ SYSCALL_DEFINE(SYS_MOUNT, const char* mountpoint, const char* fs, const char* op
     }
 
     namespace_t* ns = process_get_ns(process);
+    if (ns == NULL)
+    {
+        return ERR(VFS, DYING);
+    }
     UNREF_DEFER(ns);
 
     path_t mountpath = cwd_get(&process->cwd, ns);
@@ -588,6 +587,10 @@ SYSCALL_DEFINE(SYS_UNMOUNT, const char* mountpoint)
     }
 
     namespace_t* ns = process_get_ns(process);
+    if (ns == NULL)
+    {
+        return ERR(VFS, DYING);
+    }
     UNREF_DEFER(ns);
 
     path_t mountpath = cwd_get(&process->cwd, ns);
@@ -616,6 +619,10 @@ SYSCALL_DEFINE(SYS_BIND, const char* mountpoint, fd_t source)
     }
 
     namespace_t* ns = process_get_ns(process);
+    if (ns == NULL)
+    {
+        return ERR(VFS, DYING);
+    }
     UNREF_DEFER(ns);
 
     path_t mountpath = cwd_get(&process->cwd, ns);

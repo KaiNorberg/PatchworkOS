@@ -40,59 +40,7 @@ static status_t vfs_create(path_t* path, const pathname_t* pathname, namespace_t
     status_t status = path_walk_parent_and_child(path, &parent, &target, pathname, ns);
     if (IS_ERR(status))
     {
-        if (!IS_CODE(status, NOENT) || !(pathname->mode & MODE_PARENTS))
-        {
-            return status;
-        }
-
-        char parentString[MAX_PATH];
-        strncpy(parentString, pathname->string, MAX_PATH);
-        parentString[MAX_PATH - 1] = '\0';
-
-        size_t len = strlen(parentString);
-        while (len > 1 && parentString[len - 1] == '/')
-        {
-            parentString[--len] = '\0';
-        }
-
-        char* lastSlash = strrchr(parentString, '/');
-        if (lastSlash == NULL)
-        {
-            return ERR(VFS, INVAL);
-        }
-
-        if (lastSlash == parentString)
-        {
-            parentString[1] = '\0';
-        }
-        else
-        {
-            *lastSlash = '\0';
-        }
-
-        pathname_t parentPathname;
-        status_t status = pathname_init(&parentPathname, parentString);
-        if (IS_ERR(status))
-        {
-            return ERR(VFS, INVAL);
-        }
-
-        parentPathname.mode = MODE_DIRECTORY | MODE_CREATE | MODE_PARENTS;
-
-        path_t recursiveStart = PATH_CREATE(path->mount, path->dentry);
-        PATH_DEFER(&recursiveStart);
-
-        status = vfs_create(&recursiveStart, &parentPathname, ns);
-        if (IS_ERR(status))
-        {
-            return status;
-        }
-
-        status = path_walk_parent_and_child(path, &parent, &target, pathname, ns);
-        if (IS_ERR(status))
-        {
-            return status;
-        }
+        return status;
     }
 
     PATH_DEFER(&parent);
@@ -168,7 +116,7 @@ status_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* proc
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
     {
-        return ERR(VFS, INVAL);
+        return ERR(VFS, DYING);
     }
     UNREF_DEFER(ns);
 
@@ -236,7 +184,7 @@ status_t vfs_openat(file_t** out, const path_t* from, const pathname_t* pathname
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
     {
-        return ERR(VFS, INVAL);
+        return ERR(VFS, DYING);
     }
     UNREF_DEFER(ns);
 
@@ -295,9 +243,9 @@ status_t vfs_openat(file_t** out, const path_t* from, const pathname_t* pathname
     return OK;
 }
 
-status_t vfs_read(file_t* file, void* buffer, size_t count, size_t* bytesRead)
+status_t vfs_read(file_t* file, void* buffer, size_t count, size_t* out)
 {
-    if (file == NULL || buffer == NULL || bytesRead == NULL)
+    if (file == NULL || buffer == NULL)
     {
         return ERR(VFS, INVAL);
     }
@@ -317,20 +265,27 @@ status_t vfs_read(file_t* file, void* buffer, size_t count, size_t* bytesRead)
         return ERR(VFS, BADFD);
     }
 
+
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
     size_t offset = file->pos;
-    status_t status = file->ops->read(file, buffer, count, &offset, bytesRead);
+    size_t bytesRead;
+    status_t status = file->ops->read(file, buffer, count, &offset, &bytesRead);
     if (IS_OK(status))
     {
         file->pos = offset;
     }
 
+    if (out != NULL)
+    {
+        *out = bytesRead;
+    }
+
     return status;
 }
 
-status_t vfs_write(file_t* file, const void* buffer, size_t count, size_t* bytesWritten)
+status_t vfs_write(file_t* file, const void* buffer, size_t count, size_t* out)
 {
-    if (file == NULL || buffer == NULL || bytesWritten == NULL)
+    if (file == NULL || buffer == NULL)
     {
         return ERR(VFS, INVAL);
     }
@@ -361,18 +316,24 @@ status_t vfs_write(file_t* file, const void* buffer, size_t count, size_t* bytes
 
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
     size_t offset = file->pos;
-    status_t status = file->ops->write(file, buffer, count, &offset, bytesWritten);
+    size_t bytesWritten;
+    status_t status = file->ops->write(file, buffer, count, &offset, &bytesWritten);
     if (IS_OK(status))
     {
         file->pos = offset;
     }
 
+    if (out != NULL)
+    {
+        *out = bytesWritten;
+    }
+
     return status;
 }
 
-status_t vfs_seek(file_t* file, ssize_t offset, seek_origin_t origin, size_t* newPos)
+status_t vfs_seek(file_t* file, ssize_t offset, seek_origin_t origin, size_t* out)
 {
-    if (file == NULL || newPos == NULL)
+    if (file == NULL)
     {
         return ERR(VFS, INVAL);
     }
@@ -380,7 +341,13 @@ status_t vfs_seek(file_t* file, ssize_t offset, seek_origin_t origin, size_t* ne
     if (file->ops != NULL && file->ops->seek != NULL)
     {
         assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-        return file->ops->seek(file, offset, origin, newPos);
+        size_t newPos;
+        status_t status = file->ops->seek(file, offset, origin, &newPos);
+        if (out != NULL)
+        {
+            *out = newPos;
+        }
+        return status;
     }
 
     return ERR(VFS, SPIPE);
@@ -784,7 +751,12 @@ static status_t vfs_remove_recursive(path_t* path, process_t* process)
             .count = bufSize,
             .written = 0,
             .path = *path,
-            .ns = process_get_ns(process)};
+            .ns = process_get_ns(process),};
+        if (vctx.ns == NULL)
+        {
+            return ERR(VFS, DYING);
+        }
+
         UNREF_DEFER(vctx.ns);
 
         path->dentry->ops->iterate(path->dentry, &vctx.ctx);
@@ -881,7 +853,7 @@ status_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count, size_t* byte
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
     {
-        return ERR(VFS, INVAL);
+        return ERR(VFS, DYING);
     }
     UNREF_DEFER(ns);
 
@@ -940,7 +912,7 @@ status_t vfs_stat(const pathname_t* pathname, stat_t* buffer, process_t* process
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
     {
-        return ERR(VFS, INVAL);
+        return ERR(VFS, DYING);
     }
     UNREF_DEFER(ns);
 
@@ -1004,6 +976,10 @@ status_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
     }
 
     namespace_t* ns = process_get_ns(process);
+    if (ns == NULL)
+    {
+        return ERR(VFS, DYING);
+    }
     UNREF_DEFER(ns);
 
     path_t cwd = cwd_get(&process->cwd, ns);
@@ -1101,7 +1077,7 @@ status_t vfs_symlink(const pathname_t* oldPathname, const pathname_t* newPathnam
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
     {
-        return ERR(VFS, INVAL);
+        return ERR(VFS, DYING);
     }
     UNREF_DEFER(ns);
 
@@ -1153,7 +1129,7 @@ status_t vfs_remove(const pathname_t* pathname, process_t* process)
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
     {
-        return ERR(VFS, INVAL);
+        return ERR(VFS, DYING);
     }
     UNREF_DEFER(ns);
 
@@ -1611,7 +1587,7 @@ SYSCALL_DEFINE(SYS_READLINK, const char* pathString, char* buffer, uint64_t coun
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
     {
-        return ERR(VFS, INVAL);
+        return ERR(VFS, DYING);
     }
     UNREF_DEFER(ns);
 

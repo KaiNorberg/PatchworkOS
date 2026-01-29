@@ -124,7 +124,7 @@ dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const vnode_ops_t* v
         parent = root;
     }
 
-    assert(parent->superblock->fs != &sysfs);
+    assert(parent->superblock->fs == &sysfs);
 
     dentry_t* dir = dentry_new(parent->superblock, parent, name);
     if (dir == NULL)
@@ -159,7 +159,7 @@ dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const vnode_ops_t* 
         parent = root;
     }
 
-    assert(parent->superblock->fs != &sysfs);
+    assert(parent->superblock->fs == &sysfs);
 
     dentry_t* dentry = dentry_new(parent->superblock, parent, name);
     if (dentry == NULL)
@@ -188,7 +188,7 @@ dentry_t* sysfs_symlink_new(dentry_t* parent, const char* name, const vnode_ops_
         return NULL;
     }
 
-    assert(parent->superblock->fs != &sysfs);
+    assert(parent->superblock->fs == &sysfs);
 
     dentry_t* dentry = dentry_new(parent->superblock, parent, name);
     if (dentry == NULL)
@@ -222,10 +222,7 @@ bool sysfs_files_new(list_t* out, dentry_t* parent, const sysfs_file_desc_t* des
         parent = root;
     }
 
-    if (parent->superblock->fs != &sysfs)
-    {
-        return false;
-    }
+    assert(parent->superblock->fs == &sysfs);
 
     list_t createdList = LIST_CREATE(createdList);
 

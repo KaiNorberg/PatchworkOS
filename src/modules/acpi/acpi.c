@@ -92,14 +92,14 @@ status_t _module_procedure(const module_event_t* event)
         status_t status = acpi_tables_init(bootInfo->rsdp);
         if (IS_ERR(status))
         {
-            LOG_ERR("failed to initialize ACPI tables\n");
+            LOG_ERR("failed to initialize ACPI tables %Y\n", status);
             return status;
         }
 
         status = aml_init();
         if (IS_ERR(status))
         {
-            LOG_ERR("failed to initialize AML subsystem\n");
+            LOG_ERR("failed to initialize AML subsystem %Y\n", status);
             return status;
         }
 
@@ -110,8 +110,9 @@ status_t _module_procedure(const module_event_t* event)
 #endif
 
         status = acpi_devices_init();
+        if (IS_ERR(status))
         {
-            LOG_ERR("failed to initialize ACPI devices\n");
+            LOG_ERR("failed to initialize ACPI devices %Y\n", status);
             return status;
         }
 
@@ -120,14 +121,14 @@ status_t _module_procedure(const module_event_t* event)
         status = acpi_tables_expose();
         if (IS_ERR(status))
         {
-            LOG_ERR("failed to expose ACPI tables via sysfs\n");
+            LOG_ERR("failed to expose ACPI tables via sysfs %Y\n", status);
             return status;
         }
 
         status = aml_namespace_expose();
         if (IS_ERR(status))
         {
-            LOG_ERR("failed to expose ACPI devices via sysfs\n");
+            LOG_ERR("failed to expose ACPI devices via sysfs %Y\n", status);
             return status;
         }
     }

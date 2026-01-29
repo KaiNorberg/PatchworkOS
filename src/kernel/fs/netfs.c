@@ -419,6 +419,10 @@ static status_t netfs_factory_open(file_t* file)
     rwmutex_write_release(&ctx->family->mutex);
 
     namespace_t* ns = process_get_ns(process_current());
+    if (ns == NULL)
+    {
+        return ERR(VFS, DYING);
+    }
     UNREF_DEFER(ns);
 
     weak_ptr_set(&socket->ownerNs, &ns->ref, socket_weak_ptr_callback, REF(socket));
@@ -567,6 +571,10 @@ static status_t netfs_family_lookup(vnode_t* dir, dentry_t* dentry)
     }
 
     namespace_t* ns = process_get_ns(process_current());
+    if (ns == NULL)
+    {
+        return ERR(VFS, DYING);
+    }
     UNREF_DEFER(ns);
 
     socket_t* socket;
@@ -637,6 +645,10 @@ static status_t netfs_family_iterate(dentry_t* dentry, dir_ctx_t* ctx)
     }
 
     namespace_t* ns = process_get_ns(process_current());
+    if (ns == NULL)
+    {
+        return ERR(VFS, DYING);
+    }
     UNREF_DEFER(ns);
 
     socket_t* socket;

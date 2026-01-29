@@ -44,12 +44,11 @@ typedef struct file file_t;
  * | `append` | `a` | Any data written to the file will be appended to the end. |
  * | `create` | `c` | Create the file or directory if it does not exist. |
  * | `exclusive` | `e` | Will cause the open to fail if the file or directory already exists and `:create` is specified. |
- * | `parents`   | `p` | Create any parent directories if they do not exist when creating a file or directory. |
  * | `truncate` | `t` | Truncate the file to zero length if it already exists. |
  * | `directory` | `d` | Create or remove directories. All other operations will ignore this flag. |
  * | `recursive` | `R` | If removing a directory, remove all its contents recursively. If using `getdents()`, list contents recursively. | 
  * | `nofollow`  | `l` | Do not follow symbolic links. | 
- * | `private`   | `P` | Any files with this flag will be closed before a process starts executing. Any mounts with this flag will not be copied to a child namespace. | 
+ * | `private`   | `p` | Any files with this flag will be closed before a process starts executing. Any mounts with this flag will not be copied to a child namespace. | 
  * | `propagate`  | `g` | Propagate mounts and unmounts to child namespaces. | 
  * | `locked`    | `L` | Forbid unmounting this mount, useful for hiding directories or files. |
  *
@@ -84,14 +83,13 @@ typedef enum mode
     MODE_APPEND = 1 << 4,
     MODE_CREATE = 1 << 5,
     MODE_EXCLUSIVE = 1 << 6,
-    MODE_PARENTS = 1 << 7,
-    MODE_TRUNCATE = 1 << 8,
-    MODE_DIRECTORY = 1 << 9,
-    MODE_RECURSIVE = 1 << 10,
-    MODE_NOFOLLOW = 1 << 11,
-    MODE_PRIVATE = 1 << 12,
-    MODE_PROPAGATE = 1 << 13,
-    MODE_LOCKED = 1 << 14,
+    MODE_TRUNCATE = 1 << 7,
+    MODE_DIRECTORY = 1 << 8,
+    MODE_RECURSIVE = 1 << 9,
+    MODE_NOFOLLOW = 1 << 10,
+    MODE_PRIVATE = 1 << 11,
+    MODE_PROPAGATE = 1 << 12,
+    MODE_LOCKED = 1 << 13,
     MODE_ALL_PERMS = MODE_READ | MODE_WRITE | MODE_EXECUTE,
 } mode_t;
 

@@ -191,15 +191,33 @@ status_t file_table_dup(file_table_t* table, fd_t oldFd, fd_t* newFd)
         return ERR(VFS, BADFD);
     }
 
-    uint64_t index = bitmap_find_first_clear(&table->bitmap, 0, CONFIG_MAX_FD);
-    if (index >= CONFIG_MAX_FD)
+    if (*newFd == oldFd)
     {
-        return ERR(VFS, MFILE);
+        return OK;
     }
 
-    table->files[index] = REF(table->files[oldFd]);
-    bitmap_set(&table->bitmap, index);
-    return (fd_t)index;
+    if (*newFd == FD_NONE)
+    {
+        uint64_t index = bitmap_find_first_clear(&table->bitmap, 0, CONFIG_MAX_FD);
+        if (index >= CONFIG_MAX_FD)
+        {
+            return ERR(VFS, MFILE);
+        }
+        *newFd = (fd_t)index;
+    }
+    else if (*newFd >= CONFIG_MAX_FD)
+    {
+        return ERR(VFS, FD_OVERFLOW);
+    }
+    else if (table->files[*newFd] != NULL)
+    {
+        UNREF(table->files[*newFd]);
+        table->files[*newFd] = NULL;
+    }
+
+    table->files[*newFd] = REF(table->files[oldFd]);
+    bitmap_set(&table->bitmap, *newFd);
+    return OK;
 }
 
 void file_table_copy(file_table_t* dest, file_table_t* src, fd_t min, fd_t max)

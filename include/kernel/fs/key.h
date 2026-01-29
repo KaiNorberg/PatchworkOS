@@ -52,4 +52,9 @@ status_t key_share(char* key, uint64_t size, file_t* file, clock_t timeout);
  */
 status_t key_claim(file_t** out, const char* key);
 
+/**
+ * @brief Key timer handler, called by the timer interrupt handler.
+ */
+void key_timer_handler(void);
+
 /** @} */

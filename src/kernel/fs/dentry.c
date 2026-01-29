@@ -144,8 +144,15 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
     ref_init(&dentry->ref, dentry_free);
     dentry->superblock = REF(superblock);
     dentry->ops = superblock->dentryOps;
-    strncpy(dentry->name, name, MAX_NAME);
-    dentry->name[MAX_NAME - 1] = '\0';
+    if (name != NULL)
+    {
+        strncpy(dentry->name, name, MAX_NAME);
+        dentry->name[MAX_NAME - 1] = '\0';
+    }
+    else
+    {
+        dentry->name[0] = '\0';
+    }
     dentry->parent = parent != NULL ? REF(parent) : dentry;
 
     if (!dentry_map_add(dentry))

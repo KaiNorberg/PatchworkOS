@@ -196,6 +196,10 @@ SYSCALL_DEFINE(SYS_SPAWN, const char** argv, spawn_flags_t flags)
     assert(process != NULL);
 
     namespace_t* ns = process_get_ns(process);
+    if (ns == NULL)
+    {
+        return ERR(VFS, DYING);
+    }
     UNREF_DEFER(ns);
 
     namespace_t* childNs;

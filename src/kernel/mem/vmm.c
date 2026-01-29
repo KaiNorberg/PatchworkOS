@@ -231,14 +231,9 @@ status_t vmm_alloc(space_t* space, void** addr, size_t length, size_t alignment,
         return ERR(MMU, INVAL);
     }
 
-    if (*addr + length > *addr)
+    if (*addr + length < *addr)
     {
         return ERR(MMU, TOOBIG);
-    }
-
-    if (pmlFlags & PML_USER && (*addr < (void*)VMM_USER_SPACE_MIN || *addr + length > (void*)VMM_USER_SPACE_MAX))
-    {
-        return ERR(MMU, ACCESS);
     }
 
     if (space == NULL)
@@ -263,10 +258,15 @@ status_t vmm_alloc(space_t* space, void** addr, size_t length, size_t alignment,
         vmm_align_region(addr, &length);
         pageAmount = BYTES_TO_PAGES(length);
 
-        if ((uintptr_t)addr % alignment != 0)
+        if ((uintptr_t)*addr % alignment != 0)
         {
             return ERR(MMU, ALIGN);
         }
+    }
+
+    if (pmlFlags & PML_USER && (*addr < (void*)VMM_USER_SPACE_MIN || *addr + length > (void*)VMM_USER_SPACE_MAX))
+    {
+        return ERR(MMU, ACCESS);
     }
 
     if (page_table_is_pinned(&space->pageTable, *addr, pageAmount))
@@ -337,11 +337,6 @@ status_t vmm_map(space_t* space, void** addr, phys_addr_t phys, size_t length, p
         return ERR(MMU, TOOBIG);
     }
 
-    if (flags & PML_USER && (*addr < (void*)VMM_USER_SPACE_MIN || *addr + length > (void*)VMM_USER_SPACE_MAX))
-    {
-        return ERR(MMU, ACCESS);
-    }
-
     if (space == NULL)
     {
         space = vmm_kernel_space_get();
@@ -363,6 +358,11 @@ status_t vmm_map(space_t* space, void** addr, phys_addr_t phys, size_t length, p
     {
         vmm_align_region(addr, &length);
         pageAmount = BYTES_TO_PAGES(length);
+    }
+
+    if (flags & PML_USER && (*addr < (void*)VMM_USER_SPACE_MIN || *addr + length > (void*)VMM_USER_SPACE_MAX))
+    {
+        return ERR(MMU, ACCESS);
     }
 
     if (page_table_is_pinned(&space->pageTable, *addr, pageAmount))
@@ -413,12 +413,6 @@ status_t vmm_map_pages(space_t* space, void** addr, pfn_t* pfns, size_t amount, 
         return ERR(MMU, TOOBIG);
     }
 
-    if (flags & PML_USER &&
-        (*addr < (void*)VMM_USER_SPACE_MIN || *addr + amount * PAGE_SIZE > (void*)VMM_USER_SPACE_MAX))
-    {
-        return ERR(MMU, ACCESS);
-    }
-
     if (space == NULL)
     {
         space = vmm_kernel_space_get();
@@ -439,6 +433,12 @@ status_t vmm_map_pages(space_t* space, void** addr, pfn_t* pfns, size_t amount, 
         size_t length = amount * PAGE_SIZE;
         vmm_align_region(addr, &length);
         amount = BYTES_TO_PAGES(length);
+    }
+
+    if (flags & PML_USER &&
+        (*addr < (void*)VMM_USER_SPACE_MIN || *addr + amount * PAGE_SIZE > (void*)VMM_USER_SPACE_MAX))
+    {
+        return ERR(MMU, ACCESS);
     }
 
     if (page_table_is_pinned(&space->pageTable, *addr, amount))

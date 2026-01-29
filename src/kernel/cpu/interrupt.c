@@ -5,6 +5,7 @@
 #include <kernel/cpu/ipi.h>
 #include <kernel/cpu/irq.h>
 #include <kernel/cpu/regs.h>
+#include <kernel/fs/key.h>
 #include <kernel/cpu/stack_pointer.h>
 #include <kernel/drivers/perf.h>
 #include <kernel/io/irp.h>
@@ -35,20 +36,20 @@ static void exception_handle_user(interrupt_frame_t* frame, const char* note)
 
 static status_t exception_grow_stack(thread_t* thread, uintptr_t faultAddr, stack_pointer_t* stack, pml_flags_t flags)
 {
-    uintptr_t alignedFaultAddr = ROUND_DOWN(faultAddr, PAGE_SIZE);
-    if (stack_pointer_is_in_stack(stack, alignedFaultAddr, 1))
+    void* alignedFaultAddr = (void*)ROUND_DOWN(faultAddr, PAGE_SIZE);
+    if (stack_pointer_is_in_stack(stack, (uintptr_t)alignedFaultAddr, 1))
     {
-        status_t status = vmm_alloc(&thread->process->space, (void*)alignedFaultAddr, PAGE_SIZE, PAGE_SIZE, flags,
+        status_t status = vmm_alloc(&thread->process->space, &alignedFaultAddr, PAGE_SIZE, PAGE_SIZE, flags,
             VMM_ALLOC_FAIL_IF_MAPPED);
         if (IS_ERR(status))
         {
-            if (ST_CODE(status) == ST_CODE_MAPPED)
+            if (IS_CODE(status, MAPPED))
             {
                 return OK;
             }
             return status;
         }
-        memset_s((void*)alignedFaultAddr, PAGE_SIZE, 0, PAGE_SIZE);
+        memset_s(alignedFaultAddr, PAGE_SIZE, 0, PAGE_SIZE);
 
         return INFO(INT, IN_STACK);
     }
@@ -76,7 +77,7 @@ static void exception_kernel_page_fault_handler(interrupt_frame_t* frame)
     status_t status = exception_grow_stack(thread, faultAddr, &thread->kernelStack, PML_WRITE | PML_PRESENT);
     if (IS_ERR(status))
     {
-        panic(frame, "failed to grow kernel stack for page fault at address 0x%llx", faultAddr);
+        panic(frame, "failed to grow kernel stack for page fault at address 0x%llx %Y", faultAddr, status);
     }
 
     if (ST_CODE(status) == ST_CODE_IN_STACK)
@@ -87,7 +88,7 @@ static void exception_kernel_page_fault_handler(interrupt_frame_t* frame)
     status = exception_grow_stack(thread, faultAddr, &thread->userStack, PML_USER | PML_WRITE | PML_PRESENT);
     if (IS_ERR(status))
     {
-        panic(frame, "failed to grow user stack for page fault at address 0x%llx", faultAddr);
+        panic(frame, "failed to grow user stack for page fault at address 0x%llx %Y", faultAddr, status);
     }
 
     if (ST_CODE(status) == ST_CODE_IN_STACK)
@@ -208,6 +209,7 @@ void interrupt_handler(interrupt_frame_t* frame)
     else if (frame->vector == VECTOR_TIMER)
     {
         timer_ack_eoi(frame);
+        key_timer_handler();
     }
     else if (frame->vector == VECTOR_IPI)
     {

@@ -68,11 +68,12 @@ const char* _codeStrings[] = {
     [ST_CODE_DEADLOCK] = "deadlock detected",
     [ST_CODE_NO_BOOT_INFO] = "bootloader did not provide needed info",
     [ST_CODE_ADDRINUSE] = "address already in use",
+    [ST_CODE_INVAL_KEY] = "invalid key",
 };
 
 const char* codetostr(st_code_t code)
 {
-    if (code < ST_CODE_NONE || code > ST_CODE_ADDRINUSE)
+    if (code < ST_CODE_NONE || code >= ST_CODE_MAX)
     {
         return "unknown";
     }

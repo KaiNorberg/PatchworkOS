@@ -382,7 +382,7 @@ status_t aml_term_arg_list_read(aml_term_list_ctx_t* ctx, uint64_t argCount, aml
 
 status_t aml_method_invocation_read(aml_term_list_ctx_t* ctx, aml_object_t** out)
 {
-    aml_object_t* target;
+    aml_object_t* target = NULL;
     status_t status = aml_name_string_read_and_resolve(ctx, &target);
     if (target == NULL)
     {
@@ -1795,7 +1795,7 @@ status_t aml_def_lor_read(aml_term_list_ctx_t* ctx, aml_object_t** out)
 
 status_t aml_mutex_object_read(aml_term_list_ctx_t* ctx, aml_object_t** out)
 {
-    aml_object_t* result;
+    aml_object_t* result = NULL;
     status_t status = aml_super_name_read_and_resolve(ctx, &result);
     if (IS_ERR(status))
     {
@@ -2176,7 +2176,7 @@ status_t aml_def_copy_object_read(aml_term_list_ctx_t* ctx, aml_object_t** out)
 
 status_t aml_data_read(aml_term_list_ctx_t* ctx, aml_object_t** out)
 {
-    aml_object_t* result;
+    aml_object_t* result = NULL;
     status_t status = aml_term_arg_read(ctx, AML_COMPUTATIONAL_DATA_OBJECTS, &result);
     if (IS_ERR(status))
     {
@@ -2244,7 +2244,7 @@ status_t aml_def_size_of_read(aml_term_list_ctx_t* ctx, aml_object_t** out)
     }
     UNREF_DEFER(result);
 
-    aml_object_t* sizeObject;
+    aml_object_t* sizeObject = NULL;
     switch (object->type)
     {
     case AML_ARG:
@@ -2329,7 +2329,7 @@ status_t aml_def_object_type_read(aml_term_list_ctx_t* ctx, aml_object_t** out)
     aml_token_peek(ctx, &token);
 
     status_t status;
-    aml_object_t* object;
+    aml_object_t* object = NULL;
     switch (token.num)
     {
     case AML_DEBUG_OP:

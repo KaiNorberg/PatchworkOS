@@ -211,10 +211,10 @@ static bool panic_print_trace_address(uintptr_t addr)
     }
 
     symbol_info_t symbol;
-    if (IS_OK(symbol_resolve_addr(&symbol, (void*)addr)))
+    if (IS_ERR(symbol_resolve_addr(&symbol, (void*)addr)))
     {
         LOG_PANIC("  [0x%016llx] <unknown>\n", addr);
-        return false;
+        return true;
     }
 
     LOG_PANIC("  [0x%016llx] <%s+0x%llx>\n", addr, symbol.name, addr - (uintptr_t)symbol.addr);

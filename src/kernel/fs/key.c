@@ -64,11 +64,8 @@ static status_t key_generate(char* buffer, uint64_t size)
     return OK;
 }
 
-static void key_timer_handler(interrupt_frame_t* frame, cpu_t* self)
+void key_timer_handler(void)
 {
-    UNUSED(frame);
-    UNUSED(self);
-
     clock_t uptime = clock_uptime();
     LOCK_SCOPE(&keyLock);
 
@@ -82,6 +79,7 @@ static void key_timer_handler(interrupt_frame_t* frame, cpu_t* self)
             break;
         }
 
+        LOG_DEBUG("remove key: '%s'\n", entry->key);
         map_remove(&keyMap, &entry->mapEntry, hash_buffer(entry->key, strlen(entry->key)));
         list_remove(&entry->entry);
         UNREF(entry->file);
@@ -96,7 +94,7 @@ status_t key_share(char* key, uint64_t size, file_t* file, clock_t timeout)
         return ERR(VFS, INVAL);
     }
 
-    key_entry_t* entry = malloc(sizeof(key_entry_t));
+    key_entry_t* entry = calloc(1, sizeof(key_entry_t));
     if (entry == NULL)
     {
         return ERR(VFS, NOMEM);
@@ -116,7 +114,7 @@ status_t key_share(char* key, uint64_t size, file_t* file, clock_t timeout)
         return status;
     }
 
-    uint64_t hash = hash_buffer(entry->key, size);
+    uint64_t hash = hash_string(entry->key);
     map_insert(&keyMap, &entry->mapEntry, hash);
 
     memcpy(key, entry->key, size);
@@ -159,9 +157,10 @@ status_t key_claim(file_t** out, const char* key)
     key_entry_t* entry = CONTAINER_OF_SAFE(map_find(&keyMap, key, hash), key_entry_t, mapEntry);
     if (entry == NULL)
     {
-        return ERR(VFS, NOENT);
+        return ERR(VFS, INVAL_KEY);
     }
 
+    map_remove(&keyMap, &entry->mapEntry, hash);
     list_remove(&entry->entry);
 
     file_t* file = entry->file;
@@ -170,7 +169,7 @@ status_t key_claim(file_t** out, const char* key)
     return OK;
 }
 
-SYSCALL_DEFINE(SYS_SHARE, char* key, uint64_t size, fd_t fd, clock_t timeout)
+SYSCALL_DEFINE(SYS_SHARE, char* key, size_t size, fd_t fd, clock_t timeout)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;

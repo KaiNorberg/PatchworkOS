@@ -26,7 +26,7 @@ const char* _sourceStrings[] = {
 
 const char* srctostr(st_src_t src)
 {
-    if (src < ST_SRC_NONE || src > ST_SRC_USER)
+    if (src < ST_SRC_NONE || src >= ST_SRC_MAX)
     {
         return "unknown";
     }

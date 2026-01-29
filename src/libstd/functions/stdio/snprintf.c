@@ -57,11 +57,11 @@ int snprintf(char* _RESTRICT s, size_t n, const char* _RESTRICT format, ...)
         { \
             LOG_ERR("_PRINT_TEST failed at line %d: expected (%d, \"%s\"), got (%d, \"%s\")\n", __LINE__, rc, \
                 expected, ret, buffer); \
-            return PFAIL; \
+            return ERR(TEST, TEST_FAIL); \
         } \
     })
 
-static inline uint64_t _test_print_iter(void)
+static inline status_t _test_print_iter(void)
 {
 #if __GNUC__
 #pragma GCC diagnostic push
@@ -493,7 +493,7 @@ static inline uint64_t _test_print_iter(void)
 #pragma GCC diagnostic pop
 #endif
 
-    return 0;
+    return OK;
 }
 /******************************************************************************/
 
@@ -501,10 +501,10 @@ TEST_DEFINE(print)
 {
     for (int k = 0; k < 1; ++k)
     {
-        TEST_ASSERT(_test_print_iter() != PFAIL);
+        TEST_ASSERT(IS_OK(_test_print_iter()));
     }
 
-    return 0;
+    return OK;
 }
 
 #endif

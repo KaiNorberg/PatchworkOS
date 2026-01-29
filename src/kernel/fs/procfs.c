@@ -498,6 +498,10 @@ static status_t procfs_ctl_bind(file_t* file, uint64_t argc, const char** argv)
     }
 
     namespace_t* processNs = process_get_ns(process);
+    if (processNs == NULL)
+    {
+        return ERR(FS, DYING);
+    }
     UNREF_DEFER(processNs);
 
     path_t target = cwd_get(&process->cwd, processNs);
@@ -517,6 +521,10 @@ static status_t procfs_ctl_bind(file_t* file, uint64_t argc, const char** argv)
     }
 
     namespace_t* writingNs = process_get_ns(writing);
+    if (writingNs == NULL)
+    {
+        return ERR(FS, DYING);
+    }
     UNREF_DEFER(writingNs);
 
     path_t source = cwd_get(&writing->cwd, writingNs);

@@ -71,10 +71,10 @@ status_t vfs_openat(file_t** out, const path_t* from, const pathname_t* pathname
  * @param file The file to read from.
  * @param buffer The buffer to read into.
  * @param count The number of bytes to read.
- * @param bytesRead Output pointer for the number of bytes read.
+ * @param out Output pointer for the number of bytes read.
  * @return An appropriate status value.
  */
-status_t vfs_read(file_t* file, void* buffer, size_t count, size_t* bytesRead);
+status_t vfs_read(file_t* file, void* buffer, size_t count, size_t* out);
 
 /**
  * @brief Write to a file.
@@ -84,10 +84,10 @@ status_t vfs_read(file_t* file, void* buffer, size_t count, size_t* bytesRead);
  * @param file The file to write to.
  * @param buffer The buffer to write from.
  * @param count The number of bytes to write.
- * @param bytesWritten Output pointer for the number of bytes written.
+ * @param out Output pointer for the number of bytes written.
  * @return An appropriate status value.
  */
-status_t vfs_write(file_t* file, const void* buffer, size_t count, size_t* bytesWritten);
+status_t vfs_write(file_t* file, const void* buffer, size_t count, size_t* out);
 
 /**
  * @brief Seek in a file.
@@ -97,10 +97,10 @@ status_t vfs_write(file_t* file, const void* buffer, size_t count, size_t* bytes
  * @param file The file to seek in.
  * @param offset The offset to seek to.
  * @param origin The origin to seek from.
- * @param newPos Output pointer for the new file position.
+ * @param out Output pointer for the new file position.
  * @return An appropriate status value.
  */
-status_t vfs_seek(file_t* file, ssize_t offset, seek_origin_t origin, size_t* newPos);
+status_t vfs_seek(file_t* file, ssize_t offset, seek_origin_t origin, size_t* out);
 
 /**
  * @brief Perform an ioctl operation on a file.

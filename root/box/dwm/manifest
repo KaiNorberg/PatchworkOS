@@ -17,6 +17,7 @@ foreground = false
 [namespace]
 /app:rx = $BOX
 /net:rw = /net
+/dev:rwcd = 
 /dev/fb:rw = /dev/fb
 /dev/kbd:rw = /dev/kbd
 /dev/mouse:rw = /dev/mouse

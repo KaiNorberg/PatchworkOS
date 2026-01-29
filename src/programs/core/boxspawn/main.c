@@ -28,7 +28,7 @@ int main(int argc, char** argv)
     status_t status = notify(note_handler);
     if (IS_ERR(status))
     {
-        printf("boxspawn: failed to register note handler (%s)\n", codetostr(ST_CODE(status)));
+        printf("boxspawn: failed to register note handler %Y\n", status);
         return EXIT_FAILURE;
     }
 
@@ -36,14 +36,14 @@ int main(int argc, char** argv)
     status = readfiles(&id, "/net/local/seqpacket");
     if (IS_ERR(status))
     {
-        printf("boxspawn: failed to open local seqpacket socket (%s)\n", codetostr(ST_CODE(status)));
+        printf("boxspawn: failed to open local seqpacket socket %Y\n", status);
         return EXIT_FAILURE;
     }
 
     status = writefiles(F("/net/local/%s/ctl", id), "connect boxspawn");
     if (IS_ERR(status))
     {
-        printf("boxspawn: failed to connect to boxspawn (%s)\n", codetostr(ST_CODE(status)));
+        printf("boxspawn: failed to connect to boxspawn %Y\n", status);
         free(id);
         return EXIT_FAILURE;
     }
@@ -54,7 +54,7 @@ int main(int argc, char** argv)
         status = share(stdio[i], sizeof(stdio[i]), i, CLOCKS_PER_SEC);
         if (IS_ERR(status))
         {
-            printf("boxspawn: failed to share stdio (%s)\n", codetostr(ST_CODE(status)));
+            printf("boxspawn: failed to share stdio %d %Y\n", i, status);
             free(id);
             return EXIT_FAILURE;
         }
@@ -67,7 +67,7 @@ int main(int argc, char** argv)
     {
         if (ST_CODE(status) != ST_CODE_NOENT)
         {
-            printf("boxspawn: failed to share group (%s)\n", codetostr(ST_CODE(status)));
+            printf("boxspawn: failed to share group %Y\n", status);
             free(id);
             return EXIT_FAILURE;
         }
@@ -79,7 +79,7 @@ int main(int argc, char** argv)
         status = sharefile(namespace, sizeof(namespace), "/proc/self/ns", CLOCKS_PER_SEC);
         if (IS_ERR(status))
         {
-            printf("boxspawn: failed to share namespace (%s)\n", codetostr(ST_CODE(status)));
+            printf("boxspawn: failed to share namespace %Y\n", status);
             free(id);
             return EXIT_FAILURE;
         }
@@ -123,7 +123,7 @@ int main(int argc, char** argv)
     status = open(&data, F("/net/local/%s/data", id));
     if (IS_ERR(status))
     {
-        printf("boxspawn: failed to open data socket (%s)\n", codetostr(ST_CODE(status)));
+        printf("boxspawn: failed to open data socket %Y\n", status);
         free(id);
         return EXIT_FAILURE;
     }
@@ -131,7 +131,7 @@ int main(int argc, char** argv)
     status = writes(data, buffer, NULL);
     if (IS_ERR(status))
     {
-        printf("boxspawn: failed to send request (%s)\n", codetostr(ST_CODE(status)));
+        printf("boxspawn: failed to send request %Y\n", status);
         free(id);
         close(data);
         return EXIT_FAILURE;
@@ -142,7 +142,7 @@ int main(int argc, char** argv)
     status = read(data, buffer, sizeof(buffer) - 1, NULL);
     if (IS_ERR(status))
     {
-        printf("boxspawn: failed to read response (%s)\n", codetostr(ST_CODE(status)));
+        printf("boxspawn: failed to read response %Y\n", status);
         free(id);
         close(data);
         return EXIT_FAILURE;
@@ -174,7 +174,7 @@ int main(int argc, char** argv)
     status = claim(&wait, waitkey);
     if (IS_ERR(status))
     {
-        printf("boxspawn: failed to claim response (%s)\n", codetostr(ST_CODE(status)));
+        printf("boxspawn: failed to claim response %Y\n", status);
         free(id);
         return EXIT_FAILURE;
     }
@@ -183,7 +183,7 @@ int main(int argc, char** argv)
     status = RETRY_ON_CODE(read(wait, string, sizeof(string) - 1, NULL), INTR);
     if (IS_ERR(status))
     {
-        printf("boxspawn: failed to read status (%s)\n", codetostr(ST_CODE(status)));
+        printf("boxspawn: failed to read status %Y\n", status);
         free(id);
         close(wait);
         return EXIT_FAILURE;

@@ -87,8 +87,8 @@ void aml_object_clear(aml_object_t* object)
 
     if (object->type & AML_NAMESPACES)
     {
-        aml_object_t* child;
-        aml_object_t* temp;
+        aml_object_t* child = NULL;
+        aml_object_t* temp = NULL;
         LIST_FOR_EACH_SAFE(child, temp, &object->children, siblingsEntry)
         {
             aml_namespace_remove(child);

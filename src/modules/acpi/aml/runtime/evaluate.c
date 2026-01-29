@@ -7,7 +7,7 @@
 
 status_t aml_evaluate(aml_state_t* state, aml_object_t* object, aml_type_t targetTypes, aml_object_t** out)
 {
-    if (state == NULL || object == NULL || out == NULL)
+    if (object == NULL || out == NULL)
     {
         return ERR(ACPI, INVAL);
     }
@@ -21,8 +21,7 @@ status_t aml_evaluate(aml_state_t* state, aml_object_t* object, aml_type_t targe
             return status;
         }
 
-        aml_object_t* result = NULL;
-        status = aml_evaluate(&tempState, object, targetTypes, &result);
+        status = aml_evaluate(&tempState, object, targetTypes, out);
         aml_state_deinit(&tempState);
         return status;
     }

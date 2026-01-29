@@ -353,7 +353,7 @@ status_t aml_def_field_read(aml_term_list_ctx_t* ctx)
         return status;
     }
 
-    aml_object_t* opregion;
+    aml_object_t* opregion = NULL;
     status = aml_name_string_read_and_resolve(ctx, &opregion);
     if (IS_ERR(status))
     {
@@ -413,7 +413,7 @@ status_t aml_def_index_field_read(aml_term_list_ctx_t* ctx)
         return status;
     }
 
-    aml_object_t* index;
+    aml_object_t* index = NULL;
     status = aml_name_string_read_and_resolve(ctx, &index);
     if (IS_ERR(status))
     {
@@ -422,7 +422,7 @@ status_t aml_def_index_field_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(index);
 
-    aml_object_t* data;
+    aml_object_t* data = NULL;
     status = aml_name_string_read_and_resolve(ctx, &data);
     if (IS_ERR(status))
     {
@@ -489,7 +489,7 @@ status_t aml_def_bank_field_read(aml_term_list_ctx_t* ctx)
 
     const uint8_t* end = start + pkgLength;
 
-    aml_object_t* opregion;
+    aml_object_t* opregion = NULL;
     status = aml_name_string_read_and_resolve(ctx, &opregion);
     if (IS_ERR(status))
     {
@@ -498,7 +498,7 @@ status_t aml_def_bank_field_read(aml_term_list_ctx_t* ctx)
     }
     UNREF_DEFER(opregion);
 
-    aml_object_t* bank;
+    aml_object_t* bank = NULL;
     status = aml_name_string_read_and_resolve(ctx, &bank);
     if (IS_ERR(status))
     {
@@ -913,7 +913,7 @@ status_t aml_def_create_bit_field_read(aml_term_list_ctx_t* ctx)
         return ERR(ACPI, ILSEQ);
     }
 
-    aml_object_t* sourceBuff;
+    aml_object_t* sourceBuff = NULL;
     status_t status = aml_source_buff_read(ctx, &sourceBuff);
     if (IS_ERR(status))
     {
@@ -972,7 +972,7 @@ static inline status_t aml_def_create_field_read_helper(aml_term_list_ctx_t* ctx
         return ERR(ACPI, ILSEQ);
     }
 
-    aml_object_t* sourceBuff;
+    aml_object_t* sourceBuff = NULL;
     status_t status = aml_source_buff_read(ctx, &sourceBuff);
     if (IS_ERR(status))
     {
@@ -1257,7 +1257,7 @@ status_t aml_def_create_field_read(aml_term_list_ctx_t* ctx)
         return ERR(ACPI, ILSEQ);
     }
 
-    aml_object_t* sourceBuff;
+    aml_object_t* sourceBuff = NULL;
     status_t status = aml_source_buff_read(ctx, &sourceBuff);
     if (IS_ERR(status))
     {

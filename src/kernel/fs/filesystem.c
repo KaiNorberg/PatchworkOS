@@ -298,6 +298,10 @@ filesystem_t* filesystem_get_by_path(const char* path, process_t* process)
     }
 
     namespace_t* ns = process_get_ns(process);
+    if (ns == NULL)
+    {
+        return NULL;
+    }
     UNREF_DEFER(ns);
 
     path_t target = cwd_get(&process->cwd, ns);

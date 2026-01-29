@@ -3,8 +3,6 @@
 #include <kernel/acpi/aml/object.h>
 #include <kernel/acpi/aml/runtime/copy.h>
 
-
-
 status_t aml_state_init(aml_state_t* state, aml_object_t** args)
 {
     for (uint8_t i = 0; i < AML_MAX_LOCALS; i++)

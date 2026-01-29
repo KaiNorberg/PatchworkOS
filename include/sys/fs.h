@@ -600,7 +600,7 @@ status_t unlink(const char* path);
  * @param timeout The time until the shared file descriptor expires. If `CLOCKS_NEVER`, it never expires.
  * @return An appropriate status value.
  */
-static inline status_t share(char* key, uint64_t size, fd_t fd, clock_t timeout)
+static inline status_t share(char* key, size_t size, fd_t fd, clock_t timeout)
 {
     return syscall4(SYS_SHARE, NULL, (uintptr_t)key, size, fd, timeout);
 }

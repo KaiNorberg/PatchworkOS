@@ -15,7 +15,10 @@ foreground = true
 [env]
 
 [namespace]
+/app:rwcd = 
 /app/bin:rx = $BOX/bin
 /app/data:rw = $BOX/data
+/net:rwcd = 
 /net/local:rw = /net/local
+/dev:rwcd = 
 /dev/const:rw = /dev/const

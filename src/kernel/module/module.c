@@ -440,6 +440,7 @@ static status_t module_file_read(module_file_t* outFile, const path_t* dirPath, 
 
     if (bytesRead != fileSize)
     {
+        LOG_ERR("failed to read entire file '%s' expected %zu bytes but read %zu\n", filename, fileSize, bytesRead);
         free(fileData);
         return ERR(MODULE, TOCTOU);
     }
@@ -675,7 +676,7 @@ static status_t module_cache_build(void)
             status = module_file_read(&file, &dir->path, process, buffer[i].path);
             if (IS_ERR(status))
             {
-                LOG_ERR("skipping invalid module file '%s' (%s)\n", buffer[i].path, codetostr(status));
+                LOG_ERR("skipping invalid module file '%s' %Y\n", buffer[i].path, status);
                 continue;
             }
 

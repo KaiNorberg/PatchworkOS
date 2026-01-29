@@ -499,7 +499,6 @@ status_t acpi_devices_init(void)
     aml_object_t* sb = acpi_sb_init();
     if (sb == NULL)
     {
-        LOG_ERR("failed to initialize ACPI devices\n");
         return ERR(ACPI, NOENT);
     }
     UNREF_DEFER(sb);
@@ -508,7 +507,6 @@ status_t acpi_devices_init(void)
     status_t status = acpi_device_init_children(&ids, sb, "\\_SB_");
     if (IS_ERR(status))
     {
-        LOG_ERR("failed to initialize ACPI devices\n");
         return status;
     }
 
@@ -520,7 +518,6 @@ status_t acpi_devices_init(void)
         status = acpi_ids_push_if_absent(&ids, "PNP0103", ".HPET");
         if (IS_ERR(status))
         {
-            LOG_ERR("failed to initialize ACPI devices\n");
             return status;
         }
     }
@@ -530,7 +527,6 @@ status_t acpi_devices_init(void)
         status = acpi_ids_push_if_absent(&ids, "PNP0003", ".APIC");
         if (IS_ERR(status))
         {
-            LOG_ERR("failed to initialize ACPI devices\n");
             return status;
         }
     }

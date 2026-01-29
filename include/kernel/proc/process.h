@@ -165,7 +165,7 @@ process_t* process_get(pid_t id);
  * It is the responsibility of the caller to `UNREF()` the returned namespace.
  *
  * @param process The process to get the namespace of.
- * @return A reference to the namespace of the process.
+ * @return A reference to the namespace of the process, or `NULL` if the process is dying.
  */
 namespace_t* process_get_ns(process_t* process);
 

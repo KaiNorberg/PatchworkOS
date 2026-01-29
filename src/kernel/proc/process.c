@@ -211,8 +211,6 @@ namespace_t* process_get_ns(process_t* process)
     namespace_t* ns = process->nspace != NULL ? REF(process->nspace) : NULL;
     lock_release(&process->nspaceLock);
 
-    assert(ns != NULL);
-
     return ns;
 }
 

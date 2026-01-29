@@ -29,7 +29,7 @@ char* strncpy(char* _RESTRICT s1, const char* _RESTRICT s2, size_t n)
 #include <kernel/sched/clock.h>
 #include <kernel/utils/test.h>
 
-static uint64_t _test_strncpy_iter(void)
+static status_t _test_strncpy_iter(void)
 {
     char s[] = "xxxxxxx";
     TEST_ASSERT(strncpy(s, "", 1) == s);
@@ -60,14 +60,14 @@ static uint64_t _test_strncpy_iter(void)
     TEST_ASSERT(s2[512] == '\0');
     TEST_ASSERT(s2[1023] == '\0');
 
-    return 0;
+    return OK;
 }
 
 TEST_DEFINE(strncpy)
 {
     for (int k = 0; k < 1; ++k)
     {
-        TEST_ASSERT(_test_strncpy_iter() != PFAIL);
+        TEST_ASSERT(IS_OK(_test_strncpy_iter()));
     }
 
     return 0;

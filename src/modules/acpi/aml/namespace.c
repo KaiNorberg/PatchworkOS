@@ -8,6 +8,8 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 
+#include <string.h>
+
 static aml_overlay_t globalOverlay;
 
 static aml_object_t* namespaceRoot = NULL;
@@ -32,7 +34,10 @@ static bool aml_namespace_cmp(map_entry_t* entry, const void* key)
 
 static inline uint64_t aml_namespace_hash(aml_object_id_t parentId, aml_name_t name)
 {
-    aml_namespace_key_t key = {.parentId = parentId, .name = name};
+    aml_namespace_key_t key;
+    memset(&key, 0, sizeof(key));
+    key.parentId = parentId;
+    key.name = name;
     return hash_buffer(&key, sizeof(key));
 }
 
@@ -171,7 +176,10 @@ aml_object_t* aml_namespace_find_child(aml_overlay_t* overlay, aml_object_t* par
         overlay = &globalOverlay;
     }
 
-    aml_namespace_key_t key = {.parentId = parent->id, .name = name};
+    aml_namespace_key_t key;
+    memset(&key, 0, sizeof(key));
+    key.parentId = parent->id;
+    key.name = name;
     uint64_t hash = hash_buffer(&key, sizeof(key));
     aml_object_t* child = NULL;
     while (overlay != NULL)
@@ -303,10 +311,12 @@ aml_object_t* aml_namespace_find_by_path(aml_overlay_t* overlay, aml_object_t* s
 
     aml_object_t* current = NULL;
     const char* p = path;
+    bool searchParents = true;
     if (p[0] == '\\')
     {
         current = REF(namespaceRoot);
         p++;
+        searchParents = false;
     }
     else if (p[0] == '^')
     {
@@ -323,6 +333,7 @@ aml_object_t* aml_namespace_find_by_path(aml_overlay_t* overlay, aml_object_t* s
         }
 
         current = aml_namespace_traverse_parents(REF(start), depth);
+        searchParents = false;
     }
     else
     {
@@ -356,11 +367,12 @@ aml_object_t* aml_namespace_find_by_path(aml_overlay_t* overlay, aml_object_t* s
             return NULL;
         }
 
-        aml_name_t segment = 0;
+        uint8_t buf[4] = {'_', '_', '_', '_'};
         for (uint64_t i = 0; i < segmentLength; i++)
         {
-            segment |= ((aml_name_t)(uint8_t)segmentStart[i]) << (i * 8);
+            buf[i] = (uint8_t)segmentStart[i];
         }
+        aml_name_t segment = AML_NAME(buf[0], buf[1], buf[2], buf[3]);
 
         segmentCount++;
 
@@ -370,7 +382,7 @@ aml_object_t* aml_namespace_find_by_path(aml_overlay_t* overlay, aml_object_t* s
         }
 
         aml_object_t* next = aml_namespace_find_child(overlay, current, segment);
-        if (next == NULL && segmentCount == 1 && *p == '\0')
+        if (next == NULL && segmentCount == 1 && *p == '\0' && searchParents)
         {
             while (current->parent != NULL)
             {
@@ -422,7 +434,10 @@ status_t aml_namespace_add_child(aml_overlay_t* overlay, aml_object_t* parent, a
         overlay = &globalOverlay;
     }
 
-    aml_namespace_key_t key = {.parentId = parent->id, .name = name};
+    aml_namespace_key_t key;
+    memset(&key, 0, sizeof(key));
+    key.parentId = parent->id;
+    key.name = name;
     uint64_t hash = hash_buffer(&key, sizeof(key));
 
     aml_overlay_t* currentOverlay = overlay;
@@ -435,14 +450,14 @@ status_t aml_namespace_add_child(aml_overlay_t* overlay, aml_object_t* parent, a
         currentOverlay = currentOverlay->parent;
     }
 
-    map_insert(&overlay->map, &object->mapEntry, hash);
-    list_push_back(&overlay->objects, &object->listEntry);
-    list_push_back(&parent->children, &object->siblingsEntry);
-
     object->flags |= AML_OBJECT_NAMED;
     object->overlay = overlay;
     object->parent = parent;
     object->name = name;
+
+    map_insert(&overlay->map, &object->mapEntry, hash);
+    list_push_back(&overlay->objects, &object->listEntry);
+    list_push_back(&parent->children, &object->siblingsEntry);
 
     REF(object);
     return OK;
@@ -513,8 +528,8 @@ status_t aml_namespace_commit(aml_overlay_t* overlay)
         return ERR(ACPI, INVAL);
     }
 
-    aml_object_t* object;
-    aml_object_t* temp;
+    aml_object_t* object = NULL;
+    aml_object_t* temp = NULL;
     LIST_FOR_EACH_SAFE(object, temp, &overlay->objects, listEntry)
     {
         aml_object_id_t parentId = object->parent ? object->parent->id : AML_OBJECT_ID_NONE;
@@ -557,7 +572,7 @@ void aml_overlay_deinit(aml_overlay_t* overlay)
 
     while (!list_is_empty(&overlay->objects))
     {
-        aml_object_t* obj = CONTAINER_OF(list_pop_front(&overlay->objects), aml_object_t, listEntry);
+        aml_object_t* obj = CONTAINER_OF(list_first(&overlay->objects), aml_object_t, listEntry);
         aml_namespace_remove(obj);
     }
 }
@@ -580,7 +595,10 @@ aml_overlay_t* aml_overlay_find_containing(aml_overlay_t* overlay, aml_object_t*
     }
 
     aml_object_id_t parentId = object->parent != NULL ? object->parent->id : AML_OBJECT_ID_NONE;
-    aml_namespace_key_t key = {.parentId = parentId, .name = object->name};
+    aml_namespace_key_t key;
+    memset(&key, 0, sizeof(key));
+    key.parentId = parentId;
+    key.name = object->name;
     uint64_t hash = hash_buffer(&key, sizeof(key));
 
     aml_overlay_t* currentOverlay = overlay;
