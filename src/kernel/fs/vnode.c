@@ -41,14 +41,14 @@ static void vnode_ctor(void* ptr)
     vnode->size = 0;
     vnode->superblock = NULL;
     vnode->ops = NULL;
-    vnode->fileOps = NULL;
+    vnode->cls = NULL;
     vnode->rcu = (rcu_entry_t){0};
     mutex_init(&vnode->mutex);
 }
 
 static cache_t cache = CACHE_CREATE(cache, "vnode", sizeof(vnode_t), CACHE_LINE, vnode_ctor, NULL);
 
-vnode_t* vnode_new(superblock_t* superblock, vtype_t type, const vnode_ops_t* ops, const file_ops_t* fileOps)
+vnode_t* vnode_new(superblock_t* superblock, vtype_t type, const vnode_ops_t* ops, const vnode_class_t* cls)
 {
     if (superblock == NULL)
     {
@@ -65,9 +65,39 @@ vnode_t* vnode_new(superblock_t* superblock, vtype_t type, const vnode_ops_t* op
     vnode->type = type;
     vnode->superblock = REF(superblock);
     vnode->ops = ops;
-    vnode->fileOps = fileOps;
-    vnode->vtable = NULL;
+    vnode->cls = cls;
     return vnode;
+}
+
+void vnode_call(vnode_t* vnode, irp_t* irp)
+{
+    assert(irp->frame > 0);
+    irp->frame--;
+
+    irp_frame_t* frame = irp_current(irp);
+    if (UNLIKELY(frame->major >= IRP_MJ_MAX))
+    {
+        irp_complete(irp, ERR(IO, MJ_OVERFLOW));
+        return;
+    }
+
+    if (vnode == NULL || vnode->cls == NULL)
+    {
+        irp_complete(irp, ERR(IO, MJ_NOSYS));
+        return;
+    }
+
+    irp_func_t func = vnode->cls->handlers[frame->major];
+    if (func == NULL)
+    {
+        irp_complete(irp, ERR(IO, MJ_NOSYS));
+        return;
+    }
+
+    atomic_store_explicit(&irp->cancel, NULL, memory_order_relaxed);
+    frame->vnode = REF(vnode);
+
+    func(irp);
 }
 
 void vnode_truncate(vnode_t* vnode)

@@ -103,18 +103,6 @@ status_t vfs_write(file_t* file, const void* buffer, size_t count, size_t* out);
 status_t vfs_seek(file_t* file, ssize_t offset, seek_origin_t origin, size_t* out);
 
 /**
- * @brief Perform an ioctl operation on a file.
- *
- * @param file The file to perform the ioctl on.
- * @param request The ioctl request.
- * @param argp The argument pointer.
- * @param size The size of the argument.
- * @param result Output pointer for the result of the ioctl.
- * @return An appropriate status value.
- */
-status_t vfs_ioctl(file_t* file, uint64_t request, void* argp, size_t size, uint64_t* result);
-
-/**
  * @brief Memory map a file.
  *
  * @param file The file to memory map.

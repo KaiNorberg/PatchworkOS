@@ -33,7 +33,8 @@ surface_t* surface_new(client_t* client, const char* name, const point_t* point,
         return NULL;
     }
     surface->buffer = NULL;
-    if (IS_ERR(mmap(surface->shmem, (void**)&surface->buffer, width * height * sizeof(pixel_t), PROT_READ | PROT_WRITE)))
+    if (IS_ERR(
+            mmap(surface->shmem, (void**)&surface->buffer, width * height * sizeof(pixel_t), PROT_READ | PROT_WRITE)))
     {
         close(surface->shmem);
         free(surface);

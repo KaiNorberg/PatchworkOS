@@ -11,7 +11,7 @@ static status_t aml_concat_resolve_to_integer(aml_state_t* state, aml_object_t* 
         *out = source->integer.value;
         return OK;
     }
-    
+
     if (source->type == AML_STRING || source->type == AML_BUFFER)
     {
         aml_object_t* temp = NULL;
@@ -119,7 +119,7 @@ static status_t aml_concat_resolve_to_buffer(aml_state_t* state, aml_object_t* s
         *outTemp = NULL;
         return OK;
     }
-    
+
     if (source->type == AML_INTEGER || source->type == AML_STRING)
     {
         aml_object_t* temp = NULL;

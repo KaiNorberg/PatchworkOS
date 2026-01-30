@@ -32,7 +32,7 @@ status_t aml_buffer_field_load(aml_buffer_field_t* bufferField, aml_object_t* ou
  *
  * A BufferField is a view into a buffer, it has a bit offset and a bit size, and can be used to read or write parts of
  * the buffer.
- * 
+ *
  * @see @ref modules_acpi_aml_evaluate
  *
  * @param bufferField The buffer field to write to.

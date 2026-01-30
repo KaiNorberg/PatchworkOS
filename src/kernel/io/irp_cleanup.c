@@ -27,12 +27,29 @@ static void irp_cleanup_poll(irp_frame_t* frame)
     }
 }
 
+static void irp_cleanup_seek(irp_frame_t* frame)
+{
+    if (frame->seek.file != NULL)
+    {
+        UNREF(frame->seek.file);
+        frame->seek.file = NULL;
+    }
+}
+
+static void irp_cleanup_mmap(irp_frame_t* frame)
+{
+    UNUSED(frame);
+    // Nothing to do.
+}
+
 typedef void (*irp_cleanup_func_t)(irp_frame_t* frame);
 
 static const irp_cleanup_func_t cleanups[IRP_MJ_MAX] = {
     [IRP_MJ_READ] = irp_cleanup_read,
     [IRP_MJ_WRITE] = irp_cleanup_write,
     [IRP_MJ_POLL] = irp_cleanup_poll,
+    [IRP_MJ_SEEK] = irp_cleanup_seek,
+    [IRP_MJ_MMAP] = irp_cleanup_mmap,
 };
 
 void irp_cleanup_args(irp_frame_t* frame)

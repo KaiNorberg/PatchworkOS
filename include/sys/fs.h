@@ -1,5 +1,5 @@
-#ifndef _SYS_IO_H
-#define _SYS_IO_H 1
+#ifndef _SYS_FS_H
+#define _SYS_FS_H 1
 
 #include <alloca.h>
 #include <assert.h>
@@ -308,24 +308,6 @@ static inline status_t seek(fd_t fd, ssize_t offset, seek_origin_t origin, size_
  * @return On success, `0`. On failure, `-1`.
  */
 int chdir(const char* path);
-
-/**
- * @brief System call for extended driver behaviour.
- *
- * The `ioctl()` function allows drivers to implement unusual behaviour that would be impossible or impractical with a
- * normal file-based API.
- *
- * @param fd The file descriptor of the file.
- * @param request The driver-dependent request code.
- * @param argp A pointer to an argument that depends on the request, can be `NULL` if size is 0.
- * @param size The size of the argument pointed to by `argp`.
- * @param result Output pointer for the result of the ioctl.
- * @return An appropriate status value.
- */
-static inline status_t ioctl(fd_t fd, uint64_t request, void* argp, size_t size, uint64_t* result)
-{
-    return syscall4(SYS_IOCTL, result, fd, request, (uintptr_t)argp, size);
-}
 
 /**
  * @brief Poll events type.

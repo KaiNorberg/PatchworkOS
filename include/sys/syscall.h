@@ -35,7 +35,6 @@ typedef enum
     SYS_READ,
     SYS_WRITE,
     SYS_SEEK,
-    SYS_IOCTL,
     SYS_POLL,
     SYS_STAT,
     SYS_MMAP,

@@ -474,7 +474,7 @@ status_t aml_convert(aml_state_t* state, aml_object_t* src, aml_object_t* dest, 
                 aml_type_to_string(entry->destType));
             return status;
         }
-        
+
         if (IS_CODE(status, AGAIN))
         {
             continue;
@@ -926,7 +926,7 @@ status_t aml_convert_to_integer(aml_state_t* state, aml_object_t* src, aml_objec
         *dest = REF(temp);
         return OK;
     }
-    
+
     if (src->type == AML_BUFFER)
     {
         status_t status = aml_buffer_to_integer(state, src, temp);

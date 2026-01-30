@@ -20,7 +20,7 @@
  * - `version`: The 9P protocol version to use, currently only `9P2000` is supported, the default is `9P2000`.
  *
  * @todo Implement the 9P protocol.
- * 
+ *
  * @see libstd_sys_9p for the 9P protocol definitions.
  * @see http://rfc.nop.hu/plan9/rfc9p.pdf for the 9P protocol specification.
  *

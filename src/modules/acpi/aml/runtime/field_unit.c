@@ -31,10 +31,12 @@ static void* aml_ensure_mem_is_mapped(uint64_t address, aml_bit_size_t accessSiz
     {
         phys_addr_t physAddr = (phys_addr_t)((address & ~(PAGE_SIZE - 1)) + page * PAGE_SIZE);
         void* virtAddr = (void*)PML_LOWER_TO_HIGHER(physAddr);
-        status_t status = vmm_map(NULL, &virtAddr, physAddr, PAGE_SIZE, PML_GLOBAL | PML_WRITE | PML_PRESENT, NULL, NULL);
+        status_t status =
+            vmm_map(NULL, &virtAddr, physAddr, PAGE_SIZE, PML_GLOBAL | PML_WRITE | PML_PRESENT, NULL, NULL);
         if (IS_ERR(status))
         {
-            LOG_ERR("failed to map physical address %p for opregion access: %s\n", physAddr, codetostr(ST_CODE(status)));
+            LOG_ERR("failed to map physical address %p for opregion access: %s\n", physAddr,
+                codetostr(ST_CODE(status)));
             return NULL;
         }
     }

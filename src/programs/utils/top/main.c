@@ -1,3 +1,4 @@
+#include <patchwork/patchwork.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,7 +7,6 @@
 #include <sys/proc.h>
 #include <threads.h>
 #include <time.h>
-#include <patchwork/patchwork.h>
 
 #define SAMPLE_INTERVAL (CLOCKS_PER_SEC)
 

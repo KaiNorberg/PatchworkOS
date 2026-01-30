@@ -72,9 +72,9 @@ typedef enum
     ST_SRC_PORT,    ///< CPU Port I/O.
     ST_SRC_SYSCALL, ///< Syscall.
     ST_SRC_ACPI,    ///< ACPI.
-    ST_SRC_TEST,   ///< Testing.
-    ST_SRC_PROTO, ///< Networking Protocol.
-    ST_SRC_MAX, ///< Maximum source value.
+    ST_SRC_TEST,    ///< Testing.
+    ST_SRC_PROTO,   ///< Networking Protocol.
+    ST_SRC_MAX,     ///< Maximum source value.
 } st_src_t;
 
 /**
@@ -149,12 +149,12 @@ typedef enum
     ST_CODE_ILSEQ,            ///< Invalid byte sequence.
     ST_CODE_NO_ACPI_TABLE,    ///< Unable to locate ACPI table.
     ST_CODE_INVAL_ACPI_TABLE, ///< Invalid ACPI table.
-    ST_CODE_DEADLOCK,             ///< Deadlock detected.
+    ST_CODE_DEADLOCK,         ///< Deadlock detected.
     ST_CODE_NO_BOOT_INFO,     ///< Bootloader did not provide needed info.
     ST_CODE_TEST_FAIL,        ///< Test failure.
-    ST_CODE_ADDRINUSE,       ///< Address already in use.
-    ST_CODE_INVAL_KEY,       ///< Invalid key.
-    ST_CODE_MAX, ///< Maximum code value.
+    ST_CODE_ADDRINUSE,        ///< Address already in use.
+    ST_CODE_INVAL_KEY,        ///< Invalid key.
+    ST_CODE_MAX,              ///< Maximum code value.
 } st_code_t;
 
 /**

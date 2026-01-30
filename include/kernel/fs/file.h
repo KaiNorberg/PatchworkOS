@@ -43,26 +43,11 @@ typedef struct file
     mode_t mode;
     vnode_t* vnode;
     path_t path;
-    const file_ops_t* ops;
-    void* data;
-} file_t;
-
-/**
- * @brief File operations structure.
- * @struct file_ops_t
- */
-typedef struct file_ops
-{
     status_t (*open)(file_t* file);
     status_t (*open2)(file_t* files[2]);
     void (*close)(file_t* file);
-    status_t (*read)(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead);
-    status_t (*write)(file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten);
-    status_t (*seek)(file_t* file, ssize_t offset, seek_origin_t origin, size_t* newPos);
-    status_t (*ioctl)(file_t* file, uint64_t request, void* argp, size_t size, uint64_t* result);
-    status_t (*poll)(file_t* file, poll_events_t* revents, wait_queue_t** queue);
-    status_t (*mmap)(file_t* file, void** address, size_t length, size_t* offset, pml_flags_t flags);
-} file_ops_t;
+    void* data;
+} file_t;
 
 /**
  * @brief Structure for polling multiple files.

@@ -5,9 +5,9 @@
 #include <kernel/acpi/aml/encoding/data.h>
 #include <kernel/acpi/aml/encoding/debug.h>
 #include <kernel/acpi/aml/encoding/term.h>
+#include <kernel/acpi/aml/to_string.h>
 #include <kernel/acpi/aml/token.h>
 #include <kernel/log/log.h>
-#include <kernel/acpi/aml/to_string.h>
 
 #include <stdlib.h>
 #include <string.h>

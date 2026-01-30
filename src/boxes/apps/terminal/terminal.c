@@ -789,7 +789,8 @@ void terminal_loop(window_t* win)
         if (fds[0].revents & POLLIN)
         {
             size_t readCount;
-            status_t status = read(terminal->stdout[PIPE_READ], &buffer[length], TERMINAL_MAX_DATA - length, &readCount);
+            status_t status =
+                read(terminal->stdout[PIPE_READ], &buffer[length], TERMINAL_MAX_DATA - length, &readCount);
             if (IS_ERR(status) || readCount == 0)
             {
                 break;

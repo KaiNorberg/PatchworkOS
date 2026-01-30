@@ -44,7 +44,7 @@ typedef struct irp irp_t;
  * ## Cancellation
  *
  * @todo Update IRP documentation for the new status system.
- * 
+ *
  * Cancelling an IRP can intuitively be considered equivalent to forcing the last completion to fail, thus resulting in
  * all the other completions to fail as well.
  *
@@ -84,18 +84,7 @@ typedef struct irp irp_t;
  * }
  * ```
  *
- * ## Error Values
- *
- * The IRP system uses the `err` field to indicate both the current state of the IRP as well as any error that may have
- * occurred during its processing.
- *
- * Included below are a list of "special" values which the IRP system will set:
- *
- * - `EOK`: Operation completed successfully.
- * - `ECANCELED`: Operation was cancelled.
- * - `ETIMEDOUT`: Operation timed out.
- *
- * @see kernel_io for the ring system.
+ * @see kernel_io_ioring for the ring system.
  * @see [Wikipedia](https://en.wikipedia.org/wiki/I/O_request_packet) for more information about IRPs.
  * @see [Microsoft _IRP](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_irp) for information
  * on how Windows NT implements IRPs.
@@ -127,7 +116,9 @@ typedef uint16_t irp_major_t;
 #define IRP_MJ_READ 0
 #define IRP_MJ_WRITE 1
 #define IRP_MJ_POLL 2
-#define IRP_MJ_MAX 3
+#define IRP_MJ_SEEK 3
+#define IRP_MJ_MMAP 4
+#define IRP_MJ_MAX 5
 
 typedef uint16_t irp_minor_t;
 #define IRP_MN_NORMAL 0
@@ -164,8 +155,21 @@ typedef struct irp_frame
         struct
         {
             file_t* file;
-            io_events_t events;
+            ioevents_t events;
         } poll;
+        struct
+        {
+            file_t* file;
+            ssize_t offset;
+            seek_origin_t origin;
+        } seek;
+        struct
+        {
+            void* address;
+            size_t length;
+            size_t offset;
+            pml_flags_t flags;
+        } mmap;
         uint64_t args[IRP_ARGS_MAX]; ///< Generic arguments.
     };
 } irp_frame_t;
@@ -196,14 +200,14 @@ typedef struct ALIGNED(64) irp
         size_t write;
         uint64_t _raw;
     } res;
-    status_t status;  ///< The status of the operation, also used to specify its current state.
+    status_t status;  ///< The status of the operation, also used to specify its current state and potential errors.
     pool_idx_t index; ///< Index of the IRP in its pool.
     pool_idx_t next;  ///< Index of the next IRP in a chain or in the free list.
     cpu_id_t cpu;     ///< The CPU whose timeout queue the IRP is in.
     uint8_t frame;    ///< The index of the current frame in the stack.
     uint8_t reserved[5];
     irp_frame_t stack[IRP_FRAME_MAX]; ///< The frame stack, grows downwards.
-    sqe_t sqe;                        // A copy of the submission queue entry associated with this IRP.
+    iosqe_t sqe;                      // A copy of the submission queue entry associated with this IRP.
 } irp_t;
 
 static_assert(sizeof(irp_t) == 512, "irp_t is not 512 bytes");
@@ -226,15 +230,6 @@ typedef struct irp_pool
  * @brief IRP function type.
  */
 typedef void (*irp_func_t)(irp_t* irp);
-
-/**
- * @brief IRP vtable structure.
- * @struct irp_vtable_t
- */
-typedef struct irp_vtable
-{
-    irp_func_t funcs[IRP_MJ_MAX];
-} irp_vtable_t;
 
 /**
  * @brief Allocate a new IRP pool.
@@ -286,11 +281,11 @@ void irp_timeouts_check(void);
  *
  * The pool that the IRP is part off can be retrieved using the `irp_get_pool()` function.
  *
- * @param out Output pointer for the IRP.
  * @param pool The IRP pool.
+ * @param out Output pointer for the IRP.
  * @return An appropriate status value.
  */
-status_t irp_get(irp_t** out, irp_pool_t* pool);
+status_t irp_get(irp_pool_t* pool, irp_t** out);
 
 /**
  * @brief Retrieve a memory descriptor list and associate it with an IRP.
@@ -414,55 +409,6 @@ static inline irp_frame_t* irp_next(irp_t* irp)
 }
 
 /**
- * @brief Copy the current frame in the IRP stack to the next.
- *
- * @param irp The IRP.
- */
-static inline void irp_copy_to_next(irp_t* irp)
-{
-    irp_frame_t* current = irp_current(irp);
-    irp_frame_t* next = irp_next(irp);
-
-    if (next->vnode != NULL)
-    {
-        UNREF(next->vnode);
-        next->vnode = NULL;
-    }
-
-    *next = *current;
-    next->vnode = NULL;
-    next->complete = NULL;
-    next->ctx = NULL;
-}
-
-/**
- * @brief Skip the current stack frame, meaning the next call will run in the same stack frame.
- *
- * @param irp The IRP.
- */
-static inline void irp_skip(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    if (frame->vnode != NULL)
-    {
-        UNREF(frame->vnode);
-        frame->vnode = NULL;
-    }
-    assert(irp->frame < IRP_FRAME_MAX);
-    irp->frame++;
-}
-
-/**
- * @brief Send an IRP to a specified vnode.
- *
- * Will advance the IRP stack.
- *
- * @param irp The IRP to send.
- * @param vnode The vnode to associated with the next IRP stack frame.
- */
-void irp_call(irp_t* irp, vnode_t* vnode);
-
-/**
  * @brief Send an IRP to a specified function directly.
  *
  * Will advance the IRP stack.
@@ -571,7 +517,7 @@ static inline void irp_prep_write(irp_t* irp, file_t* file, mdl_t* buffer, size_
  * @param file The file to poll, will not take a new reference.
  * @param events The events to wait for.
  */
-static inline void irp_prep_poll(irp_t* irp, file_t* file, io_events_t events)
+static inline void irp_prep_poll(irp_t* irp, file_t* file, ioevents_t events)
 {
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);

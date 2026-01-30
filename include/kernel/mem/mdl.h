@@ -120,26 +120,30 @@ status_t mdl_from_region(mdl_t* mdl, mdl_t* prev, space_t* space, const void* ad
 status_t mdl_add(mdl_t* mdl, space_t* space, const void* addr, size_t size);
 
 /**
- * @brief Read from a Memory Descriptor List into a buffer.
+ * @brief Read from a buffer into a Memory Descriptor List.
  *
- * @param mdl The MDL to read from.
- * @param buffer The buffer to read into.
+ * @param mdl The MDL to read into.
  * @param count Number of bytes to read.
- * @param offset Offset within the MDL to start reading from.
- * @return The number of bytes read.
+ * @param offset Offset within the MDL to start reading to.
+ * @param bytesRead Output pointer for the amount of bytes read, can be `NULL`.
+ * @param source The source buffer to read from.
+ * @param sourceLength The maximum length of the source buffer.
+ * @return An appropriate status value.
  */
-size_t mdl_read(mdl_t* mdl, void* buffer, size_t count, size_t offset);
+status_t mdl_read(mdl_t* mdl, size_t count, size_t offset, size_t* bytesRead, const void* source, size_t sourceLength);
 
 /**
- * @brief Write to a Memory Descriptor List from a buffer.
+ * @brief Write to a buffer from a Memory Descriptor List.
  *
- * @param mdl The MDL to write to.
- * @param buffer The buffer to write from.
+ * @param mdl The MDL to write from.
  * @param count Number of bytes to write.
- * @param offset Offset within the MDL to start writing to.
- * @return The number of bytes written.
+ * @param offset Offset within the MDL to start writing from.
+ * @param bytesWritten Output pointer for the amount of bytes written, can be `NULL`.
+ * @param dest The destination buffer to write to.
+ * @param destLength The maximum length of the destination buffer.
+ * @return An appropriate status value.
  */
-size_t mdl_write(mdl_t* mdl, const void* buffer, size_t count, size_t offset);
+status_t mdl_write(mdl_t* mdl, size_t count, size_t offset, size_t* bytesWritten, void* dest, size_t destLength);
 
 /**
  * @brief Memory Descriptor List Iterator structure.

@@ -38,13 +38,14 @@
  * write it as arguments.
  *
  * The macros should return the number of bytes written, or `EOF` on error.
- * 
+ *
  * @todo Implement floating point printing.
  *
  * ## Format Specifiers
- * 
- * In addition to the standard specifiers, the implementation provides the `%Y` specifier for formatting `status_t` values.
- * 
+ *
+ * In addition to the standard specifiers, the implementation provides the `%Y` specifier for formatting `status_t`
+ * values.
+ *
  * @see https://cplusplus.com/reference/cstdio/printf/ for details on the format specifiers.
  *
  * @{

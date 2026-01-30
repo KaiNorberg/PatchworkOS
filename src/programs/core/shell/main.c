@@ -2,12 +2,12 @@
 #include "pipeline.h"
 
 #include <errno.h>
+#include <patchwork/patchwork.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/fs.h>
-#include <patchwork/patchwork.h>
 #include <sys/proc.h>
 
 static uint64_t cmdline_read(char* buffer, uint64_t size)

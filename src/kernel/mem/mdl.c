@@ -147,11 +147,15 @@ status_t mdl_add(mdl_t* mdl, space_t* space, const void* addr, size_t size)
     return OK;
 }
 
-size_t mdl_read(mdl_t* mdl, void* buffer, size_t count, size_t offset)
+status_t mdl_read(mdl_t* mdl, size_t count, size_t offset, size_t* bytesRead, const void* source, size_t sourceLength)
 {
-    if (mdl == NULL || buffer == NULL)
+    if (mdl == NULL || source == NULL)
     {
-        return 0;
+        if (bytesRead != NULL)
+        {
+            *bytesRead = 0;
+        }
+        return ERR(MMU, INVAL);
     }
 
     size_t start = 0;
@@ -166,47 +170,8 @@ size_t mdl_read(mdl_t* mdl, void* buffer, size_t count, size_t offset)
         start += seg->size;
     }
 
-    uint8_t* ptr = buffer;
-    size_t remaining = count;
-
-    size_t segOffset = offset - start;
-    while (remaining > 0 && i < mdl->amount)
-    {
-        mdl_seg_t* seg = &mdl->segments[i];
-        size_t toRead = MIN(remaining, seg->size - segOffset);
-        void* addr = PFN_TO_VIRT(seg->pfn) + seg->offset + segOffset;
-        memcpy(ptr, addr, toRead);
-
-        ptr += toRead;
-        remaining -= toRead;
-        segOffset = 0;
-        i++;
-    }
-
-    return count - remaining;
-}
-
-size_t mdl_write(mdl_t* mdl, const void* buffer, size_t count, size_t offset)
-{
-    if (mdl == NULL || buffer == NULL)
-    {
-        return 0;
-    }
-
-    size_t start = 0;
-    size_t i = 0;
-    for (; i < mdl->amount; i++)
-    {
-        mdl_seg_t* seg = &mdl->segments[i];
-        if (start + seg->size > offset)
-        {
-            break;
-        }
-        start += seg->size;
-    }
-
-    const uint8_t* ptr = buffer;
-    size_t remaining = count;
+    const uint8_t* ptr = source;
+    size_t remaining = MIN(sourceLength, count);
 
     size_t segOffset = offset - start;
     while (remaining > 0 && i < mdl->amount)
@@ -222,5 +187,63 @@ size_t mdl_write(mdl_t* mdl, const void* buffer, size_t count, size_t offset)
         i++;
     }
 
-    return count - remaining;
+    if (bytesRead != NULL)
+    {
+        *bytesRead = count - remaining;
+    }
+
+    if (remaining > 0)
+    {
+        return INFO(MMU, MORE);
+    }
+
+    return OK;
+}
+
+status_t mdl_write(mdl_t* mdl, size_t count, size_t offset, size_t* bytesWritten, void* dest, size_t destLength)
+{
+    if (mdl == NULL || dest == NULL)
+    {
+        if (bytesWritten != NULL)
+        {
+            *bytesWritten = 0;
+        }
+        return ERR(MMU, INVAL);
+    }
+
+    size_t start = 0;
+    size_t i = 0;
+    for (; i < mdl->amount; i++)
+    {
+        mdl_seg_t* seg = &mdl->segments[i];
+        if (start + seg->size > offset)
+        {
+            break;
+        }
+        start += seg->size;
+    }
+
+    uint8_t* ptr = dest;
+    size_t remaining = MIN(destLength, count);
+
+    size_t segOffset = offset - start;
+    while (remaining > 0 && i < mdl->amount)
+    {
+        mdl_seg_t* seg = &mdl->segments[i];
+        size_t toRead = MIN(remaining, seg->size - segOffset);
+        void* addr = PFN_TO_VIRT(seg->pfn) + seg->offset + segOffset;
+        memcpy(ptr, addr, toRead);
+
+        ptr += toRead;
+        remaining -= toRead;
+        segOffset = 0;
+        i++;
+    }
+
+    if (bytesWritten != NULL)
+    {
+        *bytesWritten = count - remaining;
+    }
+
+    return OK;
 }

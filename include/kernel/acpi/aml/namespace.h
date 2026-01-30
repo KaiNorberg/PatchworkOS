@@ -86,7 +86,7 @@
  */
 typedef struct aml_overlay
 {
-    MAP_DEFINE(map, 32); ///< Used to find the children of namespaces using their id and the name of the child.
+    MAP_DEFINE(map, 32);        ///< Used to find the children of namespaces using their id and the name of the child.
     list_t objects;             ///< List of all objects in this namespace. Used for fast iteration.
     struct aml_overlay* parent; ///< The parent overlay, or `NULL` if none.
 } aml_overlay_t;

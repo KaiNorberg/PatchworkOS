@@ -2,6 +2,7 @@
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
@@ -15,20 +16,27 @@ static dentry_t* dir = NULL;
 
 static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
-static status_t mouse_name_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static void mouse_name_read(irp_t* irp)
 {
-    mouse_t* mouse = file->vnode->data;
+    irp_frame_t* frame = irp_current(irp);
+    mouse_t* mouse = frame->vnode->data;
     assert(mouse != NULL);
 
     size_t length = strlen(mouse->name);
-    return buffer_read(buffer, count, offset, bytesRead, mouse->name, length);
+    status_t status =
+        mdl_read(frame->read.buffer, frame->read.count, frame->read.offset, &irp->res.read, mouse->name, length);
+    irp_complete(irp, status);
 }
 
-static file_ops_t nameOps = {
-    .read = mouse_name_read,
+static vnode_class_t nameClass = {
+    .name = "mouse name",
+    .handlers =
+        {
+            [IRP_MJ_READ] = mouse_name_read,
+        },
 };
 
-static status_t mouse_events_open(file_t* file)
+static status_t mouse_events_file_ctor(file_t* file)
 {
     mouse_t* mouse = file->vnode->data;
     assert(mouse != NULL);
@@ -49,7 +57,7 @@ static status_t mouse_events_open(file_t* file)
     return OK;
 }
 
-static void mouse_events_close(file_t* file)
+static void mouse_events_file_dtor(file_t* file)
 {
     mouse_t* mouse = file->vnode->data;
     assert(mouse != NULL);
@@ -67,7 +75,13 @@ static void mouse_events_close(file_t* file)
     free(client);
 }
 
-static status_t mouse_events_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static void mouse_events_read(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    
+}
+
+/*static status_t mouse_events_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     UNUSED(offset);
 
@@ -117,13 +131,17 @@ static status_t mouse_events_poll(file_t* file, poll_events_t* revents, wait_que
     }
     *queue = &mouse->waitQueue;
     return OK;
-}
+}*/
 
-static file_ops_t eventsOps = {
-    .open = mouse_events_open,
-    .close = mouse_events_close,
-    .read = mouse_events_read,
-    .poll = mouse_events_poll,
+static vnode_class_t eventsClass = {
+    .name = "mouse events",
+    .file_ctor = mouse_events_file_ctor,
+    .file_dtor = mouse_events_file_dtor,
+    .handlers =
+        {
+            [IRP_MJ_READ] = mouse_events_read,
+            [IRP_MJ_POLL] = mouse_events_poll
+        },
 };
 
 static void mouse_dir_cleanup(vnode_t* vnode)

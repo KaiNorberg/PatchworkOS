@@ -146,7 +146,6 @@ status_t aml_predefined_init(void)
         return status;
     }
 
-
     // OS specific predefined objects, see section 5.7 of the ACPI specification.
     aml_object_t* osi = aml_object_new();
     if (osi == NULL)

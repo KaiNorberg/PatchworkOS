@@ -1,11 +1,11 @@
 #define __STDC_WANT_LIB_EXT1__ 1
 #include <errno.h>
+#include <patchwork/patchwork.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <patchwork/patchwork.h>
 #include <sys/fs.h>
 
 static bool showAll = false;

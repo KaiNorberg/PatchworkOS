@@ -24,7 +24,7 @@
  * and asynchronous I/O operations, especially since PatchworkOS is designed to be natively asynchronous with its I/O
  * Request Packet system.
  *
- * Each SQE specifies an operation to perform and a set of up to `SQE_MAX_ARG` arguments, while each CQE returns the
+ * Each SQE specifies an operation to perform and a set of up to `IOSQE_MAX_ARG` arguments, while each CQE returns the
  * result of a previously submitted SQE.
  *
  * Synchronous operations are implemented on top of this API in userspace.
@@ -56,17 +56,17 @@
  * they can be inspected and modified by user space.
  *
  * When a SQE is processed, the kernel will check six register specifiers in the SQE flags, one for each argument and
- * one for the result. Each specifier is stored as three bits, with a `SQE_REG_NONE` value indicating no register.
+ * one for the result. Each specifier is stored as three bits, with a `IOSQE_REG_NONE` value indicating no register.
  *
  * The offset of the specifier specifies its meaning, for example, bits `0-2` specify the register to load into the
  * first argument, bits `3-5` specify the register to load into the second argument, and so on until bits `15-17` which
  * specify the register to save the result into.
  *
- * This system, when combined with `SQE_LINK`, allows for multiple operations to be performed at once, for example, it
+ * This system, when combined with `IOSQE_LINK`, allows for multiple operations to be performed at once, for example, it
  * would be possible to open a file, read from it, seek to a new position, write to it, and finally close the file, with
  * a single `ioring_enter()` call.
  *
- * @see `sqe_flags_t` for more information about register specifiers and their formatting.
+ * @see `iosqe_flags_t` for more information about register specifiers and their formatting.
  *
  * ## Arguments
  *

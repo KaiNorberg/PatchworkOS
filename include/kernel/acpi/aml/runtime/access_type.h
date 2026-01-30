@@ -29,6 +29,7 @@
  * @param regionSpace The region space of the opregion the field belongs to.
  * @return The access bit size.
  */
-aml_bit_size_t aml_get_access_size(aml_bit_size_t bitSize, aml_access_type_t accessType, aml_region_space_t regionSpace);
+aml_bit_size_t aml_get_access_size(aml_bit_size_t bitSize, aml_access_type_t accessType,
+    aml_region_space_t regionSpace);
 
 /** @} */

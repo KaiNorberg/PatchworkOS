@@ -23,6 +23,7 @@
  * @param out Output pointer for the new buffer or string object containing the extracted portion.
  * @return An appropriate status value.
  */
-status_t aml_mid(aml_state_t* state, aml_object_t* bufferString, aml_uint_t index, aml_uint_t length, aml_object_t** out);
+status_t aml_mid(aml_state_t* state, aml_object_t* bufferString, aml_uint_t index, aml_uint_t length,
+    aml_object_t** out);
 
 /** @} */

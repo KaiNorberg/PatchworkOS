@@ -15,21 +15,22 @@ int main()
     status_t status = ioring_setup(&ring, NULL, SENTRIES, CENTRIES);
     if (IS_ERR(status))
     {
-        printf("failed to set up ring (%s, %s)\n", srctostr(ST_SRC(status)), codetostr(ST_CODE(status)));;
+        printf("failed to set up ring (%s, %s)\n", srctostr(ST_SRC(status)), codetostr(ST_CODE(status)));
+        ;
         return errno;
     }
 
     memset(&ring.ctrl->regs, -1, sizeof(ring.ctrl->regs));
 
-    printf("pushing nop sqe to ring %llu...\n", ring.id);
-    sqe_t* sqe = sqe_get(&ring);
-    sqe_prep_nop(sqe, SQE_HARDLINK, CLOCKS_PER_SEC, 0x1234);
-    sqe_put(&ring);
+    printf("pushing nop iosqe to ring %llu...\n", ring.id);
+    iosqe_t* iosqe = iosqe_get(&ring);
+    ioprep_nop(iosqe, IOSQE_HARDLINK, CLOCKS_PER_SEC, 0x1234);
+    iosqe_put(&ring);
 
-    printf("pushing nop sqe to ring %llu...\n", ring.id);
-    sqe = sqe_get(&ring);
-    sqe_prep_nop(sqe, SQE_NORMAL, CLOCKS_PER_SEC, 0x5678);
-    sqe_put(&ring);
+    printf("pushing nop iosqe to ring %llu...\n", ring.id);
+    iosqe = iosqe_get(&ring);
+    ioprep_nop(iosqe, IOSQE_NORMAL, CLOCKS_PER_SEC, 0x5678);
+    iosqe_put(&ring);
 
     printf("entering ring...\n");
     status = ioring_enter(&ring, 2, 0, NULL);
@@ -39,12 +40,12 @@ int main()
         return errno;
     }
 
-    printf("pushing cancel sqe to ring %llu...\n", ring.id);
-    sqe = sqe_get(&ring);
-    sqe_prep_cancel(sqe, SQE_NORMAL, CLOCKS_NEVER, 0x9012, 0x1234, IO_CANCEL_ALL);
-    sqe_put(&ring);
+    printf("pushing cancel iosqe to ring %llu...\n", ring.id);
+    iosqe = iosqe_get(&ring);
+    ioprep_cancel(iosqe, IOSQE_NORMAL, CLOCKS_NEVER, 0x9012, 0x1234, IOCANCEL_ALL);
+    iosqe_put(&ring);
 
-    printf("entering ring to submit cancel sqe...\n");
+    printf("entering ring to submit cancel iosqe...\n");
     status = ioring_enter(&ring, 1, 0, NULL);
     if (IS_ERR(status))
     {
@@ -55,21 +56,21 @@ int main()
     printf("sleeping for 5 seconds...\n");
     nanosleep(CLOCKS_PER_SEC * 5);
 
-    cqe_t* cqe;
-    while ((cqe = cqe_get(&ring)) != NULL)
+    iocqe_t* iocqe;
+    while ((iocqe = iocqe_get(&ring)) != NULL)
     {
-        printf("cqe:\n");
+        printf("iocqe:\n");
 
-        printf("cqe data: %p\n", cqe->data);
-        printf("cqe op: %d\n", cqe->op);
-        printf("cqe status: %s, %s\n", srctostr(ST_SRC(cqe->status)), codetostr(ST_CODE(cqe->status)));
-        printf("cqe result: %llu\n", cqe->_result);
+        printf("iocqe data: %p\n", iocqe->data);
+        printf("iocqe op: %d\n", iocqe->op);
+        printf("iocqe status: %Y\n", status);
+        printf("iocqe result: %llu\n", iocqe->_result);
 
-        cqe_put(&ring);
+        iocqe_put(&ring);
     }
 
     printf("registers:\n");
-    for (uint64_t i = 0; i < SQE_REGS_MAX; i++)
+    for (uint64_t i = 0; i < IOSQE_REGS_MAX; i++)
     {
         printf("reg[%llu]: %llu\n", i, ring.ctrl->regs[i]);
     }

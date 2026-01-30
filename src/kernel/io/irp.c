@@ -226,7 +226,7 @@ void irp_timeouts_check(void)
     lock_release(&ctx->lock);
 }
 
-status_t irp_get(irp_t** out, irp_pool_t* pool)
+status_t irp_get(irp_pool_t* pool, irp_t** out)
 {
     pool_idx_t idx = pool_alloc(&pool->pool);
     if (idx == POOL_IDX_MAX)
@@ -293,37 +293,6 @@ status_t irp_get_mdl(irp_t* irp, mdl_t** out, const void* addr, size_t size)
 
     *out = current;
     return OK;
-}
-
-void irp_call(irp_t* irp, vnode_t* vnode)
-{
-    assert(irp->frame > 0);
-    irp->frame--;
-
-    irp_frame_t* frame = irp_current(irp);
-    if (UNLIKELY(frame->major >= IRP_MJ_MAX))
-    {
-        irp_complete(irp, ERR(IO, MJ_OVERFLOW));
-        return;
-    }
-
-    if (vnode == NULL || vnode->vtable == NULL)
-    {
-        irp_complete(irp, ERR(IO, MJ_NOSYS));
-        return;
-    }
-
-    irp_func_t func = vnode->vtable->funcs[frame->major];
-    if (func == NULL)
-    {
-        irp_complete(irp, ERR(IO, MJ_NOSYS));
-        return;
-    }
-
-    atomic_store_explicit(&irp->cancel, NULL, memory_order_relaxed);
-    frame->vnode = REF(vnode);
-
-    func(irp);
 }
 
 void irp_call_direct(irp_t* irp, irp_func_t func)

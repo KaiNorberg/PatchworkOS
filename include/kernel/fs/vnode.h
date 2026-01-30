@@ -16,7 +16,6 @@
 typedef struct vnode vnode_t;
 typedef struct vnode_ops vnode_ops_t;
 typedef struct superblock superblock_t;
-typedef struct file_ops file_ops_t;
 typedef struct dentry dentry_t;
 
 /**
@@ -39,6 +38,21 @@ typedef struct dentry dentry_t;
  */
 
 /**
+ * @brief Vnode class structure.
+ * @struct vnode_class_t
+ *
+ * Defines the behavior and I/O handlers for a specific class of vnodes, for example a ext4 filesystem might have a
+ * "ext4 regular" class and a "ext4 directory" vnode class.
+ */
+typedef struct vnode_class
+{
+    const char* name; ///< The name of the class, used for debugging.
+    status_t (*file_ctor)(file_t* file); ///< File constructor.
+    void (*file_dtor)(file_t* file); ///< File destructor.
+    void (*handlers[IRP_MJ_MAX])(irp_t* irp); ///< IRP handlers indexed by major function number.
+} vnode_class_t;
+
+/**
  * @brief vnode structure.
  * @struct vnode_t
  *
@@ -53,8 +67,7 @@ typedef struct vnode
     uint64_t size;                 ///< Used for convenience by certain filesystems, does not represent the file size.
     superblock_t* superblock;
     const vnode_ops_t* ops;
-    const file_ops_t* fileOps;
-    const irp_vtable_t* vtable;
+    const vnode_class_t* cls;
     rcu_entry_t rcu;
     mutex_t mutex;
 } vnode_t;
@@ -149,10 +162,20 @@ typedef struct vnode_ops
  * @param superblock The superblock the vnode belongs to.
  * @param type The vnode type.
  * @param ops The vnode operations.
- * @param fileOps The file operations for files opened on this vnode.
+ * @param cls The vnode class defining I/O routines.
  * @return On success, the new vnode. On failure, returns `NULL`.
  */
-vnode_t* vnode_new(superblock_t* superblock, vtype_t type, const vnode_ops_t* ops, const file_ops_t* fileOps);
+vnode_t* vnode_new(superblock_t* superblock, vtype_t type, const vnode_ops_t* ops, const vnode_class_t* cls);
+
+/**
+ * @brief Send an IRP to a specified vnode.
+ *
+ * Will advance the IRP stack.
+ *
+ * @param vnode The vnode to associated with the next IRP stack frame.
+ * @param irp The IRP to send.
+ */
+void vnode_call(vnode_t* vnode, irp_t* irp);
 
 /**
  * @brief Truncate the vnode.

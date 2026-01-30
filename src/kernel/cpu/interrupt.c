@@ -5,9 +5,9 @@
 #include <kernel/cpu/ipi.h>
 #include <kernel/cpu/irq.h>
 #include <kernel/cpu/regs.h>
-#include <kernel/fs/key.h>
 #include <kernel/cpu/stack_pointer.h>
 #include <kernel/drivers/perf.h>
+#include <kernel/fs/key.h>
 #include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>

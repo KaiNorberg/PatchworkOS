@@ -38,7 +38,8 @@ static inline status_t ioring_ctx_map(ioring_ctx_t* ctx, process_t* process, ior
 {
     ioring_t* kernelRing = &ctx->ring;
 
-    size_t pageAmount = BYTES_TO_PAGES(sizeof(ioring_ctrl_t) + (sentries * sizeof(sqe_t)) + (centries * sizeof(cqe_t)));
+    size_t pageAmount =
+        BYTES_TO_PAGES(sizeof(ioring_ctrl_t) + (sentries * sizeof(iosqe_t)) + (centries * sizeof(iocqe_t)));
     if (pageAmount >= CONFIG_MAX_RINGS_PAGES)
     {
         return ERR(IO, TOOBIG);
@@ -93,26 +94,26 @@ static inline status_t ioring_ctx_map(ioring_ctx_t* ctx, process_t* process, ior
     atomic_init(&ctrl->stail, 0);
     atomic_init(&ctrl->ctail, 0);
     atomic_init(&ctrl->chead, 0);
-    for (size_t i = 0; i < SQE_REGS_MAX; i++)
+    for (size_t i = 0; i < IOSQE_REGS_MAX; i++)
     {
         atomic_init(&ctrl->regs[i], 0);
     }
 
     userRing->ctrl = userAddr;
     userRing->id = id;
-    userRing->squeue = (sqe_t*)((uintptr_t)userAddr + sizeof(ioring_ctrl_t));
+    userRing->squeue = (iosqe_t*)((uintptr_t)userAddr + sizeof(ioring_ctrl_t));
     userRing->sentries = sentries;
     userRing->smask = sentries - 1;
-    userRing->cqueue = (cqe_t*)((uintptr_t)userAddr + sizeof(ioring_ctrl_t) + (sentries * sizeof(sqe_t)));
+    userRing->cqueue = (iocqe_t*)((uintptr_t)userAddr + sizeof(ioring_ctrl_t) + (sentries * sizeof(iosqe_t)));
     userRing->centries = centries;
     userRing->cmask = centries - 1;
 
     kernelRing->ctrl = kernelAddr;
     kernelRing->id = id;
-    kernelRing->squeue = (sqe_t*)((uintptr_t)kernelAddr + sizeof(ioring_ctrl_t));
+    kernelRing->squeue = (iosqe_t*)((uintptr_t)kernelAddr + sizeof(ioring_ctrl_t));
     kernelRing->sentries = sentries;
     kernelRing->smask = sentries - 1;
-    kernelRing->cqueue = (cqe_t*)((uintptr_t)kernelAddr + sizeof(ioring_ctrl_t) + (sentries * sizeof(sqe_t)));
+    kernelRing->cqueue = (iocqe_t*)((uintptr_t)kernelAddr + sizeof(ioring_ctrl_t) + (sentries * sizeof(iosqe_t)));
     kernelRing->centries = centries;
     kernelRing->cmask = centries - 1;
 
@@ -136,7 +137,7 @@ static inline void ioring_ctx_unmap(ioring_ctx_t* ctx)
     atomic_fetch_and(&ctx->flags, ~IORING_CTX_MAPPED);
 }
 
-static inline uint64_t ioring_ctx_avail_cqes(ioring_ctx_t* ctx)
+static inline uint64_t ioring_ctx_avail_iocqes(ioring_ctx_t* ctx)
 {
     ioring_t* ring = &ctx->ring;
     uint32_t ctail = atomic_load_explicit(&ring->ctrl->ctail, memory_order_relaxed);
@@ -188,8 +189,8 @@ static void ioring_ctx_complete(irp_t* irp, void* _ptr)
     ioring_ctx_t* ctx = irp_get_ctx(irp);
     ioring_t* ring = &ctx->ring;
 
-    sqe_flags_t reg = (irp->sqe.flags >> SQE_SAVE) & SQE_REG_MASK;
-    if (reg != SQE_REG_NONE)
+    iosqe_flags_t reg = (irp->sqe.flags >> IOSQE_SAVE) & IOSQE_REG_MASK;
+    if (reg != IOSQE_REG_NONE)
     {
         atomic_store_explicit(&ring->ctrl->regs[reg - 1], irp->res._raw, memory_order_release);
     }
@@ -203,7 +204,7 @@ static void ioring_ctx_complete(irp_t* irp, void* _ptr)
         panic(NULL, "Async completion queue overflow");
     }
 
-    cqe_t* cqe = &ring->cqueue[tail & ring->cmask];
+    iocqe_t* cqe = &ring->cqueue[tail & ring->cmask];
     cqe->op = irp->sqe.op;
     cqe->status = irp->status;
     cqe->data = irp->sqe.data;
@@ -212,7 +213,7 @@ static void ioring_ctx_complete(irp_t* irp, void* _ptr)
     atomic_store_explicit(&ring->ctrl->ctail, tail + 1, memory_order_release);
     wait_unblock(&ctx->waitQueue, WAIT_ALL, EOK);
 
-    if (IS_ERR(irp->status) && !(irp->sqe.flags & SQE_HARDLINK))
+    if (IS_ERR(irp->status) && !(irp->sqe.flags & IOSQE_HARDLINK))
     {
         while (true)
         {
@@ -244,7 +245,7 @@ typedef struct
     irp_t* link;
 } ioring_ctx_notify_ctx_t;
 
-static status_t ioring_ctx_sqe_pop(ioring_ctx_t* ctx, ioring_ctx_notify_ctx_t* notify)
+static status_t ioring_ctx_iosqe_pop(ioring_ctx_t* ctx, ioring_ctx_notify_ctx_t* notify)
 {
     ioring_t* ring = &ctx->ring;
 
@@ -276,7 +277,7 @@ static status_t ioring_ctx_sqe_pop(ioring_ctx_t* ctx, ioring_ctx_notify_ctx_t* n
         list_push_back(&notify->irps, &irp->entry);
     }
 
-    if (irp->sqe.flags & SQE_LINK || irp->sqe.flags & SQE_HARDLINK)
+    if (irp->sqe.flags & IOSQE_LINK || irp->sqe.flags & IOSQE_HARDLINK)
     {
         notify->link = irp;
     }
@@ -311,7 +312,7 @@ status_t ioring_ctx_notify(ioring_ctx_t* ctx, size_t amount, size_t wait, size_t
     size_t count = 0;
     while (count < amount)
     {
-        status = ioring_ctx_sqe_pop(ctx, &notify);
+        status = ioring_ctx_iosqe_pop(ctx, &notify);
         if (IS_ERR(status))
         {
             break;
@@ -338,7 +339,7 @@ status_t ioring_ctx_notify(ioring_ctx_t* ctx, size_t amount, size_t wait, size_t
         return status;
     }
 
-    status_t waitStatus = WAIT_BLOCK(&ctx->waitQueue, ioring_ctx_avail_cqes(ctx) >= wait);
+    status_t waitStatus = WAIT_BLOCK(&ctx->waitQueue, ioring_ctx_avail_iocqes(ctx) >= wait);
     if (IS_ERR(waitStatus))
     {
         ioring_ctx_release(ctx);

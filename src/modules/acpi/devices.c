@@ -428,7 +428,8 @@ static status_t acpi_device_configure(const char* name)
                 status = irq_virt_alloc(&virt, phys, flags, NULL);
                 if (IS_ERR(status))
                 {
-                    LOG_ERR("failed to allocate virtual IRQ for ACPI device '%s' due to '%s'\n", name, codetostr(ST_CODE(status)));
+                    LOG_ERR("failed to allocate virtual IRQ for ACPI device '%s' due to '%s'\n", name,
+                        codetostr(ST_CODE(status)));
                     goto error;
                 }
 
@@ -463,7 +464,8 @@ static status_t acpi_device_configure(const char* name)
             status = port_reserve(&base, desc->minBase, desc->maxBase, desc->alignment, desc->length, name);
             if (IS_ERR(status))
             {
-                LOG_ERR("failed to reserve IO ports for ACPI device '%s' due to '%s'\n", name, codetostr(ST_CODE(status)));
+                LOG_ERR("failed to reserve IO ports for ACPI device '%s' due to '%s'\n", name,
+                    codetostr(ST_CODE(status)));
                 goto error;
             }
 

@@ -286,8 +286,7 @@ static void box_spawn(box_spawn_t* ctx)
         status = writes(ctl, "mount /:Lrwx /sys/fs/tmpfs", NULL);
         if (IS_ERR(status))
         {
-            snprintf(ctx->result, sizeof(ctx->result), "error due to root mount failure for '%s' %Y", args.box,
-                status);
+            snprintf(ctx->result, sizeof(ctx->result), "error due to root mount failure for '%s' %Y", args.box, status);
             goto error;
         }
     }
@@ -352,8 +351,7 @@ static void box_spawn(box_spawn_t* ctx)
         status = open(&wait, F("/proc/%llu/wait", pid));
         if (IS_ERR(status))
         {
-            snprintf(ctx->result, sizeof(ctx->result), "error due to wait open failure for '%s' %Y", args.box,
-                status);
+            snprintf(ctx->result, sizeof(ctx->result), "error due to wait open failure for '%s' %Y", args.box, status);
             goto error;
         }
 
@@ -362,8 +360,7 @@ static void box_spawn(box_spawn_t* ctx)
         if (IS_ERR(status))
         {
             close(wait);
-            snprintf(ctx->result, sizeof(ctx->result), "error due to wait share failure for '%s' %Y", args.box,
-                status);
+            snprintf(ctx->result, sizeof(ctx->result), "error due to wait share failure for '%s' %Y", args.box, status);
             goto error;
         }
         close(wait);

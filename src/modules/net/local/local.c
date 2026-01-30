@@ -228,7 +228,8 @@ static status_t local_socket_accept(socket_t* sock, socket_t* newSock, mode_t mo
             return ERR(PROTO, AGAIN);
         }
 
-        status_t status = WAIT_BLOCK_LOCK(&listen->waitQueue, &listen->lock, listen->isClosed || !list_is_empty(&listen->backlog));
+        status_t status =
+            WAIT_BLOCK_LOCK(&listen->waitQueue, &listen->lock, listen->isClosed || !list_is_empty(&listen->backlog));
         if (IS_ERR(status))
         {
             return status;
@@ -249,7 +250,8 @@ static status_t local_socket_accept(socket_t* sock, socket_t* newSock, mode_t mo
     return OK;
 }
 
-static status_t local_socket_send(socket_t* sock, const void* buffer, size_t count, size_t* offset, size_t* bytesSent, mode_t mode)
+static status_t local_socket_send(socket_t* sock, const void* buffer, size_t count, size_t* offset, size_t* bytesSent,
+    mode_t mode)
 {
     UNUSED(offset);
 
@@ -292,7 +294,8 @@ static status_t local_socket_send(socket_t* sock, const void* buffer, size_t cou
         {
             return ERR(PROTO, AGAIN);
         }
-        status_t status = WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock, conn->isClosed || fifo_bytes_writeable(ring) >= totalSize);
+        status_t status =
+            WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock, conn->isClosed || fifo_bytes_writeable(ring) >= totalSize);
         if (IS_ERR(status))
         {
             return status;
@@ -311,7 +314,8 @@ static status_t local_socket_send(socket_t* sock, const void* buffer, size_t cou
     return OK;
 }
 
-static status_t local_socket_recv(socket_t* sock, void* buffer, size_t count, size_t* offset, size_t* bytesReceived, mode_t mode)
+static status_t local_socket_recv(socket_t* sock, void* buffer, size_t count, size_t* offset, size_t* bytesReceived,
+    mode_t mode)
 {
     UNUSED(offset);
 
@@ -343,7 +347,7 @@ static status_t local_socket_recv(socket_t* sock, void* buffer, size_t count, si
             return ERR(PROTO, AGAIN);
         }
         status_t status = WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
-                conn->isClosed || fifo_bytes_readable(ring) >= sizeof(local_packet_header_t));
+            conn->isClosed || fifo_bytes_readable(ring) >= sizeof(local_packet_header_t));
         if (IS_ERR(status))
         {
             return status;

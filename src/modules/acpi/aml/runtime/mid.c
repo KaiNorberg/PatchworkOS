@@ -1,6 +1,7 @@
 #include <kernel/acpi/aml/runtime/mid.h>
 
-status_t aml_mid(aml_state_t* state, aml_object_t* bufferString, aml_uint_t index, aml_uint_t length, aml_object_t** out)
+status_t aml_mid(aml_state_t* state, aml_object_t* bufferString, aml_uint_t index, aml_uint_t length,
+    aml_object_t** out)
 {
     if (state == NULL || bufferString == NULL || (bufferString->type != AML_BUFFER && bufferString->type != AML_STRING))
     {

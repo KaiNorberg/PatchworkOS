@@ -1,7 +1,7 @@
 #pragma once
 
-#include <stdint.h>
 #include <patchwork/patchwork.h>
+#include <stdint.h>
 
 /**
  * @brief Box Manifest Files.

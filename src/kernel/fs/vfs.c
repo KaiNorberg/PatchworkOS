@@ -10,6 +10,8 @@
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vnode.h>
+#include <kernel/io/io.h>
+#include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
@@ -243,19 +245,40 @@ status_t vfs_openat(file_t** out, const path_t* from, const pathname_t* pathname
     return OK;
 }
 
+typedef struct
+{
+    wait_queue_t wait;
+    status_t status;
+    uint64_t result;
+    atomic_bool done;
+} vfs_sync_ctx_t;
+
+static void vfs_sync_complete(irp_t* irp, void* _ctx)
+{
+    vfs_sync_ctx_t* ctx = (vfs_sync_ctx_t*)_ctx;
+    ctx->status = irp->status;
+    ctx->result = irp->res._raw;
+    atomic_store(&ctx->done, true);
+    wait_unblock(&ctx->wait, WAIT_ALL, OK);
+}
+
+static status_t vfs_run_sync(irp_t* irp, vnode_t* vnode, uint64_t* result)
+{
+    vfs_sync_ctx_t ctx;
+    wait_queue_init(&ctx.wait);
+    atomic_init(&ctx.done, false);
+
+    irp_set_complete(irp, vfs_sync_complete, &ctx);
+    irp_call(irp, vnode);
+
+    WAIT_BLOCK(&ctx.wait, atomic_load(&ctx.done));
+    *result = ctx.result;
+    return ctx.status;
+}
+
 status_t vfs_read(file_t* file, void* buffer, size_t count, size_t* out)
 {
     if (file == NULL || buffer == NULL)
-    {
-        return ERR(VFS, INVAL);
-    }
-
-    if (file->vnode->type == VDIR)
-    {
-        return ERR(VFS, ISDIR);
-    }
-
-    if (file->ops == NULL || file->ops->read == NULL)
     {
         return ERR(VFS, INVAL);
     }
@@ -265,21 +288,42 @@ status_t vfs_read(file_t* file, void* buffer, size_t count, size_t* out)
         return ERR(VFS, BADFD);
     }
 
-
-    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    size_t offset = file->pos;
-    size_t bytesRead;
-    status_t status = file->ops->read(file, buffer, count, &offset, &bytesRead);
-    if (IS_OK(status))
+    if (file->vnode->type == VDIR)
     {
-        file->pos = offset;
+        return ERR(VFS, ISDIR);
     }
 
+    irp_pool_t* pool = NULL;
+    status_t status = irp_pool_new(&pool, 4, process_current(), NULL);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+
+    irp_t* irp = NULL;
+    status = irp_get(pool, &irp);
+    if (IS_ERR(status))
+    {
+        irp_pool_free(pool);
+        return status;
+    }
+
+    mdl_t* mdl;
+    status = irp_get_mdl(irp, &mdl, buffer, count);
+    if (IS_ERR(status))
+    {
+        irp_complete(irp, status);
+        irp_pool_free(pool);
+        return status;
+    }
+
+    irp_prep_read(irp, file, mdl, count, IOOFF_CUR);
+    uint64_t result = 0;
+    status = vfs_run_sync(irp, file->vnode, &result);
     if (out != NULL)
     {
-        *out = bytesRead;
+        *out = result;
     }
-
     return status;
 }
 
@@ -290,44 +334,47 @@ status_t vfs_write(file_t* file, const void* buffer, size_t count, size_t* out)
         return ERR(VFS, INVAL);
     }
 
-    if (file->vnode->type == VDIR)
-    {
-        return ERR(VFS, ISDIR);
-    }
-
-    if (file->ops == NULL || file->ops->write == NULL)
-    {
-        return ERR(VFS, INVAL);
-    }
-
-    if (file->mode & MODE_APPEND)
-    {
-        size_t newPos;
-        if (file->ops->seek != NULL && IS_ERR(file->ops->seek(file, 0, SEEK_END, &newPos)))
-        {
-            return ERR(VFS, IO);
-        }
-    }
-
     if (!(file->mode & MODE_WRITE))
     {
         return ERR(VFS, BADFD);
     }
 
-    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    size_t offset = file->pos;
-    size_t bytesWritten;
-    status_t status = file->ops->write(file, buffer, count, &offset, &bytesWritten);
-    if (IS_OK(status))
+    if (file->vnode->type == VDIR)
     {
-        file->pos = offset;
+        return ERR(VFS, ISDIR);
     }
 
+    irp_pool_t* pool = NULL;
+    status_t status = irp_pool_new(&pool, 4, process_current(), NULL);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+
+    irp_t* irp = NULL;
+    status = irp_get(pool, &irp);
+    if (IS_ERR(status))
+    {
+        irp_pool_free(pool);
+        return status;
+    }
+
+    mdl_t* mdl;
+    status = irp_get_mdl(irp, &mdl, buffer, count);
+    if (IS_ERR(status))
+    {
+        irp_complete(irp, status);
+        irp_pool_free(pool);
+        return status;
+    }
+
+    irp_prep_write(irp, file, mdl, count, IOOFF_CUR);
+    uint64_t result = 0;
+    status = vfs_run_sync(irp, file->vnode, &result);
     if (out != NULL)
     {
-        *out = bytesWritten;
+        *out = result;
     }
-
     return status;
 }
 
@@ -351,27 +398,6 @@ status_t vfs_seek(file_t* file, ssize_t offset, seek_origin_t origin, size_t* ou
     }
 
     return ERR(VFS, SPIPE);
-}
-
-status_t vfs_ioctl(file_t* file, uint64_t request, void* argp, size_t size, uint64_t* result)
-{
-    if (file == NULL || result == NULL)
-    {
-        return ERR(VFS, INVAL);
-    }
-
-    if (file->vnode->type == VDIR)
-    {
-        return ERR(VFS, ISDIR);
-    }
-
-    if (file->ops == NULL || file->ops->ioctl == NULL)
-    {
-        return ERR(VFS, NOTTY);
-    }
-
-    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    return file->ops->ioctl(file, request, argp, size, result);
 }
 
 status_t vfs_mmap(file_t* file, void** addr, size_t length, pml_flags_t flags)
@@ -403,149 +429,80 @@ status_t vfs_mmap(file_t* file, void** addr, size_t length, pml_flags_t flags)
 
 typedef struct
 {
-    wait_queue_t* queues[CONFIG_MAX_FD];
-    uint16_t lookupTable[CONFIG_MAX_FD];
-    uint16_t queueAmount;
+    wait_queue_t wait;
+    atomic_size_t triggered;
+    atomic_size_t completed;
 } vfs_poll_ctx_t;
 
-static status_t vfs_poll_ctx_init(vfs_poll_ctx_t* ctx, poll_file_t* files, uint64_t amount)
+static void vfs_poll_complete(irp_t* irp, void* _ctx)
 {
-    memset(ctx->queues, 0, sizeof(wait_queue_t*) * CONFIG_MAX_FD);
-    memset(ctx->lookupTable, 0, sizeof(uint16_t) * CONFIG_MAX_FD);
-    ctx->queueAmount = 0;
-
-    for (uint64_t i = 0; i < amount; i++)
+    vfs_poll_ctx_t* ctx = _ctx;
+    if (IS_OK(irp->status))
     {
-        files[i].revents = POLLNONE;
-        wait_queue_t* queue = NULL;
-        if (IS_ERR(files[i].file->ops->poll(files[i].file, &files[i].revents, &queue)))
-        {
-            return ERR(VFS, IO);
-        }
-
-        // Avoid duplicate queues.
-        bool found = false;
-        for (uint16_t j = 0; j < ctx->queueAmount; j++)
-        {
-            if (ctx->queues[j] == queue)
-            {
-                found = true;
-                ctx->lookupTable[i] = j;
-                break;
-            }
-        }
-
-        if (!found)
-        {
-            ctx->queues[ctx->queueAmount] = queue;
-            ctx->lookupTable[i] = ctx->queueAmount;
-            ctx->queueAmount++;
-        }
+        atomic_fetch_add(&ctx->triggered, 1);
     }
-
-    return OK;
-}
-
-static status_t vfs_poll_ctx_check_events(vfs_poll_ctx_t* ctx, poll_file_t* files, uint64_t amount, size_t* readyCount)
-{
-    *readyCount = 0;
-
-    for (uint64_t i = 0; i < amount; i++)
-    {
-        poll_events_t revents = POLLNONE;
-        wait_queue_t* queue = NULL;
-        if (IS_ERR(files[i].file->ops->poll(files[i].file, &revents, &queue)))
-        {
-            return ERR(VFS, IO);
-        }
-
-        files[i].revents = (revents & (files[i].events | POLL_SPECIAL));
-
-        if (queue != NULL && queue != ctx->queues[ctx->lookupTable[i]])
-        {
-            return ERR(VFS, IMPL);
-        }
-
-        if ((files[i].revents & (files[i].events | POLL_SPECIAL)) != 0)
-        {
-            (*readyCount)++;
-        }
-    }
-
-    return OK;
+    atomic_fetch_add(&ctx->completed, 1);
+    wait_unblock(&ctx->wait, WAIT_ALL, OK);
 }
 
 status_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout, size_t* readyCount)
 {
-    if (files == NULL || amount == 0 || amount > CONFIG_MAX_FD || readyCount == NULL)
+    if (files == NULL || amount == 0 || readyCount == NULL)
     {
         return ERR(VFS, INVAL);
     }
 
-    for (uint64_t i = 0; i < amount; i++)
-    {
-        if (files[i].file == NULL)
-        {
-            return ERR(VFS, INVAL);
-        }
-
-        if (files[i].file->vnode->type == VDIR)
-        {
-            return ERR(VFS, ISDIR);
-        }
-
-        if (files[i].file->ops == NULL || files[i].file->ops->poll == NULL)
-        {
-            return ERR(VFS, IMPL);
-        }
-    }
-
-    vfs_poll_ctx_t ctx;
-    status_t status = vfs_poll_ctx_init(&ctx, files, amount);
+    irp_pool_t* pool = NULL;
+    status_t status = irp_pool_new(&pool, amount, process_current(), NULL);
     if (IS_ERR(status))
     {
         return status;
     }
 
-    clock_t uptime = clock_uptime();
-    clock_t deadline = CLOCKS_DEADLINE(timeout, uptime);
+    vfs_poll_ctx_t ctx;
+    wait_queue_init(&ctx.wait);
+    atomic_init(&ctx.triggered, 0);
+    atomic_init(&ctx.completed, 0);
 
-    *readyCount = 0;
-    while (true)
+    for (uint64_t i = 0; i < amount; i++)
     {
-        uptime = clock_uptime();
-        clock_t remaining = CLOCKS_REMAINING(deadline, uptime);
+        irp_t* irp = NULL;
+        irp_get(pool, &irp);
 
-        status = wait_block_prepare(ctx.queues, ctx.queueAmount, remaining);
-        if (IS_ERR(status))
+        irp->sqe.data = i;
+        irp_prep_poll(irp, files[i].file, files[i].events);
+        irp_set_complete(irp, vfs_poll_complete, &ctx);
+
+        if (timeout != CLOCKS_NEVER)
         {
-            return status;
+            irp_timeout_add(irp, timeout);
         }
 
-        status = vfs_poll_ctx_check_events(&ctx, files, amount, readyCount);
-        if (IS_ERR(status))
-        {
-            wait_block_cancel();
-            return status;
-        }
+        irp_call(irp, files[i].file->vnode);
+    }
 
-        if (*readyCount > 0 || uptime >= deadline)
-        {
-            wait_block_cancel();
-            break;
-        }
+    WAIT_BLOCK(&ctx.wait, atomic_load(&ctx.triggered) > 0 || atomic_load(&ctx.completed) == amount);
 
-        status = wait_block_commit();
-        if (IS_ERR(status))
+    irp_pool_cancel_all(pool);
+
+    size_t ready = 0;
+    for (size_t i = 0; i < amount; i++)
+    {
+        irp_t* irp = &pool->irps[i];
+        uint64_t idx = irp->sqe.data;
+        if (IS_OK(irp->status))
         {
-            if (IS_CODE(status, TIMEOUT))
-            {
-                break;
-            }
-            return status;
+            files[idx].revents = (poll_events_t)irp->res._raw;
+            ready++;
+        }
+        else
+        {
+            files[idx].revents = 0;
         }
     }
 
+    *readyCount = ready;
+    irp_pool_free(pool);
     return OK;
 }
 
@@ -746,12 +703,14 @@ static status_t vfs_remove_recursive(path_t* path, process_t* process)
 
     while (true)
     {
-        vfs_dir_ctx_t vctx = {.ctx = {.emit = vfs_dir_emit, .pos = offset},
+        vfs_dir_ctx_t vctx = {
+            .ctx = {.emit = vfs_dir_emit, .pos = offset},
             .buffer = buf,
             .count = bufSize,
             .written = 0,
             .path = *path,
-            .ns = process_get_ns(process),};
+            .ns = process_get_ns(process),
+        };
         if (vctx.ns == NULL)
         {
             return ERR(VFS, DYING);
@@ -1378,33 +1337,6 @@ SYSCALL_DEFINE(SYS_SEEK, fd_t fd, ssize_t offset, seek_origin_t origin)
     if (IS_OK(status))
     {
         *_result = newPos;
-    }
-    return status;
-}
-
-SYSCALL_DEFINE(SYS_IOCTL, fd_t fd, uint64_t request, void* argp, size_t size)
-{
-    thread_t* thread = thread_current();
-    process_t* process = thread->process;
-
-    file_t* file = file_table_get(&process->files, fd);
-    if (file == NULL)
-    {
-        return ERR(VFS, BADFD);
-    }
-    UNREF_DEFER(file);
-
-    status_t status = space_pin(&process->space, argp, size, &thread->userStack);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-    uint64_t ioctlResult = 0;
-    status = vfs_ioctl(file, request, argp, size, &ioctlResult);
-    space_unpin(&process->space, argp, size);
-    if (IS_OK(status))
-    {
-        *_result = ioctlResult;
     }
     return status;
 }

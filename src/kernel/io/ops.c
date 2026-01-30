@@ -30,7 +30,7 @@ static void io_op_cancel(irp_t* irp)
             continue;
         }
 
-        if (target->sqe.data != irp->sqe.target && !(irp->sqe.cancel & IO_CANCEL_ANY))
+        if (target->sqe.data != irp->sqe.target && !(irp->sqe.cancel & IOCANCEL_ANY))
         {
             continue;
         }
@@ -40,7 +40,7 @@ static void io_op_cancel(irp_t* irp)
             count++;
         }
 
-        if (!(irp->sqe.cancel & IO_CANCEL_ALL))
+        if (!(irp->sqe.cancel & IOCANCEL_ALL))
         {
             break;
         }
@@ -61,6 +61,20 @@ static void io_op_read(irp_t* irp)
         return;
     }
 
+    if (!(file->mode & MODE_READ))
+    {
+        UNREF(file);
+        irp_complete(irp, EBADF);
+        return;
+    }
+
+    if (file->vnode->type == VDIR)
+    {
+        UNREF(file);
+        irp_complete(irp, EISDIR);
+        return;
+    }
+
     mdl_t* mdl;
     status_t status = irp_get_mdl(irp, &mdl, irp->sqe.buffer, irp->sqe.count);
     if (IS_ERR(status))
@@ -70,7 +84,7 @@ static void io_op_read(irp_t* irp)
         return;
     }
 
-    irp_prep_read(irp, file, mdl, irp->sqe.count, irp->sqe.offset == IO_OFF_CUR ? file->pos : (size_t)irp->sqe.offset);
+    irp_prep_read(irp, file, mdl, irp->sqe.count, irp->sqe.offset == IOOFF_CUR ? file->pos : (size_t)irp->sqe.offset);
     irp_call(irp, file->vnode);
 }
 
@@ -85,6 +99,20 @@ static void io_op_write(irp_t* irp)
         return;
     }
 
+    if (!(file->mode & MODE_WRITE))
+    {
+        UNREF(file);
+        irp_complete(irp, EBADF);
+        return;
+    }
+
+    if (file->vnode->type == VDIR)
+    {
+        UNREF(file);
+        irp_complete(irp, EISDIR);
+        return;
+    }
+
     mdl_t* mdl;
     status_t status = irp_get_mdl(irp, &mdl, irp->sqe.buffer, irp->sqe.count);
     if (IS_ERR(status))
@@ -94,7 +122,7 @@ static void io_op_write(irp_t* irp)
         return;
     }
 
-    irp_prep_write(irp, file, mdl, irp->sqe.count, irp->sqe.offset == IO_OFF_CUR ? file->pos : (size_t)irp->sqe.offset);
+    irp_prep_write(irp, file, mdl, irp->sqe.count, irp->sqe.offset == IOOFF_CUR ? file->pos : (size_t)irp->sqe.offset);
     irp_call(irp, file->vnode);
 }
 
@@ -115,12 +143,12 @@ static void io_op_poll(irp_t* irp)
 
 typedef void (*io_op_func_t)(irp_t*);
 
-static const io_op_func_t ops[IO_OP_MAX] = {
-    [IO_OP_NOP] = io_op_nop,
-    [IO_OP_CANCEL] = io_op_cancel,
-    [IO_OP_READ] = io_op_read,
-    [IO_OP_WRITE] = io_op_write,
-    [IO_OP_POLL] = io_op_poll,
+static const io_op_func_t ops[IOOP_MAX] = {
+    [IOOP_NOP] = io_op_nop,
+    [IOOP_CANCEL] = io_op_cancel,
+    [IOOP_READ] = io_op_read,
+    [IOOP_WRITE] = io_op_write,
+    [IOOP_POLL] = io_op_poll,
 };
 
 void io_op_dispatch(irp_t* irp)
@@ -128,32 +156,32 @@ void io_op_dispatch(irp_t* irp)
     ioring_ctx_t* ctx = irp_get_ctx(irp);
     ioring_t* ring = &ctx->ring;
 
-    sqe_flags_t reg = (irp->sqe.flags >> SQE_LOAD0) & SQE_REG_MASK;
-    if (reg != SQE_REG_NONE)
+    iosqe_flags_t reg = (irp->sqe.flags >> IOSQE_LOAD0) & IOSQE_REG_MASK;
+    if (reg != IOSQE_REG_NONE)
     {
         irp->sqe.arg0 = atomic_load_explicit(&ring->ctrl->regs[reg - 1], memory_order_acquire);
     }
 
-    reg = (irp->sqe.flags >> SQE_LOAD1) & SQE_REG_MASK;
-    if (reg != SQE_REG_NONE)
+    reg = (irp->sqe.flags >> IOSQE_LOAD1) & IOSQE_REG_MASK;
+    if (reg != IOSQE_REG_NONE)
     {
         irp->sqe.arg1 = atomic_load_explicit(&ring->ctrl->regs[reg - 1], memory_order_acquire);
     }
 
-    reg = (irp->sqe.flags >> SQE_LOAD2) & SQE_REG_MASK;
-    if (reg != SQE_REG_NONE)
+    reg = (irp->sqe.flags >> IOSQE_LOAD2) & IOSQE_REG_MASK;
+    if (reg != IOSQE_REG_NONE)
     {
         irp->sqe.arg2 = atomic_load_explicit(&ring->ctrl->regs[reg - 1], memory_order_acquire);
     }
 
-    reg = (irp->sqe.flags >> SQE_LOAD3) & SQE_REG_MASK;
-    if (reg != SQE_REG_NONE)
+    reg = (irp->sqe.flags >> IOSQE_LOAD3) & IOSQE_REG_MASK;
+    if (reg != IOSQE_REG_NONE)
     {
         irp->sqe.arg3 = atomic_load_explicit(&ring->ctrl->regs[reg - 1], memory_order_acquire);
     }
 
-    reg = (irp->sqe.flags >> SQE_LOAD4) & SQE_REG_MASK;
-    if (reg != SQE_REG_NONE)
+    reg = (irp->sqe.flags >> IOSQE_LOAD4) & IOSQE_REG_MASK;
+    if (reg != IOSQE_REG_NONE)
     {
         irp->sqe.arg4 = atomic_load_explicit(&ring->ctrl->regs[reg - 1], memory_order_acquire);
     }
