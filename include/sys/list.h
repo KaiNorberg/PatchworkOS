@@ -194,7 +194,7 @@ static inline void list_init(list_t* list)
  * @param entry A pointer to the `list_entry_t` to check.
  * @return `true` if the entry is in a list, `false` otherwise.
  */
-static inline bool list_entry_in_list(list_entry_t* entry)
+static inline bool list_contains(list_entry_t* entry)
 {
     assert(entry != NULL);
 
@@ -485,6 +485,48 @@ static inline uint64_t list_size(list_t* list)
         entry = entry->next;
     }
     return size;
+}
+
+/**
+ * @brief Remove an element from its current list and add it into another list.
+ *
+ * @param dest The destination list.
+ * @param entry The entry to remove.
+ */
+static inline void list_move(list_t* dest, list_entry_t* entry)
+{
+    list_remove(entry);
+    list_push_back(dest, entry);
+}
+
+/**
+ * @brief Moves all elements from one list to the end of another.
+ *
+ * @param dest The destination list.
+ * @param src The source list.
+ */
+static inline void list_move_all(list_t* dest, list_t* src)
+{
+    assert(dest != NULL);
+    assert(src != NULL);
+
+    if (list_is_empty(src))
+    {
+        return;
+    }
+
+    list_entry_t* first = src->head.next;
+    list_entry_t* last = src->head.prev;
+    list_entry_t* at = &dest->head;
+    list_entry_t* prev = at->prev;
+
+    first->prev = prev;
+    prev->next = first;
+
+    last->next = at;
+    at->prev = last;
+
+    list_init(src);
 }
 
 #endif

@@ -13,7 +13,6 @@
 typedef struct wait_queue wait_queue_t;
 
 typedef struct file file_t;
-typedef struct file_ops file_ops_t;
 typedef struct dentry dentry_t;
 typedef struct vnode vnode_t;
 typedef struct poll_file poll_file_t;
@@ -24,7 +23,10 @@ typedef struct poll_file poll_file_t;
  * @ingroup kernel_fs
  *
  * A file is the underlying type of a file descriptor. Note that internally the kernel does not use file descriptors,
- * they are simply a per-process handle to a file. The kernel uses files directly.
+ * they are simply a per-process handle to a file.
+ *
+ * @note Files are distinct from "regular files". A file is simply any object that can be interacted with using standard
+ * file operations (read, write, etc.). A regular file is a specific type of file that exists on a filesystem.
  *
  * @{
  */
@@ -43,9 +45,6 @@ typedef struct file
     mode_t mode;
     vnode_t* vnode;
     path_t path;
-    status_t (*open)(file_t* file);
-    status_t (*open2)(file_t* files[2]);
-    void (*close)(file_t* file);
     void* data;
 } file_t;
 

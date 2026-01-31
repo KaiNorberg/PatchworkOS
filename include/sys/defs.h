@@ -159,6 +159,14 @@
  */
 #define ASM(...) __asm__ volatile(__VA_ARGS__)
 
+/**
+ * @brief GCC warn_unused_result function attribute.
+ *
+ * Tells the compiler to emit a warning if the return value of the function is not used.
+ *
+ */
+#define WARN_UNUSED_RESULT __attribute__((warn_unused_result))
+
 /** @} */
 
 #endif

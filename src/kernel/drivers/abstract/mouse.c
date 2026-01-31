@@ -78,7 +78,6 @@ static void mouse_events_file_dtor(file_t* file)
 static void mouse_events_read(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
-    
 }
 
 /*static status_t mouse_events_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
@@ -137,11 +136,7 @@ static vnode_class_t eventsClass = {
     .name = "mouse events",
     .file_ctor = mouse_events_file_ctor,
     .file_dtor = mouse_events_file_dtor,
-    .handlers =
-        {
-            [IRP_MJ_READ] = mouse_events_read,
-            [IRP_MJ_POLL] = mouse_events_poll
-        },
+    .handlers = {[IRP_MJ_READ] = mouse_events_read, [IRP_MJ_POLL] = mouse_events_poll},
 };
 
 static void mouse_dir_cleanup(vnode_t* vnode)

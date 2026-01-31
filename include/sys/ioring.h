@@ -41,8 +41,8 @@ typedef uint64_t iowhence_t; ///< Seek origin type.
 #define IOSEEK_CUR (3)       ///< Use the current file offset.
 
 typedef uint64_t ioevents_t;  ///< Poll events type.
-#define IOPOLL_READ (1 << 0)  ///< File descriptor is ready to read.
-#define IOPOLL_WRITE (1 << 1) ///< File descriptor is ready to write
+#define IOPOLL_READ (1 << 0)  ///< File descriptor is ready to be read from.
+#define IOPOLL_WRITE (1 << 1) ///< File descriptor is ready to be written to.
 #define IOPOLL_ERROR (1 << 2) ///< File descriptor caused an error.
 #define IOPOLL_HUP (1 << 3)   ///< File descriptor is closed.
 #define IOPOLL_NVAL (1 << 4)  ///< Invalid file descriptor.
@@ -90,17 +90,19 @@ typedef uint64_t iocancel_t;  ///< Cancel operation flags.
 #define IOCANCEL_ANY (1 << 1) ///< Match any user data.
 
 typedef uint32_t iosqe_flags_t; ///< Submission queue entry (SQE) flags.
-#define IOSQE_REG_NONE (0)      ///< No register.
-#define IOSQE_REG0 (1)          ///< The first register.
-#define IOSQE_REG1 (2)          ///< The second register.
-#define IOSQE_REG2 (3)          ///< The third register.
-#define IOSQE_REG3 (4)          ///< The fourth register.
-#define IOSQE_REG4 (5)          ///< The fifth register.
-#define IOSQE_REG5 (6)          ///< The sixth register.
-#define IOSQE_REG6 (7)          ///< The seventh register.
-#define IOSQE_REGS_MAX (7)      ///< The maximum number of registers.
-#define IOSQE_REG_SHIFT (3)     ///< The bitshift for each register specifier in a `iosqe_flags_t`.
-#define IOSQE_REG_MASK (0b111)  ///< The bitmask for a register specifier in a `iosqe_flags_t`.
+#define IOSQE_NORMAL 0          ///< Default behaviour flags.
+
+#define IOSQE_REG_NONE (0)     ///< No register.
+#define IOSQE_REG0 (1)         ///< The first register.
+#define IOSQE_REG1 (2)         ///< The second register.
+#define IOSQE_REG2 (3)         ///< The third register.
+#define IOSQE_REG3 (4)         ///< The fourth register.
+#define IOSQE_REG4 (5)         ///< The fifth register.
+#define IOSQE_REG5 (6)         ///< The sixth register.
+#define IOSQE_REG6 (7)         ///< The seventh register.
+#define IOSQE_REGS_MAX (7)     ///< The maximum number of registers.
+#define IOSQE_REG_SHIFT (3)    ///< The bitshift for each register specifier in a `iosqe_flags_t`.
+#define IOSQE_REG_MASK (0b111) ///< The bitmask for a register specifier in a `iosqe_flags_t`.
 
 #define IOSQE_LOAD0 (0) ///< The offset to specify the register to load into the first argument.
 #define IOSQE_LOAD1 \
@@ -114,8 +116,6 @@ typedef uint32_t iosqe_flags_t; ///< Submission queue entry (SQE) flags.
 #define IOSQE_SAVE (IOSQE_LOAD4 + IOSQE_REG_SHIFT) ///< The offset to specify the register to save the result into.
 
 #define _IOSQE_FLAGS (IOSQE_SAVE + IOSQE_REG_SHIFT) ///< The bitshift for where bit flags start in a `iosqe_flags_t`.
-
-#define IOSQE_NORMAL 0 ///< Default behaviour flags.
 
 /**
  * Only process the next SQE when this one completes successfully) only applies within one `enter()` call.
@@ -137,7 +137,11 @@ typedef uint32_t iosqe_flags_t; ///< Submission queue entry (SQE) flags.
  */
 typedef struct iosqe
 {
-    clock_t timeout;     ///< Timeout for the operation, `CLOCKS_NEVER` for no timeout.
+    /**
+     * Timeout for the operation, `CLOCKS_NEVER` for no timeout, or `0` to fail the operation if it cannot be completed
+     * immediately.
+     */
+    clock_t timeout;
     uintptr_t data;      ///< Private data for the operation, will be returned in the completion entry.
     ioop_t op;           ///< The operation to perform.
     iosqe_flags_t flags; ///< Submission flags.

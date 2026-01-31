@@ -14,7 +14,6 @@
 #include <time.h>
 
 typedef struct vnode vnode_t;
-typedef struct vnode_ops vnode_ops_t;
 typedef struct superblock superblock_t;
 typedef struct dentry dentry_t;
 
@@ -46,10 +45,96 @@ typedef struct dentry dentry_t;
  */
 typedef struct vnode_class
 {
-    const char* name; ///< The name of the class, used for debugging.
-    status_t (*file_ctor)(file_t* file); ///< File constructor.
-    void (*file_dtor)(file_t* file); ///< File destructor.
+    const char* name;                         ///< The name of the class, used for debugging.
+    status_t (*file_ctor)(file_t* file);      ///< File constructor.
+    void (*file_dtor)(file_t* file);          ///< File destructor.
     void (*handlers[IRP_MJ_MAX])(irp_t* irp); ///< IRP handlers indexed by major function number.
+
+    /**
+     * @brief Look up a dentry in a directory vnode.
+     *
+     * Should set the target dentry to be positive (give it an vnode), if the entry does not exist the operation
+     * should still return success but leave the dentry negative.
+     *
+     * @param dir The directory vnode to look in.
+     * @param target The dentry to look up.
+     * @return An appropriate status value.
+     *
+     * @deprecated Should be replaced as part of the async refactor.
+     */
+    status_t (*lookup)(vnode_t* dir, dentry_t* target);
+    /**
+     * @brief Handles both directories and files depending on mode.
+     *
+     * Takes in a negative dentry and creates the corresponding vnode to make the dentry positive.
+     *
+     * @param dir The directory vnode to create the entry in.
+     * @param target The negative dentry to create.
+     * @param mode The mode to create the entry with.
+     * @return An appropriate status value.
+     *
+     * @deprecated Should be replaced as part of the async refactor.
+     */
+    status_t (*create)(vnode_t* dir, dentry_t* target, mode_t mode);
+    /**
+     * @brief Set the vnode size to zero.
+     *
+     * @param target The vnode to truncate.
+     *
+     * @deprecated Should be replaced as part of the async refactor.
+     */
+    void (*truncate)(vnode_t* target);
+    /**
+     * @brief Make the same file vnode appear twice in the filesystem.
+     *
+     * @param dir The directory vnode to create the link in.
+     * @param old The existing dentry containing the vnode to link to.
+     * @param new The negative dentry to store the same vnode as old.
+     * @return An appropriate status value.
+     *
+     * @deprecated Should be replaced as part of the async refactor.
+     */
+    status_t (*link)(vnode_t* dir, dentry_t* old, dentry_t* new);
+    /**
+     * @brief Retrieve the path of the symbolic link.
+     *
+     * @param vnode The symbolic link vnode.
+     * @param buffer The buffer to store the path in.
+     * @param size The size of the buffer.
+     * @return An appropriate status value.
+     *
+     * @deprecated Should be replaced as part of the async refactor.
+     */
+    status_t (*readlink)(vnode_t* vnode, char* buffer, size_t size, size_t* bytesRead);
+    /**
+     * @brief Create a symbolic link.
+     *
+     * @param dir The directory vnode to create the symbolic link in.
+     * @param target The negative dentry to create.
+     * @param dest The path to which the symbolic link will point.
+     * @return An appropriate status value.
+     *
+     * @deprecated Should be replaced as part of the async refactor.
+     */
+    status_t (*symlink)(vnode_t* dir, dentry_t* target, const char* dest);
+    /**
+     * @brief Remove a file or directory.
+     *
+     * @param dir The directory vnode containing the target.
+     * @param target The dentry to remove.
+     * @return An appropriate status value.
+     *
+     * @deprecated Should be replaced as part of the async refactor.
+     */
+    status_t (*remove)(vnode_t* dir, dentry_t* target);
+    /**
+     * @brief Cleanup function called when the vnode is being freed.
+     *
+     * @param vnode The vnode being freed.
+     *
+     * @deprecated Should be replaced as part of the async refactor.
+     */
+    void (*cleanup)(vnode_t* vnode);
 } vnode_class_t;
 
 /**
@@ -73,85 +158,6 @@ typedef struct vnode
 } vnode_t;
 
 /**
- * @brief vnode operations structure.
- * @struct vnode_ops_t
- *
- * Note that the vnodes mutex will be acquired by the vfs.
- */
-typedef struct vnode_ops
-{
-    /**
-     * @brief Look up a dentry in a directory vnode.
-     *
-     * Should set the target dentry to be positive (give it an vnode), if the entry does not exist the operation
-     * should still return success but leave the dentry negative.
-     *
-     * @param dir The directory vnode to look in.
-     * @param target The dentry to look up.
-     * @return An appropriate status value.
-     */
-    status_t (*lookup)(vnode_t* dir, dentry_t* target);
-    /**
-     * @brief Handles both directories and files depending on mode.
-     *
-     * Takes in a negative dentry and creates the corresponding vnode to make the dentry positive.
-     *
-     * @param dir The directory vnode to create the entry in.
-     * @param target The negative dentry to create.
-     * @param mode The mode to create the entry with.
-     * @return An appropriate status value.
-     */
-    status_t (*create)(vnode_t* dir, dentry_t* target, mode_t mode);
-    /**
-     * @brief Set the vnode size to zero.
-     *
-     * @param target The vnode to truncate.
-     */
-    void (*truncate)(vnode_t* target);
-    /**
-     * @brief Make the same file vnode appear twice in the filesystem.
-     *
-     * @param dir The directory vnode to create the link in.
-     * @param old The existing dentry containing the vnode to link to.
-     * @param new The negative dentry to store the same vnode as old.
-     * @return An appropriate status value.
-     */
-    status_t (*link)(vnode_t* dir, dentry_t* old, dentry_t* new);
-    /**
-     * @brief Retrieve the path of the symbolic link.
-     *
-     * @param vnode The symbolic link vnode.
-     * @param buffer The buffer to store the path in.
-     * @param size The size of the buffer.
-     * @return An appropriate status value.
-     */
-    status_t (*readlink)(vnode_t* vnode, char* buffer, size_t size, size_t* bytesRead);
-    /**
-     * @brief Create a symbolic link.
-     *
-     * @param dir The directory vnode to create the symbolic link in.
-     * @param target The negative dentry to create.
-     * @param dest The path to which the symbolic link will point.
-     * @return An appropriate status value.
-     */
-    status_t (*symlink)(vnode_t* dir, dentry_t* target, const char* dest);
-    /**
-     * @brief Remove a file or directory.
-     *
-     * @param dir The directory vnode containing the target.
-     * @param target The dentry to remove.
-     * @return An appropriate status value.
-     */
-    status_t (*remove)(vnode_t* dir, dentry_t* target);
-    /**
-     * @brief Cleanup function called when the vnode is being freed.
-     *
-     * @param vnode The vnode being freed.
-     */
-    void (*cleanup)(vnode_t* vnode);
-} vnode_ops_t;
-
-/**
  * @brief Create a new vnode.
  *
  * Does not associate the vnode with a dentry, that is done when a dentry is made positive with
@@ -161,11 +167,10 @@ typedef struct vnode_ops
  *
  * @param superblock The superblock the vnode belongs to.
  * @param type The vnode type.
- * @param ops The vnode operations.
- * @param cls The vnode class defining I/O routines.
+ * @param cls The vnode class defining I/O its behaviour.
  * @return On success, the new vnode. On failure, returns `NULL`.
  */
-vnode_t* vnode_new(superblock_t* superblock, vtype_t type, const vnode_ops_t* ops, const vnode_class_t* cls);
+vnode_t* vnode_new(superblock_t* superblock, vtype_t type, const vnode_class_t* cls);
 
 /**
  * @brief Send an IRP to a specified vnode.

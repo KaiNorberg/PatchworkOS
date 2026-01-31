@@ -5,7 +5,6 @@
 #include <sys/fs.h>
 
 typedef struct file file_t;
-typedef struct file_ops file_ops_t;
 
 typedef struct superblock superblock_t;
 typedef struct superblock_ops superblock_ops_t;

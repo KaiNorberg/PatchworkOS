@@ -78,9 +78,9 @@ void irp_pool_cancel_all(irp_pool_t* pool)
     }
 }
 
-void irp_timeout_add(irp_t* irp, clock_t timeout)
+void irp_timeout_add(irp_t* irp)
 {
-    if (timeout == CLOCKS_NEVER)
+    if (irp->timeout == CLOCKS_NEVER)
     {
         return;
     }
@@ -91,7 +91,7 @@ void irp_timeout_add(irp_t* irp, clock_t timeout)
     irp->cpu = SELF->id;
 
     clock_t now = clock_uptime();
-    irp->deadline = CLOCKS_DEADLINE(timeout, now);
+    irp->deadline = CLOCKS_DEADLINE(irp->timeout, now);
 
     irp_t* entry;
     LIST_FOR_EACH(entry, &ctx->timeouts, timeoutEntry)
@@ -175,6 +175,19 @@ static void irp_perform_completion(irp_t* irp)
     }
 }
 
+static irp_cancel_t irp_claim_cancellable(irp_t* irp)
+{
+    irp_cancel_t handler = atomic_load(&irp->cancel);
+    while (handler != IRP_CANCELLED && handler != NULL)
+    {
+        if (atomic_compare_exchange_weak(&irp->cancel, &handler, IRP_CANCELLED))
+        {
+            return handler;
+        }
+    }
+    return handler;
+}
+
 void irp_timeouts_check(void)
 {
     irp_ctx_t* ctx = SELF_PTR(pcpu_irps);
@@ -202,22 +215,15 @@ void irp_timeouts_check(void)
         list_remove(&irp->timeoutEntry);
         irp->deadline = CLOCKS_NEVER;
         irp->cpu = CPU_ID_INVALID;
-        irp_cancel_t handler = atomic_exchange(&irp->cancel, IRP_CANCELLED);
+
+        irp_cancel_t handler = irp_claim_cancellable(irp);
         lock_release(&ctx->lock);
 
-        if (handler == IRP_CANCELLED)
+        if (handler != IRP_CANCELLED && handler != NULL)
         {
-            // Already cancelled
-        }
-        else if (handler != NULL)
-        {
-            irp->status = INFO(IO, TIMEOUT);
+            irp->status = ERR(IO, TIMEOUT);
             handler(irp);
             irp_perform_completion(irp);
-        }
-        else
-        {
-            atomic_store(&irp->cancel, NULL);
         }
 
         lock_acquire(&ctx->lock);
@@ -314,7 +320,7 @@ void irp_call_direct(irp_t* irp, irp_func_t func)
 
 status_t irp_cancel(irp_t* irp)
 {
-    irp_cancel_t handler = atomic_exchange(&irp->cancel, IRP_CANCELLED);
+    irp_cancel_t handler = irp_claim_cancellable(irp);
     if (handler == IRP_CANCELLED)
     {
         return ERR(IO, CANCELLED);
@@ -322,13 +328,12 @@ status_t irp_cancel(irp_t* irp)
 
     if (handler == NULL)
     {
-        atomic_store(&irp->cancel, NULL);
         return ERR(IO, NOT_CANCELLABLE);
     }
 
     irp_timeout_remove(irp);
 
-    irp->status = INFO(IO, CANCELLED);
+    irp->status = ERR(IO, CANCELLED);
     status_t status = handler(irp);
     irp_perform_completion(irp);
     return status;

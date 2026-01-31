@@ -258,12 +258,13 @@ static status_t ioring_ctx_iosqe_pop(ioring_ctx_t* ctx, ioring_ctx_notify_ctx_t*
     }
 
     irp_t* irp;
-    status_t status = irp_get(&irp, ctx->irps);
+    status_t status = irp_get(ctx->irps, &irp);
     if (IS_ERR(status))
     {
         return status;
     }
     irp->sqe = ring->squeue[shead & ring->smask];
+    irp->timeout = irp->sqe.timeout;
 
     atomic_store_explicit(&ring->ctrl->shead, shead + 1, memory_order_release);
 

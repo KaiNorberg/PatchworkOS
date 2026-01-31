@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/status.h>
 
 /**
  * @brief First-in first-out buffer.
@@ -108,14 +109,19 @@ static inline size_t fifo_bytes_writeable(const fifo_t* fifo)
  * @param fifo The fifo buffer structure.
  * @param buffer The destination buffer.
  * @param count The number of bytes to read.
- * @return The number of bytes read.
+ * @param bytesRead Output pointer for the amount of bytes read, can be `NULL`.
+ * @return An appropriate status value.
  */
-static inline size_t fifo_read(fifo_t* fifo, void* buffer, size_t count)
+static inline status_t fifo_read(fifo_t* fifo, void* buffer, size_t count, size_t* bytesRead)
 {
     size_t readable = fifo_bytes_readable(fifo);
     if (readable == 0)
     {
-        return 0;
+        if (bytesRead != NULL)
+        {
+            *bytesRead = 0;
+        }
+        return OK;
     }
 
     if (count > readable)
@@ -139,7 +145,17 @@ static inline size_t fifo_read(fifo_t* fifo, void* buffer, size_t count)
         fifo->tail = (fifo->tail + remaining) % fifo->size;
     }
 
-    return count;
+    if (bytesRead != NULL)
+    {
+        *bytesRead = count;
+    }
+
+    if (fifo_bytes_readable(fifo) > 0)
+    {
+        return INFO(DRIVER, MORE);
+    }
+
+    return OK;
 }
 
 /**
@@ -150,9 +166,10 @@ static inline size_t fifo_read(fifo_t* fifo, void* buffer, size_t count)
  * @param fifo Pointer to the fifo buffer structure.
  * @param buffer The source buffer.
  * @param count The number of bytes to write.
- * @return The number of bytes written.
+ * @param bytesWritten Output pointer for the amount of bytes written, can be `NULL`.
+ * @return An appropriate status value.
  */
-static inline size_t fifo_write(fifo_t* fifo, const void* buffer, size_t count)
+static inline status_t fifo_write(fifo_t* fifo, const void* buffer, size_t count, size_t* bytesWritten)
 {
     size_t writeable = fifo_bytes_writeable(fifo);
     if (count > writeable)
@@ -176,7 +193,12 @@ static inline size_t fifo_write(fifo_t* fifo, const void* buffer, size_t count)
         fifo->head = (fifo->head + remaining) % fifo->size;
     }
 
-    return count;
+    if (bytesWritten != NULL)
+    {
+        *bytesWritten = count;
+    }
+
+    return OK;
 }
 
 /**

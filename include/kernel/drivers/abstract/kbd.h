@@ -24,13 +24,13 @@ typedef struct kbd kbd_t;
  *
  * ## events
  *
- * A readable and pollable file that provides a stream of keyboard events represented as integer keycodes suffixed with
- * a `_` or `^` to indicate press or release respectively.
+ * A readable and pollable file that provides a stream of keyboard events represented as 3 digit integer keycodes
+ * suffixed with a `_` or `^` to indicate press or release respectively.
  *
  * The below example shows a press of the `1` key, its subsequent release, and then a press of the `A` key.
  *
  * ```
- * 30_30^5_
+ * 030_030^005_
  * ```
  *
  * If no events are available to read, the read call will block until an event is available unless the file is opened in
@@ -67,7 +67,7 @@ typedef struct kbd_client
 typedef struct kbd
 {
     const char* name;
-    wait_queue_t waitQueue;
+    list_t pending; ///< List of pending IRPs.
     list_t clients;
     lock_t lock;
     dentry_t* dir;

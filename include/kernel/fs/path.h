@@ -40,7 +40,6 @@ typedef struct file file_t;
  * | `read` | `r` | Open with read permissions. |
  * | `write` | `w` | Open with write permissions. |
  * | `execute` | `x` | Open with execute permissions. |
- * | `nonblock` | `n` | The file will not block on operations that would normally block. |
  * | `append` | `a` | Any data written to the file will be appended to the end. |
  * | `create` | `c` | Create the file or directory if it does not exist. |
  * | `exclusive` | `e` | Will cause the open to fail if the file or directory already exists and `:create` is specified. |
@@ -79,7 +78,6 @@ typedef enum mode
     MODE_READ = 1 << 0,
     MODE_WRITE = 1 << 1,
     MODE_EXECUTE = 1 << 2,
-    MODE_NONBLOCK = 1 << 3,
     MODE_APPEND = 1 << 4,
     MODE_CREATE = 1 << 5,
     MODE_EXCLUSIVE = 1 << 6,

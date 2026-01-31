@@ -28,8 +28,9 @@ typedef struct irp irp_t;
  * @defgroup kernel_io_irp I/O Request Packet
  * @ingroup kernel_io
  *
- * The I/O Request Packet (IRP) is a lock-less, self-contained, layered, continuation-passing request that acts as the
- * primary primitive used by the kernel for asynchronous operations.
+ * The I/O Request Packet (IRP) is a lock-less, self-contained and layered packet that allow requests to be sent to
+ * various subsystems and then either processed immediately or, since it is self-contained, stored for latter
+ * processing.
  *
  * The IRP is designed to be generic enough to be used by any system in the kernel, however it is primarily used by the
  * I/O ring system.
@@ -39,50 +40,102 @@ typedef struct irp irp_t;
  *
  * ## Completion
  *
- * @todo Write the IRP documentation.
+ * @todo Write the IRP completion documentation.
  *
  * ## Cancellation
  *
- * @todo Update IRP documentation for the new status system.
- *
- * Cancelling an IRP can intuitively be considered equivalent to forcing the last completion to fail, thus resulting in
- * all the other completions to fail as well.
+ * Cancelling an IRP can intuitively be considered equivalent to forcing the last completion to fail with an error
+ * status, thus resulting in all the other completions to fail as well.
  *
  * The current owner of a IRP is responsible for handling cancellation by specifying a cancellation callback via
- * `irp_set_cancel()`. The current owner being the last target of a `irp_call()` or `irp_call_direct()`.
+ * `irp_set_cancel()`. The current owner generally being the last subsystem or function to receive the IRP.
  *
- * When an IRP is cancelled or timed out the cancellation callback will be invoked and atomically exchanged with a
- * `IRP_CANCELLED` sentinel value. At which point the owner should perform whatever logic is needed to cancel the IRP,
- * if it is not possible immediately cancel the IRP it should return `PFAIL`.
+ * One vital aspect of this system is the need to "claim" the IRP. When an IRP is "delayed", as in it is added to a
+ * timeout queue or added to a queue for latter processing, it is considered to be unowned. At this point, it is
+ * possible for multiple threads to attempt to cancel or complete the IRP.
  *
- * Below is an example of how to implement a completion with an associated cancellation callback:
+ * As such, we need to establish a new owner for the IRP which is then the only thread allowed to cancel or complete it.
+ * This is done using the `IRP_CANCELLED` sentinel value, once the cancel callback has been exchanged with this value
+ * (which can only be done by a single thread as the operation is atomic) it is guaranteed that no other thread will
+ * attempt to complete or cancel the IRP.
+ *
+ * For convenience, the `irp_claim()` function is provided.
+ *
+ * Finally, there is one more detail worth considering. Say we have the following cancellation callback:
  *
  * ```
- * void my_completion(irp_t* irp, void* ctx)
+ * status_t my_cancel(irp_t* irp)
  * {
- *     // Do stuff...
+ *     // At this point we are considered the owner of the IRP.
  *
- *     irp_complete(irp);
- * }
- *
- * uint64_t my_cancel(irp_t* irp)
- * {
- *     // Cancellation callback is automatically cleared.
- *
- *     if (irp->err == ETIMEDOUT)
+ *     if (IS_CODE(irp->status, TIMEOUT)
  *     {
  *         // We timed out.
  *     }
- *     if (irp->err == ECANCELED)
+ *     if (IS_CODE(irp->status, CANCELLED))
  *     {
  *         // We were explicitly cancelled.
  *     }
  *
- *     // Do stuff...
- *
- *     return EOK;
+ *     return OK;
  * }
  * ```
+ *
+ * Lets also say that simultaneously another thread is attempting to complete the IRP as follows:
+ *
+ * ```
+ * void other_thread(void)
+ * {
+ *     irp_t* irp = ...;
+ *     if (irp_claim(irp))
+ *     {
+ *         // We are now the owner and can safely complete the IRP?
+ *         irp_complete(irp, OK);
+ *     }
+ * }
+ * ```
+ *
+ * The above code contains a subtle race condition, which is that while we have claimed ownership of the IRP, thus
+ * giving us the right to complete it, we might not own the actual memory in which its stored, giving us a
+ * use-after-free bug.
+ *
+ * Consider that if the `my_cancel()` callback is being called and returns before the `irp_claim()` within
+ * `other_thread()`, then the IRP might have been returned to its pool or even worse the pool might also have been
+ * freed.
+ *
+ * It is thus vital that all subsystems ensure that when their cancellation callbacks return, that there are no other
+ * threads that can access the IRP.
+ *
+ * In most cases avoiding the above race condition is as simple as storing the IRP in a lock protected list. For
+ * example:
+ *
+ * ```
+ * status_t my_cancel(irp_t* irp)
+ * {
+ *     lock_acquire(&my_list_lock);
+ *     list_remove(&irp->entry);
+ *     lock_release(&my_list_lock);
+ *     return OK;
+ * }
+ *
+ * void other_thread(void)
+ * {
+ *     lock_acquire(&my_list_lock);
+ *     irp_t* irp = CONTAINER_OF(list_pop_front(&my_list), irp_t, entry);
+ *     if (irp_claim(irp))
+ *     {
+ *         lock_release(&my_list_lock);
+ *         irp_complete(irp, OK);
+ *     }
+ *     else
+ *     {
+ *         lock_release(&my_list_lock);
+ *     }
+ * }
+ * ```
+ *
+ * Additionally, everything described above only applies to cancellable IRPs. As such, for certain subsystems or drivers
+ * where it is not possible or reasonable to handle cancellation, one may simply not implement cancellation.
  *
  * @see kernel_io_ioring for the ring system.
  * @see [Wikipedia](https://en.wikipedia.org/wiki/I/O_request_packet) for more information about IRPs.
@@ -193,11 +246,15 @@ typedef struct ALIGNED(64) irp
     list_entry_t entry;           ///< Used to store the IRP in various lists.
     list_entry_t timeoutEntry;    ///< Used to store the IRP in the timeout queue.
     _Atomic(irp_cancel_t) cancel; ///< Cancellation callback, must be atomic to ensure an IRP is only cancelled once.
-    clock_t deadline;             ///< The time at which the IRP will be removed from a timeout queue.
-    mdl_t mdl;                    ///< A preallocated memory descriptor list for use by the IRP.
+    union {
+        clock_t timeout;  ///< The timeout of the operation starting from when the IRP is added to a timeout queue.
+        clock_t deadline; ///< The time at which the IRP will be removed from a timeout queue.
+    };
+    mdl_t mdl; ///< A preallocated memory descriptor list for use by the IRP.
     union {
         size_t read;
         size_t write;
+        ioevents_t events;
         uint64_t _raw;
     } res;
     status_t status;  ///< The status of the operation, also used to specify its current state and potential errors.
@@ -205,7 +262,7 @@ typedef struct ALIGNED(64) irp
     pool_idx_t next;  ///< Index of the next IRP in a chain or in the free list.
     cpu_id_t cpu;     ///< The CPU whose timeout queue the IRP is in.
     uint8_t frame;    ///< The index of the current frame in the stack.
-    uint8_t reserved[5];
+    uint8_t _reserved[5];
     irp_frame_t stack[IRP_FRAME_MAX]; ///< The frame stack, grows downwards.
     iosqe_t sqe;                      // A copy of the submission queue entry associated with this IRP.
 } irp_t;
@@ -259,10 +316,11 @@ void irp_pool_cancel_all(irp_pool_t* pool);
 /**
  * @brief Add an IRP to a per-CPU timeout queue.
  *
+ * The timeout of the IRP is specified in `irp->timeout`.
+ *
  * @param irp The IRP to add.
- * @param timeout The timeout of the IRP.
  */
-void irp_timeout_add(irp_t* irp, clock_t timeout);
+void irp_timeout_add(irp_t* irp);
 
 /**
  * @brief Remove an IRP from its per-CPU timeout queue.
@@ -382,6 +440,77 @@ static inline irp_cancel_t irp_set_cancel(irp_t* irp, irp_cancel_t cancel)
 }
 
 /**
+ * @brief Claim an IRP, ensuring that it is not already cancelled or being cancelled.
+ *
+ * After a call to this function it is guaranteed that no other thread will attempt to complete or cancel the IRP.
+ *
+ * @warning It is the responsibility of the caller to ensure that it is not possible for an IRP to be atomically
+ * cancelled and free while this function is being called.
+ *
+ * @param irp The IRP to claim.
+ * @return `true` if the IRP was successfully claimed, `false` otherwise.
+ */
+static inline WARN_UNUSED_RESULT bool irp_claim(irp_t* irp)
+{
+    return irp_set_cancel(irp, IRP_CANCELLED) != IRP_CANCELLED;
+}
+
+/**
+ * @brief Claim a list of IRPs, moving all successfully claimed IRPs to another list.
+ *
+ * Any IRP that was not claimed will be removed from the source list.
+ *
+ * @warning It is the responsibility of the caller to ensure the source and destination lists are protected and that it
+ * is not possible for an IRP to be atomically cancelled and freed while this function is being called.
+ *
+ * @param dest The destination list.
+ * @param src The source list.
+ */
+static inline void irp_claim_list(list_t* dest, list_t* src)
+{
+    while (!list_is_empty(src))
+    {
+        irp_t* irp = CONTAINER_OF(list_pop_front(src), irp_t, entry);
+        if (irp_claim(irp))
+        {
+            list_move(dest, &irp->entry);
+        }
+    }
+}
+
+/**
+ * @brief Add an IRP to a list to be handled later.
+ *
+ * Adds the IRP to the specified list, sets the cancellation callback and adds it to a per-CPU timeout queue.
+ *
+ * @warning The caller is responsible for protecting the list, for example, using a lock. Additionally, when the IRP is
+ * later completed it must first be claimed using `irp_claim()` or `irp_claim_list()` to ensure multiple threads do not
+ * attempt to complete/cancel the same IRP.
+ *
+ * @param irp The IRP to delay.
+ * @param list The list to add the IRP to.
+ * @param cancel The cancellation callback.
+ * @return An appropriate status value, if not `OK` the operation should be completed.
+ */
+static inline status_t irp_delay(irp_t* irp, list_t* list, irp_cancel_t cancel)
+{
+    if (irp->timeout == 0)
+    {
+        return ERR(IO, TIMEOUT);
+    }
+
+    list_push_back(list, &irp->entry);
+    if (irp_set_cancel(irp, cancel) == IRP_CANCELLED)
+    {
+        list_remove(&irp->entry);
+        return ERR(IO, CANCELLED);
+    }
+
+    irp_timeout_add(irp);
+    return OK;
+}
+
+/**
  * @brief Retrieve the current frame in the IRP stack.
  *
  * @param irp The IRP to retrieve the frame from.
@@ -423,8 +552,8 @@ void irp_call_direct(irp_t* irp, irp_func_t func);
  *
  * If the current frame does not have a completion, it will automatically complete the next frame in the stack.
  *
- * If the last frame is reached, the IRP is considered finished. Which will causing its resources to be freed and for
- * the IRP to be returned to its pool.
+ * If the last frame is reached, the IRP is considered finished. Which will causing its resources to be freed and
+ * for the IRP to be returned to its pool.
  *
  * @param irp The IRP to complete.
  * @param status The status of the completed operation, if `OK` then the previous status is kept.

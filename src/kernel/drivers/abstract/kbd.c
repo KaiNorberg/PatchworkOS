@@ -21,20 +21,44 @@ static dentry_t* dir = NULL;
 
 static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
-static status_t kbd_name_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static status_t kbd_cancel(irp_t* irp)
 {
-    kbd_t* kbd = file->vnode->data;
+    irp_frame_t* frame = irp_current(irp);
+    kbd_t* kbd = frame->vnode->data;
+
+    lock_acquire(&kbd->lock);
+
+    if (list_contains(&irp->entry))
+    {
+        list_remove(&irp->entry);
+    }
+
+    lock_release(&kbd->lock);
+
+    return OK;
+}
+
+static void kbd_name_read(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    kbd_t* kbd = frame->vnode->data;
     assert(kbd != NULL);
 
     size_t length = strlen(kbd->name);
-    return buffer_read(buffer, count, offset, bytesRead, kbd->name, length);
+    status_t status =
+        mdl_read(frame->read.buffer, frame->read.count, frame->read.offset, &irp->res.read, kbd->name, length);
+    irp_complete(irp, status);
 }
 
-static file_ops_t nameOps = {
-    .read = kbd_name_read,
+static vnode_class_t nameClass = {
+    .name = "kbd name",
+    .handlers =
+        {
+            [IRP_MJ_READ] = kbd_name_read,
+        },
 };
 
-static status_t kbd_events_open(file_t* file)
+static status_t kbd_events_file_ctor(file_t* file)
 {
     kbd_t* kbd = file->vnode->data;
     assert(kbd != NULL);
@@ -55,7 +79,7 @@ static status_t kbd_events_open(file_t* file)
     return OK;
 }
 
-static void kbd_events_close(file_t* file)
+static void kbd_events_file_dtor(file_t* file)
 {
     kbd_t* kbd = file->vnode->data;
     assert(kbd != NULL);
@@ -73,63 +97,70 @@ static void kbd_events_close(file_t* file)
     free(client);
 }
 
-static status_t kbd_events_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static void kbd_events_read(irp_t* irp)
 {
-    UNUSED(offset);
-
-    if (count == 0)
-    {
-        *bytesRead = 0;
-        return OK;
-    }
-
-    kbd_t* kbd = file->vnode->data;
+    irp_frame_t* frame = irp_current(irp);
+    kbd_t* kbd = frame->vnode->data;
     assert(kbd != NULL);
-    kbd_client_t* client = file->data;
+
+    kbd_client_t* client = frame->read.file->data;
     assert(client != NULL);
 
-    LOCK_SCOPE(&kbd->lock);
+    lock_acquire(&kbd->lock);
 
     if (fifo_bytes_readable(&client->fifo) == 0)
     {
-        if (file->mode & MODE_NONBLOCK)
+        status_t status = irp_delay(irp, &kbd->pending, kbd_cancel);
+        lock_release(&kbd->lock);
+        if (IS_ERR(status))
         {
-            return INFO(DRIVER, AGAIN);
+            irp_complete(irp, status);
         }
-
-        status_t status = WAIT_BLOCK_LOCK(&kbd->waitQueue, &kbd->lock, fifo_bytes_readable(&client->fifo) != 0);
-        if (!IS_ERR(status))
-        {
-            return status;
-        }
+        return;
     }
 
-    *bytesRead = fifo_read(&client->fifo, buffer, count);
-    return OK;
+    status_t status = fifo_read(&client->fifo, frame->read.buffer, frame->read.count, &irp->res.read);
+    lock_release(&kbd->lock);
+    irp_complete(irp, status);
 }
 
-static status_t kbd_events_poll(file_t* file, poll_events_t* revents, wait_queue_t** queue)
+static void kbd_events_poll(irp_t* irp)
 {
-    kbd_t* kbd = file->vnode->data;
+    irp_frame_t* frame = irp_current(irp);
+    kbd_t* kbd = frame->vnode->data;
     assert(kbd != NULL);
-    kbd_client_t* client = file->data;
+    kbd_client_t* client = frame->poll.file->data;
     assert(client != NULL);
 
-    LOCK_SCOPE(&kbd->lock);
+    lock_acquire(&kbd->lock);
 
-    if (fifo_bytes_readable(&client->fifo) != 0)
+    if (fifo_bytes_readable(&client->fifo) > 0)
     {
-        *revents |= POLLIN;
+        irp->res.events = IOPOLL_READ;
+        lock_release(&kbd->lock);
+        irp_complete(irp, OK);
+        return;
     }
-    *queue = &kbd->waitQueue;
-    return OK;
+
+    status_t status = irp_delay(irp, &kbd->pending, kbd_cancel);
+    lock_release(&kbd->lock);
+
+    if (IS_ERR(status))
+    {
+        irp->res.events = 0;
+        irp_complete(irp, status);
+    }
 }
 
-static file_ops_t eventsOps = {
-    .open = kbd_events_open,
-    .close = kbd_events_close,
-    .read = kbd_events_read,
-    .poll = kbd_events_poll,
+static vnode_class_t eventsClass = {
+    .name = "kbd events",
+    .file_ctor = kbd_events_file_ctor,
+    .file_dtor = kbd_events_file_dtor,
+    .handlers =
+        {
+            [IRP_MJ_READ] = kbd_events_read,
+            [IRP_MJ_POLL] = kbd_events_poll,
+        },
 };
 
 static void kbd_dir_cleanup(vnode_t* vnode)
@@ -140,10 +171,18 @@ static void kbd_dir_cleanup(vnode_t* vnode)
         return;
     }
 
-    wait_queue_deinit(&kbd->waitQueue);
+    if (!list_is_empty(&kbd->pending))
+    {
+        panic(NULL, "Attempted to free keyboard with pending IRPs");
+    }
+    if (!list_is_empty(&kbd->clients))
+    {
+        panic(NULL, "Attempted to free keyboard with clients");
+    }
 }
 
-static vnode_ops_t dirVnodeOps = {
+static vnode_class_t dirClass = {
+    .name = "kbd dir",
     .cleanup = kbd_dir_cleanup,
 };
 
@@ -163,7 +202,7 @@ status_t kbd_register(kbd_t* kbd)
         }
     }
 
-    wait_queue_init(&kbd->waitQueue);
+    list_init(&kbd->pending);
     list_init(&kbd->clients);
     lock_init(&kbd->lock);
     kbd->dir = NULL;
@@ -172,36 +211,29 @@ status_t kbd_register(kbd_t* kbd)
     char id[MAX_NAME];
     if (snprintf(id, MAX_NAME, "%llu", atomic_fetch_add(&newId, 1)) < 0)
     {
-        wait_queue_deinit(&kbd->waitQueue);
         return ERR(DRIVER, IMPL);
     }
 
-    kbd->dir = devfs_dir_new(dir, id, &dirVnodeOps, kbd);
+    kbd->dir = devfs_dir_new(dir, id, &dirClass, kbd);
     if (kbd->dir == NULL)
     {
-        wait_queue_deinit(&kbd->waitQueue);
         return ERR(DRIVER, NOMEM);
     }
 
     devfs_file_desc_t files[] = {
         {
             .name = "name",
-            .fileOps = &nameOps,
+            .cls = &nameClass,
             .data = kbd,
         },
         {
             .name = "events",
-            .fileOps = &eventsOps,
+            .cls = &eventsClass,
             .data = kbd,
         },
-        {
-            .name = NULL,
-        },
     };
-
-    if (!devfs_files_new(&kbd->files, kbd->dir, files))
+    if (!devfs_files_new(&kbd->files, kbd->dir, files, ARRAY_SIZE(files)))
     {
-        wait_queue_deinit(&kbd->waitQueue);
         UNREF(kbd->dir);
         return ERR(DRIVER, NOMEM);
     }
@@ -222,18 +254,39 @@ void kbd_unregister(kbd_t* kbd)
 
 static void kbd_broadcast(kbd_t* kbd, const char* string, size_t length)
 {
-    LOCK_SCOPE(&kbd->lock);
+    list_t pending = LIST_CREATE(pending);
 
-    kbd_client_t* client;
-    LIST_FOR_EACH(client, &kbd->clients, entry)
     {
-        if (fifo_bytes_writeable(&client->fifo) >= length)
+        LOCK_SCOPE(&kbd->lock);
+
+        kbd_client_t* client;
+        LIST_FOR_EACH(client, &kbd->clients, entry)
         {
-            fifo_write(&client->fifo, string, length);
+            if (fifo_bytes_writeable(&client->fifo) >= length)
+            {
+                fifo_write(&client->fifo, string, length, NULL);
+            }
         }
+        irp_claim_list(&pending, &kbd->pending);
     }
 
-    wait_unblock(&kbd->waitQueue, WAIT_ALL, EOK);
+    while (!list_is_empty(&pending))
+    {
+        irp_t* irp = CONTAINER_OF(list_pop_front(&pending), irp_t, entry);
+        irp_frame_t* frame = irp_current(irp);
+        if (frame->major == IRP_MJ_READ)
+        {
+            kbd_events_read(irp);
+        }
+        else if (frame->major == IRP_MJ_POLL)
+        {
+            kbd_events_poll(irp);
+        }
+        else
+        {
+            irp_complete(irp, ERR(DRIVER, INVAL));
+        }
+    }
 }
 
 void kbd_press(kbd_t* kbd, keycode_t code)
@@ -244,7 +297,7 @@ void kbd_press(kbd_t* kbd, keycode_t code)
     }
 
     char event[MAX_NAME];
-    int length = snprintf(event, sizeof(event), "%u_", code);
+    int length = snprintf(event, sizeof(event), "%03u_", code);
     if (length < 0)
     {
         LOG_ERR("failed to format keyboard press event\n");
@@ -262,7 +315,7 @@ void kbd_release(kbd_t* kbd, keycode_t code)
     }
 
     char event[MAX_NAME];
-    int length = snprintf(event, sizeof(event), "%u^", code);
+    int length = snprintf(event, sizeof(event), "%03u^", code);
     if (length < 0)
     {
         LOG_ERR("failed to format keyboard release event\n");

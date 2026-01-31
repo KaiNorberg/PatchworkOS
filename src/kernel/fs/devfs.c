@@ -172,7 +172,7 @@ dentry_t* devfs_symlink_new(dentry_t* parent, const char* name, const vnode_ops_
     return REF(dentry);
 }
 
-bool devfs_files_new(list_t* out, dentry_t* parent, const devfs_file_desc_t* descs)
+bool devfs_files_new(list_t* out, dentry_t* parent, const devfs_file_desc_t* descs, size_t count)
 {
     if (parent == NULL)
     {
@@ -183,9 +183,10 @@ bool devfs_files_new(list_t* out, dentry_t* parent, const devfs_file_desc_t* des
 
     list_t createdList = LIST_CREATE(createdList);
 
-    for (const devfs_file_desc_t* desc = descs; desc->name != NULL; desc++)
+    for (size_t i = 0; i < count; i++)
     {
-        dentry_t* file = devfs_file_new(parent, desc->name, desc->vnodeOps, desc->fileOps, desc->data);
+        const devfs_file_desc_t* desc = &descs[i];
+        dentry_t* file = devfs_file_new(parent, desc->name, desc->cls, desc->data);
         if (file == NULL)
         {
             while (!list_is_empty(&createdList))
