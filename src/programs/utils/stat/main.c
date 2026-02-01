@@ -33,7 +33,7 @@ static void print_stat(const char* path)
     printf("  File: %s\n", path);
     printf("  Size: %llu\t\tBlocks: %llu\t   IO Block: %llu  %s\n", buffer.size, buffer.blocks, buffer.blockSize,
         type_to_string(buffer.type));
-    printf("Superblock: %llu\tVnode: %llu\tLinks: %llu\n", buffer.sbid, buffer.number, buffer.linkAmount);
+    printf("Volume: %llu\tVnode: %llu\tLinks: %llu\n", buffer.sbid, buffer.number, buffer.linkAmount);
     printf("   Max: %llu\n", buffer.maxFileSize);
     printf("  Name: %s\n", buffer.name);
     printf("Access: %s", ctime(&buffer.accessTime));

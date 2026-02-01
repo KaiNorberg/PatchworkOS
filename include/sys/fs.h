@@ -381,11 +381,11 @@ typedef enum
 } vnode_type_t;
 
 /**
- * @brief A suberblock identifier that uniquely identifies a superblock within the system.
+ * @brief A suberblock identifier that uniquely identifies a volume within the system.
  *
  * When combined with a vnode number, this can uniquely identify an vnode within the entire system.
  */
-typedef uint64_t sbid_t;
+typedef uint64_t volume_id_t;
 
 /**
  * @brief Stat type.
@@ -393,7 +393,7 @@ typedef uint64_t sbid_t;
  */
 typedef struct
 {
-    sbid_t sbid;          ///< The superblock ID of the filesystem containing the entry.
+    volume_id_t sbid;          ///< The volume ID of the filesystem containing the entry.
     uint64_t number;      ///< The number of the entries vnode.
     vnode_type_t type;    ///< The type of the entries vnode.
     uint64_t size;        ///< The size of the file that is visible outside the filesystem.

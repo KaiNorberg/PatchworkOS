@@ -14,7 +14,7 @@
 #include <time.h>
 
 typedef struct vnode vnode_t;
-typedef struct superblock superblock_t;
+typedef struct volume volume_t;
 typedef struct dentry dentry_t;
 
 /**
@@ -152,7 +152,7 @@ typedef struct vnode
     _Atomic(uint64_t) dentryCount; ///< The number of dentries pointing to this vnode.
     void* data;                    ///< Filesystem defined data.
     uint64_t size;                 ///< Used for convenience by certain filesystems, does not represent the file size.
-    superblock_t* superblock;
+    volume_t* volume;
     const vnode_class_t* cls;
     rcu_entry_t rcu;
     mutex_t mutex;
@@ -166,11 +166,11 @@ typedef struct vnode
  *
  * There is no `vnode_free()` instead use `UNREF()`.
  *
- * @param superblock The superblock the vnode belongs to.
+ * @param volume The volume the vnode belongs to.
  * @param cls The vnode class defining I/O its behaviour.
  * @return On success, the new vnode. On failure, returns `NULL`.
  */
-vnode_t* vnode_new(superblock_t* superblock, const vnode_class_t* cls);
+vnode_t* vnode_new(volume_t* volume, const vnode_class_t* cls);
 
 /**
  * @brief Send an IRP to a specified vnode.

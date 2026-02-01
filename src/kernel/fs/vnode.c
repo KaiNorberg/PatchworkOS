@@ -21,10 +21,10 @@ static void vnode_free(vnode_t* vnode)
     }
     vnode->data = NULL;
 
-    if (vnode->superblock != NULL)
+    if (vnode->volume != NULL)
     {
-        UNREF(vnode->superblock);
-        vnode->superblock = NULL;
+        UNREF(vnode->volume);
+        vnode->volume = NULL;
     }
 
     rcu_call(&vnode->rcu, rcu_call_cache_free, vnode);
@@ -38,7 +38,7 @@ static void vnode_ctor(void* ptr)
     atomic_init(&vnode->dentryCount, 0);
     vnode->data = NULL;
     vnode->size = 0;
-    vnode->superblock = NULL;
+    vnode->volume = NULL;
     vnode->cls = NULL;
     vnode->rcu = (rcu_entry_t){0};
     mutex_init(&vnode->mutex);
@@ -46,9 +46,9 @@ static void vnode_ctor(void* ptr)
 
 static cache_t cache = CACHE_CREATE(cache, "vnode", sizeof(vnode_t), CACHE_LINE, vnode_ctor, NULL);
 
-vnode_t* vnode_new(superblock_t* superblock, const vnode_class_t* cls)
+vnode_t* vnode_new(volume_t* volume, const vnode_class_t* cls)
 {
-    if (superblock == NULL || cls == NULL)
+    if (volume == NULL || cls == NULL)
     {
         return NULL;
     }
@@ -60,7 +60,7 @@ vnode_t* vnode_new(superblock_t* superblock, const vnode_class_t* cls)
     }
 
     ref_init(&vnode->ref, vnode_free);
-    vnode->superblock = REF(superblock);
+    vnode->volume = REF(volume);
     vnode->cls = cls;
     return vnode;
 }

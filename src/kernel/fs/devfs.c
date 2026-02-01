@@ -6,7 +6,7 @@
 #include <kernel/fs/mount.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
-#include <kernel/fs/superblock.h>
+#include <kernel/fs/volume.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/fs/vnode.h>
 #include <kernel/log/log.h>
@@ -59,28 +59,28 @@ void devfs_init(void)
         panic(NULL, "Failed to register devfs");
     }
 
-    superblock_t* superblock = superblock_new(&devfs, NULL, &dentryOps);
-    if (superblock == NULL)
+    volume_t* volume = volume_new(&devfs, NULL, &dentryOps);
+    if (volume == NULL)
     {
-        panic(NULL, "Failed to create devfs superblock");
+        panic(NULL, "Failed to create devfs volume");
     }
-    UNREF_DEFER(superblock);
+    UNREF_DEFER(volume);
 
-    vnode_t* vnode = vnode_new(superblock, &rootClass);
+    vnode_t* vnode = vnode_new(volume, &rootClass);
     if (vnode == NULL)
     {
         panic(NULL, "Failed to create devfs root vnode");
     }
     UNREF_DEFER(vnode);
 
-    dentry_t* dentry = dentry_new(superblock, NULL, NULL);
+    dentry_t* dentry = dentry_new(volume, NULL, NULL);
     if (dentry == NULL)
     {
         panic(NULL, "Failed to create devfs root dentry");
     }
 
     dentry_make_positive(dentry, vnode);
-    superblock->root = dentry;
+    volume->root = dentry;
     root = dentry;
 }
 
@@ -96,16 +96,16 @@ dentry_t* devfs_dentry_new(dentry_t* parent, const char* name, const vnode_class
         parent = root;
     }
 
-    assert(parent->superblock->fs == &devfs);
+    assert(parent->volume->fs == &devfs);
 
-    dentry_t* dir = dentry_new(parent->superblock, parent, name);
+    dentry_t* dir = dentry_new(parent->volume, parent, name);
     if (dir == NULL)
     {
         return NULL;
     }
     UNREF_DEFER(dir);
 
-    vnode_t* vnode = vnode_new(parent->superblock, cls);
+    vnode_t* vnode = vnode_new(parent->volume, cls);
     if (vnode == NULL)
     {
         return NULL;
@@ -125,7 +125,7 @@ bool devfs_dentrys_new(list_t* out, dentry_t* parent, const devfs_desc_t* descs,
         parent = root;
     }
 
-    assert(parent->superblock->fs == &devfs);
+    assert(parent->volume->fs == &devfs);
 
     list_t createdList = LIST_CREATE(createdList);
 

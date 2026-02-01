@@ -6,8 +6,8 @@
 
 typedef struct file file_t;
 
-typedef struct superblock superblock_t;
-typedef struct superblock_ops superblock_ops_t;
+typedef struct volume volume_t;
+typedef struct volume_ops volume_ops_t;
 
 /**
  * @brief Device Filesystem.

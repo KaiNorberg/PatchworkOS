@@ -1,7 +1,7 @@
 #pragma once
 
 #include <kernel/fs/path.h>
-#include <kernel/fs/superblock.h>
+#include <kernel/fs/volume.h>
 #include <kernel/sync/rwlock.h>
 #include <kernel/utils/ref.h>
 

@@ -12,10 +12,9 @@ static void mount_free(mount_t* mount)
         return;
     }
 
-    if (mount->superblock != NULL)
+    if (mount->volume != NULL)
     {
-        superblock_dec_mount_count(mount->superblock);
-        UNREF(mount->superblock);
+        UNREF(mount->volume);
     }
 
     if (mount->target != NULL)
@@ -37,9 +36,9 @@ static void mount_free(mount_t* mount)
     rcu_call(&mount->rcu, rcu_call_free, mount);
 }
 
-mount_t* mount_new(superblock_t* superblock, dentry_t* source, dentry_t* target, mount_t* parent, mode_t mode)
+mount_t* mount_new(volume_t* volume, dentry_t* source, dentry_t* target, mount_t* parent, mode_t mode)
 {
-    if (superblock == NULL || source == NULL || (target != NULL && parent == NULL))
+    if (volume == NULL || source == NULL || (target != NULL && parent == NULL))
     {
         return NULL;
     }
@@ -62,8 +61,7 @@ mount_t* mount_new(superblock_t* superblock, dentry_t* source, dentry_t* target,
     {
         mount->target = NULL;
     }
-    superblock_inc_mount_count(superblock);
-    mount->superblock = REF(superblock);
+    mount->volume = REF(volume);
     mount->parent = parent != NULL ? REF(parent) : NULL;
     mount->mode = mode;
 

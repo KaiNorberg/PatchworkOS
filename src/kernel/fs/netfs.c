@@ -324,7 +324,7 @@ static status_t netfs_socket_lookup(vnode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dir->superblock, VNODE_REGULAR, NULL, socketFiles[i].fileOps);
+        vnode_t* vnode = vnode_new(dir->volume, VNODE_REGULAR, NULL, socketFiles[i].fileOps);
         if (vnode == NULL)
         {
             return ERR(FS, NOMEM);
@@ -543,7 +543,7 @@ static status_t netfs_family_lookup(vnode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dir->superblock, VNODE_REGULAR, &familyFileVnodeOps, familyFiles[i].fileOps);
+        vnode_t* vnode = vnode_new(dir->volume, VNODE_REGULAR, &familyFileVnodeOps, familyFiles[i].fileOps);
         if (vnode == NULL)
         {
             return ERR(FS, NOMEM);
@@ -597,7 +597,7 @@ static status_t netfs_family_lookup(vnode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dir->superblock, VNODE_DIR, &socketVnodeOps, NULL);
+        vnode_t* vnode = vnode_new(dir->volume, VNODE_DIR, &socketVnodeOps, NULL);
         if (vnode == NULL)
         {
             return ERR(FS, NOMEM);
@@ -700,7 +700,7 @@ static status_t netfs_lookup(vnode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dir->superblock, VNODE_DIR, &familyVnodeOps, NULL);
+        vnode_t* vnode = vnode_new(dir->volume, VNODE_DIR, &familyVnodeOps, NULL);
         if (vnode == NULL)
         {
             return ERR(FS, NOMEM);
@@ -760,21 +760,21 @@ static status_t netfs_mount(filesystem_t* fs, dentry_t** out, const char* option
         return ERR(FS, INVAL);
     }
 
-    superblock_t* superblock = superblock_new(fs, NULL, NULL);
-    if (superblock == NULL)
+    volume_t* volume = volume_new(fs, NULL, NULL);
+    if (volume == NULL)
     {
         return ERR(FS, NOMEM);
     }
-    UNREF_DEFER(superblock);
+    UNREF_DEFER(volume);
 
-    vnode_t* vnode = vnode_new(superblock, VNODE_DIR, &netVnodeOps, NULL);
+    vnode_t* vnode = vnode_new(volume, VNODE_DIR, &netVnodeOps, NULL);
     if (vnode == NULL)
     {
         return ERR(FS, NOMEM);
     }
     UNREF_DEFER(vnode);
 
-    dentry_t* dentry = dentry_new(superblock, NULL, NULL);
+    dentry_t* dentry = dentry_new(volume, NULL, NULL);
     if (dentry == NULL)
     {
         return ERR(FS, NOMEM);
@@ -783,7 +783,7 @@ static status_t netfs_mount(filesystem_t* fs, dentry_t** out, const char* option
 
     dentry_make_positive(dentry, vnode);
 
-    superblock->root = dentry;
+    volume->root = dentry;
     *out = dentry;
     return OK;
 }

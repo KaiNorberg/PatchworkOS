@@ -967,7 +967,7 @@ status_t vfs_link(const pathname_t* oldPathname, const pathname_t* newPathname, 
         return status;
     }
 
-    if (oldParent.dentry->superblock != newParent.dentry->superblock)
+    if (oldParent.dentry->volume != newParent.dentry->volume)
     {
         return ERR(VFS, XDEV);
     }

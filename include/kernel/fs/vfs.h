@@ -5,7 +5,7 @@
 #include <kernel/fs/file.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
-#include <kernel/fs/superblock.h>
+#include <kernel/fs/volume.h>
 #include <kernel/fs/vnode.h>
 #include <kernel/proc/process.h>
 #include <kernel/sync/rwlock.h>

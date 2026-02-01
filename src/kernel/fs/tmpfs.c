@@ -27,26 +27,26 @@
 
 static bool initialized = false;
 
-static vnode_t* tmpfs_vnode_new(superblock_t* superblock, vnode_type_t type, void* buffer, uint64_t size);
+static vnode_t* tmpfs_vnode_new(volume_t* volume, vnode_type_t type, void* buffer, uint64_t size);
 
 static void tmpfs_dentry_add(dentry_t* dentry)
 {
-    tmpfs_superblock_data_t* super = dentry->superblock->data;
+    tmpfs_volume_data_t* volume = dentry->volume->data;
 
-    lock_acquire(&super->lock);
-    list_push_back(&super->dentrys, &dentry->otherEntry);
+    lock_acquire(&volume->lock);
+    list_push_back(&volume->dentrys, &dentry->otherEntry);
     REF(dentry);
-    lock_release(&super->lock);
+    lock_release(&volume->lock);
 }
 
 static void tmpfs_dentry_remove(dentry_t* dentry)
 {
-    tmpfs_superblock_data_t* super = dentry->superblock->data;
+    tmpfs_volume_data_t* volume = dentry->volume->data;
 
-    lock_acquire(&super->lock);
+    lock_acquire(&volume->lock);
     list_remove(&dentry->otherEntry);
     UNREF(dentry);
-    lock_release(&super->lock);
+    lock_release(&volume->lock);
 
     dentry_remove(dentry);
 }
@@ -123,7 +123,7 @@ static status_t tmpfs_create(vnode_t* dir, dentry_t* target, mode_t mode)
 {
     MUTEX_SCOPE(&dir->mutex);
 
-    vnode_t* vnode = tmpfs_vnode_new(dir->superblock, mode & MODE_DIRECTORY ? VNODE_DIR : VNODE_REGULAR, NULL, 0);
+    vnode_t* vnode = tmpfs_vnode_new(dir->volume, mode & MODE_DIRECTORY ? VNODE_DIR : VNODE_REGULAR, NULL, 0);
     if (vnode == NULL)
     {
         return ERR(FS, NOMEM);
@@ -177,7 +177,7 @@ static status_t tmpfs_symlink(vnode_t* dir, dentry_t* target, const char* dest)
 {
     MUTEX_SCOPE(&dir->mutex);
 
-    vnode_t* vnode = tmpfs_vnode_new(dir->superblock, VNODE_SYMLINK, (void*)dest, strlen(dest));
+    vnode_t* vnode = tmpfs_vnode_new(dir->volume, VNODE_SYMLINK, (void*)dest, strlen(dest));
     if (vnode == NULL)
     {
         return ERR(FS, NOMEM);
@@ -235,20 +235,20 @@ static dentry_ops_t dentryOps = {
     .iterate = dentry_generic_iterate,
 };
 
-static void tmpfs_superblock_cleanup(superblock_t* superblock)
+static void tmpfs_volume_cleanup(volume_t* volume)
 {
-    UNUSED(superblock);
+    UNUSED(volume);
 
     panic(NULL, "tmpfs unmounted\n");
 }
 
-static superblock_ops_t superOps = {
-    .cleanup = tmpfs_superblock_cleanup,
+static volume_ops_t superOps = {
+    .cleanup = tmpfs_volume_cleanup,
 };
 
-static dentry_t* tmpfs_load_file(superblock_t* superblock, dentry_t* parent, const char* name, const boot_file_t* in)
+static dentry_t* tmpfs_load_file(volume_t* volume, dentry_t* parent, const char* name, const boot_file_t* in)
 {
-    dentry_t* dentry = dentry_new(superblock, parent, name);
+    dentry_t* dentry = dentry_new(volume, parent, name);
     if (dentry == NULL)
     {
         panic(NULL, "Failed to create tmpfs file dentry");
@@ -257,7 +257,7 @@ static dentry_t* tmpfs_load_file(superblock_t* superblock, dentry_t* parent, con
 
     tmpfs_dentry_add(dentry);
 
-    vnode_t* vnode = tmpfs_vnode_new(superblock, VNODE_REGULAR, in->data, in->size);
+    vnode_t* vnode = tmpfs_vnode_new(volume, VNODE_REGULAR, in->data, in->size);
     if (vnode == NULL)
     {
         panic(NULL, "Failed to create tmpfs file vnode");
@@ -269,18 +269,18 @@ static dentry_t* tmpfs_load_file(superblock_t* superblock, dentry_t* parent, con
     return REF(dentry);
 }
 
-static dentry_t* tmpfs_load_dir(superblock_t* superblock, dentry_t* parent, const char* name, const boot_dir_t* in)
+static dentry_t* tmpfs_load_dir(volume_t* volume, dentry_t* parent, const char* name, const boot_dir_t* in)
 {
-    tmpfs_superblock_data_t* superData = superblock->data;
+    tmpfs_volume_data_t* superData = volume->data;
 
-    dentry_t* dentry = dentry_new(superblock, parent, name);
+    dentry_t* dentry = dentry_new(volume, parent, name);
     if (dentry == NULL)
     {
         panic(NULL, "Failed to create tmpfs dentry");
     }
     UNREF_DEFER(dentry);
 
-    vnode_t* vnode = tmpfs_vnode_new(superblock, VNODE_DIR, NULL, 0);
+    vnode_t* vnode = tmpfs_vnode_new(volume, VNODE_DIR, NULL, 0);
     if (vnode == NULL)
     {
         panic(NULL, "Failed to create tmpfs vnode");
@@ -293,13 +293,13 @@ static dentry_t* tmpfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
     boot_file_t* file;
     LIST_FOR_EACH(file, &in->files, entry)
     {
-        UNREF(tmpfs_load_file(superblock, dentry, file->name, file));
+        UNREF(tmpfs_load_file(volume, dentry, file->name, file));
     }
 
     boot_dir_t* child;
     LIST_FOR_EACH(child, &in->children, entry)
     {
-        UNREF(tmpfs_load_dir(superblock, dentry, child->name, child));
+        UNREF(tmpfs_load_dir(volume, dentry, child->name, child));
     }
 
     return REF(dentry);
@@ -314,49 +314,46 @@ static status_t tmpfs_mount(filesystem_t* fs, dentry_t** out, const char* option
         return ERR(FS, INVAL);
     }
 
-    superblock_t* superblock = superblock_new(fs, &superOps, &dentryOps);
-    if (superblock == NULL)
+    volume_t* volume = volume_new(fs, &superOps, &dentryOps);
+    if (volume == NULL)
     {
         return ERR(FS, NOMEM);
     }
-    UNREF_DEFER(superblock);
+    UNREF_DEFER(volume);
 
-    superblock->blockSize = 0;
-    superblock->maxFileSize = UINT64_MAX;
-
-    tmpfs_superblock_data_t* tmpfsData = malloc(sizeof(tmpfs_superblock_data_t));
+    tmpfs_volume_data_t* tmpfsData = malloc(sizeof(tmpfs_volume_data_t));
     if (tmpfsData == NULL)
     {
         return ERR(FS, NOMEM);
     }
     list_init(&tmpfsData->dentrys);
     lock_init(&tmpfsData->lock);
-    superblock->data = tmpfsData;
+    volume->data = tmpfsData;
 
     if (!initialized)
     {
         boot_info_t* bootInfo = boot_info_get();
         const boot_disk_t* disk = &bootInfo->disk;
 
-        dentry_t* root = tmpfs_load_dir(superblock, NULL, NULL, disk->root);
+        dentry_t* root = tmpfs_load_dir(volume, NULL, NULL, disk->root);
         if (root == NULL)
         {
             return ERR(FS, NOMEM);
         }
 
-        superblock->root = root;
-        *out = REF(superblock->root);
+        volume->root = root;
+        *out = REF(volume->root);
         return OK;
     }
 
-    dentry_t* dentry = dentry_new(superblock, NULL, NULL);
+    dentry_t* dentry = dentry_new(volume, NULL, NULL);
     if (dentry == NULL)
     {
         return ERR(FS, NOMEM);
     }
     UNREF_DEFER(dentry);
 
-    vnode_t* vnode = tmpfs_vnode_new(superblock, VNODE_DIR, NULL, 0);
+    vnode_t* vnode = tmpfs_vnode_new(volume, VNODE_DIR, NULL, 0);
     if (vnode == NULL)
     {
         return ERR(FS, NOMEM);
@@ -366,14 +363,14 @@ static status_t tmpfs_mount(filesystem_t* fs, dentry_t** out, const char* option
     tmpfs_dentry_add(dentry);
     dentry_make_positive(dentry, vnode);
 
-    superblock->root = dentry;
-    *out = REF(superblock->root);
+    volume->root = dentry;
+    *out = REF(volume->root);
     return OK;
 }
 
-static vnode_t* tmpfs_vnode_new(superblock_t* superblock, vnode_type_t type, void* buffer, uint64_t size)
+static vnode_t* tmpfs_vnode_new(volume_t* volume, vnode_type_t type, void* buffer, uint64_t size)
 {
-    vnode_t* vnode = vnode_new(superblock, type, &vnodeOps, &fileOps);
+    vnode_t* vnode = vnode_new(volume, type, &vnodeOps, &fileOps);
     if (vnode == NULL)
     {
         return NULL;

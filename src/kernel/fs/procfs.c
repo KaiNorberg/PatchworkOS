@@ -8,7 +8,7 @@
 #include <kernel/fs/mount.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
-#include <kernel/fs/superblock.h>
+#include <kernel/fs/volume.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/fs/vnode.h>
 #include <kernel/log/log.h>
@@ -783,7 +783,7 @@ static status_t procfs_env_lookup(vnode_t* dir, dentry_t* target)
         return INFO(FS, NEGATIVE);
     }
 
-    vnode_t* vnode = vnode_new(dir->superblock, VNODE_REGULAR, NULL, &envVarOps);
+    vnode_t* vnode = vnode_new(dir->volume, VNODE_REGULAR, NULL, &envVarOps);
     if (vnode == NULL)
     {
         return ERR(FS, NOMEM);
@@ -812,7 +812,7 @@ static status_t procfs_env_create(vnode_t* dir, dentry_t* target, mode_t mode)
         return status;
     }
 
-    vnode_t* vnode = vnode_new(dir->superblock, VNODE_REGULAR, NULL, &envVarOps);
+    vnode_t* vnode = vnode_new(dir->volume, VNODE_REGULAR, NULL, &envVarOps);
     if (vnode == NULL)
     {
         return ERR(FS, NOMEM);
@@ -996,7 +996,7 @@ static status_t procfs_pid_lookup(vnode_t* dir, dentry_t* target)
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dir->superblock, pidEntries[i].type, pidEntries[i].vnodeOps, pidEntries[i].fileOps);
+        vnode_t* vnode = vnode_new(dir->volume, pidEntries[i].type, pidEntries[i].vnodeOps, pidEntries[i].fileOps);
         if (vnode == NULL)
         {
             return ERR(FS, NOMEM);
@@ -1088,7 +1088,7 @@ static status_t procfs_lookup(vnode_t* dir, dentry_t* target)
         }
 
         vnode_t* vnode =
-            vnode_new(dir->superblock, procEntries[i].type, procEntries[i].vnodeOps, procEntries[i].fileOps);
+            vnode_new(dir->volume, procEntries[i].type, procEntries[i].vnodeOps, procEntries[i].fileOps);
         if (vnode == NULL)
         {
             return ERR(FS, NOMEM);
@@ -1112,7 +1112,7 @@ static status_t procfs_lookup(vnode_t* dir, dentry_t* target)
     }
     UNREF_DEFER(process);
 
-    vnode_t* vnode = vnode_new(dir->superblock, VNODE_DIR, &pidVnodeOps, NULL);
+    vnode_t* vnode = vnode_new(dir->volume, VNODE_DIR, &pidVnodeOps, NULL);
     if (vnode == NULL)
     {
         return ERR(FS, NOMEM);
@@ -1184,21 +1184,21 @@ static status_t procfs_mount(filesystem_t* fs, dentry_t** out, const char* optio
         return ERR(FS, INVAL);
     }
 
-    superblock_t* superblock = superblock_new(fs, NULL, NULL);
-    if (superblock == NULL)
+    volume_t* volume = volume_new(fs, NULL, NULL);
+    if (volume == NULL)
     {
         return ERR(FS, NOMEM);
     }
-    UNREF_DEFER(superblock);
+    UNREF_DEFER(volume);
 
-    vnode_t* vnode = vnode_new(superblock, VNODE_DIR, &procVnodeOps, NULL);
+    vnode_t* vnode = vnode_new(volume, VNODE_DIR, &procVnodeOps, NULL);
     if (vnode == NULL)
     {
         return ERR(FS, NOMEM);
     }
     UNREF_DEFER(vnode);
 
-    dentry_t* dentry = dentry_new(superblock, NULL, NULL);
+    dentry_t* dentry = dentry_new(volume, NULL, NULL);
     if (dentry == NULL)
     {
         return ERR(FS, NOMEM);
@@ -1207,8 +1207,8 @@ static status_t procfs_mount(filesystem_t* fs, dentry_t** out, const char* optio
 
     dentry_make_positive(dentry, vnode);
 
-    superblock->root = dentry;
-    *out = superblock->root;
+    volume->root = dentry;
+    *out = volume->root;
     return OK;
 }
 

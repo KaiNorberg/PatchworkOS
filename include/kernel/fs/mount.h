@@ -10,7 +10,7 @@
 #include <sys/map.h>
 
 typedef struct mount mount_t;
-typedef struct superblock superblock_t;
+typedef struct volume volume_t;
 typedef struct dentry dentry_t;
 typedef struct path path_t;
 
@@ -21,7 +21,7 @@ typedef struct path path_t;
  *
  * A mount represents a link between two locations within the VFS hierarchy.
  *
- * Typically, this might be a link from an arbitrary directory to the root of a superblock. However, it can also be a
+ * Typically, this might be a link from an arbitrary directory to the root of a volume. However, it can also be a
  * link from any arbitrary location to any other arbitrary location, in which case it is referred to as a bind mount.
  *
  * @{
@@ -53,7 +53,7 @@ typedef struct mount
     dentry_t*
         source; ///< The dentry to appear at the target, usually the root of the mounted filesystem.
     dentry_t* target;         ///< The dentry which the source is mounted to, can be `NULL` for the root filesystem.
-    superblock_t* superblock; ///< The superblock of the mounted filesystem.
+    volume_t* volume; ///< The volume of the mounted filesystem.
     mount_t* parent;          ///< The parent mount, can be `NULL` for the root filesystem.
     mode_t mode;              ///< Specifies the maximum permissions for this mount and if it is a directory or a file.
     rcu_entry_t rcu;          ///< RCU entry for deferred cleanup.
@@ -66,13 +66,13 @@ typedef struct mount
  *
  * There is no `mount_free()` instead use `UNREF()`.
  *
- * @param superblock The superblock of the mounted filesystem.
+ * @param volume The volume of the mounted filesystem.
  * @param source The dentry to appear at target once mounted, usually the root dentry of the mounted filesystem.
  * @param target The dentry which the source is mounted to, can be `NULL` for the root filesystem.
  * @param parent The parent mount, can be `NULL` for the root filesystem.
  * @param mode Specifies the maximum permissions for this mount and if it is a directory or a file.
  * @return On success, the new mount. On failure, returns `NULL`.
  */
-mount_t* mount_new(superblock_t* superblock, dentry_t* source, dentry_t* target, mount_t* parent, mode_t mode);
+mount_t* mount_new(volume_t* volume, dentry_t* source, dentry_t* target, mount_t* parent, mode_t mode);
 
 /** @} */

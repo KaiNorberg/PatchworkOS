@@ -5,7 +5,7 @@
 #include <kernel/fs/file.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
-#include <kernel/fs/superblock.h>
+#include <kernel/fs/volume.h>
 #include <kernel/fs/vnode.h>
 #include <kernel/proc/process.h>
 #include <kernel/sync/rwlock.h>
@@ -27,7 +27,7 @@
  * The directory itself can be used to mount instances of that filesystem type.
  *
  * Within each filesystem directory are readable files representing each mounted instance of that filesystem type, named
- * after the superblock ID, containing the following information:
+ * after the volume ID, containing the following information:
  *
  * ```
  * id: %llu
@@ -36,8 +36,8 @@
  *
  * ```
  *
- * Where the `id` is the superblock ID, `block_size` is the block size of the superblock, and `max_file_size` is the
- * maximum size of a file on this superblock.
+ * Where the `id` is the volume ID, `block_size` is the block size of the volume, and `max_file_size` is the
+ * maximum size of a file on this volume.
  *
  * @see kernel_fs_sysfs
  *
@@ -53,7 +53,7 @@ typedef struct filesystem
 {
     list_entry_t entry;   ///< Used internally.
     map_entry_t mapEntry; ///< Used internally.
-    list_t superblocks;   ///< Used internally.
+    list_t volumes;   ///< Used internally.
     rwlock_t lock;        ///< Used internally.
     const char* name;
     /**

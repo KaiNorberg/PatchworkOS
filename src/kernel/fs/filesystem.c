@@ -43,14 +43,14 @@ static MAP_CREATE(fsMap, 64, filesystem_cmp);
 static list_t filesystems = LIST_CREATE(filesystems);
 static rwlock_t lock = RWLOCK_CREATE();
 
-static status_t superblock_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static status_t volume_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
-    superblock_t* sb = file->vnode->data;
-    assert(sb != NULL);
+    volume_t* volume = file->vnode->data;
+    assert(volume != NULL);
 
     char info[MAX_PATH];
-    int length = snprintf(info, sizeof(info), "id: %llu\nblock_size: %llu\nmax_file_size: %llu\n", sb->id,
-        sb->blockSize, sb->maxFileSize);
+    int length = snprintf(info, sizeof(info), "id: %llu\nblock_size: %llu\nmax_file_size: %llu\n", volume->id,
+        volume->blockSize, volume->maxFileSize);
     if (length < 0)
     {
         return ERR(DRIVER, IMPL);
@@ -59,24 +59,24 @@ static status_t superblock_read(file_t* file, void* buffer, size_t count, size_t
     return buffer_read(buffer, count, offset, bytesRead, info, length);
 }
 
-static void superblock_cleanup(vnode_t* vnode)
+static void volume_cleanup(vnode_t* vnode)
 {
-    superblock_t* sb = vnode->data;
-    if (sb == NULL)
+    volume_t* volume = vnode->data;
+    if (volume == NULL)
     {
         return;
     }
 
-    UNREF(sb);
+    UNREF(volume);
     vnode->data = NULL;
 }
 
 static file_ops_t sbFileOps = {
-    .read = superblock_read,
+    .read = volume_read,
 };
 
 static vnode_ops_t sbVnodeOps = {
-    .cleanup = superblock_cleanup,
+    .cleanup = volume_cleanup,
 };
 
 static status_t filesystem_lookup(vnode_t* dir, dentry_t* dentry)
@@ -84,7 +84,7 @@ static status_t filesystem_lookup(vnode_t* dir, dentry_t* dentry)
     filesystem_t* fs = dir->data;
     assert(fs != NULL);
 
-    sbid_t id;
+    volume_id_t id;
     if (sscanf(dentry->name, "%llu", &id) != 1)
     {
         return INFO(DRIVER, NEGATIVE);
@@ -92,20 +92,20 @@ static status_t filesystem_lookup(vnode_t* dir, dentry_t* dentry)
 
     RWLOCK_READ_SCOPE(&fs->lock);
 
-    superblock_t* sb;
-    LIST_FOR_EACH(sb, &fs->superblocks, entry)
+    volume_t* volume;
+    LIST_FOR_EACH(volume, &fs->volumes, entry)
     {
-        if (sb->id != id)
+        if (volume->id != id)
         {
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dentry->superblock, VNODE_REGULAR, NULL, &sbFileOps);
+        vnode_t* vnode = vnode_new(dentry->volume, VNODE_REGULAR, NULL, &sbFileOps);
         if (vnode == NULL)
         {
             return ERR(MEM, NOMEM);
         }
-        vnode->data = REF(sb);
+        vnode->data = REF(volume);
         dentry_make_positive(dentry, vnode);
         return OK;
     }
@@ -125,8 +125,8 @@ static status_t filesystem_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 
     RWLOCK_READ_SCOPE(&fs->lock);
 
-    superblock_t* sb;
-    LIST_FOR_EACH(sb, &fs->superblocks, entry)
+    volume_t* volume;
+    LIST_FOR_EACH(volume, &fs->volumes, entry)
     {
         if (ctx->index++ < ctx->pos)
         {
@@ -134,7 +134,7 @@ static status_t filesystem_iterate(dentry_t* dentry, dir_ctx_t* ctx)
         }
 
         char name[MAX_NAME];
-        snprintf(name, MAX_NAME, "%llu", sb->id);
+        snprintf(name, MAX_NAME, "%llu", volume->id);
 
         if (!ctx->emit(ctx, name, VNODE_REGULAR))
         {
@@ -167,7 +167,7 @@ static status_t filesystem_dir_lookup(vnode_t* dir, dentry_t* dentry)
     }
     filesystem_t* fs = CONTAINER_OF(entry, filesystem_t, mapEntry);
 
-    vnode_t* vnode = vnode_new(dentry->superblock, VNODE_DIR, &fsVnodeOps, NULL);
+    vnode_t* vnode = vnode_new(dentry->volume, VNODE_DIR, &fsVnodeOps, NULL);
     if (vnode == NULL)
     {
         return ERR(MEM, NOMEM);
@@ -241,7 +241,7 @@ status_t filesystem_register(filesystem_t* fs)
 
     list_entry_init(&fs->entry);
     map_entry_init(&fs->mapEntry);
-    list_init(&fs->superblocks);
+    list_init(&fs->volumes);
     rwlock_init(&fs->lock);
 
     uint64_t hash = hash_buffer(fs->name, strlen(fs->name));
@@ -270,9 +270,9 @@ void filesystem_unregister(filesystem_t* fs)
     map_remove(&fsMap, &fs->mapEntry, hash);
     list_remove(&fs->entry);
 
-    while (!list_is_empty(&fs->superblocks))
+    while (!list_is_empty(&fs->volumes))
     {
-        list_pop_front(&fs->superblocks);
+        list_pop_front(&fs->volumes);
     }
 }
 

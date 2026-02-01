@@ -5,7 +5,7 @@
 #include <kernel/fs/filesystem.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
-#include <kernel/fs/superblock.h>
+#include <kernel/fs/volume.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/proc/process.h>
@@ -380,14 +380,14 @@ status_t namespace_mount(namespace_t* ns, path_t* target, filesystem_t* fs, cons
     }
     UNREF_DEFER(root);
 
-    if (root->superblock->root != root)
+    if (root->volume->root != root)
     {
         return ERR(VFS, IMPL);
     }
 
     RWLOCK_WRITE_SCOPE(&ns->lock);
 
-    mount_t* mount = mount_new(root->superblock, root, target != NULL ? target->dentry : NULL,
+    mount_t* mount = mount_new(root->volume, root, target != NULL ? target->dentry : NULL,
         target != NULL ? target->mount : NULL, mode);
     if (mount == NULL)
     {
@@ -433,7 +433,7 @@ status_t namespace_bind(namespace_t* ns, path_t* target, path_t* source, mode_t 
         return ERR(VFS, NOENT);
     }
 
-    mount_t* mount = mount_new(source->dentry->superblock, source->dentry, target != NULL ? target->dentry : NULL,
+    mount_t* mount = mount_new(source->dentry->volume, source->dentry, target != NULL ? target->dentry : NULL,
         target != NULL ? target->mount : NULL, mode);
     if (mount == NULL)
     {

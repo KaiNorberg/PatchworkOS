@@ -105,8 +105,8 @@ static void dentry_free(dentry_t* dentry)
         dentry->vnode = NULL;
     }
 
-    UNREF(dentry->superblock);
-    dentry->superblock = NULL;
+    UNREF(dentry->volume);
+    dentry->volume = NULL;
 
     rcu_call(&dentry->rcu, rcu_call_cache_free, dentry);
 }
@@ -122,7 +122,7 @@ static void dentry_ctor(void* ptr)
     dentry->parent = NULL;
     list_entry_init(&dentry->siblingEntry);
     list_init(&dentry->children);
-    dentry->superblock = NULL;
+    dentry->volume = NULL;
     dentry->ops = NULL;
     dentry->data = NULL;
     map_entry_init(&dentry->mapEntry);
@@ -133,7 +133,7 @@ static void dentry_ctor(void* ptr)
 
 static cache_t cache = CACHE_CREATE(cache, "dentry", sizeof(dentry_t), CACHE_LINE, dentry_ctor, NULL);
 
-dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* name)
+dentry_t* dentry_new(volume_t* volume, dentry_t* parent, const char* name)
 {
     dentry_t* dentry = cache_alloc(&cache);
     if (dentry == NULL)
@@ -142,8 +142,8 @@ dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* nam
     }
 
     ref_init(&dentry->ref, dentry_free);
-    dentry->superblock = REF(superblock);
-    dentry->ops = superblock->dentryOps;
+    dentry->volume = REF(volume);
+    dentry->ops = volume->dentryOps;
     if (name != NULL)
     {
         strncpy(dentry->name, name, MAX_NAME);
@@ -241,7 +241,7 @@ status_t dentry_lookup(dentry_t** out, dentry_t* parent, const char* name, size_
     strncpy(buffer, name, length);
     buffer[length] = '\0';
 
-    dentry = dentry_new(parent->superblock, parent, buffer);
+    dentry = dentry_new(parent->volume, parent, buffer);
     if (dentry == NULL)
     {
         /// @todo Is there a race condition here?

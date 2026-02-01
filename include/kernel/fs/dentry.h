@@ -16,7 +16,7 @@
 typedef struct dentry dentry_t;
 typedef struct dentry_ops dentry_ops_t;
 typedef struct vnode vnode_t;
-typedef struct superblock superblock_t;
+typedef struct volume volume_t;
 typedef struct dir_ctx dir_ctx_t;
 
 /**
@@ -160,7 +160,7 @@ typedef struct dentry
     dentry_t* parent;    ///< The parent dentry, will be itself if this is the root dentry, immutable after creation.
     list_entry_t siblingEntry;
     list_t children;
-    superblock_t* superblock;
+    volume_t* volume;
     const dentry_ops_t* ops;
     void* data;
     map_entry_t mapEntry;         ///< Entry in the dentry cache hash map.
@@ -179,12 +179,12 @@ typedef struct dentry
  *
  * There is no `dentry_free()` instead use `UNREF()`.
  *
- * @param superblock The superblock the dentry belongs to.
+ * @param volume The volume the dentry belongs to.
  * @param parent The parent dentry, can be `NULL`.
  * @param name The name of the dentry, can be `NULL` if `parent` is also `NULL`.
  * @return On success, the new dentry. On failure, returns `NULL`.
  */
-dentry_t* dentry_new(superblock_t* superblock, dentry_t* parent, const char* name);
+dentry_t* dentry_new(volume_t* volume, dentry_t* parent, const char* name);
 
 /**
  * @brief Remove a dentry from the dentry cache.

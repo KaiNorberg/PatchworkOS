@@ -33,9 +33,9 @@ typedef struct
     file_t* out;
 } ninep_t;
 
-static void ninep_super_cleanup(superblock_t* sb)
+static void ninep_super_cleanup(volume_t* volume)
 {
-    ninep_t* ninep = sb->data;
+    ninep_t* ninep = volume->data;
     if (ninep == NULL)
     {
         return;
@@ -44,10 +44,10 @@ static void ninep_super_cleanup(superblock_t* sb)
     UNREF(ninep->in);
     UNREF(ninep->out);
     free(ninep);
-    sb->data = NULL;
+    volume->data = NULL;
 }
 
-static superblock_ops_t superOps = {
+static volume_ops_t superOps = {
     .cleanup = ninep_super_cleanup,
 };
 
@@ -100,12 +100,12 @@ static dentry_t* ninep_mount(filesystem_t* fs, const char* options, void* data)
         return NULL;
     }
 
-    superblock_t* superblock = superblock_new(fs, &superOps, NULL);
-    if (superblock == NULL)
+    volume_t* volume = volume_new(fs, &superOps, NULL);
+    if (volume == NULL)
     {
         return NULL;
     }
-    UNREF_DEFER(superblock);
+    UNREF_DEFER(volume);
 
     ninep_t* ninep = malloc(sizeof(ninep_t));
     if (ninep == NULL)
@@ -130,16 +130,16 @@ static dentry_t* ninep_mount(filesystem_t* fs, const char* options, void* data)
         return NULL;
     }
 
-    superblock->data = ninep;
+    volume->data = ninep;
 
-    vnode_t* vnode = vnode_new(superblock, VNODE_DIR, NULL, NULL);
+    vnode_t* vnode = vnode_new(volume, VNODE_DIR, NULL, NULL);
     if (vnode == NULL)
     {
         return NULL;
     }
     UNREF_DEFER(vnode);
 
-    dentry_t* dentry = dentry_new(superblock, NULL, NULL);
+    dentry_t* dentry = dentry_new(volume, NULL, NULL);
     if (dentry == NULL)
     {
         return NULL;
@@ -147,8 +147,8 @@ static dentry_t* ninep_mount(filesystem_t* fs, const char* options, void* data)
 
     dentry_make_positive(dentry, vnode);
 
-    superblock->root = dentry;
-    return superblock->root;
+    volume->root = dentry;
+    return volume->root;
 }
 
 static filesystem_t ninep = {
