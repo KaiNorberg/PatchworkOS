@@ -105,7 +105,10 @@ static void perf_cpu_read(irp_t* irp)
 static vnode_class_t cpuClass = {
     .name = "perf cpu",
     .type = VNODE_REGULAR,
-    .handlers = { [IRP_MJ_READ] = perf_cpu_read, },
+    .handlers =
+        {
+            [IRP_MJ_READ] = perf_cpu_read,
+        },
 };
 
 static void perf_mem_read(irp_t* irp)
@@ -136,7 +139,10 @@ static void perf_mem_read(irp_t* irp)
 static vnode_class_t memClass = {
     .name = "perf mem",
     .type = VNODE_REGULAR,
-    .handlers = { [IRP_MJ_READ] = perf_mem_read, },
+    .handlers =
+        {
+            [IRP_MJ_READ] = perf_mem_read,
+        },
 };
 
 static vnode_class_t rootClass = {

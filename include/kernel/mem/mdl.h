@@ -146,6 +146,21 @@ status_t mdl_read(mdl_t* mdl, size_t count, size_t offset, size_t* bytesRead, co
 status_t mdl_write(mdl_t* mdl, size_t count, size_t offset, size_t* bytesWritten, void* dest, size_t destLength);
 
 /**
+ * @brief Read from a circular buffer into a Memory Descriptor List.
+ *
+ * @param mdl The MDL to read into.
+ * @param count Number of bytes to read.
+ * @param offset Offset within the MDL to start reading to.
+ * @param bytesRead Output pointer for the amount of bytes read, can be `NULL`.
+ * @param src The source circular buffer.
+ * @param srcLen The size of the circular buffer.
+ * @param srcIndex The monotonic index to start reading from in the circular buffer.
+ * @return An appropriate status value.
+ */
+status_t mdl_read_circular(mdl_t* mdl, size_t count, size_t offset, size_t* bytesRead, const void* src, size_t srcLen,
+    size_t srcIndex);
+
+/**
  * @brief Memory Descriptor List Iterator structure.
  * @struct mdl_iter_t
  */

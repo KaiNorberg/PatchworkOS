@@ -48,7 +48,7 @@ typedef struct dentry dentry_t;
 typedef struct vnode_class
 {
     const char* name;                         ///< The name of the class, used for debugging.
-    vnode_type_t type;                             ///< The type of the vnode.
+    vnode_type_t type;                        ///< The type of the vnode.
     status_t (*file_ctor)(file_t* file);      ///< File constructor.
     void (*file_dtor)(file_t* file);          ///< File destructor.
     void (*handlers[IRP_MJ_MAX])(irp_t* irp); ///< IRP handlers indexed by major function number.

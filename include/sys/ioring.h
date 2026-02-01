@@ -29,7 +29,7 @@ extern "C"
  * The ring interface acts as the interface for all asynchronous operations in the kernel.
  *
  * @todo Write I/O Ring user-side interface documentation.
- * 
+ *
  * @see kernel_io_ioring for more information about I/O rings.
  *
  * @{
@@ -226,10 +226,10 @@ static_assert(sizeof(iosqe_t) == 64, "iosqe_t is not 64 bytes");
  */
 typedef struct iocqe
 {
-    ioop_t op;       ///< The operation that was performed.
-    status_t status; ///< The status of the operation.
+    ioop_t op;        ///< The operation that was performed.
+    status_t status;  ///< The status of the operation.
     uintptr_t result; ///< The result of the operation.
-    uintptr_t data;  ///< Private data from the submission entry.
+    uintptr_t data;   ///< Private data from the submission entry.
     uint8_t _reserved[8];
 } iocqe_t;
 
@@ -422,7 +422,7 @@ static inline void ioprep_write(iosqe_t* iosqe, iosqe_flags_t flags, clock_t tim
 
 /**
  * @brief Prepare a poll submission queue entry (SQE).
- * 
+ *
  * @see `IOOP_POLL`
  */
 static inline void ioprep_poll(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,

@@ -19,8 +19,10 @@ typedef struct path path_t;
  * @defgroup kernel_fs_mount Mount
  * @ingroup kernel_fs
  *
- * A mount represents a location that a superblock is mounted to. It links a superblock (the mounted filesystem) to a
- * mountpoint (a dentry in another filesystem).
+ * A mount represents a link between two locations within the VFS hierarchy.
+ *
+ * Typically, this might be a link from an arbitrary directory to the root of a superblock. However, it can also be a
+ * link from any arbitrary location to any other arbitrary location, in which case it is referred to as a bind mount.
  *
  * @{
  */
@@ -49,7 +51,7 @@ typedef struct mount
     ref_t ref;
     mount_id_t id;
     dentry_t*
-        source; ///< The dentry to appear at target once mounted, usually the root dentry of the mounted filesystem.
+        source; ///< The dentry to appear at the target, usually the root of the mounted filesystem.
     dentry_t* target;         ///< The dentry which the source is mounted to, can be `NULL` for the root filesystem.
     superblock_t* superblock; ///< The superblock of the mounted filesystem.
     mount_t* parent;          ///< The parent mount, can be `NULL` for the root filesystem.

@@ -35,67 +35,43 @@ typedef struct superblock_ops superblock_ops_t;
 void sysfs_init(void);
 
 /**
- * @brief Create a new directory inside a mounted sysfs instance.
+ * @brief Create a new dentry inside a mounted sysfs instance.
  *
  * @param parent The parent directory, if `NULL` then the root is used.
- * @param name The name of the new directory.
- * @param vnodeOps The vnode operations for the new directory, can be `NULL`.
- * @param private Private data to store in the vnode of the new directory, can be `NULL`.
- * @return On success, the new sysfs directory. On failure, `NULL` and `errno` is set.
+ * @param name The name of the new dentry.
+ * @param cls The class to assign to the created vnode.
+ * @param data Private data to store in the vnode of the new dentry, can be `NULL`.
+ * @return On success, the new sysfs dentry. On failure, `NULL`.
  */
-dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const vnode_ops_t* vnodeOps, void* data);
+dentry_t* sysfs_dentry_new(dentry_t* parent, const char* name, const vnode_class_t* cls, void* data);
 
 /**
- * @brief Create a new file inside a mounted sysfs instance.
- *
- * @param parent The parent directory, if `NULL` then the root is used.
- * @param name The name of the new file.
- * @param vnodeOps The vnode operations for the new file, can be `NULL`.
- * @param fileOps The file operations for the new file, can be `NULL`.
- * @param private Private data to store in the vnode of the new file, can be `NULL`.
- * @return On success, the new sysfs file. On failure, `NULL`.
+ * @brief Descriptor for batch dentry creation.
+ * @struct sysfs_desc_t
  */
-dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const vnode_ops_t* vnodeOps, const file_ops_t* fileOps,
-    void* data);
-
-/**
- * @brief Create a new symbolic link inside a mounted sysfs instance.
- *
- * @param parent The parent directory, if `NULL` then the root is used.
- * @param name The name of the new symbolic link.
- * @param vnodeOps The vnode operations for the new symbolic link.
- * @param private Private data to store in the vnode of the new symbolic link, can be `NULL`.
- * @return On success, the new sysfs symbolic link. On failure, `NULL`.
- */
-dentry_t* sysfs_symlink_new(dentry_t* parent, const char* name, const vnode_ops_t* vnodeOps, void* data);
-
-/**
- * @brief Descriptor for batch file creation.
- * @struct sysfs_file_desc_t
- */
-typedef struct sysfs_file_desc
+typedef struct sysfs_desc
 {
-    const char* name;            ///< Name of the file, `NULL` marks end of array.
-    const vnode_ops_t* vnodeOps; ///< Vnode operations, can be `NULL`.
-    const file_ops_t* fileOps;   ///< File operations, can be `NULL`.
-    void* data;                  ///< Private data to store in the vnode of the file.
-} sysfs_file_desc_t;
+    const char* name;         ///< Name of the dentry.
+    const vnode_class_t* cls; ///< Class to assign to the vnode of the created dentry.
+    void* data;               ///< Private data to store in the vnode of the dentry.
+} sysfs_desc_t;
 
 /**
- * @brief Create multiple files in a sysfs directory.
+ * @brief Create multiple dentrys in a sysfs directory.
  *
  * @param out Output list to store created dentries, can be `NULL`. The dentries use the `otherEntry` list entry.
  * @param parent The parent directory, if `NULL` then the root is used.
- * @param descs Array of file descriptors, terminated by an entry with `name == NULL`.
+ * @param descs Array of sysfs descriptors.
+ * @param count The number of dentrys to create.
  * @return `true` on success, `false` on failure.
  */
-bool sysfs_files_new(list_t* out, dentry_t* parent, const sysfs_file_desc_t* descs);
+bool sysfs_dentrys_new(list_t* out, dentry_t* parent, const sysfs_desc_t* descs, size_t count);
 
 /**
- * @brief Free all files in a list created by `sysfs_files_new()`.
+ * @brief Free all dentrys in a list created by `sysfs_dentrys_new()`.
  *
- * @param files The list of files to free.
+ * @param dentrys The list of dentrys to free.
  */
-void sysfs_files_free(list_t* files);
+void sysfs_dentrys_free(list_t* dentrys);
 
 /** @} */

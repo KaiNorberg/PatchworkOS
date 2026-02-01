@@ -51,6 +51,34 @@ static void tmpfs_dentry_remove(dentry_t* dentry)
     dentry_remove(dentry);
 }
 
+static status_t tmpfs_seek(file_t* file, ssize_t offset, seek_origin_t origin, size_t* newPos)
+{
+    MUTEX_SCOPE(&file->vnode->mutex);
+
+    size_t pos;
+    switch (origin)
+    {
+    case SEEK_SET:
+        pos = offset;
+        break;
+    case SEEK_CUR:
+        pos = atomic_load(&file->pos) + offset;
+        break;
+    case SEEK_END:
+        pos = file->vnode->size + offset;
+        break;
+    default:
+        return ERR(IO, INVAL);
+    }
+
+    atomic_store(&file->pos, pos);
+    if (newPos != NULL)
+    {
+        *newPos = pos;
+    }
+    return OK;
+}
+
 static status_t tmpfs_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
 {
     MUTEX_SCOPE(&file->vnode->mutex);

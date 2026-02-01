@@ -22,6 +22,8 @@ typedef struct dentry dentry_t;
  *
  * A superblock represents a mounted filesystem.
  *
+ * @todo Rename superblock to volume?
+ * 
  * @{
  */
 

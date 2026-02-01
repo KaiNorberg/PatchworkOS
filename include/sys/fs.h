@@ -375,9 +375,9 @@ poll_events_t poll1(fd_t fd, poll_events_t events, clock_t timeout);
 typedef enum
 {
     VNODE_NONE = 0, ///< Invalid vnode type.
-    VNODE_REGULAR,     ///< Is a regular file.
-    VNODE_DIR,     ///< Is a directory.
-    VNODE_SYMLINK, ///< Is a symbolic link.
+    VNODE_REGULAR,  ///< Is a regular file.
+    VNODE_DIR,      ///< Is a directory.
+    VNODE_SYMLINK,  ///< Is a symbolic link.
 } vnode_type_t;
 
 /**
@@ -395,7 +395,7 @@ typedef struct
 {
     sbid_t sbid;          ///< The superblock ID of the filesystem containing the entry.
     uint64_t number;      ///< The number of the entries vnode.
-    vnode_type_t type;         ///< The type of the entries vnode.
+    vnode_type_t type;    ///< The type of the entries vnode.
     uint64_t size;        ///< The size of the file that is visible outside the filesystem.
     uint64_t blocks;      ///< The amount of blocks used on disk to store the file.
     uint64_t blockSize;   ///< The preferred block size of the filesystem.

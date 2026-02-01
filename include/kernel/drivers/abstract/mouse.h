@@ -23,7 +23,7 @@
  * ## events
  *
  * A readable and pollable file that provides a stream of mouse events, where each event is defined as
- * 
+ *
  * ```
  * [sign][value][type]
  * ```

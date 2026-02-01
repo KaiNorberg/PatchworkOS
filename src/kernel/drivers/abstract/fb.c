@@ -189,12 +189,11 @@ status_t fb_register(fb_t* fb)
         return ERR(DRIVER, NOMEM);
     }
 
-    devfs_desc_t files[] = {
-        {
-            .name = "name",
-            .cls = &nameClass,
-            .data = fb,
-        },
+    devfs_desc_t files[] = {{
+                                .name = "name",
+                                .cls = &nameClass,
+                                .data = fb,
+                            },
         {
             .name = "info",
             .cls = &infoClass,
@@ -204,8 +203,7 @@ status_t fb_register(fb_t* fb)
             .name = "data",
             .cls = &dataClass,
             .data = fb,
-        }
-    };
+        }};
 
     if (!devfs_dentrys_new(&fb->files, fb->dir, files, ARRAY_SIZE(files)))
     {

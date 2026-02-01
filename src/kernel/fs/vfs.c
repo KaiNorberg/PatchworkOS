@@ -632,7 +632,8 @@ static status_t vfs_getdents_recursive_step(path_t* path, mode_t mode, getdents_
             }
             ctx->currentOffset += sizeof(dirent_t);
 
-            if ((d->type == VNODE_DIR || d->type == VNODE_SYMLINK) && strcmp(d->path, ".") != 0 && strcmp(d->path, "..") != 0)
+            if ((d->type == VNODE_DIR || d->type == VNODE_SYMLINK) && strcmp(d->path, ".") != 0 &&
+                strcmp(d->path, "..") != 0)
             {
                 path_t childPath = PATH_CREATE(path->mount, path->dentry);
                 PATH_DEFER(&childPath);

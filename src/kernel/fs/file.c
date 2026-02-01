@@ -54,31 +54,3 @@ file_t* file_new(const path_t* path, mode_t mode)
     file->data = NULL;
     return file;
 }
-
-status_t file_generic_seek(file_t* file, ssize_t offset, seek_origin_t origin, size_t* newPos)
-{
-    MUTEX_SCOPE(&file->vnode->mutex);
-
-    size_t pos;
-    switch (origin)
-    {
-    case SEEK_SET:
-        pos = offset;
-        break;
-    case SEEK_CUR:
-        pos = file->pos + offset;
-        break;
-    case SEEK_END:
-        pos = file->vnode->size + offset;
-        break;
-    default:
-        return ERR(IO, INVAL);
-    }
-
-    file->pos = pos;
-    if (newPos != NULL)
-    {
-        *newPos = pos;
-    }
-    return OK;
-}

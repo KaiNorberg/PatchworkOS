@@ -247,3 +247,32 @@ status_t mdl_write(mdl_t* mdl, size_t count, size_t offset, size_t* bytesWritten
 
     return OK;
 }
+
+status_t mdl_read_circular(mdl_t* mdl, size_t count, size_t offset, size_t* bytesRead, const void* src, size_t srcLen,
+    size_t srcIndex)
+{
+    size_t index = srcIndex % srcLen;
+    size_t chunk1 = MIN(count, srcLen - index);
+    size_t chunk2 = count - chunk1;
+
+    size_t bytesRead1 = 0;
+    size_t bytesRead2 = 0;
+
+    status_t status = mdl_read(mdl, chunk1, offset, &bytesRead1, (const uint8_t*)src + index, chunk1);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+
+    if (chunk2 > 0)
+    {
+        status = mdl_read(mdl, chunk2, offset + bytesRead1, &bytesRead2, src, chunk2);
+    }
+
+    if (bytesRead != NULL)
+    {
+        *bytesRead = bytesRead1 + bytesRead2;
+    }
+
+    return status;
+}

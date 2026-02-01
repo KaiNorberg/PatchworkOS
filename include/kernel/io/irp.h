@@ -166,18 +166,18 @@ typedef status_t (*irp_cancel_t)(irp_t* irp);
 #define IRP_CANCELLED ((irp_cancel_t)1)
 
 typedef uint16_t irp_major_t; ///< IRP major function number type.
-#define IRP_MJ_READ 0 ///< Read operation.
-#define IRP_MJ_WRITE 1 ///< Write operation.
-#define IRP_MJ_POLL 2 ///< Poll operation. 
-#define IRP_MJ_SEEK 3 ///< Seek operation.
-#define IRP_MJ_MMAP 4 ///< Memory map operation.
-#define IRP_MJ_MAX 5 ///< The maximum number of major function numbers.
+#define IRP_MJ_READ 0         ///< Read operation.
+#define IRP_MJ_WRITE 1        ///< Write operation.
+#define IRP_MJ_POLL 2         ///< Poll operation.
+#define IRP_MJ_SEEK 3         ///< Seek operation.
+#define IRP_MJ_MMAP 4         ///< Memory map operation.
+#define IRP_MJ_MAX 5          ///< The maximum number of major function numbers.
 
 typedef uint16_t irp_minor_t; ///< IRP minor function number type.
-#define IRP_MN_NORMAL 0 ///< No special behaviour.
+#define IRP_MN_NORMAL 0       ///< No special behaviour.
 
-typedef uint16_t irp_flags_t; ///< IRP frame flags type.
-#define IRP_FLAG_NONE 0 ///< No flags.
+typedef uint16_t irp_flags_t;        ///< IRP frame flags type.
+#define IRP_FLAG_NONE 0              ///< No flags.
 #define IRP_FLAG_UPDATE_POS (1 << 0) ///< Update the file position by the amount of bytes processed.
 
 #define IRP_ARGS_MAX 4 ///< The maximum number of 64-bit arguments in an `irp_frame_t`.
@@ -185,8 +185,9 @@ typedef uint16_t irp_flags_t; ///< IRP frame flags type.
 /**
  * @brief IRP stack frame structure.
  * @struct irp_frame_t
- * 
- * @warning Generally, IRP frames should not be setup manually, instead helper functions such as `irp_prep_read()`, `irp_prep_write()`, etc. should be used.
+ *
+ * @warning Generally, IRP frames should not be setup manually, instead helper functions such as `irp_prep_read()`,
+ * `irp_prep_write()`, etc. should be used.
  */
 typedef struct irp_frame
 {
@@ -245,7 +246,7 @@ static_assert(sizeof(irp_frame_t) == 64, "irp_frame_t is not 64 bytes");
  * The I/O Request Packet structure is designed to preallocate as much as possible such that in the common case there is
  * no need for any allocation beyond the allocation of the IRP itself. This does require careful consideration of
  * padding, alignment and field sizes to keep it within a reasonable size.
- * 
+ *
  * @see kernel_io for more information for each possible verb.
  */
 typedef struct irp
@@ -257,7 +258,7 @@ typedef struct irp
         clock_t timeout;  ///< The timeout of the operation starting from when the IRP is added to a timeout queue.
         clock_t deadline; ///< The time at which the IRP will be removed from a timeout queue.
     };
-    mdl_t mdl; ///< A preallocated memory descriptor list for use by the IRP.
+    mdl_t mdl;        ///< A preallocated memory descriptor list for use by the IRP.
     uintptr_t result; ///< The result returned by the last completed frame.
     status_t status;  ///< The status of the last completed frame.
     pool_idx_t index; ///< Index of the IRP in its pool.

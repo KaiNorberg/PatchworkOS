@@ -73,13 +73,4 @@ typedef struct poll_file
  */
 file_t* file_new(const path_t* path, mode_t mode);
 
-/**
- * @brief Helper function for basic seeking.
- *
- * This can be used by filesystems that do not have any special requirements for seeking.
- *
- * Used by setting the file ops seek to this function.
- */
-status_t file_generic_seek(file_t* file, ssize_t offset, seek_origin_t origin, size_t* newPos);
-
 /** @} */

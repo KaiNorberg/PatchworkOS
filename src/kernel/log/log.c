@@ -1,5 +1,6 @@
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file.h>
+#include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 
 #include <kernel/cpu/cpu.h>
@@ -42,52 +43,78 @@ static const char* levelNames[] = {
     [LOG_LEVEL_PANIC] = "P",
 };
 
-static status_t klog_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static void log_handle_char(log_level_t level, char chr);
+
+static void klog_read(irp_t* irp)
 {
-    UNUSED(file);
+    irp_frame_t* frame = irp_current(irp);
 
-    LOCK_SCOPE(&lock);
+    lock_acquire(&lock);
 
-    if (*offset >= klogHead)
+    if (frame->read.offset >= klogHead)
     {
-        *bytesRead = 0;
-        return OK;
+        irp->result = 0;
+        lock_release(&lock);
+        irp_complete(irp, OK);
+        return;
     }
 
-    size_t i = 0;
-    for (; i < count; i++)
+    size_t available = klogHead - frame->read.offset;
+    size_t toRead = MIN(frame->read.count, available);
+
+    status_t status = mdl_read_circular(frame->read.buffer, toRead, 0, &irp->result, klogBuffer, CONFIG_KLOG_SIZE,
+        frame->read.offset);
+    lock_release(&lock);
+
+    if (IS_ERR(status))
     {
-        if (*offset >= klogHead)
+        irp_complete(irp, status);
+        return;
+    }
+
+    if (frame->read.offset + irp->result < klogHead)
+    {
+        irp_complete(irp, INFO(DRIVER, MORE));
+    }
+    else
+    {
+        irp_complete(irp, OK);
+    }
+}
+
+static void klog_write(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+
+    lock_acquire(&lock);
+
+    size_t count = frame->write.count;
+    size_t bytesWritten = 0;
+    uint8_t c;
+    MDL_FOR_EACH(&c, frame->write.buffer)
+    {
+        if (bytesWritten >= count)
         {
             break;
         }
-
-        ((char*)buffer)[i] = klogBuffer[(*offset)++ % CONFIG_KLOG_SIZE];
+        log_handle_char(LOG_LEVEL_INFO, (char)c);
+        bytesWritten++;
     }
 
-    *bytesRead = i;
+    lock_release(&lock);
 
-    if (*offset < klogHead)
-    {
-        return INFO(DRIVER, MORE);
-    }
-
-    return OK;
+    irp->result = bytesWritten;
+    irp_complete(irp, OK);
 }
 
-static status_t klog_write(file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
-{
-    UNUSED(file);
-    UNUSED(offset);
-
-    log_nprint(LOG_LEVEL_INFO, buffer, count);
-    *bytesWritten = count;
-    return OK;
-}
-
-static file_ops_t klogOps = {
-    .read = klog_read,
-    .write = klog_write,
+static vnode_class_t klogClass = {
+    .name = "klog",
+    .type = VNODE_REGULAR,
+    .handlers =
+        {
+            [IRP_MJ_READ] = klog_read,
+            [IRP_MJ_WRITE] = klog_write,
+        },
 };
 
 static void log_splash(void)
@@ -128,7 +155,7 @@ void log_expose(void)
         return;
     }
 
-    klog = devfs_file_new(NULL, "klog", NULL, &klogOps, NULL);
+    klog = devfs_dentry_new(NULL, "klog", &klogClass, NULL);
     if (klog == NULL)
     {
         return;

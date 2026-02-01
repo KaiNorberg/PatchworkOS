@@ -25,13 +25,14 @@ typedef struct kbd kbd_t;
  * ## events
  *
  * A readable and pollable file that provides a stream of keyboard events, where each event is defined as
- * 
+ *
  * ```
  * [keycode][action]
  * ```
- * 
- * where `keycode` is a 3 digit integer and `action` is a single character where `_` represents a key press and `^` represents a key release.
- * 
+ *
+ * where `keycode` is a 3 digit integer and `action` is a single character where `_` represents a key press and `^`
+ * represents a key release.
+ *
  * The below example shows a press of the '1' key, followed by its release, and then a press of the 'A' key.
  *
  * ```
