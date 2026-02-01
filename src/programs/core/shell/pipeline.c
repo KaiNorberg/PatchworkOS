@@ -348,7 +348,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
     else if (strchr(argv[0], '/') != NULL)
     {
         stat_t info;
-        if (IS_OK(stat(argv[0], &info)) && info.type != VDIR)
+        if (IS_OK(stat(argv[0], &info)) && info.type != VNODE_DIR)
         {
             if (IS_ERR(spawn(argv, SPAWN_STDIO_FDS, &result)))
             {
@@ -383,7 +383,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
                 if (snprintf(path, MAX_PATH, "%s/%s", token, argv[0]) < MAX_PATH)
                 {
                     stat_t info;
-                    if (IS_OK(stat(path, &info)) && info.type != VDIR)
+                    if (IS_OK(stat(path, &info)) && info.type != VNODE_DIR)
                     {
                         const char* newArgv[argc + 1];
                         newArgv[0] = path;

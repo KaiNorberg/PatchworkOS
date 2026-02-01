@@ -324,7 +324,7 @@ static status_t netfs_socket_lookup(vnode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dir->superblock, VREG, NULL, socketFiles[i].fileOps);
+        vnode_t* vnode = vnode_new(dir->superblock, VNODE_REGULAR, NULL, socketFiles[i].fileOps);
         if (vnode == NULL)
         {
             return ERR(FS, NOMEM);
@@ -364,7 +364,7 @@ static status_t netfs_socket_iterate(dentry_t* dentry, dir_ctx_t* ctx)
             continue;
         }
 
-        if (!ctx->emit(ctx, socketFiles[i].name, VREG))
+        if (!ctx->emit(ctx, socketFiles[i].name, VNODE_REGULAR))
         {
             return OK;
         }
@@ -543,7 +543,7 @@ static status_t netfs_family_lookup(vnode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dir->superblock, VREG, &familyFileVnodeOps, familyFiles[i].fileOps);
+        vnode_t* vnode = vnode_new(dir->superblock, VNODE_REGULAR, &familyFileVnodeOps, familyFiles[i].fileOps);
         if (vnode == NULL)
         {
             return ERR(FS, NOMEM);
@@ -597,7 +597,7 @@ static status_t netfs_family_lookup(vnode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dir->superblock, VDIR, &socketVnodeOps, NULL);
+        vnode_t* vnode = vnode_new(dir->superblock, VNODE_DIR, &socketVnodeOps, NULL);
         if (vnode == NULL)
         {
             return ERR(FS, NOMEM);
@@ -631,7 +631,7 @@ static status_t netfs_family_iterate(dentry_t* dentry, dir_ctx_t* ctx)
             continue;
         }
 
-        if (!ctx->emit(ctx, familyFiles[i].name, VREG))
+        if (!ctx->emit(ctx, familyFiles[i].name, VNODE_REGULAR))
         {
             return OK;
         }
@@ -671,7 +671,7 @@ static status_t netfs_family_iterate(dentry_t* dentry, dir_ctx_t* ctx)
             continue;
         }
 
-        if (!ctx->emit(ctx, socket->id, VDIR))
+        if (!ctx->emit(ctx, socket->id, VNODE_DIR))
         {
             return OK;
         }
@@ -700,7 +700,7 @@ static status_t netfs_lookup(vnode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dir->superblock, VDIR, &familyVnodeOps, NULL);
+        vnode_t* vnode = vnode_new(dir->superblock, VNODE_DIR, &familyVnodeOps, NULL);
         if (vnode == NULL)
         {
             return ERR(FS, NOMEM);
@@ -734,7 +734,7 @@ static status_t netfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
             continue;
         }
 
-        if (!ctx->emit(ctx, family->name, VDIR))
+        if (!ctx->emit(ctx, family->name, VNODE_DIR))
         {
             return OK;
         }
@@ -767,7 +767,7 @@ static status_t netfs_mount(filesystem_t* fs, dentry_t** out, const char* option
     }
     UNREF_DEFER(superblock);
 
-    vnode_t* vnode = vnode_new(superblock, VDIR, &netVnodeOps, NULL);
+    vnode_t* vnode = vnode_new(superblock, VNODE_DIR, &netVnodeOps, NULL);
     if (vnode == NULL)
     {
         return ERR(FS, NOMEM);

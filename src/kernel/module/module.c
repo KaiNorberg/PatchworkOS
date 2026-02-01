@@ -667,7 +667,7 @@ static status_t module_cache_build(void)
 
         for (uint64_t i = 0; i < bytesRead / sizeof(dirent_t); i++)
         {
-            if (buffer[i].path[0] == '.' || buffer[i].type != VREG)
+            if (buffer[i].path[0] == '.' || buffer[i].type != VNODE_REGULAR)
             {
                 continue;
             }

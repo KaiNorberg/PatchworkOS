@@ -156,7 +156,7 @@ status_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* proc
         return ERR(VFS, NOMEM);
     }
 
-    if (pathname->mode & MODE_TRUNCATE && files[0]->vnode->type == VREG)
+    if (pathname->mode & MODE_TRUNCATE && files[0]->vnode->type == VNODE_REGULAR)
     {
         vnode_truncate(files[0]->vnode);
     }
@@ -225,7 +225,7 @@ status_t vfs_openat(file_t** out, const path_t* from, const pathname_t* pathname
         return ERR(VFS, NOMEM);
     }
 
-    if (pathname->mode & MODE_TRUNCATE && file->vnode->type == VREG)
+    if (pathname->mode & MODE_TRUNCATE && file->vnode->type == VNODE_REGULAR)
     {
         vnode_truncate(file->vnode);
     }
@@ -257,7 +257,7 @@ static void vfs_sync_complete(irp_t* irp, void* _ctx)
 {
     vfs_sync_ctx_t* ctx = (vfs_sync_ctx_t*)_ctx;
     ctx->status = irp->status;
-    ctx->result = irp->res._raw;
+    ctx->result = irp->info;
     atomic_store(&ctx->done, true);
     wait_unblock(&ctx->wait, WAIT_ALL, OK);
 }
@@ -288,7 +288,7 @@ status_t vfs_read(file_t* file, void* buffer, size_t count, size_t* out)
         return ERR(VFS, BADFD);
     }
 
-    if (file->vnode->type == VDIR)
+    if (file->vnode->type == VNODE_DIR)
     {
         return ERR(VFS, ISDIR);
     }
@@ -339,7 +339,7 @@ status_t vfs_write(file_t* file, const void* buffer, size_t count, size_t* out)
         return ERR(VFS, BADFD);
     }
 
-    if (file->vnode->type == VDIR)
+    if (file->vnode->type == VNODE_DIR)
     {
         return ERR(VFS, ISDIR);
     }
@@ -407,7 +407,7 @@ status_t vfs_mmap(file_t* file, void** addr, size_t length, pml_flags_t flags)
         return ERR(VFS, INVAL);
     }
 
-    if (file->vnode->type == VDIR)
+    if (file->vnode->type == VNODE_DIR)
     {
         return ERR(VFS, ISDIR);
     }
@@ -526,7 +526,7 @@ typedef struct
     bool more;
 } vfs_dir_ctx_t;
 
-static bool vfs_dir_emit(dir_ctx_t* ctx, const char* name, vtype_t type)
+static bool vfs_dir_emit(dir_ctx_t* ctx, const char* name, vnode_type_t type)
 {
     vfs_dir_ctx_t* vctx = (vfs_dir_ctx_t*)ctx;
     if (vctx->written + sizeof(dirent_t) > vctx->count)
@@ -632,7 +632,7 @@ static status_t vfs_getdents_recursive_step(path_t* path, mode_t mode, getdents_
             }
             ctx->currentOffset += sizeof(dirent_t);
 
-            if ((d->type == VDIR || d->type == VSYMLINK) && strcmp(d->path, ".") != 0 && strcmp(d->path, "..") != 0)
+            if ((d->type == VNODE_DIR || d->type == VNODE_SYMLINK) && strcmp(d->path, ".") != 0 && strcmp(d->path, "..") != 0)
             {
                 path_t childPath = PATH_CREATE(path->mount, path->dentry);
                 PATH_DEFER(&childPath);
@@ -786,7 +786,7 @@ status_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count, size_t* byte
         return ERR(VFS, INVAL);
     }
 
-    if (file->vnode == NULL || file->vnode->type != VDIR)
+    if (file->vnode == NULL || file->vnode->type != VNODE_DIR)
     {
         return ERR(VFS, NOTDIR);
     }
@@ -1012,7 +1012,7 @@ status_t vfs_readlink(vnode_t* symlink, char* buffer, size_t count, size_t* byte
         return ERR(VFS, INVAL);
     }
 
-    if (symlink->type != VSYMLINK)
+    if (symlink->type != VNODE_SYMLINK)
     {
         return ERR(VFS, INVAL);
     }

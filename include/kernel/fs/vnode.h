@@ -22,6 +22,8 @@ typedef struct dentry dentry_t;
  * @defgroup kernel_fs_vnode Vnode
  * @ingroup kernel_fs
  *
+ * @todo Update the virtual node documentation for the new class and IRP stuff.
+ *
  * A vnode represents the actual data and metadata of a file. It is referenced by dentries, which represent the name or
  * "location" of the file but a vnode can appear in multiple dentries due to hardlinks or mounts.
  *
@@ -46,6 +48,7 @@ typedef struct dentry dentry_t;
 typedef struct vnode_class
 {
     const char* name;                         ///< The name of the class, used for debugging.
+    vnode_type_t type;                             ///< The type of the vnode.
     status_t (*file_ctor)(file_t* file);      ///< File constructor.
     void (*file_dtor)(file_t* file);          ///< File destructor.
     void (*handlers[IRP_MJ_MAX])(irp_t* irp); ///< IRP handlers indexed by major function number.
@@ -146,12 +149,10 @@ typedef struct vnode_class
 typedef struct vnode
 {
     ref_t ref;
-    vtype_t type;
     _Atomic(uint64_t) dentryCount; ///< The number of dentries pointing to this vnode.
     void* data;                    ///< Filesystem defined data.
     uint64_t size;                 ///< Used for convenience by certain filesystems, does not represent the file size.
     superblock_t* superblock;
-    const vnode_ops_t* ops;
     const vnode_class_t* cls;
     rcu_entry_t rcu;
     mutex_t mutex;
@@ -166,11 +167,10 @@ typedef struct vnode
  * There is no `vnode_free()` instead use `UNREF()`.
  *
  * @param superblock The superblock the vnode belongs to.
- * @param type The vnode type.
  * @param cls The vnode class defining I/O its behaviour.
  * @return On success, the new vnode. On failure, returns `NULL`.
  */
-vnode_t* vnode_new(superblock_t* superblock, vtype_t type, const vnode_class_t* cls);
+vnode_t* vnode_new(superblock_t* superblock, const vnode_class_t* cls);
 
 /**
  * @brief Send an IRP to a specified vnode.

@@ -64,7 +64,7 @@ int main()
         printf("iocqe data: %p\n", iocqe->data);
         printf("iocqe op: %d\n", iocqe->op);
         printf("iocqe status: %Y\n", status);
-        printf("iocqe result: %llu\n", iocqe->_result);
+        printf("iocqe result: %llu\n", iocqe->result);
 
         iocqe_put(&ring);
     }

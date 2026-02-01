@@ -72,7 +72,7 @@ typedef uint64_t dentry_id_t;
  * @param dentry The dentry to check.
  * @return true if the dentry is a regular file, false otherwise or if the dentry is negative.
  */
-#define DENTRY_IS_REGULAR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->type == VREG)
+#define DENTRY_IS_REGULAR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->type == VNODE_REGULAR)
 
 /**
  * @brief Check if the vnode associated with a dentry is a directory.
@@ -80,7 +80,7 @@ typedef uint64_t dentry_id_t;
  * @param dentry The dentry to check.
  * @return true if the dentry is a directory, false otherwise or if the dentry is negative.
  */
-#define DENTRY_IS_DIR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->type == VDIR)
+#define DENTRY_IS_DIR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->type == VNODE_DIR)
 
 /**
  * @brief Check if the vnode associated with a dentry is a symbolic link.
@@ -88,7 +88,7 @@ typedef uint64_t dentry_id_t;
  * @param dentry The dentry to check.
  * @return true if the dentry is a symbolic link, false otherwise or if the dentry is negative.
  */
-#define DENTRY_IS_SYMLINK(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->type == VSYMLINK)
+#define DENTRY_IS_SYMLINK(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->type == VNODE_SYMLINK)
 
 /**
  * @brief Directory context used to iterate over directory entries.
@@ -108,7 +108,7 @@ typedef struct dir_ctx
      * @param type The vnode type of the entry.
      * @return `true` to continue iterating, `false` to stop.
      */
-    bool (*emit)(dir_ctx_t* ctx, const char* name, vtype_t type);
+    bool (*emit)(dir_ctx_t* ctx, const char* name, vnode_type_t type);
     size_t pos;   ///< The current position in the directory, can be used to skip entries.
     void* data;   ///< Private data that the filesystem can use to conveniently pass data.
     size_t index; ///< An index that the filesystem can use for its own purposes.

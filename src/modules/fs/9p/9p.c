@@ -132,7 +132,7 @@ static dentry_t* ninep_mount(filesystem_t* fs, const char* options, void* data)
 
     superblock->data = ninep;
 
-    vnode_t* vnode = vnode_new(superblock, VDIR, NULL, NULL);
+    vnode_t* vnode = vnode_new(superblock, VNODE_DIR, NULL, NULL);
     if (vnode == NULL)
     {
         return NULL;

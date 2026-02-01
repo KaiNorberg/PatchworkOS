@@ -192,7 +192,7 @@ static void ioring_ctx_complete(irp_t* irp, void* _ptr)
     iosqe_flags_t reg = (irp->sqe.flags >> IOSQE_SAVE) & IOSQE_REG_MASK;
     if (reg != IOSQE_REG_NONE)
     {
-        atomic_store_explicit(&ring->ctrl->regs[reg - 1], irp->res._raw, memory_order_release);
+        atomic_store_explicit(&ring->ctrl->regs[reg - 1], irp->result, memory_order_release);
     }
 
     uint32_t tail = atomic_load_explicit(&ring->ctrl->ctail, memory_order_relaxed);
@@ -206,9 +206,9 @@ static void ioring_ctx_complete(irp_t* irp, void* _ptr)
 
     iocqe_t* cqe = &ring->cqueue[tail & ring->cmask];
     cqe->op = irp->sqe.op;
-    cqe->status = irp->status;
     cqe->data = irp->sqe.data;
-    cqe->_result = irp->res._raw;
+    cqe->status = irp->status;
+    cqe->result = irp->result;
 
     atomic_store_explicit(&ring->ctrl->ctail, tail + 1, memory_order_release);
     wait_unblock(&ctx->waitQueue, WAIT_ALL, EOK);

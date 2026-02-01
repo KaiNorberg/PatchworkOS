@@ -46,6 +46,11 @@ static filesystem_t devfs = {
     .mount = devfs_mount,
 };
 
+static vnode_class_t rootClass = {
+    .name = "devfs root",
+    .type = VNODE_DIR,
+};
+
 void devfs_init(void)
 {
     status_t status = filesystem_register(&devfs);
@@ -61,7 +66,7 @@ void devfs_init(void)
     }
     UNREF_DEFER(superblock);
 
-    vnode_t* vnode = vnode_new(superblock, VDIR, NULL, NULL);
+    vnode_t* vnode = vnode_new(superblock, &rootClass);
     if (vnode == NULL)
     {
         panic(NULL, "Failed to create devfs root vnode");
@@ -79,7 +84,7 @@ void devfs_init(void)
     root = dentry;
 }
 
-dentry_t* devfs_dir_new(dentry_t* parent, const char* name, const vnode_ops_t* vnodeOps, void* data)
+dentry_t* devfs_dentry_new(dentry_t* parent, const char* name, const vnode_class_t* cls, void* data)
 {
     if (name == NULL)
     {
@@ -100,7 +105,7 @@ dentry_t* devfs_dir_new(dentry_t* parent, const char* name, const vnode_ops_t* v
     }
     UNREF_DEFER(dir);
 
-    vnode_t* vnode = vnode_new(parent->superblock, VDIR, vnodeOps, NULL);
+    vnode_t* vnode = vnode_new(parent->superblock, cls);
     if (vnode == NULL)
     {
         return NULL;
@@ -113,66 +118,7 @@ dentry_t* devfs_dir_new(dentry_t* parent, const char* name, const vnode_ops_t* v
     return REF(dir);
 }
 
-dentry_t* devfs_file_new(dentry_t* parent, const char* name, const vnode_ops_t* vnodeOps, const file_ops_t* fileOps,
-    void* data)
-{
-    if (parent == NULL)
-    {
-        parent = root;
-    }
-
-    assert(parent->superblock->fs == &devfs);
-
-    dentry_t* dentry = dentry_new(parent->superblock, parent, name);
-    if (dentry == NULL)
-    {
-        return NULL;
-    }
-    UNREF_DEFER(dentry);
-
-    vnode_t* vnode = vnode_new(parent->superblock, VREG, vnodeOps, fileOps);
-    if (vnode == NULL)
-    {
-        return NULL;
-    }
-    UNREF_DEFER(vnode);
-    vnode->data = data;
-
-    dentry_make_positive(dentry, vnode);
-
-    return REF(dentry);
-}
-
-dentry_t* devfs_symlink_new(dentry_t* parent, const char* name, const vnode_ops_t* vnodeOps, void* data)
-{
-    if (parent == NULL || name == NULL || vnodeOps == NULL)
-    {
-        return NULL;
-    }
-
-    assert(parent->superblock->fs == &devfs);
-
-    dentry_t* dentry = dentry_new(parent->superblock, parent, name);
-    if (dentry == NULL)
-    {
-        return NULL;
-    }
-    UNREF_DEFER(dentry);
-
-    vnode_t* vnode = vnode_new(parent->superblock, VSYMLINK, vnodeOps, NULL);
-    if (vnode == NULL)
-    {
-        return NULL;
-    }
-    UNREF_DEFER(vnode);
-    vnode->data = data;
-
-    dentry_make_positive(dentry, vnode);
-
-    return REF(dentry);
-}
-
-bool devfs_files_new(list_t* out, dentry_t* parent, const devfs_file_desc_t* descs, size_t count)
+bool devfs_dentrys_new(list_t* out, dentry_t* parent, const devfs_desc_t* descs, size_t count)
 {
     if (parent == NULL)
     {
@@ -185,9 +131,9 @@ bool devfs_files_new(list_t* out, dentry_t* parent, const devfs_file_desc_t* des
 
     for (size_t i = 0; i < count; i++)
     {
-        const devfs_file_desc_t* desc = &descs[i];
-        dentry_t* file = devfs_file_new(parent, desc->name, desc->cls, desc->data);
-        if (file == NULL)
+        const devfs_desc_t* desc = &descs[i];
+        dentry_t* dentry = devfs_dentry_new(parent, desc->name, desc->cls, desc->data);
+        if (dentry == NULL)
         {
             while (!list_is_empty(&createdList))
             {
@@ -196,7 +142,7 @@ bool devfs_files_new(list_t* out, dentry_t* parent, const devfs_file_desc_t* des
             return false;
         }
 
-        list_push_back(&createdList, &file->otherEntry);
+        list_push_back(&createdList, &dentry->otherEntry);
     }
 
     if (out == NULL)
@@ -216,15 +162,15 @@ bool devfs_files_new(list_t* out, dentry_t* parent, const devfs_file_desc_t* des
     return true;
 }
 
-void devfs_files_free(list_t* files)
+void devfs_dentrys_free(list_t* dentrys)
 {
-    if (files == NULL)
+    if (dentrys == NULL)
     {
         return;
     }
 
-    while (!list_is_empty(files))
+    while (!list_is_empty(dentrys))
     {
-        UNREF(CONTAINER_OF_SAFE(list_pop_back(files), dentry_t, otherEntry));
+        UNREF(CONTAINER_OF_SAFE(list_pop_back(dentrys), dentry_t, otherEntry));
     }
 }

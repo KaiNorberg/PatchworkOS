@@ -783,7 +783,7 @@ static status_t procfs_env_lookup(vnode_t* dir, dentry_t* target)
         return INFO(FS, NEGATIVE);
     }
 
-    vnode_t* vnode = vnode_new(dir->superblock, VREG, NULL, &envVarOps);
+    vnode_t* vnode = vnode_new(dir->superblock, VNODE_REGULAR, NULL, &envVarOps);
     if (vnode == NULL)
     {
         return ERR(FS, NOMEM);
@@ -812,7 +812,7 @@ static status_t procfs_env_create(vnode_t* dir, dentry_t* target, mode_t mode)
         return status;
     }
 
-    vnode_t* vnode = vnode_new(dir->superblock, VREG, NULL, &envVarOps);
+    vnode_t* vnode = vnode_new(dir->superblock, VNODE_REGULAR, NULL, &envVarOps);
     if (vnode == NULL)
     {
         return ERR(FS, NOMEM);
@@ -857,7 +857,7 @@ static status_t procfs_env_iterate(dentry_t* dentry, dir_ctx_t* ctx)
             continue;
         }
 
-        if (!ctx->emit(ctx, process->env.vars[i].key, VREG))
+        if (!ctx->emit(ctx, process->env.vars[i].key, VNODE_REGULAR))
         {
             return OK;
         }
@@ -898,7 +898,7 @@ static vnode_ops_t selfOps = {
 typedef struct
 {
     const char* name;
-    vtype_t type;
+    vnode_type_t type;
     const vnode_ops_t* vnodeOps;
     const file_ops_t* fileOps;
     const dentry_ops_t* dentryOps;
@@ -907,69 +907,69 @@ typedef struct
 static const procfs_entry_t pidEntries[] = {
     {
         .name = "prio",
-        .type = VREG,
+        .type = VNODE_REGULAR,
         .fileOps = &prioOps,
         .dentryOps = &hideDentryOps,
     },
     {
         .name = "cwd",
-        .type = VREG,
+        .type = VNODE_REGULAR,
         .fileOps = &cwdOps,
         .dentryOps = &hideDentryOps,
     },
     {
         .name = "cmdline",
-        .type = VREG,
+        .type = VNODE_REGULAR,
         .fileOps = &cmdlineOps,
     },
     {
         .name = "note",
-        .type = VREG,
+        .type = VNODE_REGULAR,
         .fileOps = &noteOps,
         .dentryOps = &hideDentryOps,
     },
     {
         .name = "notegroup",
-        .type = VREG,
+        .type = VNODE_REGULAR,
         .fileOps = &notegroupOps,
         .dentryOps = &hideDentryOps,
     },
     {
         .name = "group",
-        .type = VREG,
+        .type = VNODE_REGULAR,
         .fileOps = &groupOps,
         .dentryOps = &hideDentryOps,
     },
     {
         .name = "pid",
-        .type = VREG,
+        .type = VNODE_REGULAR,
         .fileOps = &pidOps,
     },
     {
         .name = "wait",
-        .type = VREG,
+        .type = VNODE_REGULAR,
         .fileOps = &waitOps,
     },
     {
         .name = "perf",
-        .type = VREG,
+        .type = VNODE_REGULAR,
         .fileOps = &perfOps,
     },
     {
         .name = "ns",
-        .type = VREG,
+        .type = VNODE_REGULAR,
         .fileOps = &nsOps,
         .dentryOps = &hideDentryOps,
     },
     {
         .name = "ctl",
-        .type = VREG,
+        .type = VNODE_REGULAR,
         .fileOps = &ctlOps,
         .dentryOps = &hideDentryOps,
     },
     {
         .name = "env",
-        .type = VDIR,
+        .type = VNODE_DIR,
         .vnodeOps = &envVnodeOps,
         .dentryOps = &envDentryOps,
     },
@@ -978,7 +978,7 @@ static const procfs_entry_t pidEntries[] = {
 static procfs_entry_t procEntries[] = {
     {
         .name = "self",
-        .type = VSYMLINK,
+        .type = VNODE_SYMLINK,
         .vnodeOps = &selfOps,
         .fileOps = NULL,
     },
@@ -1112,7 +1112,7 @@ static status_t procfs_lookup(vnode_t* dir, dentry_t* target)
     }
     UNREF_DEFER(process);
 
-    vnode_t* vnode = vnode_new(dir->superblock, VDIR, &pidVnodeOps, NULL);
+    vnode_t* vnode = vnode_new(dir->superblock, VNODE_DIR, &pidVnodeOps, NULL);
     if (vnode == NULL)
     {
         return ERR(FS, NOMEM);
@@ -1158,7 +1158,7 @@ static status_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 
         char name[MAX_NAME];
         snprintf(name, sizeof(name), "%llu", process->id);
-        if (!ctx->emit(ctx, name, VDIR))
+        if (!ctx->emit(ctx, name, VNODE_DIR))
         {
             return OK;
         }
@@ -1191,7 +1191,7 @@ static status_t procfs_mount(filesystem_t* fs, dentry_t** out, const char* optio
     }
     UNREF_DEFER(superblock);
 
-    vnode_t* vnode = vnode_new(superblock, VDIR, &procVnodeOps, NULL);
+    vnode_t* vnode = vnode_new(superblock, VNODE_DIR, &procVnodeOps, NULL);
     if (vnode == NULL)
     {
         return ERR(FS, NOMEM);

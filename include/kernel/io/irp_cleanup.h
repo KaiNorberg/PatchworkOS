@@ -4,7 +4,7 @@
 
 /**
  * @brief I/O Request Packet cleanup.
- * @defgroup kernel_io_irp_cleanup I/O Request Packet cleanup.
+ * @defgroup kernel_io_irp_cleanup I/O Request Packet cleanup
  * @ingroup kernel_io
  *
  * @{

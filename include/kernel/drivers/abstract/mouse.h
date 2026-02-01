@@ -22,24 +22,22 @@
  *
  * ## events
  *
- * A readable and pollable file that provides a stream of mouse events represented as integer values suffixed with a
- * single character indicating the type of the event.
+ * A readable and pollable file that provides a stream of mouse events, where each event is defined as
+ * 
+ * ```
+ * [sign][value][type]
+ * ```
  *
- * The ´x` and `y` characters indicate movement in the X and Y directions respectively, the `_` and `^` represent a
- * button press and release respectively, and the `z` character represents a scroll event.
- *
- * Buttons are represented as their button number starting from `1` where `1` is the left button, `2` is the right
- * button, and `3` is the middle button.
+ * where `sign` is either `+` or `-`, `value` is a 3 digit integer, and `type` is a single character where `_`
+ * represents a button press, `^` represents a button release, `x` represents movement in the X direction, `y`
+ * represents movement in the Y direction, and `z` represents scrolling.
  *
  * The below example shows a press of the left mouse button, moving the mouse `10` units in the X direction and `-5`
  * units in the Y direction, releasing the left mouse button, and then scrolling `3` units.
  *
  * ```
- * 1_10x-5y1^3z
+ * +001_+010x-005y+001^+003z
  * ```
- *
- * If no events are available to read, the read call will block until an event is available unless the file is opened in
- * non-blocking mode in which case the read will fail with `EAGAIN`.
  *
  * @note The format is specified such that if `scan()` is used with "%u%c" the `scan()` call does not require any
  * "ungets".
@@ -70,7 +68,7 @@ typedef struct mouse_client
 typedef struct
 {
     const char* name;
-    wait_queue_t waitQueue;
+    list_t pending; ///< List of pending IRPs.
     list_t clients;
     lock_t lock;
     dentry_t* dir;
@@ -98,7 +96,7 @@ void mouse_unregister(mouse_t* mouse);
  * @param mouse Pointer to the mouse structure.
  * @param button Button to press.
  */
-void mouse_press(mouse_t* mouse, uint32_t button);
+void mouse_press(mouse_t* mouse, uint8_t button);
 
 /**
  * @brief Push a mouse button release event to the mouse event queue.
@@ -106,7 +104,7 @@ void mouse_press(mouse_t* mouse, uint32_t button);
  * @param mouse Pointer to the mouse structure.
  * @param button Button to release.
  */
-void mouse_release(mouse_t* mouse, uint32_t button);
+void mouse_release(mouse_t* mouse, uint8_t button);
 
 /**
  * @brief Push a mouse movement in the X direction to the mouse event queue.
@@ -114,7 +112,7 @@ void mouse_release(mouse_t* mouse, uint32_t button);
  * @param mouse Pointer to the mouse structure.
  * @param delta Amount to move in the X direction.
  */
-void mouse_move_x(mouse_t* mouse, int64_t delta);
+void mouse_move_x(mouse_t* mouse, int8_t delta);
 
 /**
  * @brief Push a mouse movement in the Y direction to the mouse event queue.
@@ -122,7 +120,7 @@ void mouse_move_x(mouse_t* mouse, int64_t delta);
  * @param mouse Pointer to the mouse structure.
  * @param delta Amount to move in the Y direction.
  */
-void mouse_move_y(mouse_t* mouse, int64_t delta);
+void mouse_move_y(mouse_t* mouse, int8_t delta);
 
 /**
  * @brief Push a mouse scroll event to the mouse event queue.
@@ -130,6 +128,6 @@ void mouse_move_y(mouse_t* mouse, int64_t delta);
  * @param mouse Pointer to the mouse structure.
  * @param delta Amount to scroll.
  */
-void mouse_scroll(mouse_t* mouse, int64_t delta);
+void mouse_scroll(mouse_t* mouse, int8_t delta);
 
 /** @} */

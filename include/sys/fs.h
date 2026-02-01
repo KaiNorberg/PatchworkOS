@@ -370,14 +370,15 @@ poll_events_t poll1(fd_t fd, poll_events_t events, clock_t timeout);
 
 /**
  * @brief Vnode type enum.
- * @enum vtype_t
+ * @enum vnode_type_t
  */
 typedef enum
 {
-    VREG,     ///< Is a regular file.
-    VDIR,     ///< Is a directory.
-    VSYMLINK, ///< Is a symbolic link.
-} vtype_t;
+    VNODE_NONE = 0, ///< Invalid vnode type.
+    VNODE_REGULAR,     ///< Is a regular file.
+    VNODE_DIR,     ///< Is a directory.
+    VNODE_SYMLINK, ///< Is a symbolic link.
+} vnode_type_t;
 
 /**
  * @brief A suberblock identifier that uniquely identifies a superblock within the system.
@@ -387,24 +388,6 @@ typedef enum
 typedef uint64_t sbid_t;
 
 /**
- * @brief Vnode attributes structure.
- * @struct vattr_t
- */
-typedef struct vattr
-{
-    vtype_t type;
-    uint64_t nlink;
-    uint64_t id;
-    uint64_t size;
-    uint64_t blocks;
-    uint64_t blockSize;
-    time_t atime;
-    time_t mtime;
-    time_t ctime;
-    uint8_t padding[64]; ///< Padding to leave space for future expansion.
-} vattr_t;
-
-/**
  * @brief Stat type.
  * @struct stat_t
  */
@@ -412,7 +395,7 @@ typedef struct
 {
     sbid_t sbid;          ///< The superblock ID of the filesystem containing the entry.
     uint64_t number;      ///< The number of the entries vnode.
-    vtype_t type;         ///< The type of the entries vnode.
+    vnode_type_t type;         ///< The type of the entries vnode.
     uint64_t size;        ///< The size of the file that is visible outside the filesystem.
     uint64_t blocks;      ///< The amount of blocks used on disk to store the file.
     uint64_t blockSize;   ///< The preferred block size of the filesystem.
@@ -509,7 +492,7 @@ typedef enum
  */
 typedef struct
 {
-    vtype_t type;
+    vnode_type_t type;
     dirent_flags_t flags;
     char path[MAX_PATH]; ///< The relative path of the entry.
     char mode[MAX_PATH]; ///< The flags of the paths mount.

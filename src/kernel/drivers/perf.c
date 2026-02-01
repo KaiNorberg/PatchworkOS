@@ -3,8 +3,8 @@
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/fs/devfs.h>
-#include <kernel/fs/file.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/pmm.h>
@@ -48,14 +48,15 @@ PERCPU_DEFINE_CTOR(static perf_cpu_t, pcpu_perf)
     lock_init(&perf->lock);
 }
 
-static status_t perf_cpu_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static void perf_cpu_read(irp_t* irp)
 {
-    UNUSED(file);
+    irp_frame_t* frame = irp_current(irp);
 
     char* string = malloc(256 * (cpu_amount() + 1));
     if (string == NULL)
     {
-        return ERR(DRIVER, NOMEM);
+        irp_complete(irp, ERR(DRIVER, NOMEM));
+        return;
     }
 
     strcpy(string, "cpu idle_clocks active_clocks interrupt_clocks");
@@ -90,28 +91,32 @@ static status_t perf_cpu_read(file_t* file, void* buffer, size_t count, size_t* 
         if (length < 0)
         {
             free(string);
-            return ERR(DRIVER, IMPL);
+            irp_complete(irp, ERR(DRIVER, IMPL));
+            return;
         }
     }
 
     size_t length = strlen(string);
-    status_t status = buffer_read(buffer, count, offset, bytesRead, string, length);
+    status_t status = mdl_read(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, string, length);
     free(string);
-    return status;
+    irp_complete(irp, status);
 }
 
-static file_ops_t cpuOps = {
-    .read = perf_cpu_read,
+static vnode_class_t cpuClass = {
+    .name = "perf cpu",
+    .type = VNODE_REGULAR,
+    .handlers = { [IRP_MJ_READ] = perf_cpu_read, },
 };
 
-static status_t perf_mem_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static void perf_mem_read(irp_t* irp)
 {
-    UNUSED(file);
+    irp_frame_t* frame = irp_current(irp);
 
     char* string = malloc(256);
     if (string == NULL)
     {
-        return ERR(DRIVER, NOMEM);
+        irp_complete(irp, ERR(DRIVER, NOMEM));
+        return;
     }
 
     int length = sprintf(string, "total_pages %lu\nfree_pages %lu\nused_pages %lu", pmm_total_pages(),
@@ -119,16 +124,24 @@ static status_t perf_mem_read(file_t* file, void* buffer, size_t count, size_t* 
     if (length < 0)
     {
         free(string);
-        return ERR(DRIVER, IMPL);
+        irp_complete(irp, ERR(DRIVER, IMPL));
+        return;
     }
 
-    status_t status = buffer_read(buffer, count, offset, bytesRead, string, length);
+    status_t status = mdl_read(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, string, length);
     free(string);
-    return status;
+    irp_complete(irp, status);
 }
 
-static file_ops_t memOps = {
-    .read = perf_mem_read,
+static vnode_class_t memClass = {
+    .name = "perf mem",
+    .type = VNODE_REGULAR,
+    .handlers = { [IRP_MJ_READ] = perf_mem_read, },
+};
+
+static vnode_class_t rootClass = {
+    .name = "perf root",
+    .type = VNODE_DIR,
 };
 
 void perf_process_ctx_init(perf_process_ctx_t* ctx)
@@ -146,18 +159,18 @@ void perf_thread_ctx_init(perf_thread_ctx_t* ctx)
 
 void perf_init(void)
 {
-    perfDir = devfs_dir_new(NULL, "perf", NULL, NULL);
+    perfDir = devfs_dentry_new(NULL, "perf", &rootClass, NULL);
     if (perfDir == NULL)
     {
         panic(NULL, "Failed to initialize performance directory");
     }
 
-    cpuFile = devfs_file_new(perfDir, "cpu", NULL, &cpuOps, NULL);
+    cpuFile = devfs_dentry_new(perfDir, "cpu", &cpuClass, NULL);
     if (cpuFile == NULL)
     {
         panic(NULL, "Failed to create CPU performance file");
     }
-    memFile = devfs_file_new(perfDir, "mem", NULL, &memOps, NULL);
+    memFile = devfs_dentry_new(perfDir, "mem", &memClass, NULL);
     if (memFile == NULL)
     {
         panic(NULL, "Failed to create memory performance file");

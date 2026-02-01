@@ -1,4 +1,5 @@
 #include <kernel/drivers/abstract/mouse.h>
+
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/vfs.h>
@@ -6,15 +7,36 @@
 #include <kernel/log/log.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
+#include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 
+#include <kernel/utils/fifo.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/fs.h>
 #include <sys/math.h>
+#include <sys/proc.h>
 
 static dentry_t* dir = NULL;
 
 static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
+
+static status_t mouse_cancel(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    mouse_t* mouse = frame->vnode->data;
+
+    lock_acquire(&mouse->lock);
+
+    if (list_contains(&irp->entry))
+    {
+        list_remove(&irp->entry);
+    }
+
+    lock_release(&mouse->lock);
+
+    return OK;
+}
 
 static void mouse_name_read(irp_t* irp)
 {
@@ -24,12 +46,13 @@ static void mouse_name_read(irp_t* irp)
 
     size_t length = strlen(mouse->name);
     status_t status =
-        mdl_read(frame->read.buffer, frame->read.count, frame->read.offset, &irp->res.read, mouse->name, length);
+        mdl_read(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, mouse->name, length);
     irp_complete(irp, status);
 }
 
 static vnode_class_t nameClass = {
     .name = "mouse name",
+    .type = VNODE_REGULAR,
     .handlers =
         {
             [IRP_MJ_READ] = mouse_name_read,
@@ -78,65 +101,68 @@ static void mouse_events_file_dtor(file_t* file)
 static void mouse_events_read(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
-}
-
-/*static status_t mouse_events_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
-{
-    UNUSED(offset);
-
-    if (count == 0)
-    {
-        *bytesRead = 0;
-        return OK;
-    }
-
-    mouse_t* mouse = file->vnode->data;
+    mouse_t* mouse = frame->vnode->data;
     assert(mouse != NULL);
-    mouse_client_t* client = file->data;
+
+    mouse_client_t* client = frame->read.file->data;
     assert(client != NULL);
 
-    LOCK_SCOPE(&mouse->lock);
+    lock_acquire(&mouse->lock);
 
     if (fifo_bytes_readable(&client->fifo) == 0)
     {
-        if (file->mode & MODE_NONBLOCK)
+        status_t status = irp_delay(irp, &mouse->pending, mouse_cancel);
+        lock_release(&mouse->lock);
+        if (IS_ERR(status))
         {
-            return INFO(DRIVER, AGAIN);
+            irp_complete(irp, status);
         }
-
-        status_t status = WAIT_BLOCK_LOCK(&mouse->waitQueue, &mouse->lock, fifo_bytes_readable(&client->fifo) != 0);
-        if (!IS_ERR(status))
-        {
-            return status;
-        }
+        return;
     }
 
-    *bytesRead = fifo_read(&client->fifo, buffer, count);
-    return OK;
+    status_t status = fifo_read(&client->fifo, frame->read.buffer, frame->read.count, &irp->result);
+    lock_release(&mouse->lock);
+    irp_complete(irp, status);
 }
 
-static status_t mouse_events_poll(file_t* file, poll_events_t* revents, wait_queue_t** queue)
+static void mouse_events_poll(irp_t* irp)
 {
-    mouse_t* mouse = file->vnode->data;
+    irp_frame_t* frame = irp_current(irp);
+    mouse_t* mouse = frame->vnode->data;
     assert(mouse != NULL);
-    mouse_client_t* client = file->data;
+    mouse_client_t* client = frame->poll.file->data;
     assert(client != NULL);
 
-    LOCK_SCOPE(&mouse->lock);
+    lock_acquire(&mouse->lock);
 
-    if (fifo_bytes_readable(&client->fifo) != 0)
+    if (fifo_bytes_readable(&client->fifo) > 0)
     {
-        *revents |= POLLIN;
+        irp->result = IOPOLL_READ;
+        lock_release(&mouse->lock);
+        irp_complete(irp, OK);
+        return;
     }
-    *queue = &mouse->waitQueue;
-    return OK;
-}*/
+
+    status_t status = irp_delay(irp, &mouse->pending, mouse_cancel);
+    lock_release(&mouse->lock);
+
+    if (IS_ERR(status))
+    {
+        irp->result = 0;
+        irp_complete(irp, status);
+    }
+}
 
 static vnode_class_t eventsClass = {
     .name = "mouse events",
+    .type = VNODE_REGULAR,
     .file_ctor = mouse_events_file_ctor,
     .file_dtor = mouse_events_file_dtor,
-    .handlers = {[IRP_MJ_READ] = mouse_events_read, [IRP_MJ_POLL] = mouse_events_poll},
+    .handlers =
+        {
+            [IRP_MJ_READ] = mouse_events_read,
+            [IRP_MJ_POLL] = mouse_events_poll,
+        },
 };
 
 static void mouse_dir_cleanup(vnode_t* vnode)
@@ -147,11 +173,25 @@ static void mouse_dir_cleanup(vnode_t* vnode)
         return;
     }
 
-    wait_queue_deinit(&mouse->waitQueue);
+    if (!list_is_empty(&mouse->pending))
+    {
+        panic(NULL, "Attempted to free mouse with pending IRPs");
+    }
+    if (!list_is_empty(&mouse->clients))
+    {
+        panic(NULL, "Attempted to free mouse with clients");
+    }
 }
 
-static vnode_ops_t dirVnodeOps = {
+static vnode_class_t dirClass = {
+    .name = "mouse dir",
+    .type = VNODE_DIR,
     .cleanup = mouse_dir_cleanup,
+};
+
+static vnode_class_t rootClass = {
+    .name = "mouse root",
+    .type = VNODE_DIR,
 };
 
 status_t mouse_register(mouse_t* mouse)
@@ -163,14 +203,14 @@ status_t mouse_register(mouse_t* mouse)
 
     if (dir == NULL)
     {
-        dir = devfs_dir_new(NULL, "mouse", NULL, NULL);
+        dir = devfs_dentry_new(NULL, "mouse", &rootClass, NULL);
         if (dir == NULL)
         {
             return ERR(DRIVER, NOMEM);
         }
     }
 
-    wait_queue_init(&mouse->waitQueue);
+    list_init(&mouse->pending);
     list_init(&mouse->clients);
     lock_init(&mouse->lock);
     mouse->dir = NULL;
@@ -179,36 +219,30 @@ status_t mouse_register(mouse_t* mouse)
     char id[MAX_NAME];
     if (snprintf(id, MAX_NAME, "%llu", atomic_fetch_add(&newId, 1)) < 0)
     {
-        wait_queue_deinit(&mouse->waitQueue);
         return ERR(DRIVER, IMPL);
     }
 
-    mouse->dir = devfs_dir_new(dir, id, &dirVnodeOps, mouse);
+    mouse->dir = devfs_dentry_new(dir, id, &dirClass, mouse);
     if (mouse->dir == NULL)
     {
-        wait_queue_deinit(&mouse->waitQueue);
         return ERR(DRIVER, NOMEM);
     }
 
-    devfs_file_desc_t files[] = {
+    devfs_desc_t files[] = {
         {
             .name = "name",
-            .fileOps = &nameOps,
+            .cls = &nameClass,
             .data = mouse,
         },
         {
             .name = "events",
-            .fileOps = &eventsOps,
+            .cls = &eventsClass,
             .data = mouse,
-        },
-        {
-            .name = NULL,
         },
     };
 
-    if (!devfs_files_new(&mouse->files, mouse->dir, files))
+    if (!devfs_dentrys_new(&mouse->files, mouse->dir, files, ARRAY_SIZE(files)))
     {
-        wait_queue_deinit(&mouse->waitQueue);
         UNREF(mouse->dir);
         return ERR(DRIVER, NOMEM);
     }
@@ -224,26 +258,47 @@ void mouse_unregister(mouse_t* mouse)
     }
 
     UNREF(mouse->dir);
-    devfs_files_free(&mouse->files);
+    devfs_dentrys_free(&mouse->files);
 }
 
 static void mouse_broadcast(mouse_t* mouse, const char* string, size_t length)
 {
-    LOCK_SCOPE(&mouse->lock);
+    list_t pending = LIST_CREATE(pending);
 
-    mouse_client_t* client;
-    LIST_FOR_EACH(client, &mouse->clients, entry)
     {
-        if (fifo_bytes_writeable(&client->fifo) >= length)
+        LOCK_SCOPE(&mouse->lock);
+
+        mouse_client_t* client;
+        LIST_FOR_EACH(client, &mouse->clients, entry)
         {
-            fifo_write(&client->fifo, string, length);
+            if (fifo_bytes_writeable(&client->fifo) >= length)
+            {
+                fifo_write(&client->fifo, string, length, NULL);
+            }
         }
+        irp_claim_list(&pending, &mouse->pending);
     }
 
-    wait_unblock(&mouse->waitQueue, WAIT_ALL, EOK);
+    while (!list_is_empty(&pending))
+    {
+        irp_t* irp = CONTAINER_OF(list_pop_front(&pending), irp_t, entry);
+        irp_frame_t* frame = irp_current(irp);
+        if (frame->major == IRP_MJ_READ)
+        {
+            mouse_events_read(irp);
+        }
+        else if (frame->major == IRP_MJ_POLL)
+        {
+            mouse_events_poll(irp);
+        }
+        else
+        {
+            irp_complete(irp, ERR(DRIVER, INVAL));
+        }
+    }
 }
 
-void mouse_press(mouse_t* mouse, uint32_t button)
+void mouse_press(mouse_t* mouse, uint8_t button)
 {
     if (mouse == NULL)
     {
@@ -251,7 +306,7 @@ void mouse_press(mouse_t* mouse, uint32_t button)
     }
 
     char event[MAX_NAME];
-    int length = snprintf(event, sizeof(event), "%u_", button);
+    int length = snprintf(event, sizeof(event), "%+03u_", button);
     if (length < 0)
     {
         LOG_ERR("failed to format mouse press event\n");
@@ -261,7 +316,7 @@ void mouse_press(mouse_t* mouse, uint32_t button)
     mouse_broadcast(mouse, event, (size_t)length);
 }
 
-void mouse_release(mouse_t* mouse, uint32_t button)
+void mouse_release(mouse_t* mouse, uint8_t button)
 {
     if (mouse == NULL)
     {
@@ -269,7 +324,7 @@ void mouse_release(mouse_t* mouse, uint32_t button)
     }
 
     char event[MAX_NAME];
-    int length = snprintf(event, sizeof(event), "%u^", button);
+    int length = snprintf(event, sizeof(event), "%+03u^", button);
     if (length < 0)
     {
         LOG_ERR("failed to format mouse release event\n");
@@ -279,7 +334,7 @@ void mouse_release(mouse_t* mouse, uint32_t button)
     mouse_broadcast(mouse, event, (size_t)length);
 }
 
-void mouse_move_x(mouse_t* mouse, int64_t delta)
+void mouse_move_x(mouse_t* mouse, int8_t delta)
 {
     if (mouse == NULL)
     {
@@ -287,7 +342,7 @@ void mouse_move_x(mouse_t* mouse, int64_t delta)
     }
 
     char event[MAX_NAME];
-    int length = snprintf(event, sizeof(event), "%lldx", delta);
+    int length = snprintf(event, sizeof(event), "%+03lldx", delta);
     if (length < 0)
     {
         LOG_ERR("failed to format mouse move X event\n");
@@ -297,7 +352,7 @@ void mouse_move_x(mouse_t* mouse, int64_t delta)
     mouse_broadcast(mouse, event, (size_t)length);
 }
 
-void mouse_move_y(mouse_t* mouse, int64_t delta)
+void mouse_move_y(mouse_t* mouse, int8_t delta)
 {
     if (mouse == NULL)
     {
@@ -305,7 +360,7 @@ void mouse_move_y(mouse_t* mouse, int64_t delta)
     }
 
     char event[MAX_NAME];
-    int length = snprintf(event, sizeof(event), "%lldy", delta);
+    int length = snprintf(event, sizeof(event), "%+03lldy", delta);
     if (length < 0)
     {
         LOG_ERR("failed to format mouse move Y event\n");
@@ -315,7 +370,7 @@ void mouse_move_y(mouse_t* mouse, int64_t delta)
     mouse_broadcast(mouse, event, (size_t)length);
 }
 
-void mouse_scroll(mouse_t* mouse, int64_t delta)
+void mouse_scroll(mouse_t* mouse, int8_t delta)
 {
     if (mouse == NULL)
     {

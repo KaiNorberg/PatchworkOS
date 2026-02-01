@@ -28,12 +28,14 @@ extern "C"
  *
  * The ring interface acts as the interface for all asynchronous operations in the kernel.
  *
+ * @todo Write I/O Ring user-side interface documentation.
+ * 
  * @see kernel_io_ioring for more information about I/O rings.
  *
  * @{
  */
 
-#define IOOFF_CUR ((ssize_t) - 1) ///< Use the current file offset.
+#define IOOFF_CUR (__SIZE_MAX__) ///< Use the current file offset.
 
 typedef uint64_t iowhence_t; ///< Seek origin type.
 #define IOSEEK_SET (1)       ///< Use the start of the file.
@@ -52,34 +54,63 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
 /**
  * @brief No-op operation.
  *
- * @see ioprep_nop
+ * Arguments:
+ * - None.
+ *
+ * Result:
+ * - `0`
  */
 #define IOOP_NOP 0
 
 /**
  * @brief Cancel operation.
- * @see ioprep_cancel
+ *
+ * Arguments:
+ * - arg0: `uintptr_t target` - The user data of the operation(s) to cancel.
+ * - arg1: `iocancel_t flags` - Cancellation flags.
+ *
+ * Result:
+ * - `0`
  */
 #define IOOP_CANCEL 1
 
 /**
  * @brief Read operation.
  *
- * @see ioprep_read
+ * Arguments:
+ * - arg0: `fd_t fd` - The file descriptor to read from.
+ * - arg1: `void* buffer` - The buffer to read into.
+ * - arg2: `size_t count` - The number of bytes to read.
+ * - arg3: `ssize_t offset` - The offset to read from, or `IOOFF_CUR`.
+ *
+ * Result:
+ * - `size_t` - The number of bytes read.
  */
 #define IOOP_READ 2
 
 /**
  * @brief Write operation.
  *
- * @see ioprep_write
+ * Arguments:
+ * - arg0: `fd_t fd` - The file descriptor to write to.
+ * - arg1: `void* buffer` - The buffer to write from.
+ * - arg2: `size_t count` - The number of bytes to write.
+ * - arg3: `ssize_t offset` - The offset to write to, or `IOOFF_CUR`.
+ *
+ * Result:
+ * - `size_t` - The number of bytes written.
  */
 #define IOOP_WRITE 3
 
 /**
  * @brief Poll operation.
  *
- * @see ioprep_poll
+ * Arguments:
+ * - arg0: `fd_t fd` - The file descriptor to poll.
+ * - arg1: `ioevents_t events` - The events to wait for.
+ *
+ * Result:
+ * - `ioevents_t` - The events that occurred.
  */
 #define IOOP_POLL 4
 
@@ -197,15 +228,9 @@ typedef struct iocqe
 {
     ioop_t op;       ///< The operation that was performed.
     status_t status; ///< The status of the operation.
+    uintptr_t result; ///< The result of the operation.
     uintptr_t data;  ///< Private data from the submission entry.
-    union {
-        fd_t fd;
-        size_t count;
-        void* ptr;
-        ioevents_t events;
-        uint64_t _result;
-    };
-    uint64_t _padding[1];
+    uint8_t _reserved[8];
 } iocqe_t;
 
 #ifdef static_assert
@@ -221,7 +246,7 @@ static_assert(sizeof(iocqe_t) == 32, "iocqe_t is not 32 bytes");
  * @note The structure is aligned in such a way to reduce false sharing.
  *
  */
-typedef struct ALIGNED(64) ioring_ctrl
+typedef struct ioring_ctrl
 {
     atomic_uint32_t shead; ///< Submission head index, updated by the kernel.
     atomic_uint32_t ctail; ///< Completion tail index, updated by the kernel.
@@ -326,109 +351,6 @@ static inline void iosqe_put(ioring_t* ring)
 }
 
 /**
- * @brief Prepare a no-op submission queue entry (SQE).
- *
- * @param iosqe The SQE to prepare.
- * @param flags Submission flags.
- * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout.
- * @param data Private data for the operation.
- *
- * @see `IOOP_NOP`
- */
-static inline void ioprep_nop(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data)
-{
-    *iosqe = IOSQE_CREATE(IOOP_NOP, flags, timeout, data);
-}
-
-/**
- * @brief Prepare a read submission queue entry (SQE).
- *
- * @param iosqe The SQE to prepare.
- * @param flags Submission flags.
- * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout.
- * @param data Private data for the operation.
- * @param fd The file descriptor to read from (arg0).
- * @param buffer The buffer to read into (arg1).
- * @param count The number of bytes to read (arg2).
- * @param offset The offset to read from, or `IOOFF_CUR` to use the current position (arg3).
- *
- * @see `IOOP_READ`
- */
-static inline void ioprep_read(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
-    void* buffer, size_t count, ssize_t offset)
-{
-    *iosqe = IOSQE_CREATE(IOOP_READ, flags, timeout, data);
-    iosqe->fd = fd;
-    iosqe->buffer = buffer;
-    iosqe->count = count;
-    iosqe->offset = offset;
-}
-
-/**
- * @brief Prepare a write submission queue entry (SQE).
- *
- * @param iosqe The SQE to prepare.
- * @param flags Submission flags.
- * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout.
- * @param data Private data for the operation.
- * @param fd The file descriptor to write to (arg0).
- * @param buffer The buffer to write from (arg1).
- * @param count The number of bytes to write (arg2).
- * @param offset The offset to write to, or `IOOFF_CUR` to use the current position (arg3).
- *
- * @see `IOOP_WRITE`
- */
-static inline void ioprep_write(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
-    const void* buffer, size_t count, ssize_t offset)
-{
-    *iosqe = IOSQE_CREATE(IOOP_WRITE, flags, timeout, data);
-    iosqe->fd = fd;
-    iosqe->buffer = (void*)buffer;
-    iosqe->count = count;
-    iosqe->offset = offset;
-}
-
-/**
- * @brief Prepare a poll submission queue entry (SQE).
- *
- * @param iosqe The SQE to prepare.
- * @param flags Submission flags.
- * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout.
- * @param data Private data for the operation.
- * @param fd The file descriptor to poll (arg0).
- * @param events The events to wait for (arg1).
- *
- * @see `IOOP_POLL`
- */
-static inline void ioprep_poll(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
-    ioevents_t events)
-{
-    *iosqe = IOSQE_CREATE(IOOP_POLL, flags, timeout, data);
-    iosqe->fd = fd;
-    iosqe->events = events;
-}
-
-/**
- * @brief Prepare a cancel submission queue entry (SQE).
- *
- * @param iosqe The SQE to prepare.
- * @param flags Submission flags.
- * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout.
- * @param data Private data for the operation.
- * @param target The user data of the operation(s) to cancel (arg0).
- * @param cancel Cancellation flags (arg1).
- *
- * @see `IOOP_CANCEL`
- */
-static inline void ioprep_cancel(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, uintptr_t target,
-    iocancel_t cancel)
-{
-    *iosqe = IOSQE_CREATE(IOOP_CANCEL, flags, timeout, data);
-    iosqe->target = target;
-    iosqe->cancel = cancel;
-}
-
-/**
  * @brief Retrieve the next available completion queue entry (CQE) from the ring.
  *
  * @param ring The I/O ring.
@@ -456,6 +378,72 @@ static inline void iocqe_put(ioring_t* ring)
 {
     uint32_t head = atomic_load_explicit(&ring->ctrl->chead, memory_order_relaxed);
     atomic_store_explicit(&ring->ctrl->chead, head + 1, memory_order_release);
+}
+
+/**
+ * @brief Prepare a no-op submission queue entry (SQE).
+ *
+ * @see `IOOP_NOP`
+ */
+static inline void ioprep_nop(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data)
+{
+    *iosqe = IOSQE_CREATE(IOOP_NOP, flags, timeout, data);
+}
+
+/**
+ * @brief Prepare a read submission queue entry (SQE).
+ *
+ * @see `IOOP_READ`
+ */
+static inline void ioprep_read(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
+    void* buffer, size_t count, ssize_t offset)
+{
+    *iosqe = IOSQE_CREATE(IOOP_READ, flags, timeout, data);
+    iosqe->fd = fd;
+    iosqe->buffer = buffer;
+    iosqe->count = count;
+    iosqe->offset = offset;
+}
+
+/**
+ * @brief Prepare a write submission queue entry (SQE).
+ *
+ * @see `IOOP_WRITE`
+ */
+static inline void ioprep_write(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
+    const void* buffer, size_t count, ssize_t offset)
+{
+    *iosqe = IOSQE_CREATE(IOOP_WRITE, flags, timeout, data);
+    iosqe->fd = fd;
+    iosqe->buffer = (void*)buffer;
+    iosqe->count = count;
+    iosqe->offset = offset;
+}
+
+/**
+ * @brief Prepare a poll submission queue entry (SQE).
+ * 
+ * @see `IOOP_POLL`
+ */
+static inline void ioprep_poll(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
+    ioevents_t events)
+{
+    *iosqe = IOSQE_CREATE(IOOP_POLL, flags, timeout, data);
+    iosqe->fd = fd;
+    iosqe->events = events;
+}
+
+/**
+ * @brief Prepare a cancel submission queue entry (SQE).
+ *
+ * @see `IOOP_CANCEL`
+ */
+static inline void ioprep_cancel(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, uintptr_t target,
+    iocancel_t cancel)
+{
+    *iosqe = IOSQE_CREATE(IOOP_CANCEL, flags, timeout, data);
+    iosqe->target = target;
+    iosqe->cancel = cancel;
 }
 
 /** @} */

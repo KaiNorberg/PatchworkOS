@@ -41,7 +41,7 @@ typedef struct poll_file poll_file_t;
 typedef struct file
 {
     ref_t ref;
-    size_t pos;
+    atomic_size_t pos;
     mode_t mode;
     vnode_t* vnode;
     path_t path;

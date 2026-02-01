@@ -15,79 +15,106 @@ static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
 static dentry_t* dir = NULL;
 
-static status_t fb_name_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static void fb_name_read(irp_t* irp)
 {
-    fb_t* fb = file->vnode->data;
+    irp_frame_t* frame = irp_current(irp);
+    fb_t* fb = frame->vnode->data;
     assert(fb != NULL);
 
     uint64_t length = strlen(fb->name);
-    return buffer_read(buffer, count, offset, bytesRead, fb->name, length);
+    status_t status =
+        mdl_read(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, fb->name, length);
+    irp_complete(irp, status);
 }
 
-static file_ops_t nameOps = {
-    .read = fb_name_read,
+static vnode_class_t nameClass = {
+    .name = "fb name",
+    .type = VNODE_REGULAR,
+    .handlers =
+        {
+            [IRP_MJ_READ] = fb_name_read,
+        },
 };
 
-static status_t fb_data_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static void fb_data_read(irp_t* irp)
 {
-    fb_t* fb = file->vnode->data;
+    irp_frame_t* frame = irp_current(irp);
+    fb_t* fb = frame->vnode->data;
     assert(fb != NULL);
 
     if (fb->read == NULL)
     {
-        return ERR(DRIVER, INVAL);
+        irp_complete(irp, ERR(DRIVER, INVAL));
+        return;
     }
 
-    return fb->read(fb, buffer, count, offset, bytesRead);
+    status_t status = fb->read(fb, frame->read.buffer, frame->read.count, frame->read.offset, &irp->result);
+    irp_complete(irp, status);
 }
 
-static status_t fb_data_write(file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
+static void fb_data_write(irp_t* irp)
 {
-    fb_t* fb = file->vnode->data;
+    irp_frame_t* frame = irp_current(irp);
+    fb_t* fb = frame->vnode->data;
     assert(fb != NULL);
 
     if (fb->write == NULL)
     {
-        return ERR(DRIVER, INVAL);
+        irp_complete(irp, ERR(DRIVER, INVAL));
+        return;
     }
 
-    return fb->write(fb, buffer, count, offset, bytesWritten);
+    status_t status = fb->write(fb, frame->write.buffer, frame->write.count, frame->write.offset, &irp->result);
+    irp_complete(irp, status);
 }
 
-static status_t fb_data_mmap(file_t* file, void** addr, size_t length, size_t* offset, pml_flags_t flags)
+static void fb_data_mmap(irp_t* irp)
 {
-    fb_t* fb = file->vnode->data;
+    irp_frame_t* frame = irp_current(irp);
+    fb_t* fb = frame->vnode->data;
     assert(fb != NULL);
 
-    if (fb->mmap == NULL)
+    if (fb->write == NULL)
     {
-        return ERR(DRIVER, INVAL);
+        irp_complete(irp, ERR(DRIVER, INVAL));
+        return;
     }
 
-    return fb->mmap(fb, addr, length, offset, flags);
+    void* addr = frame->mmap.address;
+    status_t status = fb->mmap(fb, &addr, frame->mmap.length, frame->mmap.offset, frame->mmap.flags);
+    irp->result = (uintptr_t)addr;
+    irp_complete(irp, status);
 }
 
-static file_ops_t dataOps = {
-    .read = fb_data_read,
-    .write = fb_data_write,
-    .mmap = fb_data_mmap,
+static vnode_class_t dataClass = {
+    .name = "fb data",
+    .type = VNODE_REGULAR,
+    .handlers =
+        {
+            [IRP_MJ_READ] = fb_data_read,
+            [IRP_MJ_WRITE] = fb_data_write,
+            [IRP_MJ_MMAP] = fb_data_mmap,
+        },
 };
 
-static status_t fb_info_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static void fb_info_read(irp_t* irp)
 {
-    fb_t* fb = file->vnode->data;
+    irp_frame_t* frame = irp_current(irp);
+    fb_t* fb = frame->vnode->data;
     assert(fb != NULL);
 
     if (fb->info == NULL)
     {
-        return ERR(DRIVER, INVAL);
+        irp_complete(irp, ERR(DRIVER, INVAL));
+        return;
     }
 
     fb_info_t info = {0};
     status_t status = fb->info(fb, &info);
     if (IS_ERR(status))
     {
-        return status;
+        irp_complete(irp, status);
+        return;
     }
 
     char string[256];
@@ -97,14 +124,21 @@ static status_t fb_info_read(file_t* file, void* buffer, size_t count, size_t* o
 
     if ((size_t)length >= sizeof(string))
     {
-        return ERR(DRIVER, IMPL);
+        irp_complete(irp, ERR(DRIVER, IMPL));
+        return;
     }
 
-    return buffer_read(buffer, count, offset, bytesRead, string, length);
+    status = mdl_read(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, string, length);
+    irp_complete(irp, status);
 }
 
-static file_ops_t infoOps = {
-    .read = fb_info_read,
+static vnode_class_t infoClass = {
+    .name = "fb info",
+    .type = VNODE_REGULAR,
+    .handlers =
+        {
+            [IRP_MJ_READ] = fb_info_read,
+        },
 };
 
 static void fb_dir_cleanup(vnode_t* vnode)
@@ -117,8 +151,15 @@ static void fb_dir_cleanup(vnode_t* vnode)
     }
 }
 
-static vnode_ops_t dirVnodeOps = {
+static vnode_class_t dirClass = {
+    .name = "fb dir",
+    .type = VNODE_DIR,
     .cleanup = fb_dir_cleanup,
+};
+
+static vnode_class_t rootClass = {
+    .name = "fb root",
+    .type = VNODE_DIR,
 };
 
 status_t fb_register(fb_t* fb)
@@ -130,7 +171,7 @@ status_t fb_register(fb_t* fb)
 
     if (dir == NULL)
     {
-        dir = devfs_dir_new(NULL, "fb", NULL, NULL);
+        dir = devfs_dentry_new(NULL, "fb", &dirClass, NULL);
         if (dir == NULL)
         {
             return ERR(DRIVER, NOMEM);
@@ -142,37 +183,31 @@ status_t fb_register(fb_t* fb)
     char id[MAX_NAME];
     snprintf(id, MAX_NAME, "%llu", atomic_fetch_add(&newId, 1));
 
-    fb->dir = devfs_dir_new(dir, id, &dirVnodeOps, fb);
+    fb->dir = devfs_dentry_new(dir, id, &dirClass, fb);
     if (fb->dir == NULL)
     {
         return ERR(DRIVER, NOMEM);
     }
 
-    devfs_file_desc_t files[] = {
+    devfs_desc_t files[] = {
         {
             .name = "name",
-            .vnodeOps = NULL,
-            .fileOps = &nameOps,
+            .cls = &nameClass,
             .data = fb,
         },
         {
             .name = "info",
-            .vnodeOps = NULL,
-            .fileOps = &infoOps,
+            .cls = &infoClass,
             .data = fb,
         },
         {
             .name = "data",
-            .vnodeOps = NULL,
-            .fileOps = &dataOps,
+            .cls = &dataClass,
             .data = fb,
-        },
-        {
-            .name = NULL,
-        },
+        }
     };
 
-    if (!devfs_files_new(&fb->files, fb->dir, files))
+    if (!devfs_dentrys_new(&fb->files, fb->dir, files, ARRAY_SIZE(files)))
     {
         UNREF(fb->dir);
         return ERR(DRIVER, NOMEM);
@@ -190,5 +225,5 @@ void fb_unregister(fb_t* fb)
     }
 
     UNREF(fb->dir);
-    devfs_files_free(&fb->files);
+    devfs_dentrys_free(&fb->files);
 }

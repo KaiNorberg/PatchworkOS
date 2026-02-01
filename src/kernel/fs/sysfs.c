@@ -61,7 +61,7 @@ void sysfs_init(void)
     }
     UNREF_DEFER(superblock);
 
-    vnode_t* vnode = vnode_new(superblock, VDIR, NULL, NULL);
+    vnode_t* vnode = vnode_new(superblock, VNODE_DIR, NULL, NULL);
     if (vnode == NULL)
     {
         panic(NULL, "Failed to create sysfs root vnode");
@@ -133,7 +133,7 @@ dentry_t* sysfs_dir_new(dentry_t* parent, const char* name, const vnode_ops_t* v
     }
     UNREF_DEFER(dir);
 
-    vnode_t* vnode = vnode_new(parent->superblock, VDIR, vnodeOps, NULL);
+    vnode_t* vnode = vnode_new(parent->superblock, VNODE_DIR, vnodeOps, NULL);
     if (vnode == NULL)
     {
         return NULL;
@@ -168,7 +168,7 @@ dentry_t* sysfs_file_new(dentry_t* parent, const char* name, const vnode_ops_t* 
     }
     UNREF_DEFER(dentry);
 
-    vnode_t* vnode = vnode_new(parent->superblock, VREG, vnodeOps, fileOps);
+    vnode_t* vnode = vnode_new(parent->superblock, VNODE_REGULAR, vnodeOps, fileOps);
     if (vnode == NULL)
     {
         return NULL;
@@ -197,7 +197,7 @@ dentry_t* sysfs_symlink_new(dentry_t* parent, const char* name, const vnode_ops_
     }
     UNREF_DEFER(dentry);
 
-    vnode_t* vnode = vnode_new(parent->superblock, VSYMLINK, vnodeOps, NULL);
+    vnode_t* vnode = vnode_new(parent->superblock, VNODE_SYMLINK, vnodeOps, NULL);
     if (vnode == NULL)
     {
         return NULL;

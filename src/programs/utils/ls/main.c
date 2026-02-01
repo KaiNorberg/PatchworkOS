@@ -133,7 +133,7 @@ static uint64_t print_dir(const char* path)
     for (uint64_t i = 0; i < count; i++)
     {
         uint64_t len = strlen(entries[i].path);
-        if (entries[i].type == VDIR || entries[i].type == VSYMLINK)
+        if (entries[i].type == VNODE_DIR || entries[i].type == VNODE_SYMLINK)
         {
             len++;
         }
@@ -177,12 +177,12 @@ static uint64_t print_dir(const char* path)
             int len = strlen(name);
             const char* modifier = (ent->flags & DIRENT_MOUNTED) ? "\033[4m" : "";
 
-            if (ent->type == VDIR)
+            if (ent->type == VNODE_DIR)
             {
                 printf("%s\033[34m%s%s\033[0m/", modifier, name, showFlags ? ent->mode : "");
                 len++;
             }
-            else if (ent->type == VSYMLINK)
+            else if (ent->type == VNODE_SYMLINK)
             {
                 printf("%s\033[36m%s%s\033[0m@", modifier, name, showFlags ? ent->mode : "");
                 len++;

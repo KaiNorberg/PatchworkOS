@@ -6,15 +6,15 @@
 #include <sys/fs.h>
 #include <time.h>
 
-static const char* type_to_string(vtype_t type)
+static const char* type_to_string(vnode_type_t type)
 {
     switch (type)
     {
-    case VREG:
+    case VNODE_REGULAR:
         return "file";
-    case VDIR:
+    case VNODE_DIR:
         return "directory";
-    case VSYMLINK:
+    case VNODE_SYMLINK:
         return "symlink";
     default:
         return "unknown";

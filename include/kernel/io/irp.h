@@ -165,28 +165,35 @@ typedef status_t (*irp_cancel_t)(irp_t* irp);
  */
 #define IRP_CANCELLED ((irp_cancel_t)1)
 
-typedef uint16_t irp_major_t;
-#define IRP_MJ_READ 0
-#define IRP_MJ_WRITE 1
-#define IRP_MJ_POLL 2
-#define IRP_MJ_SEEK 3
-#define IRP_MJ_MMAP 4
-#define IRP_MJ_MAX 5
+typedef uint16_t irp_major_t; ///< IRP major function number type.
+#define IRP_MJ_READ 0 ///< Read operation.
+#define IRP_MJ_WRITE 1 ///< Write operation.
+#define IRP_MJ_POLL 2 ///< Poll operation. 
+#define IRP_MJ_SEEK 3 ///< Seek operation.
+#define IRP_MJ_MMAP 4 ///< Memory map operation.
+#define IRP_MJ_MAX 5 ///< The maximum number of major function numbers.
 
-typedef uint16_t irp_minor_t;
-#define IRP_MN_NORMAL 0
+typedef uint16_t irp_minor_t; ///< IRP minor function number type.
+#define IRP_MN_NORMAL 0 ///< No special behaviour.
+
+typedef uint16_t irp_flags_t; ///< IRP frame flags type.
+#define IRP_FLAG_NONE 0 ///< No flags.
+#define IRP_FLAG_UPDATE_POS (1 << 0) ///< Update the file position by the amount of bytes processed.
 
 #define IRP_ARGS_MAX 4 ///< The maximum number of 64-bit arguments in an `irp_frame_t`.
 
 /**
  * @brief IRP stack frame structure.
  * @struct irp_frame_t
+ * 
+ * @warning Generally, IRP frames should not be setup manually, instead helper functions such as `irp_prep_read()`, `irp_prep_write()`, etc. should be used.
  */
 typedef struct irp_frame
 {
     irp_major_t major; ///< Major function number.
     irp_minor_t minor; ///< Minor function number.
-    uint8_t _reserved[4];
+    irp_flags_t flags; ///< Flags.
+    uint8_t _reserved[2];
     irp_complete_t complete; ///< Completion callback.
     void* ctx;               ///< Local context.
     vnode_t* vnode;          ///< Vnode associated with the operation.
@@ -238,10 +245,10 @@ static_assert(sizeof(irp_frame_t) == 64, "irp_frame_t is not 64 bytes");
  * The I/O Request Packet structure is designed to preallocate as much as possible such that in the common case there is
  * no need for any allocation beyond the allocation of the IRP itself. This does require careful consideration of
  * padding, alignment and field sizes to keep it within a reasonable size.
- *
+ * 
  * @see kernel_io for more information for each possible verb.
  */
-typedef struct ALIGNED(64) irp
+typedef struct irp
 {
     list_entry_t entry;           ///< Used to store the IRP in various lists.
     list_entry_t timeoutEntry;    ///< Used to store the IRP in the timeout queue.
@@ -251,13 +258,8 @@ typedef struct ALIGNED(64) irp
         clock_t deadline; ///< The time at which the IRP will be removed from a timeout queue.
     };
     mdl_t mdl; ///< A preallocated memory descriptor list for use by the IRP.
-    union {
-        size_t read;
-        size_t write;
-        ioevents_t events;
-        uint64_t _raw;
-    } res;
-    status_t status;  ///< The status of the operation, also used to specify its current state and potential errors.
+    uintptr_t result; ///< The result returned by the last completed frame.
+    status_t status;  ///< The status of the last completed frame.
     pool_idx_t index; ///< Index of the IRP in its pool.
     pool_idx_t next;  ///< Index of the next IRP in a chain or in the free list.
     cpu_id_t cpu;     ///< The CPU whose timeout queue the IRP is in.
@@ -271,7 +273,7 @@ static_assert(sizeof(irp_t) == 512, "irp_t is not 512 bytes");
 
 /**
  * @brief Request pool structure.
- * @struct irp_pool
+ * @struct irp_pool_t
  */
 typedef struct irp_pool
 {
@@ -280,7 +282,7 @@ typedef struct irp_pool
     atomic_size_t active;
     pool_t pool;
     size_t size;
-    irp_t irps[];
+    irp_t irps[] ALIGNED(64);
 } irp_pool_t;
 
 /**
@@ -577,6 +579,9 @@ static inline void irp_set_complete(irp_t* irp, irp_complete_t complete, void* c
 /**
  * @brief Prepares the next IRP stack frame for a generic operation.
  *
+ * Result:
+ * - Defined by the specific operation.
+ *
  * @param irp The IRP.
  * @param major The major function number.
  * @param arg0 Generic argument 0.
@@ -591,6 +596,8 @@ static inline void irp_prep_generic(irp_t* irp, irp_major_t major, uint64_t arg0
     assert(next != NULL);
 
     next->major = major;
+    next->minor = IRP_MN_NORMAL;
+    next->flags = IRP_FLAG_NONE;
     next->args[0] = arg0;
     next->args[1] = arg1;
     next->args[2] = arg2;
@@ -600,26 +607,22 @@ static inline void irp_prep_generic(irp_t* irp, irp_major_t major, uint64_t arg0
 /**
  * @brief Prepares the next IRP stack frame for a read operation.
  *
+ * Result:
+ * - `size_t`: The number of bytes read.
+ *
  * @param irp The IRP.
  * @param file The file to read from, will not take a new reference.
  * @param buffer The memory descriptor list to read into.
  * @param count The number of bytes to read.
  * @param offset The offset in the file to read from.
  */
-static inline void irp_prep_read(irp_t* irp, file_t* file, mdl_t* buffer, size_t count, size_t offset)
-{
-    irp_frame_t* next = irp_next(irp);
-    assert(next != NULL);
-
-    next->major = IRP_MJ_READ;
-    next->read.file = file;
-    next->read.buffer = buffer;
-    next->read.count = count;
-    next->read.offset = offset;
-}
+void irp_prep_read(irp_t* irp, file_t* file, mdl_t* buffer, size_t count, size_t offset);
 
 /**
  * @brief Prepares the next IRP stack frame for a write operation.
+ *
+ * Result:
+ * - `size_t`: The number of bytes written.
  *
  * @param irp The IRP.
  * @param file The file to write to, will not take a new reference.
@@ -627,20 +630,13 @@ static inline void irp_prep_read(irp_t* irp, file_t* file, mdl_t* buffer, size_t
  * @param count The number of bytes to write.
  * @param offset The offset in the file to write to.
  */
-static inline void irp_prep_write(irp_t* irp, file_t* file, mdl_t* buffer, size_t count, size_t offset)
-{
-    irp_frame_t* next = irp_next(irp);
-    assert(next != NULL);
-
-    next->major = IRP_MJ_WRITE;
-    next->write.file = file;
-    next->write.buffer = buffer;
-    next->write.count = count;
-    next->write.offset = offset;
-}
+void irp_prep_write(irp_t* irp, file_t* file, mdl_t* buffer, size_t count, size_t offset);
 
 /**
  * @brief Prepares the next IRP stack frame for a poll operation.
+ *
+ * Result:
+ * - `ioevents_t`: The events that occurred.
  *
  * @param irp The IRP.
  * @param file The file to poll, will not take a new reference.
@@ -652,6 +648,8 @@ static inline void irp_prep_poll(irp_t* irp, file_t* file, ioevents_t events)
     assert(next != NULL);
 
     next->major = IRP_MJ_POLL;
+    next->minor = IRP_MN_NORMAL;
+    next->flags = IRP_FLAG_NONE;
     next->poll.file = file;
     next->poll.events = events;
 }

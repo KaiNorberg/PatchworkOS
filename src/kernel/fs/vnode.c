@@ -15,9 +15,9 @@ static void vnode_free(vnode_t* vnode)
         return;
     }
 
-    if (vnode->ops != NULL && vnode->ops->cleanup != NULL)
+    if (vnode->cls->cleanup != NULL)
     {
-        vnode->ops->cleanup(vnode);
+        vnode->cls->cleanup(vnode);
     }
     vnode->data = NULL;
 
@@ -35,12 +35,10 @@ static void vnode_ctor(void* ptr)
     vnode_t* vnode = (vnode_t*)ptr;
 
     vnode->ref = (ref_t){0};
-    vnode->type = 0;
     atomic_init(&vnode->dentryCount, 0);
     vnode->data = NULL;
     vnode->size = 0;
     vnode->superblock = NULL;
-    vnode->ops = NULL;
     vnode->cls = NULL;
     vnode->rcu = (rcu_entry_t){0};
     mutex_init(&vnode->mutex);
@@ -48,9 +46,9 @@ static void vnode_ctor(void* ptr)
 
 static cache_t cache = CACHE_CREATE(cache, "vnode", sizeof(vnode_t), CACHE_LINE, vnode_ctor, NULL);
 
-vnode_t* vnode_new(superblock_t* superblock, vtype_t type, const vnode_ops_t* ops, const vnode_class_t* cls)
+vnode_t* vnode_new(superblock_t* superblock, const vnode_class_t* cls)
 {
-    if (superblock == NULL)
+    if (superblock == NULL || cls == NULL)
     {
         return NULL;
     }
@@ -62,9 +60,7 @@ vnode_t* vnode_new(superblock_t* superblock, vtype_t type, const vnode_ops_t* op
     }
 
     ref_init(&vnode->ref, vnode_free);
-    vnode->type = type;
     vnode->superblock = REF(superblock);
-    vnode->ops = ops;
     vnode->cls = cls;
     return vnode;
 }
@@ -107,10 +103,10 @@ void vnode_truncate(vnode_t* vnode)
         return;
     }
 
-    if (vnode->ops != NULL && vnode->ops->truncate != NULL)
+    if (vnode->cls->truncate != NULL)
     {
         MUTEX_SCOPE(&vnode->mutex);
         assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-        vnode->ops->truncate(vnode);
+        vnode->cls->truncate(vnode);
     }
 }

@@ -30,65 +30,43 @@ typedef struct superblock_ops superblock_ops_t;
 void devfs_init(void);
 
 /**
- * @brief Create a new directory inside a mounted devfs instance.
+ * @brief Create a new dentry inside a mounted devfs instance.
  *
  * @param parent The parent directory, if `NULL` then the root is used.
- * @param name The name of the new directory.
+ * @param name The name of the new dentry.
  * @param cls The class to assign to the created vnode.
- * @param data Private data to store in the vnode of the new directory, can be `NULL`.
- * @return On success, the new devfs directory. On failure, `NULL`.
+ * @param data Private data to store in the vnode of the new dentry, can be `NULL`.
+ * @return On success, the new devfs dentry. On failure, `NULL`.
  */
-dentry_t* devfs_dir_new(dentry_t* parent, const char* name, const vnode_class_t* cls, void* data);
+dentry_t* devfs_dentry_new(dentry_t* parent, const char* name, const vnode_class_t* cls, void* data);
 
 /**
- * @brief Create a new file inside a mounted devfs instance.
- *
- * @param parent The parent directory, if `NULL` then the root is used.
- * @param name The name of the new file.
- * @param cls The class to assign to the created vnode.
- * @param data Private data to store in the vnode of the new file, can be `NULL`.
- * @return On success, the new devfs file. On failure, `NULL`.
+ * @brief Descriptor for batch dentry creation.
+ * @struct devfs_desc_t
  */
-dentry_t* devfs_file_new(dentry_t* parent, const char* name, const vnode_class_t* cls, void* data);
-
-/**
- * @brief Create a new symbolic link inside a mounted devfs instance.
- *
- * @param parent The parent directory, if `NULL` then the root is used.
- * @param name The name of the new symbolic link.
- * @param cls The class to assign to the created vnode.
- * @param data Private data to store in the vnode of the new symbolic link, can be `NULL`.
- * @return On success, the new devfs symbolic link. On failure, `NULL`.
- */
-dentry_t* devfs_symlink_new(dentry_t* parent, const char* name, const vnode_class_t* cls, void* data);
-
-/**
- * @brief Descriptor for batch file creation.
- * @struct devfs_file_desc_t
- */
-typedef struct devfs_file_desc
+typedef struct devfs_desc
 {
-    const char* name;         ///< Name of the file.
-    const vnode_class_t* cls; ///< Class to assign to the vnode of the created file.
-    void* data;               ///< Private data to store in the vnode of the file.
-} devfs_file_desc_t;
+    const char* name;         ///< Name of the dentry.
+    const vnode_class_t* cls; ///< Class to assign to the vnode of the created dentry.
+    void* data;               ///< Private data to store in the vnode of the dentry.
+} devfs_desc_t;
 
 /**
- * @brief Create multiple files in a devfs directory.
+ * @brief Create multiple dentrys in a devfs directory.
  *
  * @param out Output list to store created dentries, can be `NULL`. The dentries use the `otherEntry` list entry.
  * @param parent The parent directory, if `NULL` then the root is used.
- * @param descs Array of devfs file descriptors.
- * @param count The number of files to create.
+ * @param descs Array of devfs descriptors.
+ * @param count The number of dentrys to create.
  * @return `true` on success, `false` on failure.
  */
-bool devfs_files_new(list_t* out, dentry_t* parent, const devfs_file_desc_t* descs, size_t count);
+bool devfs_dentrys_new(list_t* out, dentry_t* parent, const devfs_desc_t* descs, size_t count);
 
 /**
- * @brief Free all files in a list created by `devfs_files_new()`.
+ * @brief Free all dentrys in a list created by `devfs_dentrys_new()`.
  *
- * @param files The list of files to free.
+ * @param dentrys The list of dentrys to free.
  */
-void devfs_files_free(list_t* files);
+void devfs_dentrys_free(list_t* dentrys);
 
 /** @} */

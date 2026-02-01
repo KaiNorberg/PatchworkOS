@@ -68,7 +68,7 @@ static void io_op_read(irp_t* irp)
         return;
     }
 
-    if (file->vnode->type == VDIR)
+    if (file->vnode->type == VNODE_DIR)
     {
         UNREF(file);
         irp_complete(irp, EISDIR);
@@ -106,7 +106,7 @@ static void io_op_write(irp_t* irp)
         return;
     }
 
-    if (file->vnode->type == VDIR)
+    if (file->vnode->type == VNODE_DIR)
     {
         UNREF(file);
         irp_complete(irp, EISDIR);

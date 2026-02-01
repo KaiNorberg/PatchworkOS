@@ -27,7 +27,7 @@
 
 static bool initialized = false;
 
-static vnode_t* tmpfs_vnode_new(superblock_t* superblock, vtype_t type, void* buffer, uint64_t size);
+static vnode_t* tmpfs_vnode_new(superblock_t* superblock, vnode_type_t type, void* buffer, uint64_t size);
 
 static void tmpfs_dentry_add(dentry_t* dentry)
 {
@@ -95,7 +95,7 @@ static status_t tmpfs_create(vnode_t* dir, dentry_t* target, mode_t mode)
 {
     MUTEX_SCOPE(&dir->mutex);
 
-    vnode_t* vnode = tmpfs_vnode_new(dir->superblock, mode & MODE_DIRECTORY ? VDIR : VREG, NULL, 0);
+    vnode_t* vnode = tmpfs_vnode_new(dir->superblock, mode & MODE_DIRECTORY ? VNODE_DIR : VNODE_REGULAR, NULL, 0);
     if (vnode == NULL)
     {
         return ERR(FS, NOMEM);
@@ -149,7 +149,7 @@ static status_t tmpfs_symlink(vnode_t* dir, dentry_t* target, const char* dest)
 {
     MUTEX_SCOPE(&dir->mutex);
 
-    vnode_t* vnode = tmpfs_vnode_new(dir->superblock, VSYMLINK, (void*)dest, strlen(dest));
+    vnode_t* vnode = tmpfs_vnode_new(dir->superblock, VNODE_SYMLINK, (void*)dest, strlen(dest));
     if (vnode == NULL)
     {
         return ERR(FS, NOMEM);
@@ -166,11 +166,11 @@ static status_t tmpfs_remove(vnode_t* dir, dentry_t* target)
 {
     MUTEX_SCOPE(&dir->mutex);
 
-    if (target->vnode->type == VREG || target->vnode->type == VSYMLINK)
+    if (target->vnode->type == VNODE_REGULAR || target->vnode->type == VNODE_SYMLINK)
     {
         tmpfs_dentry_remove(target);
     }
-    else if (target->vnode->type == VDIR)
+    else if (target->vnode->type == VNODE_DIR)
     {
         if (!list_is_empty(&target->children))
         {
@@ -229,7 +229,7 @@ static dentry_t* tmpfs_load_file(superblock_t* superblock, dentry_t* parent, con
 
     tmpfs_dentry_add(dentry);
 
-    vnode_t* vnode = tmpfs_vnode_new(superblock, VREG, in->data, in->size);
+    vnode_t* vnode = tmpfs_vnode_new(superblock, VNODE_REGULAR, in->data, in->size);
     if (vnode == NULL)
     {
         panic(NULL, "Failed to create tmpfs file vnode");
@@ -252,7 +252,7 @@ static dentry_t* tmpfs_load_dir(superblock_t* superblock, dentry_t* parent, cons
     }
     UNREF_DEFER(dentry);
 
-    vnode_t* vnode = tmpfs_vnode_new(superblock, VDIR, NULL, 0);
+    vnode_t* vnode = tmpfs_vnode_new(superblock, VNODE_DIR, NULL, 0);
     if (vnode == NULL)
     {
         panic(NULL, "Failed to create tmpfs vnode");
@@ -328,7 +328,7 @@ static status_t tmpfs_mount(filesystem_t* fs, dentry_t** out, const char* option
     }
     UNREF_DEFER(dentry);
 
-    vnode_t* vnode = tmpfs_vnode_new(superblock, VDIR, NULL, 0);
+    vnode_t* vnode = tmpfs_vnode_new(superblock, VNODE_DIR, NULL, 0);
     if (vnode == NULL)
     {
         return ERR(FS, NOMEM);
@@ -343,7 +343,7 @@ static status_t tmpfs_mount(filesystem_t* fs, dentry_t** out, const char* option
     return OK;
 }
 
-static vnode_t* tmpfs_vnode_new(superblock_t* superblock, vtype_t type, void* buffer, uint64_t size)
+static vnode_t* tmpfs_vnode_new(superblock_t* superblock, vnode_type_t type, void* buffer, uint64_t size)
 {
     vnode_t* vnode = vnode_new(superblock, type, &vnodeOps, &fileOps);
     if (vnode == NULL)

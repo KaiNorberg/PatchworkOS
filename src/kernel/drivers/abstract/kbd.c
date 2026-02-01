@@ -46,12 +46,13 @@ static void kbd_name_read(irp_t* irp)
 
     size_t length = strlen(kbd->name);
     status_t status =
-        mdl_read(frame->read.buffer, frame->read.count, frame->read.offset, &irp->res.read, kbd->name, length);
+        mdl_read(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, kbd->name, length);
     irp_complete(irp, status);
 }
 
 static vnode_class_t nameClass = {
     .name = "kbd name",
+    .type = VNODE_REGULAR,
     .handlers =
         {
             [IRP_MJ_READ] = kbd_name_read,
@@ -119,7 +120,7 @@ static void kbd_events_read(irp_t* irp)
         return;
     }
 
-    status_t status = fifo_read(&client->fifo, frame->read.buffer, frame->read.count, &irp->res.read);
+    status_t status = fifo_read(&client->fifo, frame->read.buffer, frame->read.count, &irp->result);
     lock_release(&kbd->lock);
     irp_complete(irp, status);
 }
@@ -136,7 +137,7 @@ static void kbd_events_poll(irp_t* irp)
 
     if (fifo_bytes_readable(&client->fifo) > 0)
     {
-        irp->res.events = IOPOLL_READ;
+        irp->result = IOPOLL_READ;
         lock_release(&kbd->lock);
         irp_complete(irp, OK);
         return;
@@ -147,13 +148,14 @@ static void kbd_events_poll(irp_t* irp)
 
     if (IS_ERR(status))
     {
-        irp->res.events = 0;
+        irp->result = 0;
         irp_complete(irp, status);
     }
 }
 
 static vnode_class_t eventsClass = {
     .name = "kbd events",
+    .type = VNODE_REGULAR,
     .file_ctor = kbd_events_file_ctor,
     .file_dtor = kbd_events_file_dtor,
     .handlers =
@@ -183,7 +185,13 @@ static void kbd_dir_cleanup(vnode_t* vnode)
 
 static vnode_class_t dirClass = {
     .name = "kbd dir",
+    .type = VNODE_DIR,
     .cleanup = kbd_dir_cleanup,
+};
+
+static vnode_class_t rootClass = {
+    .name = "kbd root",
+    .type = VNODE_DIR,
 };
 
 status_t kbd_register(kbd_t* kbd)
@@ -195,7 +203,7 @@ status_t kbd_register(kbd_t* kbd)
 
     if (dir == NULL)
     {
-        dir = devfs_dir_new(NULL, "kbd", NULL, NULL);
+        dir = devfs_dentry_new(NULL, "kbd", &rootClass, NULL);
         if (dir == NULL)
         {
             return ERR(DRIVER, NOMEM);
@@ -214,13 +222,13 @@ status_t kbd_register(kbd_t* kbd)
         return ERR(DRIVER, IMPL);
     }
 
-    kbd->dir = devfs_dir_new(dir, id, &dirClass, kbd);
+    kbd->dir = devfs_dentry_new(dir, id, &dirClass, kbd);
     if (kbd->dir == NULL)
     {
         return ERR(DRIVER, NOMEM);
     }
 
-    devfs_file_desc_t files[] = {
+    devfs_desc_t files[] = {
         {
             .name = "name",
             .cls = &nameClass,
@@ -232,7 +240,7 @@ status_t kbd_register(kbd_t* kbd)
             .data = kbd,
         },
     };
-    if (!devfs_files_new(&kbd->files, kbd->dir, files, ARRAY_SIZE(files)))
+    if (!devfs_dentrys_new(&kbd->files, kbd->dir, files, ARRAY_SIZE(files)))
     {
         UNREF(kbd->dir);
         return ERR(DRIVER, NOMEM);
@@ -249,7 +257,7 @@ void kbd_unregister(kbd_t* kbd)
     }
 
     UNREF(kbd->dir);
-    devfs_files_free(&kbd->files);
+    devfs_dentrys_free(&kbd->files);
 }
 
 static void kbd_broadcast(kbd_t* kbd, const char* string, size_t length)

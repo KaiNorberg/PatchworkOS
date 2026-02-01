@@ -147,6 +147,16 @@ static void irp_perform_completion(irp_t* irp)
             frame->vnode = NULL;
         }
 
+        if (frame->flags & IRP_FLAG_UPDATE_POS)
+        {
+            assert(frame->major == IRP_MJ_READ || frame->major == IRP_MJ_WRITE);
+            file_t* file = frame->read.file;
+            if (file != NULL)
+            {
+                atomic_fetch_add(&file->pos, irp->result);
+            }
+        }
+
         irp_cleanup_args(frame);
 
         if (frame->complete != NULL)
@@ -252,7 +262,7 @@ status_t irp_get(irp_pool_t* pool, irp_t** out)
     list_entry_init(&irp->timeoutEntry);
     atomic_init(&irp->cancel, NULL);
     irp->deadline = CLOCKS_NEVER;
-    irp->res._raw = 0;
+    irp->result = 0;
     mdl_init(&irp->mdl, NULL);
     irp->next = POOL_IDX_MAX;
     irp->cpu = CPU_ID_INVALID;
@@ -350,4 +360,41 @@ void irp_complete(irp_t* irp, status_t status)
         irp->status = status;
     }
     irp_perform_completion(irp);
+}
+
+void irp_prep_read(irp_t* irp, file_t* file, mdl_t* buffer, size_t count, size_t offset)
+{
+    irp_frame_t* next = irp_next(irp);
+    assert(next != NULL);
+
+    next->major = IRP_MJ_READ;
+    next->minor = IRP_MN_NORMAL;
+    next->flags = offset == IOOFF_CUR ? IRP_FLAG_UPDATE_POS : IRP_FLAG_NONE;
+    next->read.file = file;
+    next->read.buffer = buffer;
+    next->read.count = count;
+    next->read.offset = offset == IOOFF_CUR ? atomic_load(&file->pos) : offset;
+}
+
+/**
+ * @brief Prepares the next IRP stack frame for a write operation.
+ *
+ * @param irp The IRP.
+ * @param file The file to write to, will not take a new reference.
+ * @param buffer The memory descriptor list to write from.
+ * @param count The number of bytes to write.
+ * @param offset The offset in the file to write to.
+ */
+void irp_prep_write(irp_t* irp, file_t* file, mdl_t* buffer, size_t count, size_t offset)
+{
+    irp_frame_t* next = irp_next(irp);
+    assert(next != NULL);
+
+    next->major = IRP_MJ_WRITE;
+    next->minor = IRP_MN_NORMAL;
+    next->flags = offset == IOOFF_CUR ? IRP_FLAG_UPDATE_POS : IRP_FLAG_NONE;
+    next->write.file = file;
+    next->write.buffer = buffer;
+    next->write.count = count;
+    next->write.offset = offset == IOOFF_CUR ? atomic_load(&file->pos) : offset;
 }

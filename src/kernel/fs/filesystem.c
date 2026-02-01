@@ -100,7 +100,7 @@ static status_t filesystem_lookup(vnode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dentry->superblock, VREG, NULL, &sbFileOps);
+        vnode_t* vnode = vnode_new(dentry->superblock, VNODE_REGULAR, NULL, &sbFileOps);
         if (vnode == NULL)
         {
             return ERR(MEM, NOMEM);
@@ -136,7 +136,7 @@ static status_t filesystem_iterate(dentry_t* dentry, dir_ctx_t* ctx)
         char name[MAX_NAME];
         snprintf(name, MAX_NAME, "%llu", sb->id);
 
-        if (!ctx->emit(ctx, name, VREG))
+        if (!ctx->emit(ctx, name, VNODE_REGULAR))
         {
             return OK;
         }
@@ -167,7 +167,7 @@ static status_t filesystem_dir_lookup(vnode_t* dir, dentry_t* dentry)
     }
     filesystem_t* fs = CONTAINER_OF(entry, filesystem_t, mapEntry);
 
-    vnode_t* vnode = vnode_new(dentry->superblock, VDIR, &fsVnodeOps, NULL);
+    vnode_t* vnode = vnode_new(dentry->superblock, VNODE_DIR, &fsVnodeOps, NULL);
     if (vnode == NULL)
     {
         return ERR(MEM, NOMEM);
@@ -197,7 +197,7 @@ static status_t filesystem_dir_iterate(dentry_t* dentry, dir_ctx_t* ctx)
             continue;
         }
 
-        if (!ctx->emit(ctx, fs->name, VDIR))
+        if (!ctx->emit(ctx, fs->name, VNODE_DIR))
         {
             return OK;
         }

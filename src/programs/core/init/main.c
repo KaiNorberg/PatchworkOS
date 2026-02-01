@@ -161,7 +161,7 @@ static void init_create_pkg_links(void)
 
     for (uint64_t i = 0; i < amount; i++)
     {
-        if (dirents[i].type != VDIR || dirents[i].path[0] == '.')
+        if (dirents[i].type != VNODE_DIR || dirents[i].path[0] == '.')
         {
             continue;
         }
