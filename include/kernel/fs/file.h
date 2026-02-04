@@ -1,6 +1,7 @@
 #pragma once
 
 #include <kernel/fs/path.h>
+#include <kernel/io/irp.h>
 #include <kernel/mem/paging_types.h>
 #include <kernel/utils/ref.h>
 
@@ -41,23 +42,12 @@ typedef struct poll_file poll_file_t;
 typedef struct file
 {
     ref_t ref;
-    atomic_size_t pos;
+    size_t pos;
     mode_t mode;
     vnode_t* vnode;
     path_t path;
     void* data;
 } file_t;
-
-/**
- * @brief Structure for polling multiple files.
- * @struct poll_file_t
- */
-typedef struct poll_file
-{
-    file_t* file;
-    poll_events_t events;
-    poll_events_t revents;
-} poll_file_t;
 
 /**
  * @brief Create a new file structure.
@@ -72,5 +62,16 @@ typedef struct poll_file
  * @return On success, a pointer to the allocated file. On failure, `NULL`.
  */
 file_t* file_new(const path_t* path, mode_t mode);
+
+/**
+ * @brief Send an IRP to the vnode of the specified file.
+ *
+ * Will advance the IRP stack.
+ *
+ * @param file The file to associated with the next IRP stack frame.
+ * @param irp The IRP to send.
+ * @return An appropriate status value.
+ */
+status_t file_call(file_t* file, irp_t* irp);
 
 /** @} */

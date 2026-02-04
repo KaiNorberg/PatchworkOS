@@ -131,6 +131,8 @@ static inline tid_t gettid(void)
 /**
  * @brief Memory protection flags.
  * @typedef prot_t
+ * 
+ * @deprecated Should be removed as part of the async overhaul.
  */
 typedef enum
 {
@@ -139,27 +141,6 @@ typedef enum
     PROT_WRITE = (1 << 1),  ///< Writable memory.
     PROT_EXECUTE = (1 << 2) ///< Executable memory.
 } prot_t;
-
-/**
- * @brief System call to map memory from a file.
- *
- * The `mmap()` function maps memory to the currently running processes address space from a file, this is the only way
- * to allocate virtual memory from userspace. An example usage would be to map the `/dev/const/zero` file which would
- * allocate zeroed memory.
- *
- * @param fd The open file descriptor of the file to be mapped.
- * @param addr The output pointer to store the virtual address, the value it currently points to is used as the desired
- * virtual address. If it points to `NULL`, the kernel chooses an address. address, will be rounded down to the nearest
- * page multiple.
- * @param length The length of the segment to be mapped, note that this length will be rounded up to the nearest page
- * multiple by the kernel factoring in page boundaries.
- * @param prot Protection flags, must have at least `PROT_READ` set.
- * @return An appropriate status value.
- */
-static inline status_t mmap(fd_t fd, void** addr, size_t length, prot_t prot)
-{
-    return syscall4(SYS_MMAP, (void*)addr, fd, (uint64_t)*addr, length, prot);
-}
 
 /**
  * @brief System call to unmap mapped memory.

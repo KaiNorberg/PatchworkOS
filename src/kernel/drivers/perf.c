@@ -48,15 +48,14 @@ PERCPU_DEFINE_CTOR(static perf_cpu_t, pcpu_perf)
     lock_init(&perf->lock);
 }
 
-static void perf_cpu_read(irp_t* irp)
+static status_t perf_cpu_read(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
 
     char* string = malloc(256 * (cpu_amount() + 1));
     if (string == NULL)
     {
-        irp_complete(irp, ERR(DRIVER, NOMEM));
-        return;
+        return ERR(DRIVER, NOMEM);
     }
 
     strcpy(string, "cpu idle_clocks active_clocks interrupt_clocks");
@@ -91,15 +90,15 @@ static void perf_cpu_read(irp_t* irp)
         if (length < 0)
         {
             free(string);
-            irp_complete(irp, ERR(DRIVER, IMPL));
-            return;
+            return ERR(DRIVER, IMPL);
         }
     }
 
     size_t length = strlen(string);
-    status_t status = mdl_read(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, string, length);
+    status_t status =
+        mdl_copy_from_buffer(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, string, length);
     free(string);
-    irp_complete(irp, status);
+    return status;
 }
 
 static vnode_class_t cpuClass = {
@@ -111,15 +110,14 @@ static vnode_class_t cpuClass = {
         },
 };
 
-static void perf_mem_read(irp_t* irp)
+static status_t perf_mem_read(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
 
     char* string = malloc(256);
     if (string == NULL)
     {
-        irp_complete(irp, ERR(DRIVER, NOMEM));
-        return;
+        return ERR(DRIVER, NOMEM);
     }
 
     int length = sprintf(string, "total_pages %lu\nfree_pages %lu\nused_pages %lu", pmm_total_pages(),
@@ -127,13 +125,13 @@ static void perf_mem_read(irp_t* irp)
     if (length < 0)
     {
         free(string);
-        irp_complete(irp, ERR(DRIVER, IMPL));
-        return;
+        return ERR(DRIVER, IMPL);
     }
 
-    status_t status = mdl_read(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, string, length);
+    status_t status =
+        mdl_copy_from_buffer(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, string, length);
     free(string);
-    irp_complete(irp, status);
+    return status;
 }
 
 static vnode_class_t memClass = {

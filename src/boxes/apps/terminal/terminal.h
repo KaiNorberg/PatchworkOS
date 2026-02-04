@@ -94,8 +94,8 @@ typedef struct terminal
     font_t* font;
     bool cursorBlink;
     bool isCursorVisible;
-    fd_t stdin[2];
-    fd_t stdout[2]; // Also does stderr
+    fd_t stdin;
+    fd_t stdout; // Also does stderr
     pixel_t foreground;
     pixel_t background;
     terminal_flags_t flags;

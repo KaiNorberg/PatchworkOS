@@ -5,8 +5,8 @@
 #include <kernel/fs/file.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
-#include <kernel/fs/volume.h>
 #include <kernel/fs/vnode.h>
+#include <kernel/fs/volume.h>
 #include <kernel/proc/process.h>
 #include <kernel/sync/rwlock.h>
 
@@ -18,8 +18,8 @@
 
 /**
  * @brief Virtual File System.
- * @defgroup kernel_vfs Virtual File System
- * @ingroup kernel_fs
+ * @defgroup kernel_fs Virtual File System
+ * @ingroup kernel
  *
  * The Virtual File System (VFS) provides a single unified interface for any and all filesystems, including virtual
  * filesystems used to expose kernel resources to user space.
@@ -39,18 +39,6 @@
  * @return An appropriate status value.
  */
 status_t vfs_open(file_t** out, const pathname_t* pathname, process_t* process);
-
-/**
- * @brief Open one file, returning two file handles.
- *
- * Used primarily to implement pipes.
- *
- * @param pathname The pathname of the file to open.
- * @param files The output array of two file pointers.
- * @param process The process opening the file.
- * @return An appropriate status value.
- */
-status_t vfs_open2(const pathname_t* pathname, file_t* files[2], process_t* process);
 
 /**
  * @brief Open a file relative to another path.
@@ -100,30 +88,7 @@ status_t vfs_write(file_t* file, const void* buffer, size_t count, size_t* out);
  * @param out Output pointer for the new file position.
  * @return An appropriate status value.
  */
-status_t vfs_seek(file_t* file, ssize_t offset, seek_origin_t origin, size_t* out);
-
-/**
- * @brief Memory map a file.
- *
- * @param file The file to memory map.
- * @param addr The output pointer to store the virtual address, the value it currently points to is used as the desired
- * virtual address. If it points to `NULL`, the kernel chooses an address.
- * @param length The length to map.
- * @param flags The page table flags for the mapping.
- * @return An appropriate status value.
- */
-status_t vfs_mmap(file_t* file, void** addr, size_t length, pml_flags_t flags);
-
-/**
- * @brief Poll multiple files.
- *
- * @param files The array of files to poll.
- * @param amount The number of files in the array.
- * @param timeout The timeout in clock ticks, or `CLOCKS_NEVER` to wait indefinitely.
- * @param readyCount Output pointer for the number of files that are ready.
- * @return An appropriate status value.
- */
-status_t vfs_poll(poll_file_t* files, uint64_t amount, clock_t timeout, size_t* readyCount);
+status_t vfs_seek(file_t* file, ssize_t offset, iowhence_t origin, size_t* out);
 
 /**
  * @brief Get directory entries from a directory file.
@@ -192,58 +157,5 @@ status_t vfs_remove(const pathname_t* pathname, process_t* process);
  * @return A new unique ID.
  */
 uint64_t vfs_id_get(void);
-
-/**
- * @brief Helper macro for implementing file operations dealing with simple buffer writes.
- *
- * @param buffer The destination buffer.
- * @param count The number of bytes to write.
- * @param offset A pointer to the current offset, will be updated.
- * @param dest The destination buffer.
- * @param size The size of the destination buffer.
- * @return The number of bytes written.
- */
-#define BUFFER_WRITE(buffer, count, offset, dest, size) \
-    ({ \
-        size_t writeCount = (*(offset) <= (size)) ? MIN((count), (size) - *(offset)) : 0; \
-        memcpy((dest) + *(offset), (buffer), writeCount); \
-        *(offset) += writeCount; \
-        writeCount; \
-    })
-
-/**
- * @brief Helper function for implementing file reads dealing with simple buffers.
- *
- * @param buffer The destination buffer.
- * @param count The number of bytes to read.
- * @param offset A pointer to the current offset, will be updated.
- * @param bytesRead Output pointer for the amount of bytes read.
- * @param source The source buffer.
- * @param sourceLen The size of the source buffer.
- * @return An appropriate status value.
- */
-static status_t buffer_read(void* buffer, size_t count, size_t* offset, size_t* bytesRead, const void* source,
-    size_t sourceLen)
-{
-    if (*offset >= sourceLen)
-    {
-        *bytesRead = 0;
-        return OK;
-    }
-
-    size_t remaining = sourceLen - *offset;
-    size_t toRead = count < remaining ? count : remaining;
-
-    memcpy(buffer, (const char*)source + *offset, toRead);
-    *offset += toRead;
-    *bytesRead = toRead;
-
-    if (*offset < sourceLen)
-    {
-        return INFO(FS, MORE);
-    }
-
-    return OK;
-}
 
 /** @} */

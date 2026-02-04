@@ -1,12 +1,13 @@
 #pragma once
 
 #include <kernel/fs/file.h>
+#include <kernel/fs/vnode.h>
 
 #include <stdint.h>
 #include <sys/status.h>
 
 /**
- * @brief Helpers to implement control file operations.
+ * @brief Control file helpers.
  * @defgroup kernel_fs_ctl Control Files
  * @ingroup kernel_fs
  *
@@ -17,78 +18,48 @@
  * Commands should be formatted as follows:
  *
  * ```
- * command1 arg1 arg2 arg3 ... && command2 arg1 arg2 ... && ...
+ * command1 [arguments] && command2 [arguments] && ...
  * ```
+ *
+ * The given command values will be converted from the provided text representation into their `iocmd_t` representation,
+ * with the arguments being passed as a string.
  *
  * @{
  */
 
-/**
- * @brief Maximum size of the buffer used for argument parsing.
- */
-#define CTL_MAX_BUFFER 0x1000
+#define CTL_BUFFER_SIZE 1008 ///< The maximum size of the control buffer. */
 
 /**
- * @brief Helper macro to define a standard ctl write function.
- *
- * This macro defines a write function that dispatches commands to a given array of ctl_t structures.
- *
- * @param name The name of the ctl write function.
- * @param ... The ctl array to dispatch commands to.
+ * @brief Control file state structure.
+ * @struct ctl_state_t
  */
-#define CTL_STANDARD_WRITE_DEFINE(name, ...) \
-    static ctl_t name##ctls[] = __VA_ARGS__; \
-    static status_t name(file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten) \
-    { \
-        UNUSED(offset); \
-        status_t status = ctl_dispatch(name##ctls, file, buffer, count); \
-        if (IS_OK(status) && bytesWritten != NULL) \
-        { \
-            *bytesWritten = count; \
-        } \
-        return status; \
-    }
-
-/**
- * @brief Helper macro to define a standard ctl file operations structure.
- *
- * This macro defines a file operations structure with all standard ctl operations implemented.
- *
- * @param name The name of the ctl file operations structure.
- * @param ... The ctl array to dispatch commands to.
- */
-#define CTL_STANDARD_OPS_DEFINE(name, ...) \
-    CTL_STANDARD_WRITE_DEFINE(name##write, __VA_ARGS__) \
-    static file_ops_t name = (file_ops_t){ \
-        .write = name##write, \
-    };
-
-/**
- * @brief Type definition for a ctl function.
- */
-typedef status_t (*ctl_func_t)(file_t* file, uint64_t, const char**);
-
-/**
- * @brief Structure defining a ctl command.
- * @struct ctl_t
- */
-typedef struct
+typedef struct ctl_state
 {
-    const char* name; ///< The name of the command.
-    ctl_func_t func;  ///< The function to call for the command.
-    uint64_t argcMin; ///< The minimum number of arguments accepted by func.
-    uint64_t argcMax; ///< The maximum number of arguments accepted by func.
-} ctl_t;
+    vnode_t* vnode;
+    char* next;
+    char buffer[CTL_BUFFER_SIZE];
+    uint32_t depth;
+} ctl_state_t;
 
 /**
- * @brief Dispatch a ctl command.
+ * @brief Dispatch control commands from a write IRP.
  *
- * @param ctls The array of ctl commands to dispatch to, terminated by an entry with a `NULL` name.
- * @param file The file the ctl command was sent to.
- * @param buffer The buffer containing the command and its arguments.
- * @param count The number of bytes in the buffer.
+ * Will parse the buffer of the provided write IRP and send the commands to the provided vnode.
+ *
+ * @param irp The IRP containing the control command.
+ * @param vnode The vnode to dispatch the command to.
  * @return An appropriate status value.
  */
-status_t ctl_dispatch(ctl_t ctls[], file_t* file, const void* buffer, size_t count);
+status_t ctl_dispatch(irp_t* irp, vnode_t* vnode);
+
+/**
+ * @brief A generic write IRP handler for control files.
+ *
+ * Will simply call `ctl_dispatch()` using the provided IRP.
+ *
+ * @param irp A write IRP.
+ * @return An appropriate status value.
+ */
+status_t ctl_generic_write(irp_t* irp);
 
 /** @} */

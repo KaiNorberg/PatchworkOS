@@ -54,12 +54,10 @@ typedef struct irp irp_t;
  * timeout queue or added to a queue for latter processing, it is considered to be unowned. At this point, it is
  * possible for multiple threads to attempt to cancel or complete the IRP.
  *
- * As such, we need to establish a new owner for the IRP which is then the only thread allowed to cancel or complete it.
- * This is done using the `IRP_CANCELLED` sentinel value, once the cancel callback has been exchanged with this value
- * (which can only be done by a single thread as the operation is atomic) it is guaranteed that no other thread will
- * attempt to complete or cancel the IRP.
- *
- * For convenience, the `irp_claim()` function is provided.
+ * As such, we need to establish a new owner for the IRP which is then the only thread allowed to cancel or complete it
+ * (unless it was already cancelled). This is done by atomically exchanging the cancel callback. If the callback is
+ * exchanged with `IRP_CANCELLED`, the IRP is cancelled. If it is exchanged with `NULL` (via `irp_claim()`), the IRP is
+ * claimed for completion.
  *
  * Finally, there is one more detail worth considering. Say we have the following cancellation callback:
  *
@@ -89,7 +87,7 @@ typedef struct irp irp_t;
  *     irp_t* irp = ...;
  *     if (irp_claim(irp))
  *     {
- *         // We are now the owner and can safely complete the IRP?
+ *         // We are now the owner. So we can safely complete the IRP, right?
  *         irp_complete(irp, OK);
  *     }
  * }
@@ -137,6 +135,16 @@ typedef struct irp irp_t;
  * Additionally, everything described above only applies to cancellable IRPs. As such, for certain subsystems or drivers
  * where it is not possible or reasonable to handle cancellation, one may simply not implement cancellation.
  *
+ * ## Operations
+ *
+ * Each operation is specified by a "major function number", with each number having an associated argument structure
+ * within the `irp_frame_t` structure.
+ *
+ * Each operation is expected to place its result into the generic `irp_t::result` field.
+ *
+ * The meaning of each argument, and the real type of its result is specified in the documentation for each major
+ * function number.
+ *
  * @see kernel_io_ioring for the ring system.
  * @see [Wikipedia](https://en.wikipedia.org/wiki/I/O_request_packet) for more information about IRPs.
  * @see [Microsoft _IRP](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_irp) for information
@@ -144,19 +152,91 @@ typedef struct irp irp_t;
  * @{
  */
 
+typedef uint16_t irp_major_t; ///< IRP major function number type.
+/**
+ * @brief Read operation.
+ *
+ * @param buffer The MDL describing the buffer to read into.
+ * @param count The number of bytes to read.
+ * @param offset The offset within the file to read from.
+ * @return The number of bytes read.
+ */
+#define IRP_MJ_READ 0
+/**
+ * @brief Write operation.
+ *
+ * @param buffer The MDL describing the buffer to write from.
+ * @param count The number of bytes to write.
+ * @param offset The offset within the file to write to.
+ * @return The number of bytes written.
+ */
+#define IRP_MJ_WRITE 1
+/**
+ * @brief Poll operation.
+
+ * @param events The events to poll for.
+ * @result The events that occurred stored as a `ioevents_t` value.
+ */
+#define IRP_MJ_POLL 2
+/**
+ * @brief Seek operation.
+ *
+ * @param offset The offset to seek to.
+ * @param origin The origin of the seek operation.
+ * @return The new file position.
+ */
+#define IRP_MJ_SEEK 3
+
+/**
+ * @brief Memory map operation.
+ *
+ * @param address The virtual address to map the file into, or `NULL` for any address.
+ * @param offset The offset within the file to start mapping from.
+ * @param length The number of bytes to map.
+ * @param flags The paging flags to apply to the mapping.
+ * @return The virtual address where the file was mapped.
+ */
+#define IRP_MJ_MMAP 4
+/**
+ * @brief Control operation.
+ *
+ * @param command The command to perform.
+ * @param args The arguments for the command.
+ * @return The result of the command.
+ */
+#define IRP_MJ_CONTROL 5
+#define IRP_MJ_MAX 6 ///< The maximum number of major function numbers.
+
+typedef uint16_t irp_minor_t; ///< IRP minor function number type.
+#define IRP_MN_NORMAL 0       ///< No special behaviour.
+
+typedef uint16_t irp_flags_t; ///< IRP frame flags type.
+#define IRP_FLAG_NONE 0       ///< No flags.
+#define IRP_FLAG_USE_FILE_POS (1 << 0) ///< If set, the operation will use and update the file's current position.
+
+/**
+ * @brief IRP function type.
+ *
+ * @param irp The IRP to send.
+ * @result A informational `ST_CODE_PENDING` status value if the IRP was not completed immediately, otherwise an
+ * appropriate status value.
+ */
+typedef status_t (*irp_handler_t)(irp_t* irp);
+
 /**
  * @brief IRP complete callback type.
  *
  * @param irp The IRP.
  * @param ctx The contxt pointer from the `irp_frame_t` structure.
+ * @result A informational `ST_CODE_PENDING` status value if the IRP requires more processing, otherwise an appropriate status value.
  */
-typedef void (*irp_complete_t)(irp_t* irp, void* ctx);
+typedef status_t (*irp_complete_t)(irp_t* irp, void* ctx);
 
 /**
  * @brief IRP cancellation callback type.
  *
  * @param irp The IRP.
- * @return On success, `OK`. On failure, a non-zero status.
+ * @return An appropriate status code.
  */
 typedef status_t (*irp_cancel_t)(irp_t* irp);
 
@@ -164,21 +244,6 @@ typedef status_t (*irp_cancel_t)(irp_t* irp);
  * @brief Sentinel value indicating that the IRP has been cancelled.
  */
 #define IRP_CANCELLED ((irp_cancel_t)1)
-
-typedef uint16_t irp_major_t; ///< IRP major function number type.
-#define IRP_MJ_READ 0         ///< Read operation.
-#define IRP_MJ_WRITE 1        ///< Write operation.
-#define IRP_MJ_POLL 2         ///< Poll operation.
-#define IRP_MJ_SEEK 3         ///< Seek operation.
-#define IRP_MJ_MMAP 4         ///< Memory map operation.
-#define IRP_MJ_MAX 5          ///< The maximum number of major function numbers.
-
-typedef uint16_t irp_minor_t; ///< IRP minor function number type.
-#define IRP_MN_NORMAL 0       ///< No special behaviour.
-
-typedef uint16_t irp_flags_t;        ///< IRP frame flags type.
-#define IRP_FLAG_NONE 0              ///< No flags.
-#define IRP_FLAG_UPDATE_POS (1 << 0) ///< Update the file position by the amount of bytes processed.
 
 #define IRP_ARGS_MAX 4 ///< The maximum number of 64-bit arguments in an `irp_frame_t`.
 
@@ -198,31 +263,30 @@ typedef struct irp_frame
     irp_complete_t complete; ///< Completion callback.
     void* ctx;               ///< Local context.
     vnode_t* vnode;          ///< Vnode associated with the operation.
+    file_t* file;            ///< File associated with the operation, can be `NULL`.
     union {
         struct
         {
-            file_t* file;
             mdl_t* buffer;
             size_t count;
-            size_t offset;
+            size_t* offset;
+            size_t dummyOffset;
         } read;
         struct
         {
-            file_t* file;
             mdl_t* buffer;
             size_t count;
-            size_t offset;
+            size_t* offset;
+            size_t dummyOffset;
         } write;
         struct
         {
-            file_t* file;
             ioevents_t events;
         } poll;
         struct
         {
-            file_t* file;
             ssize_t offset;
-            seek_origin_t origin;
+            iowhence_t origin;
         } seek;
         struct
         {
@@ -231,11 +295,14 @@ typedef struct irp_frame
             size_t offset;
             pml_flags_t flags;
         } mmap;
+        struct
+        {
+            iocmd_t command;
+            const char* args;
+        } control;
         uint64_t args[IRP_ARGS_MAX]; ///< Generic arguments.
     };
 } irp_frame_t;
-
-static_assert(sizeof(irp_frame_t) == 64, "irp_frame_t is not 64 bytes");
 
 #define IRP_FRAME_MAX 5 ///< The maximum number of frames in a IRP stack.
 
@@ -264,13 +331,11 @@ typedef struct irp
     pool_idx_t index; ///< Index of the IRP in its pool.
     pool_idx_t next;  ///< Index of the next IRP in a chain or in the free list.
     cpu_id_t cpu;     ///< The CPU whose timeout queue the IRP is in.
-    uint8_t frame;    ///< The index of the current frame in the stack.
+    uint8_t loc;      ///< The index of the current frame in the stack.
     uint8_t _reserved[5];
-    irp_frame_t stack[IRP_FRAME_MAX]; ///< The frame stack, grows downwards.
     iosqe_t sqe;                      // A copy of the submission queue entry associated with this IRP.
-} irp_t;
-
-static_assert(sizeof(irp_t) == 512, "irp_t is not 512 bytes");
+    irp_frame_t stack[IRP_FRAME_MAX]; ///< The frame stack, grows downwards.
+} ALIGNED(64) irp_t;
 
 /**
  * @brief Request pool structure.
@@ -285,11 +350,6 @@ typedef struct irp_pool
     size_t size;
     irp_t irps[] ALIGNED(64);
 } irp_pool_t;
-
-/**
- * @brief IRP function type.
- */
-typedef void (*irp_func_t)(irp_t* irp);
 
 /**
  * @brief Allocate a new IRP pool.
@@ -339,8 +399,6 @@ void irp_timeouts_check(void);
 
 /**
  * @brief Retrieve an inactive IRP from an IRP pool.
- *
- * The pool that the IRP is part off can be retrieved using the `irp_get_pool()` function.
  *
  * @param pool The IRP pool.
  * @param out Output pointer for the IRP.
@@ -415,6 +473,57 @@ static inline irp_t* irp_chain_next(irp_t* irp)
 }
 
 /**
+ * @brief Retrieve the current frame in the IRP stack.
+ *
+ * @param irp The IRP to retrieve the frame from.
+ * @return The current frame.
+ */
+static inline irp_frame_t* irp_current(irp_t* irp)
+{
+    assert(irp->loc < IRP_FRAME_MAX);
+    return &irp->stack[irp->loc];
+}
+
+/**
+ * @brief Retrieve the next frame in the IRP stack.
+ *
+ * @param irp The IRP to retrieve the frame from.
+ * @return The next frame, or `NULL` if we are at the bottom of the stack.
+ */
+static inline irp_frame_t* irp_next(irp_t* irp)
+{
+    if (irp->loc == 0)
+    {
+        return NULL;
+    }
+    return &irp->stack[irp->loc - 1];
+}
+
+/**
+ * @brief Send an IRP to a specified function directly.
+ *
+ * Will advance the IRP stack.
+ *
+ * @param irp The IRP to send.
+ * @param func The function to call.
+ * @return An appropriate status value.
+ */
+status_t irp_call(irp_t* irp, irp_handler_t func);
+
+/**
+ * @brief Complete the current frame in the IRP stack.
+ *
+ * If the current frame does not have a completion, it will automatically complete the next frame in the stack.
+ *
+ * If the last frame is reached, the IRP is considered finished. Which will causing its resources to be freed and
+ * for the IRP to be returned to its pool.
+ *
+ * @param irp The IRP to complete.
+ * @param status The status of the completed operation, if `OK` then the previous status is kept.
+ */
+void irp_complete(irp_t* irp, status_t status);
+
+/**
  * @brief Attempt to cancel an IRP.
  *
  * @param irp The IRP to cancel.
@@ -455,7 +564,7 @@ static inline irp_cancel_t irp_set_cancel(irp_t* irp, irp_cancel_t cancel)
  */
 static inline WARN_UNUSED_RESULT bool irp_claim(irp_t* irp)
 {
-    return irp_set_cancel(irp, IRP_CANCELLED) != IRP_CANCELLED;
+    return irp_set_cancel(irp, NULL) != IRP_CANCELLED;
 }
 
 /**
@@ -493,7 +602,7 @@ static inline void irp_claim_list(list_t* dest, list_t* src)
  * @param irp The IRP to delay.
  * @param list The list to add the IRP to.
  * @param cancel The cancellation callback.
- * @return An appropriate status value, if not `OK` the operation should be completed.
+ * @return An appropriate status value, if an error occurs during setup, the IRP is not added to the list.
  */
 static inline status_t irp_delay(irp_t* irp, list_t* list, irp_cancel_t cancel)
 {
@@ -510,58 +619,8 @@ static inline status_t irp_delay(irp_t* irp, list_t* list, irp_cancel_t cancel)
     }
 
     irp_timeout_add(irp);
-    return OK;
+    return INFO(IO, PENDING);
 }
-
-/**
- * @brief Retrieve the current frame in the IRP stack.
- *
- * @param irp The IRP to retrieve the frame from.
- * @return The current frame.
- */
-static inline irp_frame_t* irp_current(irp_t* irp)
-{
-    assert(irp->frame < IRP_FRAME_MAX);
-    return &irp->stack[irp->frame];
-}
-
-/**
- * @brief Retrieve the next frame in the IRP stack.
- *
- * @param irp The IRP to retrieve the frame from.
- * @return The next frame, or `NULL` if we are at the bottom of the stack.
- */
-static inline irp_frame_t* irp_next(irp_t* irp)
-{
-    if (irp->frame == 0)
-    {
-        return NULL;
-    }
-    return &irp->stack[irp->frame - 1];
-}
-
-/**
- * @brief Send an IRP to a specified function directly.
- *
- * Will advance the IRP stack.
- *
- * @param irp The IRP to send.
- * @param func The function to call.
- */
-void irp_call_direct(irp_t* irp, irp_func_t func);
-
-/**
- * @brief Complete the current frame in the IRP stack.
- *
- * If the current frame does not have a completion, it will automatically complete the next frame in the stack.
- *
- * If the last frame is reached, the IRP is considered finished. Which will causing its resources to be freed and
- * for the IRP to be returned to its pool.
- *
- * @param irp The IRP to complete.
- * @param status The status of the completed operation, if `OK` then the previous status is kept.
- */
-void irp_complete(irp_t* irp, status_t status);
 
 /**
  * @brief Set the completion callback and context for the next frame in the IRP stack.
@@ -578,72 +637,57 @@ static inline void irp_set_complete(irp_t* irp, irp_complete_t complete, void* c
 }
 
 /**
- * @brief Prepares the next IRP stack frame for a generic operation.
+ * @brief Prepares the next IRP stack frame for a read operation.
  *
- * Result:
- * - Defined by the specific operation.
- *
- * @param irp The IRP.
- * @param major The major function number.
- * @param arg0 Generic argument 0.
- * @param arg1 Generic argument 1.
- * @param arg2 Generic argument 2.
- * @param arg3 Generic argument 3.
+ * @see `IRP_MJ_READ`
  */
-static inline void irp_prep_generic(irp_t* irp, irp_major_t major, uint64_t arg0, uint64_t arg1, uint64_t arg2,
-    uint64_t arg3)
+static inline void irp_prep_read(irp_t* irp, mdl_t* buffer, size_t count, ssize_t offset)
 {
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);
 
-    next->major = major;
+    next->major = IRP_MJ_READ;
     next->minor = IRP_MN_NORMAL;
     next->flags = IRP_FLAG_NONE;
-    next->args[0] = arg0;
-    next->args[1] = arg1;
-    next->args[2] = arg2;
-    next->args[3] = arg3;
+    next->read.buffer = buffer;
+    next->read.count = count;
+    next->read.dummyOffset = offset;
+    next->read.offset = &next->read.dummyOffset;
+    if (offset == IOOFF_CUR)
+    {
+        next->flags |= IRP_FLAG_USE_FILE_POS;
+    }
 }
-
-/**
- * @brief Prepares the next IRP stack frame for a read operation.
- *
- * Result:
- * - `size_t`: The number of bytes read.
- *
- * @param irp The IRP.
- * @param file The file to read from, will not take a new reference.
- * @param buffer The memory descriptor list to read into.
- * @param count The number of bytes to read.
- * @param offset The offset in the file to read from.
- */
-void irp_prep_read(irp_t* irp, file_t* file, mdl_t* buffer, size_t count, size_t offset);
 
 /**
  * @brief Prepares the next IRP stack frame for a write operation.
  *
- * Result:
- * - `size_t`: The number of bytes written.
- *
- * @param irp The IRP.
- * @param file The file to write to, will not take a new reference.
- * @param buffer The memory descriptor list to write from.
- * @param count The number of bytes to write.
- * @param offset The offset in the file to write to.
+ * @see `IRP_MJ_WRITE`
  */
-void irp_prep_write(irp_t* irp, file_t* file, mdl_t* buffer, size_t count, size_t offset);
+static inline void irp_prep_write(irp_t* irp, mdl_t* buffer, size_t count, ssize_t offset)
+{
+    irp_frame_t* next = irp_next(irp);
+    assert(next != NULL);
+
+    next->major = IRP_MJ_WRITE;
+    next->minor = IRP_MN_NORMAL;
+    next->flags = IRP_FLAG_NONE;
+    next->write.buffer = buffer;
+    next->write.count = count;
+    next->write.dummyOffset = offset;
+    next->write.offset = &next->write.dummyOffset;
+    if (offset == IOOFF_CUR)
+    {
+        next->flags |= IRP_FLAG_USE_FILE_POS;
+    }
+}
 
 /**
  * @brief Prepares the next IRP stack frame for a poll operation.
  *
- * Result:
- * - `ioevents_t`: The events that occurred.
- *
- * @param irp The IRP.
- * @param file The file to poll, will not take a new reference.
- * @param events The events to wait for.
+ * @see `IRP_MJ_POLL`
  */
-static inline void irp_prep_poll(irp_t* irp, file_t* file, ioevents_t events)
+static inline void irp_prep_poll(irp_t* irp, ioevents_t events)
 {
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);
@@ -651,8 +695,60 @@ static inline void irp_prep_poll(irp_t* irp, file_t* file, ioevents_t events)
     next->major = IRP_MJ_POLL;
     next->minor = IRP_MN_NORMAL;
     next->flags = IRP_FLAG_NONE;
-    next->poll.file = file;
     next->poll.events = events;
+}
+
+/**
+ * @brief Prepares the next IRP stack frame for a seek operation.
+ *
+ * @see `IRP_MJ_SEEK`
+ */
+static inline void irp_prep_seek(irp_t* irp, ssize_t offset, iowhence_t origin)
+{
+    irp_frame_t* next = irp_next(irp);
+    assert(next != NULL);
+
+    next->major = IRP_MJ_SEEK;
+    next->minor = IRP_MN_NORMAL;
+    next->flags = IRP_FLAG_NONE;
+    next->seek.offset = offset;
+    next->seek.origin = origin;
+}
+
+/**
+ * @brief Prepares the next IRP stack frame for a memory map operation.
+ *
+ * @see `IRP_MJ_MMAP`
+ */
+static inline void irp_prep_mmap(irp_t* irp, void* address, size_t length, size_t offset, pml_flags_t flags)
+{
+    irp_frame_t* next = irp_next(irp);
+    assert(next != NULL);
+
+    next->major = IRP_MJ_MMAP;
+    next->minor = IRP_MN_NORMAL;
+    next->flags = IRP_FLAG_NONE;
+    next->mmap.address = address;
+    next->mmap.length = length;
+    next->mmap.offset = offset;
+    next->mmap.flags = flags;
+}
+
+/**
+ * @brief Prepares the next IRP stack frame for a control operation.
+ *
+ * @see `IRP_MJ_CONTROL`
+ */
+static inline void irp_prep_control(irp_t* irp, iocmd_t command, const char* args)
+{
+    irp_frame_t* next = irp_next(irp);
+    assert(next != NULL);
+
+    next->major = IRP_MJ_CONTROL;
+    next->minor = IRP_MN_NORMAL;
+    next->flags = IRP_FLAG_NONE;
+    next->control.command = command;
+    next->control.args = args;
 }
 
 /** @} */

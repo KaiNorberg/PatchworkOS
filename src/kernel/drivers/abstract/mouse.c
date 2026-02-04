@@ -38,16 +38,15 @@ static status_t mouse_cancel(irp_t* irp)
     return OK;
 }
 
-static void mouse_name_read(irp_t* irp)
+static status_t mouse_name_read(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
     mouse_t* mouse = frame->vnode->data;
     assert(mouse != NULL);
 
     size_t length = strlen(mouse->name);
-    status_t status =
-        mdl_read(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, mouse->name, length);
-    irp_complete(irp, status);
+    return
+        mdl_copy_from_buffer(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, mouse->name, length);
 }
 
 static vnode_class_t nameClass = {
@@ -98,59 +97,53 @@ static void mouse_events_file_dtor(file_t* file)
     free(client);
 }
 
-static void mouse_events_read(irp_t* irp)
+static status_t mouse_events_read(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
     mouse_t* mouse = frame->vnode->data;
     assert(mouse != NULL);
 
-    mouse_client_t* client = frame->read.file->data;
+    if (frame->file == NULL)
+    {
+        return ERR(IO, EXPECT_FILE);
+    }
+
+    mouse_client_t* client = frame->file->data;
     assert(client != NULL);
 
-    lock_acquire(&mouse->lock);
+    LOCK_SCOPE(&mouse->lock);
 
     if (fifo_bytes_readable(&client->fifo) == 0)
     {
-        status_t status = irp_delay(irp, &mouse->pending, mouse_cancel);
-        lock_release(&mouse->lock);
-        if (IS_ERR(status))
-        {
-            irp_complete(irp, status);
-        }
-        return;
+        return irp_delay(irp, &mouse->pending, mouse_cancel);
     }
 
-    status_t status = fifo_read(&client->fifo, frame->read.buffer, frame->read.count, &irp->result);
-    lock_release(&mouse->lock);
-    irp_complete(irp, status);
+    return fifo_read(&client->fifo, frame->read.buffer, frame->read.count, &irp->result);
 }
 
-static void mouse_events_poll(irp_t* irp)
+static status_t mouse_events_poll(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
     mouse_t* mouse = frame->vnode->data;
     assert(mouse != NULL);
-    mouse_client_t* client = frame->poll.file->data;
+
+    if (frame->file == NULL)
+    {
+        return ERR(IO, EXPECT_FILE);
+    }
+
+    mouse_client_t* client = frame->file->data;
     assert(client != NULL);
 
-    lock_acquire(&mouse->lock);
+    LOCK_SCOPE(&mouse->lock);
 
     if (fifo_bytes_readable(&client->fifo) > 0)
     {
         irp->result = IOPOLL_READ;
-        lock_release(&mouse->lock);
-        irp_complete(irp, OK);
-        return;
+        return OK;
     }
 
-    status_t status = irp_delay(irp, &mouse->pending, mouse_cancel);
-    lock_release(&mouse->lock);
-
-    if (IS_ERR(status))
-    {
-        irp->result = 0;
-        irp_complete(irp, status);
-    }
+    return irp_delay(irp, &mouse->pending, mouse_cancel);
 }
 
 static vnode_class_t eventsClass = {
@@ -187,11 +180,13 @@ static vnode_class_t dirClass = {
     .name = "mouse dir",
     .type = VNODE_DIR,
     .cleanup = mouse_dir_cleanup,
+    .iterate = dentry_generic_iterate,
 };
 
 static vnode_class_t rootClass = {
     .name = "mouse root",
     .type = VNODE_DIR,
+    .iterate = dentry_generic_iterate,
 };
 
 status_t mouse_register(mouse_t* mouse)
@@ -378,7 +373,7 @@ void mouse_scroll(mouse_t* mouse, int8_t delta)
     }
 
     char event[MAX_NAME];
-    int length = snprintf(event, sizeof(event), "%lldz", delta);
+    int length = snprintf(event, sizeof(event), "%+03lldz", delta);
     if (length < 0)
     {
         LOG_ERR("failed to format mouse scroll event\n");

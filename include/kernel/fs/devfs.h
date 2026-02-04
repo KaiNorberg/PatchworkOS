@@ -52,21 +52,21 @@ typedef struct devfs_desc
 } devfs_desc_t;
 
 /**
- * @brief Create multiple dentrys in a devfs directory.
+ * @brief Create multiple dentries in a devfs directory.
  *
- * @param out Output list to store created dentries, can be `NULL`. The dentries use the `otherEntry` list entry.
+ * @param out Output list to store created dentries, can be `NULL`. The dentries use the `entry` list entry.
  * @param parent The parent directory, if `NULL` then the root is used.
  * @param descs Array of devfs descriptors.
- * @param count The number of dentrys to create.
+ * @param count The number of dentries to create.
  * @return `true` on success, `false` on failure.
  */
 bool devfs_dentrys_new(list_t* out, dentry_t* parent, const devfs_desc_t* descs, size_t count);
 
 /**
- * @brief Free all dentrys in a list created by `devfs_dentrys_new()`.
+ * @brief Free all dentries in a list created by `devfs_dentrys_new()`.
  *
- * @param dentrys The list of dentrys to free.
+ * @param dentries The list of dentries to free.
  */
-void devfs_dentrys_free(list_t* dentrys);
+void devfs_dentrys_free(list_t* dentries);
 
 /** @} */

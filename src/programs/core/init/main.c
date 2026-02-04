@@ -154,7 +154,7 @@ static void init_create_pkg_links(void)
     if (IS_ERR(status))
     {
         close(box);
-        printf("init: failed to read /box %Y\n", status);
+        printf("init: failed to ioread /box %Y\n", status);
         abort();
     }
     close(box);

@@ -12,7 +12,7 @@ typedef struct cache cache_t;
 
 /**
  * @brief Object Cache
- * @defgroup kernel_mem_cache Cache
+ * @defgroup kernel_mem_cache Object Cache
  * @ingroup kernel_mem
  *
  * A object cache using CPU local SLAB allocation to improve performance of frequently allocated and deallocated

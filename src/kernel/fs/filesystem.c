@@ -43,20 +43,20 @@ static MAP_CREATE(fsMap, 64, filesystem_cmp);
 static list_t filesystems = LIST_CREATE(filesystems);
 static rwlock_t lock = RWLOCK_CREATE();
 
-static status_t volume_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static status_t volume_read(irp_t* irp)
 {
-    volume_t* volume = file->vnode->data;
+    irp_frame_t* frame = irp_current(irp);
+    volume_t* volume = frame->vnode->data;
     assert(volume != NULL);
 
     char info[MAX_PATH];
-    int length = snprintf(info, sizeof(info), "id: %llu\nblock_size: %llu\nmax_file_size: %llu\n", volume->id,
-        volume->blockSize, volume->maxFileSize);
+    int length = snprintf(info, sizeof(info), "id: %llu\n", volume->id);
     if (length < 0)
     {
-        return ERR(DRIVER, IMPL);
+        return ERR(FS, IMPL);
     }
 
-    return buffer_read(buffer, count, offset, bytesRead, info, length);
+    return mdl_copy_from_buffer(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, info, length);
 }
 
 static void volume_cleanup(vnode_t* vnode)
@@ -71,15 +71,14 @@ static void volume_cleanup(vnode_t* vnode)
     vnode->data = NULL;
 }
 
-static file_ops_t sbFileOps = {
-    .read = volume_read,
-};
-
-static vnode_ops_t sbVnodeOps = {
+static vnode_class_t volumeClass = {.name = "volume file",
+    .type = VNODE_REGULAR,
     .cleanup = volume_cleanup,
-};
+    .handlers = {
+        [IRP_MJ_READ] = volume_read,
+    }};
 
-static status_t filesystem_lookup(vnode_t* dir, dentry_t* dentry)
+static status_t filesystem_dir_lookup(vnode_t* dir, dentry_t* dentry)
 {
     filesystem_t* fs = dir->data;
     assert(fs != NULL);
@@ -87,7 +86,7 @@ static status_t filesystem_lookup(vnode_t* dir, dentry_t* dentry)
     volume_id_t id;
     if (sscanf(dentry->name, "%llu", &id) != 1)
     {
-        return INFO(DRIVER, NEGATIVE);
+        return INFO(FS, NEGATIVE);
     }
 
     RWLOCK_READ_SCOPE(&fs->lock);
@@ -100,20 +99,20 @@ static status_t filesystem_lookup(vnode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dentry->volume, VNODE_REGULAR, NULL, &sbFileOps);
+        vnode_t* vnode = vnode_new(dentry->volume, &volumeClass);
         if (vnode == NULL)
         {
-            return ERR(MEM, NOMEM);
+            return ERR(FS, NOMEM);
         }
         vnode->data = REF(volume);
         dentry_make_positive(dentry, vnode);
         return OK;
     }
 
-    return INFO(DRIVER, NEGATIVE);
+    return INFO(FS, NEGATIVE);
 }
 
-static status_t filesystem_iterate(dentry_t* dentry, dir_ctx_t* ctx)
+static status_t filesystem_dir_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 {
     if (!dentry_iterate_dots(dentry, ctx))
     {
@@ -145,15 +144,14 @@ static status_t filesystem_iterate(dentry_t* dentry, dir_ctx_t* ctx)
     return OK;
 }
 
-static vnode_ops_t fsVnodeOps = {
-    .lookup = filesystem_lookup,
+static vnode_class_t dirClass = {
+    .name = "fs dir",
+    .type = VNODE_DIR,
+    .lookup = filesystem_dir_lookup,
+    .iterate = filesystem_dir_iterate,
 };
 
-static dentry_ops_t fsDentryOps = {
-    .iterate = filesystem_iterate,
-};
-
-static status_t filesystem_dir_lookup(vnode_t* dir, dentry_t* dentry)
+static status_t filesystem_root_lookup(vnode_t* dir, dentry_t* dentry)
 {
     UNUSED(dir);
 
@@ -167,7 +165,7 @@ static status_t filesystem_dir_lookup(vnode_t* dir, dentry_t* dentry)
     }
     filesystem_t* fs = CONTAINER_OF(entry, filesystem_t, mapEntry);
 
-    vnode_t* vnode = vnode_new(dentry->volume, VNODE_DIR, &fsVnodeOps, NULL);
+    vnode_t* vnode = vnode_new(dentry->volume, &dirClass);
     if (vnode == NULL)
     {
         return ERR(MEM, NOMEM);
@@ -175,12 +173,11 @@ static status_t filesystem_dir_lookup(vnode_t* dir, dentry_t* dentry)
     UNREF_DEFER(vnode);
     vnode->data = fs;
 
-    dentry->ops = &fsDentryOps;
     dentry_make_positive(dentry, vnode);
     return OK;
 }
 
-static status_t filesystem_dir_iterate(dentry_t* dentry, dir_ctx_t* ctx)
+static status_t filesystem_root_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 {
     if (!dentry_iterate_dots(dentry, ctx))
     {
@@ -206,12 +203,11 @@ static status_t filesystem_dir_iterate(dentry_t* dentry, dir_ctx_t* ctx)
     return OK;
 }
 
-static vnode_ops_t dirVnodeOps = {
-    .lookup = filesystem_dir_lookup,
-};
-
-static dentry_ops_t dirDentryOps = {
-    .iterate = filesystem_dir_iterate,
+static vnode_class_t rootClass = {
+    .name = "fs root",
+    .type = VNODE_DIR,
+    .lookup = filesystem_root_lookup,
+    .iterate = filesystem_root_iterate,
 };
 
 void filesystem_expose(void)
@@ -224,12 +220,11 @@ void filesystem_expose(void)
         return;
     }
 
-    dir = sysfs_dir_new(NULL, "fs", &dirVnodeOps, NULL);
+    dir = sysfs_dentry_new(NULL, "fs", &rootClass, NULL);
     if (dir == NULL)
     {
         panic(NULL, "failed to expose filesystem sysfs directory");
     }
-    dir->ops = &dirDentryOps;
 }
 
 status_t filesystem_register(filesystem_t* fs)
@@ -317,7 +312,7 @@ filesystem_t* filesystem_get_by_path(const char* path, process_t* process)
         return NULL;
     }
 
-    if (target.dentry->ops != &fsDentryOps)
+    if (target.dentry->vnode->cls != &volumeClass)
     {
         return NULL;
     }

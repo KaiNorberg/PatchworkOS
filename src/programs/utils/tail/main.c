@@ -49,14 +49,14 @@ int main(int argc, char* argv[])
 
     while (true)
     {
-        if (poll1(file, POLLIN, follow ? CLOCKS_NEVER : 0) != 0)
+        if (iopoll(file, POLLIN, follow ? CLOCKS_NEVER : 0) != 0)
         {
             char buffer[1024];
             uint64_t bytesRead;
-            status_t status = read(file, buffer, sizeof(buffer), &bytesRead);
+            status_t status = ioread(file, buffer, sizeof(buffer), &bytesRead);
             if (bytesRead > 0)
             {
-                write(STDOUT_FILENO, buffer, bytesRead, NULL);
+                iowrite(STDOUT_FILENO, buffer, bytesRead, NULL);
             }
         }
         else if (!follow)

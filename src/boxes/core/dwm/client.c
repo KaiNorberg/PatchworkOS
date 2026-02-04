@@ -436,14 +436,14 @@ uint64_t client_receive_cmds(client_t* client)
     }
 
     size_t readSize;
-    status_t status = read(client->fd, client->recvBuffer + client->recvLen, freeSpace, &readSize);
+    status_t status = ioread(client->fd, client->recvBuffer + client->recvLen, freeSpace, &readSize);
     if (IS_ERR(status))
     {
         if (IS_CODE(status, AGAIN))
         {
             return 0;
         }
-        perror("dwm client: read error");
+        perror("dwm client: ioread error");
         return PFAIL;
     }
 
@@ -491,20 +491,20 @@ static uint64_t client_send_all(fd_t fd, const void* data, size_t size)
     while (sent < size)
     {
         size_t n;
-        status_t status = write(fd, p + sent, size - sent, &n);
+        status_t status = iowrite(fd, p + sent, size - sent, &n);
         if (IS_ERR(status))
         {
             if (IS_CODE(status, AGAIN))
             {
                 continue;
             }
-            perror("dwm client: write error");
+            perror("dwm client: iowrite error");
             return PFAIL;
         }
 
         if (n == 0)
         {
-            perror("dwm client: write error (0 bytes written)");
+            perror("dwm client: iowrite error (0 bytes written)");
             return PFAIL;
         }
 

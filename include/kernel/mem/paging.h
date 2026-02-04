@@ -192,7 +192,7 @@ static inline bool page_table_get_pml(page_table_t* table, pml_t* current, pml_i
         {
             return false;
         }
-        current->entries[index].raw = flags & PML_FLAGS_MASK;
+        current->entries[index].raw = pml_flags_to_raw(flags);
         current->entries[index].pfn = VIRT_TO_PFN(next);
         *out = next;
         return true;
@@ -411,7 +411,7 @@ static inline bool page_table_map(page_table_t* table, void* addr, phys_addr_t p
             return false;
         }
 
-        traverse.entry->raw = flags;
+        traverse.entry->raw = pml_flags_to_raw(flags);
         traverse.entry->pfn = PHYS_TO_PFN(phys);
         traverse.entry->lowCallbackId = callbackId & 1;
         traverse.entry->highCallbackId = callbackId >> 1;
@@ -456,7 +456,7 @@ static inline bool page_table_map_pages(page_table_t* table, void* addr, const p
             return false;
         }
 
-        traverse.entry->raw = flags;
+        traverse.entry->raw = pml_flags_to_raw(flags);
         traverse.entry->pfn = pfns[i];
         traverse.entry->lowCallbackId = callbackId & 1;
         traverse.entry->highCallbackId = callbackId >> 1;
@@ -695,7 +695,7 @@ static inline bool page_table_set_flags(page_table_t* table, void* addr, size_t 
         }
 
         // Bit magic to only update the flags while preserving the address and callback ID.
-        traverse.entry->raw = (traverse.entry->raw & ~PML_FLAGS_MASK) | (flags & PML_FLAGS_MASK);
+        traverse.entry->raw = (traverse.entry->raw & ~PML_RAW_FLAGS_MASK) | pml_flags_to_raw(flags);
     }
 
     tlb_invalidate(addr, amount);
@@ -1008,6 +1008,7 @@ static inline bool page_table_is_pinned(page_table_t* table, void* addr, size_t 
 static inline uint64_t page_table_count_pages_with_flags(page_table_t* table, void* addr, size_t amount,
     pml_flags_t flags)
 {
+    uint64_t rawFlags = pml_flags_to_raw(flags);
     uint64_t count = 0;
     while (amount > 0)
     {
@@ -1056,7 +1057,7 @@ static inline uint64_t page_table_count_pages_with_flags(page_table_t* table, vo
             {
                 continue;
             }
-            if ((entry1->raw & flags) == flags)
+            if ((entry1->raw & rawFlags) == rawFlags)
             {
                 count++;
             }

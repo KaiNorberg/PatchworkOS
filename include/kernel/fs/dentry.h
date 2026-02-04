@@ -14,31 +14,35 @@
 #include <sys/map.h>
 
 typedef struct dentry dentry_t;
-typedef struct dentry_ops dentry_ops_t;
 typedef struct vnode vnode_t;
 typedef struct volume volume_t;
-typedef struct dir_ctx dir_ctx_t;
 
 /**
  * @brief Directory entry.
  * @defgroup kernel_fs_dentry Dentry
  * @ingroup kernel_fs
  *
- * A dentry represents the actual name in the filesystem hierarchy. It can be either positive, meaning it has an
- * associated vnode, or negative, meaning it does not have an associated vnode.
+ * A dentry respresents the name of a file within the VFS hierarchy and is used for path traversal.
  *
- * ## Mountpoints and Root Dentries
+ * It acts as a link between the name and a vnode, allowing a vnode to appear in multiple places within the heirarchy.
+ * The dentry itself can also appear in multiple places within the hierarchy due to mountpoints.
  *
- * The difference between a mountpoint dentry and a root dentry can be a bit confusing, so here is a quick
- * explanation. When a filesystem is mounted the dentry that it gets mounted to becomes a mountpoint, any data that
- * was there before becomes hidden and when we traverse to that dentry we "jump" to the root dentry of the
- * mounted filesystem. The root dentry of the mounted filesystem is simply the root directory of that filesystem.
+ * @note While our dentries share a name with, and are similar to, Linux dentries, they do differ in some key ways. Most
+ * notably, they are immutable after being made positive and out handling of negative dentries is simplified. Both these
+ * changes where made for performance.
  *
- * This means that the mountpoint does not "become" the root of the mounted filesystem, it simply points to it.
+ * ## Negative Dentries
  *
- * Finally, note that just because a dentry is a mountpoint does not mean that it can be traversed by the current
- * process, a process can only traverse a mountpoint if it is visible in its namespace, if its not visible the
- * dentry acts exactly like a normal dentry.
+ * A negative dentry is a dentry that does not have an associated vnode. These are primarily used while creating files,
+ * acting as a placeholder.
+ *
+ * Negative dentries are not cached for subsequent lookups.
+ *
+ * ## Immutability
+ *
+ * Dentries are immutable after being made positive. This means that once a dentry is associated with a vnode, its name,
+ * parent, and vnode will never change. This allows lookups and path traversal to be almost lockless and more efficient
+ * as there is no need for even a sequence lock.
  *
  * @{
  */
@@ -72,7 +76,7 @@ typedef uint64_t dentry_id_t;
  * @param dentry The dentry to check.
  * @return true if the dentry is a regular file, false otherwise or if the dentry is negative.
  */
-#define DENTRY_IS_REGULAR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->type == VNODE_REGULAR)
+#define DENTRY_IS_REGULAR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == VNODE_REGULAR)
 
 /**
  * @brief Check if the vnode associated with a dentry is a directory.
@@ -80,7 +84,7 @@ typedef uint64_t dentry_id_t;
  * @param dentry The dentry to check.
  * @return true if the dentry is a directory, false otherwise or if the dentry is negative.
  */
-#define DENTRY_IS_DIR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->type == VNODE_DIR)
+#define DENTRY_IS_DIR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == VNODE_DIR)
 
 /**
  * @brief Check if the vnode associated with a dentry is a symbolic link.
@@ -88,61 +92,7 @@ typedef uint64_t dentry_id_t;
  * @param dentry The dentry to check.
  * @return true if the dentry is a symbolic link, false otherwise or if the dentry is negative.
  */
-#define DENTRY_IS_SYMLINK(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->type == VNODE_SYMLINK)
-
-/**
- * @brief Directory context used to iterate over directory entries.
- */
-typedef struct dir_ctx
-{
-    /**
-     * @brief Emit function.
-     *
-     * Should be called on all entries inside a directory while iterating over it, until this function returns `false`.
-     *
-     * Will be implemented by the VFS not the filesystem.
-     *
-     * @param ctx The directory context.
-     * @param name The name of the entry.
-     * @param number The vnode number of the entry.
-     * @param type The vnode type of the entry.
-     * @return `true` to continue iterating, `false` to stop.
-     */
-    bool (*emit)(dir_ctx_t* ctx, const char* name, vnode_type_t type);
-    size_t pos;   ///< The current position in the directory, can be used to skip entries.
-    void* data;   ///< Private data that the filesystem can use to conveniently pass data.
-    size_t index; ///< An index that the filesystem can use for its own purposes.
-} dir_ctx_t;
-
-/**
- * @brief Dentry operations structure.
- * @struct dentry_ops_t
- */
-typedef struct dentry_ops
-{
-    /**
-     * @brief Called when the dentry is looked up or retrieved from cache.
-     *
-     * Used for security by hiding files or directories based on filesystem defined logic.
-     *
-     * @return `true` if the access should be allowed, `false` otherwise.
-     */
-    bool (*revalidate)(dentry_t* dentry);
-    /**
-     * @brief Iterate over the entries in a directory dentry.
-     *
-     * @param dentry The directory dentry to iterate over.
-     * @param ctx The directory context to use for iteration.
-     * @return An appropriate status value.
-     */
-    status_t (*iterate)(dentry_t* dentry, dir_ctx_t* ctx);
-    /**
-     * @brief Called when the dentry is being freed.
-     *
-     * @param dentry The dentry being cleaned up.
-     */
-    void (*cleanup)(dentry_t* dentry);
-} dentry_ops_t;
+#define DENTRY_IS_SYMLINK(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == VNODE_SYMLINK)
 
 /**
  * @brief Directory entry structure.
@@ -161,28 +111,21 @@ typedef struct dentry
     list_entry_t siblingEntry;
     list_t children;
     volume_t* volume;
-    const dentry_ops_t* ops;
-    void* data;
     map_entry_t mapEntry;         ///< Entry in the dentry cache hash map.
     _Atomic(uint64_t) mountCount; ///< Number of mounts targeting this dentry.
     rcu_entry_t rcu;              ///< RCU entry for deferred cleanup.
-    list_entry_t otherEntry;      ///< Made available for use by any other subsystems for convenience.
+    list_entry_t entry;           ///< Made available for use by any other subsystems for convenience.
 } dentry_t;
 
 /**
- * @brief Create a new dentry.
- *
- * Will not add the dentry to its parent's list of children but it will appear in the dentry cache as a negative dentry
- * until `dentry_make_positive()` is called making it positive. This is needed to solve some race conditions when
- * creating new files. While the dentry is negative it is not possible to create another dentry of the same name in the
- * same parent, and any lookup to the dentry will fail until it is made positive.
+ * @brief Allocate a new dentry.
  *
  * There is no `dentry_free()` instead use `UNREF()`.
  *
  * @param volume The volume the dentry belongs to.
  * @param parent The parent dentry, can be `NULL`.
  * @param name The name of the dentry, can be `NULL` if `parent` is also `NULL`.
- * @return On success, the new dentry. On failure, returns `NULL`.
+ * @return On success, the new negative dentry. On failure, returns `NULL`.
  */
 dentry_t* dentry_new(volume_t* volume, dentry_t* parent, const char* name);
 

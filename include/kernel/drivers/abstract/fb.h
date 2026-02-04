@@ -64,8 +64,8 @@ typedef struct fb
     char* name;
     status_t (*info)(fb_t* fb, fb_info_t* info);
     status_t (*mmap)(fb_t* fb, void** address, size_t length, size_t offset, pml_flags_t flags);
-    status_t (*read)(fb_t* fb, mdl_t* buffer, size_t count, size_t offset, size_t* bytesRead);
-    status_t (*write)(fb_t* fb, mdl_t* buffer, size_t count, size_t offset, size_t* bytesWritten);
+    status_t (*read)(fb_t* fb, mdl_t* buffer, size_t count, size_t* offset, size_t* bytesRead);
+    status_t (*write)(fb_t* fb, mdl_t* buffer, size_t count, size_t* offset, size_t* bytesWritten);
     void (*cleanup)(fb_t* fb);
     void* data;
     dentry_t* dir;

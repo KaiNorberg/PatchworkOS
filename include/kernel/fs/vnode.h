@@ -16,6 +16,7 @@
 typedef struct vnode vnode_t;
 typedef struct volume volume_t;
 typedef struct dentry dentry_t;
+typedef struct dir_ctx dir_ctx_t;
 
 /**
  * @brief Virtual node.
@@ -27,8 +28,6 @@ typedef struct dentry dentry_t;
  * A vnode represents the actual data and metadata of a file. It is referenced by dentries, which represent the name or
  * "location" of the file but a vnode can appear in multiple dentries due to hardlinks or mounts.
  *
- * @note Despite the name vnodes are in no way "nodes" in any kind of tree structure, that would be the dentries.
- *
  * ## Synchronization
  *
  * Vnodes have an additional purpose within the Virtual File System (VFS) as they act as the primary means of
@@ -39,6 +38,30 @@ typedef struct dentry dentry_t;
  */
 
 /**
+ * @brief Directory context used to iterate over directory entries.
+ */
+typedef struct dir_ctx
+{
+    /**
+     * @brief Emit function.
+     *
+     * Should be called on all entries inside a directory while iterating over it, until this function returns `false`.
+     *
+     * Will be implemented by the VFS not the filesystem.
+     *
+     * @param ctx The directory context.
+     * @param name The name of the entry.
+     * @param number The vnode number of the entry.
+     * @param type The vnode type of the entry.
+     * @return `true` to continue iterating, `false` to stop.
+     */
+    bool (*emit)(dir_ctx_t* ctx, const char* name, vnode_type_t type);
+    size_t pos;   ///< The current position in the directory, can be used to skip entries.
+    void* data;   ///< Private data that the filesystem can use to conveniently pass data.
+    size_t index; ///< An index that the filesystem can use for its own purposes.
+} dir_ctx_t;
+
+/**
  * @brief Vnode class structure.
  * @struct vnode_class_t
  *
@@ -47,11 +70,11 @@ typedef struct dentry dentry_t;
  */
 typedef struct vnode_class
 {
-    const char* name;                         ///< The name of the class, used for debugging.
-    vnode_type_t type;                        ///< The type of the vnode.
-    status_t (*file_ctor)(file_t* file);      ///< File constructor.
-    void (*file_dtor)(file_t* file);          ///< File destructor.
-    void (*handlers[IRP_MJ_MAX])(irp_t* irp); ///< IRP handlers indexed by major function number.
+    const char* name;                    ///< The name of the class, used for debugging.
+    vnode_type_t type;                   ///< The type of the vnode.
+    status_t (*file_ctor)(file_t* file); ///< File constructor.
+    void (*file_dtor)(file_t* file);     ///< File destructor.
+    irp_handler_t handlers[IRP_MJ_MAX];  ///< IRP handlers indexed by major function number.
 
     /**
      * @brief Look up a dentry in a directory vnode.
@@ -138,6 +161,26 @@ typedef struct vnode_class
      * @deprecated Should be replaced as part of the async refactor.
      */
     void (*cleanup)(vnode_t* vnode);
+    /**
+     * @brief Called when the dentry is looked up or retrieved from cache.
+     *
+     * Used for security by hiding files or directories based on filesystem defined logic.
+     *
+     * @return `true` if the access should be allowed, `false` otherwise.
+     *
+     * @deprecated Should be replaced as part of the async refactor.
+     */
+    bool (*revalidate)(dentry_t* dentry);
+    /**
+     * @brief Iterate over the entries in a directory dentry.
+     *
+     * @param dentry The directory dentry to iterate over.
+     * @param ctx The directory context to use for iteration.
+     * @return An appropriate status value.
+     *
+     * @deprecated Should be replaced as part of the async refactor.
+     */
+    status_t (*iterate)(dentry_t* dentry, dir_ctx_t* ctx);
 } vnode_class_t;
 
 /**
@@ -177,10 +220,11 @@ vnode_t* vnode_new(volume_t* volume, const vnode_class_t* cls);
  *
  * Will advance the IRP stack.
  *
- * @param vnode The vnode to associated with the next IRP stack frame.
+ * @param vnode The vnode to associate with the next IRP stack frame.
  * @param irp The IRP to send.
+ * @return An appropriate status value.
  */
-void vnode_call(vnode_t* vnode, irp_t* irp);
+status_t vnode_call(vnode_t* vnode, irp_t* irp);
 
 /**
  * @brief Truncate the vnode.

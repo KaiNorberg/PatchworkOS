@@ -139,10 +139,10 @@ int main(int argc, char** argv)
 
     memset(buffer, 0, sizeof(buffer));
 
-    status = read(data, buffer, sizeof(buffer) - 1, NULL);
+    status = ioread(data, buffer, sizeof(buffer) - 1, NULL);
     if (IS_ERR(status))
     {
-        printf("boxspawn: failed to read response %Y\n", status);
+        printf("boxspawn: failed to ioread response %Y\n", status);
         free(id);
         close(data);
         return EXIT_FAILURE;
@@ -180,10 +180,10 @@ int main(int argc, char** argv)
     }
 
     char string[NOTE_MAX];
-    status = RETRY_ON_CODE(read(wait, string, sizeof(string) - 1, NULL), INTR);
+    status = RETRY_ON_CODE(ioread(wait, string, sizeof(string) - 1, NULL), INTR);
     if (IS_ERR(status))
     {
-        printf("boxspawn: failed to read status %Y\n", status);
+        printf("boxspawn: failed to ioread status %Y\n", status);
         free(id);
         close(wait);
         return EXIT_FAILURE;

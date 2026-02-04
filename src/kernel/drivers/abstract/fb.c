@@ -15,16 +15,14 @@ static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
 static dentry_t* dir = NULL;
 
-static void fb_name_read(irp_t* irp)
+static status_t fb_name_read(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
     fb_t* fb = frame->vnode->data;
     assert(fb != NULL);
 
     uint64_t length = strlen(fb->name);
-    status_t status =
-        mdl_read(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, fb->name, length);
-    irp_complete(irp, status);
+    return mdl_copy_from_buffer(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, fb->name, length);
 }
 
 static vnode_class_t nameClass = {
@@ -36,7 +34,7 @@ static vnode_class_t nameClass = {
         },
 };
 
-static void fb_data_read(irp_t* irp)
+static status_t fb_data_read(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
     fb_t* fb = frame->vnode->data;
@@ -44,15 +42,13 @@ static void fb_data_read(irp_t* irp)
 
     if (fb->read == NULL)
     {
-        irp_complete(irp, ERR(DRIVER, INVAL));
-        return;
+        return ERR(DRIVER, INVAL);
     }
 
-    status_t status = fb->read(fb, frame->read.buffer, frame->read.count, frame->read.offset, &irp->result);
-    irp_complete(irp, status);
+    return fb->read(fb, frame->read.buffer, frame->read.count, frame->read.offset, &irp->result);
 }
 
-static void fb_data_write(irp_t* irp)
+static status_t fb_data_write(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
     fb_t* fb = frame->vnode->data;
@@ -60,15 +56,13 @@ static void fb_data_write(irp_t* irp)
 
     if (fb->write == NULL)
     {
-        irp_complete(irp, ERR(DRIVER, INVAL));
-        return;
+        return ERR(DRIVER, INVAL);
     }
 
-    status_t status = fb->write(fb, frame->write.buffer, frame->write.count, frame->write.offset, &irp->result);
-    irp_complete(irp, status);
+    return fb->write(fb, frame->write.buffer, frame->write.count, frame->write.offset, &irp->result);
 }
 
-static void fb_data_mmap(irp_t* irp)
+static status_t fb_data_mmap(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
     fb_t* fb = frame->vnode->data;
@@ -76,14 +70,13 @@ static void fb_data_mmap(irp_t* irp)
 
     if (fb->write == NULL)
     {
-        irp_complete(irp, ERR(DRIVER, INVAL));
-        return;
+        return ERR(DRIVER, INVAL);
     }
 
     void* addr = frame->mmap.address;
     status_t status = fb->mmap(fb, &addr, frame->mmap.length, frame->mmap.offset, frame->mmap.flags);
     irp->result = (uintptr_t)addr;
-    irp_complete(irp, status);
+    return status;
 }
 
 static vnode_class_t dataClass = {
@@ -97,7 +90,7 @@ static vnode_class_t dataClass = {
         },
 };
 
-static void fb_info_read(irp_t* irp)
+static status_t fb_info_read(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
     fb_t* fb = frame->vnode->data;
@@ -105,31 +98,26 @@ static void fb_info_read(irp_t* irp)
 
     if (fb->info == NULL)
     {
-        irp_complete(irp, ERR(DRIVER, INVAL));
-        return;
+        return ERR(DRIVER, INVAL);
     }
 
     fb_info_t info = {0};
     status_t status = fb->info(fb, &info);
     if (IS_ERR(status))
     {
-        irp_complete(irp, status);
-        return;
+        return status;
     }
 
     char string[256];
     int length =
         snprintf(string, sizeof(string), "%llu %llu %llu %s", info.width, info.height, info.pitch, info.format);
-    assert(length > 0);
 
-    if ((size_t)length >= sizeof(string))
+    if (length < 0 || (size_t)length >= sizeof(string))
     {
-        irp_complete(irp, ERR(DRIVER, IMPL));
-        return;
+        return ERR(DRIVER, IMPL);
     }
 
-    status = mdl_read(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, string, length);
-    irp_complete(irp, status);
+    return mdl_copy_from_buffer(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, string, length);
 }
 
 static vnode_class_t infoClass = {
@@ -155,11 +143,13 @@ static vnode_class_t dirClass = {
     .name = "fb dir",
     .type = VNODE_DIR,
     .cleanup = fb_dir_cleanup,
+    .iterate = dentry_generic_iterate,
 };
 
 static vnode_class_t rootClass = {
     .name = "fb root",
     .type = VNODE_DIR,
+    .iterate = dentry_generic_iterate,
 };
 
 status_t fb_register(fb_t* fb)

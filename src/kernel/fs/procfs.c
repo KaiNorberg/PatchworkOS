@@ -8,9 +8,9 @@
 #include <kernel/fs/mount.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
-#include <kernel/fs/volume.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/fs/vnode.h>
+#include <kernel/fs/volume.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/proc/process.h>
@@ -1087,8 +1087,7 @@ static status_t procfs_lookup(vnode_t* dir, dentry_t* target)
             continue;
         }
 
-        vnode_t* vnode =
-            vnode_new(dir->volume, procEntries[i].type, procEntries[i].vnodeOps, procEntries[i].fileOps);
+        vnode_t* vnode = vnode_new(dir->volume, procEntries[i].type, procEntries[i].vnodeOps, procEntries[i].fileOps);
         if (vnode == NULL)
         {
             return ERR(FS, NOMEM);

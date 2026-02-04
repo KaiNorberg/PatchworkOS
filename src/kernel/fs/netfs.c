@@ -6,6 +6,7 @@
 #include <kernel/fs/netfs.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/fs/vnode.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/module/module.h>
@@ -68,10 +69,10 @@ static status_t socket_new(socket_t** out, netfs_family_t* family, socket_type_t
 typedef struct socket_file
 {
     const char* name;
-    file_ops_t* fileOps;
+    vnode_class_t* cls;
 } socket_file_t;
 
-static status_t netfs_data_open(file_t* file)
+static status_t netfs_data_file_ctor(file_t* file)
 {
     socket_t* sock = file->vnode->data;
     assert(sock != NULL);
@@ -80,7 +81,7 @@ static status_t netfs_data_open(file_t* file)
     return OK;
 }
 
-static void netfs_data_close(file_t* file)
+static void netfs_data_file_dtor(file_t* file)
 {
     socket_t* sock = file->data;
     if (sock == NULL)
@@ -89,10 +90,19 @@ static void netfs_data_close(file_t* file)
     }
 
     UNREF(sock);
+    file->data = NULL;
 }
 
-static status_t netfs_data_read(file_t* file, void* buf, size_t count, size_t* offset, size_t* bytesRead)
+static status_t netfs_data_read(irp_t* irp)
 {
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
+
+    if (file == NULL)
+    {
+        return ERR(FS, EXPECT_FILE);
+    }
+
     socket_t* sock = file->data;
     assert(sock != NULL);
 
@@ -108,11 +118,19 @@ static status_t netfs_data_read(file_t* file, void* buf, size_t count, size_t* o
         return ERR(FS, BADFD);
     }
 
-    return sock->family->recv(sock, buf, count, offset, bytesRead, file->mode);
+    return sock->family->recv(irp);
 }
 
-static status_t netfs_data_write(file_t* file, const void* buf, size_t count, size_t* offset, size_t* bytesWritten)
+static status_t netfs_data_write(irp_t* irp)
 {
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
+
+    if (file == NULL)
+    {        
+        return ERR(FS, EXPECT_FILE);
+    }
+
     socket_t* sock = file->data;
     assert(sock != NULL);
 
@@ -128,11 +146,19 @@ static status_t netfs_data_write(file_t* file, const void* buf, size_t count, si
         return ERR(FS, BADFD);
     }
 
-    return sock->family->send(sock, buf, count, offset, bytesWritten, file->mode);
+    return sock->family->send(irp);
 }
 
-static status_t netfs_data_poll(file_t* file, poll_events_t* revents, wait_queue_t** queue)
+static status_t netfs_data_poll(irp_t* irp)
 {
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
+
+    if (file == NULL)
+    {
+        return ERR(FS, EXPECT_FILE);
+    }
+
     socket_t* sock = file->data;
     assert(sock != NULL);
 
@@ -142,18 +168,20 @@ static status_t netfs_data_poll(file_t* file, poll_events_t* revents, wait_queue
     }
 
     MUTEX_SCOPE(&sock->mutex);
-    return sock->family->poll(sock, revents, queue);
+    return sock->family->poll(irp);
 }
 
-static file_ops_t dataOps = {
-    .open = netfs_data_open,
-    .close = netfs_data_close,
-    .read = netfs_data_read,
-    .write = netfs_data_write,
-    .poll = netfs_data_poll,
-};
+static vnode_class_t dataClass = {.name = "netfs data",
+    .type = VNODE_REGULAR,
+    .file_ctor = netfs_data_file_ctor,
+    .file_dtor = netfs_data_file_dtor,
+    .handlers = {
+        [IRP_MJ_READ] = netfs_data_read,
+        [IRP_MJ_WRITE] = netfs_data_write,
+        [IRP_MJ_POLL] = netfs_data_poll,
+    }};
 
-static status_t netfs_accept_open(file_t* file)
+static status_t netfs_accept_file_ctor(file_t* file)
 {
     socket_t* sock = file->vnode->data;
     assert(sock != NULL);
@@ -186,133 +214,53 @@ static status_t netfs_accept_open(file_t* file)
 
     newSock->state = SOCKET_CONNECTED;
     file->data = newSock;
-    file->ops = &dataOps;
     return OK;
 }
 
-static file_ops_t acceptOps = {
-    .open = netfs_accept_open,
-};
+static vnode_class_t acceptClass = {.name = "netfs accept",
+    .type = VNODE_REGULAR,
+    .file_ctor = netfs_accept_file_ctor,
+    .file_dtor = netfs_data_file_dtor,
+    .handlers = {
+        [IRP_MJ_READ] = netfs_data_read,
+        [IRP_MJ_WRITE] = netfs_data_write,
+        [IRP_MJ_POLL] = netfs_data_poll,
+    }};
 
-static status_t netfs_ctl_bind(file_t* file, uint64_t argc, const char** argv)
+static status_t netfs_control(irp_t* irp)
 {
-    UNUSED(argc);
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
 
-    socket_t* sock = file->vnode->data;
+    if (file == NULL)
+    {
+        return ERR(FS, EXPECT_FILE);
+    }
+
+    socket_t* sock = file->data;
     assert(sock != NULL);
 
-    if (sock->family->bind == NULL)
+    if (sock->family->control == NULL)
     {
         return ERR(FS, IMPL);
     }
 
     MUTEX_SCOPE(&sock->mutex);
 
-    if (sock->state != SOCKET_NEW)
-    {
-        return ERR(FS, INVAL);
-    }
-
-    strncpy(sock->address, argv[1], sizeof(sock->address));
-    sock->address[sizeof(sock->address) - 1] = '\0';
-
-    status_t status = sock->family->bind(sock);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
-    sock->state = SOCKET_BOUND;
-    return OK;
+    return sock->family->control(irp);
 }
 
-static status_t netfs_ctl_listen(file_t* file, uint64_t argc, const char** argv)
-{
-    UNUSED(argc);
-
-    uint64_t backlog = NETFS_BACKLOG_DEFAULT;
-    if (argc == 2)
-    {
-        if (sscanf(argv[1], "%llu", &backlog) != 1)
-        {
-            return ERR(FS, INVAL);
-        }
-
-        if (backlog == 0)
-        {
-            return ERR(FS, INVAL);
-        }
-    }
-
-    socket_t* sock = file->vnode->data;
-    assert(sock != NULL);
-
-    if (sock->family->listen == NULL)
-    {
-        return ERR(FS, IMPL);
-    }
-
-    MUTEX_SCOPE(&sock->mutex);
-
-    if (sock->state != SOCKET_BOUND)
-    {
-        return ERR(FS, INVAL);
-    }
-
-    status_t status = sock->family->listen(sock, backlog);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
-    sock->state = SOCKET_LISTENING;
-    return OK;
-}
-
-static status_t netfs_ctl_connect(file_t* file, uint64_t argc, const char** argv)
-{
-    UNUSED(argc);
-
-    socket_t* sock = file->vnode->data;
-    assert(sock != NULL);
-
-    if (sock->family->connect == NULL)
-    {
-        return ERR(FS, IMPL);
-    }
-
-    MUTEX_SCOPE(&sock->mutex);
-
-    if (sock->state != SOCKET_NEW && sock->state != SOCKET_BOUND)
-    {
-        return ERR(FS, INVAL);
-    }
-
-    strncpy(sock->address, argv[1], sizeof(sock->address));
-    sock->address[sizeof(sock->address) - 1] = '\0';
-
-    status_t status = sock->family->connect(sock);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
-    sock->state = SOCKET_CONNECTED;
-    return OK;
-}
-
-CTL_STANDARD_OPS_DEFINE(ctlOps,
-    {
-        {"bind", netfs_ctl_bind, 2, 2},
-        {"listen", netfs_ctl_listen, 1, 2},
-        {"connect", netfs_ctl_connect, 2, 2},
-        {0},
-    });
+static vnode_class_t ctlClass = {.name = "netfs ctl",
+    .type = VNODE_REGULAR,
+    .handlers = {
+        [IRP_MJ_WRITE] = ctl_generic_write,
+        [IRP_MJ_CONTROL] = netfs_control,
+    }};
 
 static socket_file_t socketFiles[] = {
-    {.name = "data", .fileOps = &dataOps},
-    {.name = "accept", .fileOps = &acceptOps},
-    {.name = "ctl", .fileOps = &ctlOps},
+    {.name = "data", .cls = &dataClass},
+    {.name = "accept", .cls = &acceptClass},
+    {.name = "ctl", .cls = &ctlClass},
 };
 
 static status_t netfs_socket_lookup(vnode_t* dir, dentry_t* dentry)
@@ -324,7 +272,7 @@ static status_t netfs_socket_lookup(vnode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dir->volume, VNODE_REGULAR, NULL, socketFiles[i].fileOps);
+        vnode_t* vnode = vnode_new(dir->volume, socketFiles[i].cls);
         if (vnode == NULL)
         {
             return ERR(FS, NOMEM);
@@ -373,20 +321,19 @@ static status_t netfs_socket_iterate(dentry_t* dentry, dir_ctx_t* ctx)
     return OK;
 }
 
-static vnode_ops_t socketVnodeOps = {
+static vnode_class_t socketClass = {
+    .name = "netfs socket",
+    .type = VNODE_DIR,
     .lookup = netfs_socket_lookup,
-    .cleanup = netfs_socket_cleanup,
-};
-
-static dentry_ops_t socketDentryOps = {
     .iterate = netfs_socket_iterate,
+    .cleanup = netfs_socket_cleanup,
 };
 
 typedef struct netfs_family_file
 {
     const char* name;
     socket_type_t type;
-    file_ops_t* fileOps;
+    vnode_class_t* cls;
 } netfs_family_file_t;
 
 typedef struct
@@ -401,7 +348,7 @@ static void socket_weak_ptr_callback(void* arg)
     UNREF(socket);
 }
 
-static status_t netfs_factory_open(file_t* file)
+static status_t netfs_factory_file_ctor(file_t* file)
 {
     netfs_family_file_ctx_t* ctx = file->vnode->data;
     assert(ctx != NULL);
@@ -431,7 +378,7 @@ static status_t netfs_factory_open(file_t* file)
     return OK;
 }
 
-static void netfs_factory_close(file_t* file)
+static void netfs_factory_file_dtor(file_t* file)
 {
     socket_t* socket = file->data;
     if (socket == NULL)
@@ -442,27 +389,41 @@ static void netfs_factory_close(file_t* file)
     UNREF(socket);
 }
 
-static status_t netfs_factory_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static status_t netfs_factory_read(irp_t* irp)
 {
-    socket_t* socket = file->data;
-    if (socket == NULL)
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
+
+    if (file == NULL)
     {
-        *bytesRead = 0;
-        return OK;
+        return ERR(FS, EXPECT_FILE);
     }
 
-    size_t len = strlen(socket->id);
-    return buffer_read(buffer, count, offset, bytesRead, socket->id, len);
+    socket_t* socket = file->data;
+    assert(socket != NULL);
+
+    return mdl_copy_from_buffer(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, socket->id,
+        strlen(socket->id));
 }
 
-static file_ops_t factoryFileOps = {
-    .open = netfs_factory_open,
-    .close = netfs_factory_close,
-    .read = netfs_factory_read,
-};
+static vnode_class_t factoryClass = {.name = "netfs factory",
+    .type = VNODE_REGULAR,
+    .file_ctor = netfs_factory_file_ctor,
+    .file_dtor = netfs_factory_file_dtor,
+    .handlers = {
+        [IRP_MJ_READ] = netfs_factory_read,
+    }};
 
-static status_t netfs_addrs_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static status_t netfs_addrs_read(irp_t* irp)
 {
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
+
+    if (file == NULL)
+    {
+        return ERR(FS, EXPECT_FILE);
+    }
+
     netfs_family_file_ctx_t* ctx = file->vnode->data;
     assert(ctx != NULL);
 
@@ -470,7 +431,7 @@ static status_t netfs_addrs_read(file_t* file, void* buffer, size_t count, size_
 
     if (list_is_empty(&ctx->family->sockets))
     {
-        *bytesRead = 0;
+        irp->result = 0;
         return OK;
     }
 
@@ -497,22 +458,24 @@ static status_t netfs_addrs_read(file_t* file, void* buffer, size_t count, size_
         length += snprintf(string + length, MAX_PATH, "%s\n", socket->address);
     }
 
-    status_t status = buffer_read(buffer, count, offset, bytesRead, string, length);
+    status_t status = mdl_copy_from_buffer(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, string, length);
     free(string);
     return status;
 }
 
-static file_ops_t addrsFileOps = {
-    .read = netfs_addrs_read,
-};
+static vnode_class_t addrsClass = {.name = "netfs addrs",
+    .type = VNODE_REGULAR,
+    .handlers = {
+        [IRP_MJ_READ] = netfs_addrs_read,
+    }};
 
 static netfs_family_file_t familyFiles[] = {
-    {.name = "stream", .type = SOCKET_STREAM, .fileOps = &factoryFileOps},
-    {.name = "dgram", .type = SOCKET_DGRAM, .fileOps = &factoryFileOps},
-    {.name = "seqpacket", .type = SOCKET_SEQPACKET, .fileOps = &factoryFileOps},
-    {.name = "raw", .type = SOCKET_RAW, .fileOps = &factoryFileOps},
-    {.name = "rdm", .type = SOCKET_RDM, .fileOps = &factoryFileOps},
-    {.name = "addrs", .type = 0, .fileOps = &addrsFileOps},
+    {.name = "stream", .type = SOCKET_STREAM, .cls = &factoryClass},
+    {.name = "dgram", .type = SOCKET_DGRAM, .cls = &factoryClass},
+    {.name = "seqpacket", .type = SOCKET_SEQPACKET, .cls = &factoryClass},
+    {.name = "raw", .type = SOCKET_RAW, .cls = &factoryClass},
+    {.name = "rdm", .type = SOCKET_RDM, .cls = &factoryClass},
+    {.name = "addrs", .type = 0, .cls = &addrsClass},
 };
 
 static void netfs_file_cleanup(vnode_t* vnode)
@@ -527,7 +490,9 @@ static void netfs_file_cleanup(vnode_t* vnode)
     vnode->data = NULL;
 }
 
-static vnode_ops_t familyFileVnodeOps = {
+static vnode_class_t familyFileClass = {
+    .name = "netfs family file",
+    .type = VNODE_REGULAR,
     .cleanup = netfs_file_cleanup,
 };
 
@@ -543,7 +508,7 @@ static status_t netfs_family_lookup(vnode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dir->volume, VNODE_REGULAR, &familyFileVnodeOps, familyFiles[i].fileOps);
+        vnode_t* vnode = vnode_new(dir->volume, &familyFileClass);
         if (vnode == NULL)
         {
             return ERR(FS, NOMEM);
@@ -597,15 +562,13 @@ static status_t netfs_family_lookup(vnode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dir->volume, VNODE_DIR, &socketVnodeOps, NULL);
+        vnode_t* vnode = vnode_new(dir->volume, &socketClass);
         if (vnode == NULL)
         {
             return ERR(FS, NOMEM);
         }
         UNREF_DEFER(vnode);
         vnode->data = REF(socket);
-
-        dentry->ops = &socketDentryOps;
 
         dentry_make_positive(dentry, vnode);
         return OK;
@@ -680,11 +643,10 @@ static status_t netfs_family_iterate(dentry_t* dentry, dir_ctx_t* ctx)
     return OK;
 }
 
-static vnode_ops_t familyVnodeOps = {
+static vnode_class_t familyClass = {
+    .name = "netfs family",
+    .type = VNODE_DIR,
     .lookup = netfs_family_lookup,
-};
-
-static dentry_ops_t familyDentryOps = {
     .iterate = netfs_family_iterate,
 };
 
@@ -700,15 +662,13 @@ static status_t netfs_lookup(vnode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dir->volume, VNODE_DIR, &familyVnodeOps, NULL);
+        vnode_t* vnode = vnode_new(dir->volume, &familyClass);
         if (vnode == NULL)
         {
             return ERR(FS, NOMEM);
         }
         UNREF_DEFER(vnode);
         vnode->data = family;
-
-        dentry->ops = &familyDentryOps;
 
         dentry_make_positive(dentry, vnode);
         return OK;
@@ -743,11 +703,10 @@ static status_t netfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
     return OK;
 }
 
-static vnode_ops_t netVnodeOps = {
+static vnode_class_t netClass = {
+    .name = "netfs root",
+    .type = VNODE_DIR,
     .lookup = netfs_lookup,
-};
-
-static dentry_ops_t netDentryOps = {
     .iterate = netfs_iterate,
 };
 
@@ -760,14 +719,14 @@ static status_t netfs_mount(filesystem_t* fs, dentry_t** out, const char* option
         return ERR(FS, INVAL);
     }
 
-    volume_t* volume = volume_new(fs, NULL, NULL);
+    volume_t* volume = volume_new(fs, NULL);
     if (volume == NULL)
     {
         return ERR(FS, NOMEM);
     }
     UNREF_DEFER(volume);
 
-    vnode_t* vnode = vnode_new(volume, VNODE_DIR, &netVnodeOps, NULL);
+    vnode_t* vnode = vnode_new(volume, &netClass);
     if (vnode == NULL)
     {
         return ERR(FS, NOMEM);
@@ -779,7 +738,6 @@ static status_t netfs_mount(filesystem_t* fs, dentry_t** out, const char* option
     {
         return ERR(FS, NOMEM);
     }
-    dentry->ops = &netDentryOps;
 
     dentry_make_positive(dentry, vnode);
 

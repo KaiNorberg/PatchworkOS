@@ -6,9 +6,9 @@
 #include <kernel/fs/mount.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
-#include <kernel/fs/volume.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/fs/vnode.h>
+#include <kernel/fs/volume.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/sched/sched.h>
@@ -170,40 +170,40 @@ bool sysfs_dentrys_new(list_t* out, dentry_t* parent, const sysfs_desc_t* descs,
         {
             while (!list_is_empty(&createdList))
             {
-                UNREF(CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, otherEntry));
+                UNREF(CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, entry));
             }
             return false;
         }
 
-        list_push_back(&createdList, &dentry->otherEntry);
+        list_push_back(&createdList, &dentry->entry);
     }
 
     if (out == NULL)
     {
         while (!list_is_empty(&createdList))
         {
-            UNREF(CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, otherEntry));
+            UNREF(CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, entry));
         }
         return true;
     }
 
     while (!list_is_empty(&createdList))
     {
-        dentry_t* file = CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, otherEntry);
-        list_push_back(out, &file->otherEntry);
+        dentry_t* file = CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, entry);
+        list_push_back(out, &file->entry);
     }
     return true;
 }
 
-void sysfs_dentrys_free(list_t* dentrys)
+void sysfs_dentrys_free(list_t* dentries)
 {
-    if (dentrys == NULL)
+    if (dentries == NULL)
     {
         return;
     }
 
-    while (!list_is_empty(dentrys))
+    while (!list_is_empty(dentries))
     {
-        UNREF(CONTAINER_OF_SAFE(list_pop_back(dentrys), dentry_t, otherEntry));
+        UNREF(CONTAINER_OF_SAFE(list_pop_back(dentries), dentry_t, entry));
     }
 }

@@ -124,7 +124,7 @@ void dwm_init(void)
 
     if (IS_ERR(readfiles(&id, "/net/local/seqpacket")))
     {
-        printf("dwm: failed to read seqpacket id\n");
+        printf("dwm: failed to ioread seqpacket id\n");
         abort();
     }
 
@@ -461,7 +461,7 @@ static void dwm_kbd_read(void)
     uint64_t result = scan(kbd, "%u%c", &code, &suffix);
     if (result != 2)
     {
-        printf("dwm: failed to read keyboard event\n");
+        printf("dwm: failed to ioread keyboard event\n");
         return;
     }
 
@@ -630,7 +630,7 @@ static void dwm_mouse_read(void)
 
     int64_t x = 0;
     int64_t y = 0;
-    while (poll1(mouse, POLLIN, 0) & POLLIN)
+    while (iopoll(mouse, POLLIN, 0) & POLLIN)
     {
         int64_t value;
         char suffix;
@@ -725,10 +725,10 @@ static void dwm_poll(void)
     }
 
     uint64_t count;
-    status_t status = poll((pollfd_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(pollfd_t) + clientAmount, timeout, &count);
+    status_t status = iopoll_many((pollfd_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(pollfd_t) + clientAmount, timeout, &count);
     if (IS_ERR(status))
     {
-        printf("dwm: poll failed\n");
+        printf("dwm: iopoll_many failed\n");
         abort();
     }
 

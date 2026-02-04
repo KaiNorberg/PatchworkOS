@@ -19,7 +19,7 @@ static uint64_t terminal_columns_get(void)
     char buffer[MAX_NAME] = {0};
     for (uint32_t i = 0; i < sizeof(buffer) - 1; i++)
     {
-        read(STDIN_FILENO, &buffer[i], 1, NULL);
+        ioread(STDIN_FILENO, &buffer[i], 1, NULL);
         if (buffer[i] == 'R')
         {
             break;
@@ -87,7 +87,7 @@ static uint64_t print_dir(const char* path)
         {
             free(entries);
             close(fd);
-            fprintf(stderr, "ls: can't read directory %s (%s)\n", path, strerror(errno));
+            fprintf(stderr, "ls: can't ioread directory %s (%s)\n", path, strerror(errno));
             return PFAIL;
         }
         if (bytesRead == 0)

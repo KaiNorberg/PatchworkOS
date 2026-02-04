@@ -1,6 +1,7 @@
 #include <kernel/fs/file_table.h>
 #include <kernel/io/ioring.h>
 #include <kernel/io/irp.h>
+#include <kernel/mem/paging_types.h>
 #include <kernel/proc/process.h>
 
 #include <sys/ioring.h>
@@ -12,13 +13,14 @@ static status_t nop_cancel(irp_t* irp)
     return OK;
 }
 
-static void io_op_nop(irp_t* irp)
+static status_t io_op_nop(irp_t* irp)
 {
     irp_set_cancel(irp, nop_cancel);
-    irp_timeout_add(irp, irp->sqe.timeout);
+    irp_timeout_add(irp);
+    return OK;
 }
 
-static void io_op_cancel(irp_t* irp)
+static status_t io_op_cancel(irp_t* irp)
 {
     ioring_ctx_t* ctx = irp_get_ctx(irp);
     size_t count = 0;
@@ -46,33 +48,24 @@ static void io_op_cancel(irp_t* irp)
         }
     }
 
-    irp->res._raw = count;
-    irp_complete(irp, OK);
+    irp->result = count;
+    return OK;
 }
 
-static void io_op_read(irp_t* irp)
+static status_t io_op_read(irp_t* irp)
 {
     process_t* process = irp_get_process(irp);
 
     file_t* file = file_table_get(&process->files, irp->sqe.fd);
     if (file == NULL)
     {
-        irp_complete(irp, EBADF);
-        return;
+        return ERR(IO, BADFD);
     }
 
     if (!(file->mode & MODE_READ))
     {
         UNREF(file);
-        irp_complete(irp, EBADF);
-        return;
-    }
-
-    if (file->vnode->type == VNODE_DIR)
-    {
-        UNREF(file);
-        irp_complete(irp, EISDIR);
-        return;
+        return ERR(IO, ACCESS);
     }
 
     mdl_t* mdl;
@@ -80,37 +73,28 @@ static void io_op_read(irp_t* irp)
     if (IS_ERR(status))
     {
         UNREF(file);
-        irp_complete(irp, status);
-        return;
+        return status;
     }
 
-    irp_prep_read(irp, file, mdl, irp->sqe.count, irp->sqe.offset == IOOFF_CUR ? file->pos : (size_t)irp->sqe.offset);
-    irp_call(irp, file->vnode);
+    irp_prep_read(irp, mdl, irp->sqe.count,
+        irp->sqe.offset);
+    return file_call(file, irp);
 }
 
-static void io_op_write(irp_t* irp)
+static status_t io_op_write(irp_t* irp)
 {
     process_t* process = irp_get_process(irp);
 
     file_t* file = file_table_get(&process->files, irp->sqe.fd);
     if (file == NULL)
     {
-        irp_complete(irp, EBADF);
-        return;
+        return ERR(IO, BADFD);
     }
 
     if (!(file->mode & MODE_WRITE))
     {
         UNREF(file);
-        irp_complete(irp, EBADF);
-        return;
-    }
-
-    if (file->vnode->type == VNODE_DIR)
-    {
-        UNREF(file);
-        irp_complete(irp, EISDIR);
-        return;
+        return ERR(IO, ACCESS);
     }
 
     mdl_t* mdl;
@@ -118,30 +102,78 @@ static void io_op_write(irp_t* irp)
     if (IS_ERR(status))
     {
         UNREF(file);
-        irp_complete(irp, status);
-        return;
+        return status;
     }
 
-    irp_prep_write(irp, file, mdl, irp->sqe.count, irp->sqe.offset == IOOFF_CUR ? file->pos : (size_t)irp->sqe.offset);
-    irp_call(irp, file->vnode);
+    irp_prep_write(irp, mdl, irp->sqe.count, irp->sqe.offset);
+    return file_call(file, irp);
 }
 
-static void io_op_poll(irp_t* irp)
+static status_t io_op_poll(irp_t* irp)
 {
     process_t* process = irp_get_process(irp);
 
     file_t* file = file_table_get(&process->files, irp->sqe.fd);
     if (file == NULL)
     {
-        irp_complete(irp, ERR(IO, INVAL));
-        return;
+        return ERR(IO, BADFD);
     }
 
-    irp_prep_poll(irp, file, irp->sqe.events);
-    irp_call(irp, file->vnode);
+    irp_prep_poll(irp, irp->sqe.events);
+    return file_call(file, irp);
 }
 
-typedef void (*io_op_func_t)(irp_t*);
+static status_t io_op_seek(irp_t* irp)
+{
+    process_t* process = irp_get_process(irp);
+
+    file_t* file = file_table_get(&process->files, irp->sqe.fd);
+    if (file == NULL)
+    {
+        return ERR(IO, BADFD);
+    }
+
+    irp_prep_seek(irp, irp->sqe.offset, irp->sqe.origin);
+    return file_call(file, irp);
+}
+
+static status_t io_op_mmap(irp_t* irp)
+{
+    process_t* process = irp_get_process(irp);
+
+    file_t* file = file_table_get(&process->files, irp->sqe.fd);
+    if (file == NULL)
+    {
+        return ERR(IO, BADFD);
+    }
+
+    pml_flags_t pml = 0;
+    if (irp->sqe.flags & IOMMAP_READ)
+    {
+        pml |= PML_PRESENT | PML_USER;
+    }
+    if (irp->sqe.flags & IOMMAP_WRITE)
+    {
+        pml |= PML_WRITE;
+    }
+    if (!(irp->sqe.flags & IOMMAP_EXEC))
+    {
+        pml |= PML_NO_EXECUTE;
+    }
+
+    irp_prep_mmap(irp, irp->sqe.address, irp->sqe.count, irp->sqe.offset, pml);
+    return file_call(file, irp);
+}
+
+static status_t io_op_control(irp_t* irp)
+{
+    UNUSED(irp);
+
+    /// @todo Implement `IOOP_CONTROL`.
+    return ERR(IO, INVAL);
+}
+
+typedef status_t (*io_op_func_t)(irp_t*);
 
 static const io_op_func_t ops[IOOP_MAX] = {
     [IOOP_NOP] = io_op_nop,
@@ -149,9 +181,12 @@ static const io_op_func_t ops[IOOP_MAX] = {
     [IOOP_READ] = io_op_read,
     [IOOP_WRITE] = io_op_write,
     [IOOP_POLL] = io_op_poll,
+    [IOOP_SEEK] = io_op_seek,
+    [IOOP_MMAP] = io_op_mmap,
+    [IOOP_CONTROL] = io_op_control,
 };
 
-void io_op_dispatch(irp_t* irp)
+status_t io_op_dispatch(irp_t* irp)
 {
     ioring_ctx_t* ctx = irp_get_ctx(irp);
     ioring_t* ring = &ctx->ring;
@@ -188,9 +223,8 @@ void io_op_dispatch(irp_t* irp)
 
     if (irp->sqe.op >= ARRAY_SIZE(ops) || ops[irp->sqe.op] == NULL)
     {
-        irp_complete(irp, ERR(IO, INVAL));
-        return;
+        return ERR(IO, INVAL);
     }
 
-    ops[irp->sqe.op](irp);
+    return ops[irp->sqe.op](irp);
 }

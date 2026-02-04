@@ -1,7 +1,6 @@
 #include <kernel/cpu/cpu.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/io/irp.h>
-#include <kernel/io/irp_cleanup.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/mdl.h>
@@ -62,6 +61,7 @@ status_t irp_pool_new(irp_pool_t** out, size_t size, process_t* process, void* c
 
 void irp_pool_free(irp_pool_t* pool)
 {
+    assert(atomic_load(&pool->active) == 0);
     free(pool);
 }
 
@@ -78,6 +78,72 @@ void irp_pool_cancel_all(irp_pool_t* pool)
     }
 }
 
+static void irp_perform_completion(irp_t* irp)
+{
+    while (irp->loc < IRP_FRAME_MAX)
+    {
+        irp_frame_t* frame = irp_current(irp);
+        irp->loc++;
+
+        status_t status = OK;
+        if (frame->complete != NULL)
+        {
+            status = frame->complete(irp, frame->ctx);
+        }
+
+        if (IS_OK(status) && IS_CODE(status, PENDING))
+        {
+            return;
+        }
+
+        if (frame->vnode != NULL)
+        {
+            UNREF(frame->vnode);
+            frame->vnode = NULL;
+        }
+
+        if (frame->file != NULL)
+        {
+            UNREF(frame->file);
+            frame->file = NULL;
+        }
+    }
+
+    irp_timeout_remove(irp);
+
+    assert(irp->loc == IRP_FRAME_MAX);
+    assert(irp->next == POOL_IDX_MAX);
+    assert(irp->cpu == CPU_ID_INVALID);
+
+    mdl_t* next = irp->mdl.next;
+    mdl_deinit(&irp->mdl);
+    mdl_free_chain(next, free);
+
+    assert(atomic_load(&irp->cancel) == NULL || atomic_load(&irp->cancel) == IRP_CANCELLED);
+    atomic_store(&irp->cancel, NULL);
+
+    irp_pool_t* pool = irp_get_pool(irp);
+    pool_free(&pool->pool, irp->index);
+
+    if (atomic_fetch_sub(&pool->active, 1) == 1)
+    {
+        UNREF(pool->process);
+    }
+}
+
+static irp_cancel_t irp_claim_cancellable(irp_t* irp)
+{
+    irp_cancel_t handler = atomic_load(&irp->cancel);
+    while (handler != IRP_CANCELLED && handler != NULL)
+    {
+        if (atomic_compare_exchange_weak(&irp->cancel, &handler, IRP_CANCELLED))
+        {
+            return handler;
+        }
+    }
+    return handler;
+}
+
 void irp_timeout_add(irp_t* irp)
 {
     if (irp->timeout == CLOCKS_NEVER)
@@ -85,9 +151,12 @@ void irp_timeout_add(irp_t* irp)
         return;
     }
 
+    CLI_SCOPE();
+
     irp_ctx_t* ctx = SELF_PTR(pcpu_irps);
     LOCK_SCOPE(&ctx->lock);
 
+    assert(irp->cpu == CPU_ID_INVALID);
     irp->cpu = SELF->id;
 
     clock_t now = clock_uptime();
@@ -127,75 +196,6 @@ void irp_timeout_remove(irp_t* irp)
 
     list_remove(&irp->timeoutEntry);
     irp->cpu = CPU_ID_INVALID;
-}
-
-static void irp_perform_completion(irp_t* irp)
-{
-    while (irp->frame < IRP_FRAME_MAX)
-    {
-        irp_frame_t* frame = irp_current(irp);
-        irp->frame++;
-
-        if (irp->frame == IRP_FRAME_MAX)
-        {
-            irp_timeout_remove(irp);
-        }
-
-        if (frame->vnode != NULL)
-        {
-            UNREF(frame->vnode);
-            frame->vnode = NULL;
-        }
-
-        if (frame->flags & IRP_FLAG_UPDATE_POS)
-        {
-            assert(frame->major == IRP_MJ_READ || frame->major == IRP_MJ_WRITE);
-            file_t* file = frame->read.file;
-            if (file != NULL)
-            {
-                atomic_fetch_add(&file->pos, irp->result);
-            }
-        }
-
-        irp_cleanup_args(frame);
-
-        if (frame->complete != NULL)
-        {
-            frame->complete(irp, frame->ctx);
-            return;
-        }
-    }
-
-    assert(irp->frame == IRP_FRAME_MAX);
-    assert(irp->next == POOL_IDX_MAX);
-    assert(irp->cpu == CPU_ID_INVALID);
-
-    mdl_t* next = irp->mdl.next;
-    mdl_deinit(&irp->mdl);
-    mdl_free_chain(next, free);
-
-    atomic_store(&irp->cancel, NULL);
-
-    irp_pool_t* pool = irp_get_pool(irp);
-    pool_free(&pool->pool, irp->index);
-
-    if (atomic_fetch_sub(&pool->active, 1) == 1)
-    {
-        UNREF(pool->process);
-    }
-}
-
-static irp_cancel_t irp_claim_cancellable(irp_t* irp)
-{
-    irp_cancel_t handler = atomic_load(&irp->cancel);
-    while (handler != IRP_CANCELLED && handler != NULL)
-    {
-        if (atomic_compare_exchange_weak(&irp->cancel, &handler, IRP_CANCELLED))
-        {
-            return handler;
-        }
-    }
-    return handler;
 }
 
 void irp_timeouts_check(void)
@@ -267,7 +267,8 @@ status_t irp_get(irp_pool_t* pool, irp_t** out)
     irp->next = POOL_IDX_MAX;
     irp->cpu = CPU_ID_INVALID;
     irp->status = OK;
-    irp->frame = IRP_FRAME_MAX;
+    irp->loc = IRP_FRAME_MAX;
+    memset(irp->stack, 0, sizeof(irp->stack));
 
     *out = irp;
     return OK;
@@ -311,21 +312,35 @@ status_t irp_get_mdl(irp_t* irp, mdl_t** out, const void* addr, size_t size)
     return OK;
 }
 
-void irp_call_direct(irp_t* irp, irp_func_t func)
+status_t irp_call(irp_t* irp, irp_handler_t func)
 {
-    assert(irp->frame > 0);
-    irp->frame--;
+    assert(func != NULL);
+    atomic_store_explicit(&irp->cancel, NULL, memory_order_relaxed);
 
-    irp_frame_t* frame = irp_current(irp);
+    assert(irp->loc > 0);
+    irp->loc--;
 
-    if (frame->vnode != NULL)
+    status_t status = func(irp);
+    if (IS_OK(status) && IS_CODE(status, PENDING))
     {
-        UNREF(frame->vnode);
-        frame->vnode = NULL;
+        return status;
     }
 
-    atomic_store_explicit(&irp->cancel, NULL, memory_order_relaxed);
-    func(irp);
+    irp_complete(irp, status);
+    return status;
+}
+
+void irp_complete(irp_t* irp, status_t status)
+{
+    if (irp_set_cancel(irp, NULL) == IRP_CANCELLED)
+    {
+        return;
+    }
+    if (status != OK)
+    {
+        irp->status = status;
+    }
+    irp_perform_completion(irp);
 }
 
 status_t irp_cancel(irp_t* irp)
@@ -347,54 +362,4 @@ status_t irp_cancel(irp_t* irp)
     status_t status = handler(irp);
     irp_perform_completion(irp);
     return status;
-}
-
-void irp_complete(irp_t* irp, status_t status)
-{
-    if (irp_set_cancel(irp, NULL) == IRP_CANCELLED)
-    {
-        return;
-    }
-    if (status != OK)
-    {
-        irp->status = status;
-    }
-    irp_perform_completion(irp);
-}
-
-void irp_prep_read(irp_t* irp, file_t* file, mdl_t* buffer, size_t count, size_t offset)
-{
-    irp_frame_t* next = irp_next(irp);
-    assert(next != NULL);
-
-    next->major = IRP_MJ_READ;
-    next->minor = IRP_MN_NORMAL;
-    next->flags = offset == IOOFF_CUR ? IRP_FLAG_UPDATE_POS : IRP_FLAG_NONE;
-    next->read.file = file;
-    next->read.buffer = buffer;
-    next->read.count = count;
-    next->read.offset = offset == IOOFF_CUR ? atomic_load(&file->pos) : offset;
-}
-
-/**
- * @brief Prepares the next IRP stack frame for a write operation.
- *
- * @param irp The IRP.
- * @param file The file to write to, will not take a new reference.
- * @param buffer The memory descriptor list to write from.
- * @param count The number of bytes to write.
- * @param offset The offset in the file to write to.
- */
-void irp_prep_write(irp_t* irp, file_t* file, mdl_t* buffer, size_t count, size_t offset)
-{
-    irp_frame_t* next = irp_next(irp);
-    assert(next != NULL);
-
-    next->major = IRP_MJ_WRITE;
-    next->minor = IRP_MN_NORMAL;
-    next->flags = offset == IOOFF_CUR ? IRP_FLAG_UPDATE_POS : IRP_FLAG_NONE;
-    next->write.file = file;
-    next->write.buffer = buffer;
-    next->write.count = count;
-    next->write.offset = offset == IOOFF_CUR ? atomic_load(&file->pos) : offset;
 }

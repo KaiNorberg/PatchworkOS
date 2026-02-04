@@ -18,7 +18,6 @@ extern "C"
 #include "_libstd/MAX_NAME.h"
 #include "_libstd/MAX_PATH.h"
 #include "_libstd/NULL.h"
-#include "_libstd/SEEK.h"
 #include "_libstd/clock_t.h"
 #include "_libstd/config.h"
 #include "_libstd/fd_t.h"
@@ -36,24 +35,6 @@ extern "C"
 #define STDIN_FILENO 0  ///< Standard input file descriptor.
 #define STDOUT_FILENO 1 ///< Standard output file descriptor.
 #define STDERR_FILENO 2 ///< Standard error file descriptor.
-
-/**
- * @brief Pipe read end.
- *
- * The `PIPE_READ` constant defines which file descriptor in `fd` from a `open2` call on the `/dev/pipe` file will
- * be the read end of the pipe.
- *
- */
-#define PIPE_READ 0
-
-/**
- * @brief Pipe write end.
- *
- * The `PIPE_WRITE` constant defines which file descriptor in `fd` from a `open2` call on the `/dev/pipe` file will
- * be the write end of the pipe.
- *
- */
-#define PIPE_WRITE 1
 
 /**
  * @brief Maximum buffer size for the `F()` macro.
@@ -91,26 +72,6 @@ static inline status_t open(fd_t* out, const char* path)
 }
 
 /**
- * @brief System call for opening 2 file descriptors from one file.
-
- * This is intended as a more generic
- implementation
- * of system calls like pipe() in POSIX systems. One example use case of this system call is pipes, if
- * `open2` is called on `/dev/pipe` then `fd[0]` will store the read end of the pipe and `fd[1]` will store the
- write
- * end of the pipe. But if `open()` is called on `/dev/pipe` then the returned file descriptor would be both
- * ends.
- *
- * @param path The path to the desired file.
- * @param fd An array of two `fd_t` where the new file descriptors will be stored.
- * @return An appropriate status value.
- */
-static inline status_t open2(const char* path, fd_t fd[2])
-{
-    return syscall2(SYS_OPEN2, NULL, (uintptr_t)path, (uintptr_t)fd);
-}
-
-/**
  * @brief System call for opening files relative to another file descriptor.
  *
  * @param out Output pointer for the opened file descriptor.
@@ -133,20 +94,6 @@ static inline status_t openat(fd_t* out, fd_t from, const char* path)
 static inline status_t close(fd_t fd)
 {
     return syscall1(SYS_CLOSE, NULL, fd);
-}
-
-/**
- * @brief System call for reading from files.
- *
- * @param fd The file descriptor to read from.
- * @param buffer A pointer to the buffer where the data will be stored.
- * @param count The maximum number of bytes to read.
- * @param bytesRead Output pointer for the number of bytes read, can be `NULL`.
- * @return An appropriate status value.
- */
-static inline status_t read(fd_t fd, void* buffer, size_t count, size_t* bytesRead)
-{
-    return syscall3(SYS_READ, bytesRead, fd, (uintptr_t)buffer, count);
 }
 
 /**
@@ -188,20 +135,6 @@ status_t readfile(const char* path, void* buffer, size_t count, size_t offset, s
  * @return An appropriate status value.
  */
 status_t readfiles(char** out, const char* path);
-
-/**
- * @brief System call for writing to files.
- *
- * @param fd The file descriptor to write to.
- * @param buffer A pointer to the buffer containing the data to write.
- * @param count The number of bytes to write.
- * @param bytesWritten Output pointer for the number of bytes written.
- * @return An appropriate status value.
- */
-static inline status_t write(fd_t fd, const void* buffer, size_t count, size_t* bytesWritten)
-{
-    return syscall3(SYS_WRITE, bytesWritten, fd, (uintptr_t)buffer, count);
-}
 
 /**
  * @brief Wrapper for writing a null-terminated string to a file.
@@ -282,91 +215,12 @@ uint64_t scanfile(const char* path, const char* format, ...);
 uint64_t vscanfile(const char* path, const char* format, va_list args);
 
 /**
- * @brief Type for the `seek()` origin argument.
- *
- */
-typedef uint8_t seek_origin_t;
-
-/**
- * @brief System call for changing the file offset.
- *
- * @param fd The file descriptor.
- * @param offset The offset to move the file pointer.
- * @param origin The origin that the offset is relative to (e.g., `SEEK_SET`, `SEEK_CUR`, `SEEK_END`).
- * @param newPos Output pointer for the new file position.
- * @return An appropriate status value.
- */
-static inline status_t seek(fd_t fd, ssize_t offset, seek_origin_t origin, size_t* newPos)
-{
-    return syscall3(SYS_SEEK, newPos, fd, offset, origin);
-}
-
-/**
  * @brief System call for changing the cwd.
  *
  * @param path The path to the new directory.
  * @return On success, `0`. On failure, `-1`.
  */
 int chdir(const char* path);
-
-/**
- * @brief Poll events type.
- *
- */
-typedef enum
-{
-    POLLNONE = 0,        ///< None
-    POLLIN = (1 << 0),   ///< File descriptor is ready to read.
-    POLLOUT = (1 << 1),  ///< File descriptor is ready to write.
-    POLLERR = (1 << 2),  ///< File descriptor caused an error.
-    POLLHUP = (1 << 3),  ///< Stream socket peer closed connection, or shut down writing of connection.
-    POLLNVAL = (1 << 4), ///< Invalid file descriptor.
-} poll_events_t;
-
-/**
- * @brief Poll event values that will always be checked and included even if not specified.
- */
-#define POLL_SPECIAL (POLLERR | POLLHUP | POLLNVAL)
-
-/**
- * @brief Poll file descriptor structure.
- *
- */
-typedef struct pollfd
-{
-    fd_t fd;               ///< The file descriptor to poll.
-    poll_events_t events;  ///< The events to wait for.
-    poll_events_t revents; ///< The events that occurred.
-} pollfd_t;
-
-/**
- * @brief System call for polling files.
- *
- * @param fds An array of `pollfd_t` structures, each specifying a file descriptor to poll in pollfd_t::fd and the
- * events to wait for in pollfd_t::events.
- * @param amount The number of `pollfd_t` structures in the `fds` array.
- * @param timeout The maximum time (in clock ticks) to wait for an event. If `CLOCKS_NEVER`, it waits forever.
- * @param count Output pointer for the number of file descriptors for which the events occurred, can be `NULL`.
- * @return An appropriate status value.
- */
-static inline status_t poll(pollfd_t* fds, uint64_t amount, clock_t timeout, uint64_t* count)
-{
-    return syscall3(SYS_POLL, count, (uintptr_t)fds, amount, timeout);
-}
-
-/**
- * @brief Wrapper for polling one file.
- *
- * The `poll1()` function waits for events on a single file descriptor. Otherwise it is identical to `poll()` and exists
- * simply for convenience.
- *
- * @param fd The file descriptor to poll.
- * @param events The events to wait for (e.g., `POLLIN`, `POLLOUT`).
- * @param timeout The maximum time (in clock ticks) to wait for an event. If `CLOCKS_NEVER`, it waits forever.
- * @return On success, the events that occurred. On timeout, 0. On failure, the `POLLERR` event bit is
- * set.
- */
-poll_events_t poll1(fd_t fd, poll_events_t events, clock_t timeout);
 
 /**
  * @brief Vnode type enum.
@@ -393,7 +247,7 @@ typedef uint64_t volume_id_t;
  */
 typedef struct
 {
-    volume_id_t sbid;          ///< The volume ID of the filesystem containing the entry.
+    volume_id_t sbid;     ///< The volume ID of the filesystem containing the entry.
     uint64_t number;      ///< The number of the entries vnode.
     vnode_type_t type;    ///< The type of the entries vnode.
     uint64_t size;        ///< The size of the file that is visible outside the filesystem.

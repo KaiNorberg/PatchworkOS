@@ -14,10 +14,10 @@ static int read_fd(fd_t fd, const char* name, bool hexOutput)
     {
         char buffer[BUFFER_SIZE];
         uint64_t count;
-        status_t status = read(fd, buffer, BUFFER_SIZE - 1, &count);
+        status_t status = ioread(fd, buffer, BUFFER_SIZE - 1, &count);
         if (IS_ERR(status))
         {
-            printf("cat: failed to read %s (%s)\n", name, strerror(errno));
+            printf("cat: failed to ioread %s (%s)\n", name, strerror(errno));
             close(fd);
             return EOF;
         }
@@ -35,7 +35,7 @@ static int read_fd(fd_t fd, const char* name, bool hexOutput)
             continue;
         }
 
-        write(STDOUT_FILENO, buffer, count, NULL);
+        iowrite(STDOUT_FILENO, buffer, count, NULL);
     }
 
     return 0;

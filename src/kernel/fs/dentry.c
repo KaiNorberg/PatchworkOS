@@ -92,12 +92,6 @@ static void dentry_free(dentry_t* dentry)
         dentry->parent = NULL;
     }
 
-    if (dentry->ops != NULL && dentry->ops->cleanup != NULL)
-    {
-        dentry->ops->cleanup(dentry);
-    }
-    dentry->data = NULL;
-
     if (dentry->vnode != NULL)
     {
         atomic_fetch_sub_explicit(&dentry->vnode->dentryCount, 1, memory_order_relaxed);
@@ -123,12 +117,10 @@ static void dentry_ctor(void* ptr)
     list_entry_init(&dentry->siblingEntry);
     list_init(&dentry->children);
     dentry->volume = NULL;
-    dentry->ops = NULL;
-    dentry->data = NULL;
     map_entry_init(&dentry->mapEntry);
     atomic_init(&dentry->mountCount, 0);
     dentry->rcu = (rcu_entry_t){0};
-    list_entry_init(&dentry->otherEntry);
+    list_entry_init(&dentry->entry);
 }
 
 static cache_t cache = CACHE_CREATE(cache, "dentry", sizeof(dentry_t), CACHE_LINE, dentry_ctor, NULL);
@@ -143,7 +135,6 @@ dentry_t* dentry_new(volume_t* volume, dentry_t* parent, const char* name)
 
     ref_init(&dentry->ref, dentry_free);
     dentry->volume = REF(volume);
-    dentry->ops = volume->dentryOps;
     if (name != NULL)
     {
         strncpy(dentry->name, name, MAX_NAME);
@@ -200,10 +191,11 @@ dentry_t* dentry_rcu_get(const dentry_t* parent, const char* name, size_t length
         }
     } while (seqlock_read_retry(&lock, seq));
 
-    if (dentry != NULL && dentry->ops != NULL && dentry->ops->revalidate != NULL)
+    if (DENTRY_IS_POSITIVE(dentry))
     {
-        if (!dentry->ops->revalidate(dentry))
+        if (!dentry->vnode->cls->revalidate(dentry))
         {
+            UNREF(dentry);
             return NULL;
         }
     }
@@ -251,22 +243,22 @@ status_t dentry_lookup(dentry_t** out, dentry_t* parent, const char* name, size_
     assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
 
     vnode_t* dir = parent->vnode;
-    if (dir->ops == NULL || dir->ops->lookup == NULL)
+    if (dir->cls->lookup == NULL)
     {
         *out = dentry; // Leave it as negative.
         return OK;
     }
 
-    status_t status = dir->ops->lookup(dir, dentry);
+    status_t status = dir->cls->lookup(dir, dentry);
     if (IS_ERR(status))
     {
         UNREF(dentry);
         return status;
     }
 
-    if (dentry->ops != NULL && dentry->ops->revalidate != NULL)
+    if (DENTRY_IS_POSITIVE(dentry))
     {
-        if (!dentry->ops->revalidate(dentry))
+        if (!dentry->vnode->cls->revalidate(dentry))
         {
             UNREF(dentry);
             return ERR(VFS, NOENT);
@@ -296,7 +288,7 @@ bool dentry_iterate_dots(dentry_t* dentry, dir_ctx_t* ctx)
 {
     if (ctx->index++ >= ctx->pos)
     {
-        if (!ctx->emit(ctx, ".", dentry->vnode->type))
+        if (!ctx->emit(ctx, ".", dentry->vnode->cls->type))
         {
             return false;
         }
@@ -304,7 +296,7 @@ bool dentry_iterate_dots(dentry_t* dentry, dir_ctx_t* ctx)
 
     if (ctx->index++ >= ctx->pos)
     {
-        if (!ctx->emit(ctx, "..", dentry->parent->vnode->type))
+        if (!ctx->emit(ctx, "..", dentry->parent->vnode->cls->type))
         {
             return false;
         }
@@ -326,7 +318,7 @@ status_t dentry_generic_iterate(dentry_t* dentry, dir_ctx_t* ctx)
         if (ctx->index++ >= ctx->pos)
         {
             assert(DENTRY_IS_POSITIVE(child));
-            if (!ctx->emit(ctx, child->name, child->vnode->type))
+            if (!ctx->emit(ctx, child->name, child->vnode->cls->type))
             {
                 return 0;
             }

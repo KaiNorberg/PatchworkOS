@@ -14,8 +14,6 @@ static void volume_free(volume_t* volume)
         return;
     }
 
-    assert(atomic_load(&volume->mountCount) == 0);
-
     rwlock_write_acquire(&volume->fs->lock);
     list_remove(&volume->entry);
     rwlock_write_release(&volume->fs->lock);
@@ -30,7 +28,7 @@ static void volume_free(volume_t* volume)
     free(volume);
 }
 
-volume_t* volume_new(filesystem_t* fs, const volume_ops_t* ops, const dentry_ops_t* dentryOps)
+volume_t* volume_new(filesystem_t* fs, const volume_ops_t* ops)
 {
     if (fs == NULL)
     {
@@ -49,7 +47,6 @@ volume_t* volume_new(filesystem_t* fs, const volume_ops_t* ops, const dentry_ops
     volume->data = NULL;
     volume->root = NULL;
     volume->ops = ops;
-    volume->dentryOps = dentryOps;
     volume->fs = fs;
 
     rwlock_write_acquire(&fs->lock);

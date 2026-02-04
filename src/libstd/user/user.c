@@ -5,6 +5,7 @@
 #include "common/std_streams.h"
 #include "common/threading.h"
 #include "user/common/file.h"
+#include "user/common/io.h"
 #include "user/common/note.h"
 
 #include <sys/fs.h>
@@ -43,6 +44,7 @@ void _user_init(void)
     _threading_init();
     _populate_std_descriptors();
     _exit_stack_init();
+    _io_init();
     _files_init();
     _std_streams_init();
     _note_init();

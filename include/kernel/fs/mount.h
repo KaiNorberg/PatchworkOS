@@ -50,13 +50,12 @@ typedef struct mount
 {
     ref_t ref;
     mount_id_t id;
-    dentry_t*
-        source; ///< The dentry to appear at the target, usually the root of the mounted filesystem.
-    dentry_t* target;         ///< The dentry which the source is mounted to, can be `NULL` for the root filesystem.
+    dentry_t* source; ///< The dentry to appear at the target, usually the root of the mounted filesystem.
+    dentry_t* target; ///< The dentry which the source is mounted to, can be `NULL` for the root filesystem.
     volume_t* volume; ///< The volume of the mounted filesystem.
-    mount_t* parent;          ///< The parent mount, can be `NULL` for the root filesystem.
-    mode_t mode;              ///< Specifies the maximum permissions for this mount and if it is a directory or a file.
-    rcu_entry_t rcu;          ///< RCU entry for deferred cleanup.
+    mount_t* parent;  ///< The parent mount, can be `NULL` for the root filesystem.
+    mode_t mode;      ///< Specifies the maximum permissions for this mount and if it is a directory or a file.
+    rcu_entry_t rcu;  ///< RCU entry for deferred cleanup.
 } mount_t;
 
 /**

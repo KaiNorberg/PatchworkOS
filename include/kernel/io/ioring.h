@@ -73,29 +73,10 @@
  * Arguments within a SQE are stored in five 64-bit values, `arg0` through `arg4`. For convenience, each argument value
  * is stored as a union with various types.
  *
- * To avoid nameing conflicts and to avoid having to define new arguments for each operation, we define a convention to
- * be used for the arguments.
- *
- * - `arg0`: The subject of the operation, for example, a `fd_t` for file operations.
- * - `arg1`: The source or payload of the operation, for example, a buffer or path.
- * - `arg2`: The magnitude of the operation, for example, a size or encoding.
- * - `arg3`: The location or a modifier to the operation, for example, an offset or flags.
- * - `arg4`: An auxiliary argument, for example, additional flags or options.
- *
- * It may not always be possible for a operation to follow these conventions, but they should be followed whenever
- * reasonable.
- *
  * ## Results
  *
- * The result of a SQE is stored in its corresponding CQE using a single 64-bit value. For convenience, the result is
- * stored as a union of various types. Note that this does not actually change the stored value, just how it is
- * interpreted.
- *
- * If a SQE fails, the error code will be stored separately from the result and the result it self may be undefined.
- * Some operations may allow partial failures in which case the result may still be valid even if an error code is
- * present.
- *
- * @todo Decide if partial failures are a good idea or not.
+ * The result of a SQE is stored in its corresponding CQE using a single 64-bit value along side a `status_t` status
+ * code.
  *
  * @{
  */

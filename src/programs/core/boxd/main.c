@@ -416,7 +416,7 @@ cleanup:
 
 int main(void)
 {
-    /// @todo Use nonblocking sockets to avoid hanging on accept or read, or just wait until we have filesystem servers
+    /// @todo Use nonblocking sockets to avoid hanging on accept or ioread, or just wait until we have filesystem servers
     /// and do that instead.
 
     char* id;
@@ -446,10 +446,10 @@ int main(void)
         }
 
         box_spawn_t ctx = {0};
-        status = read(client, ctx.input, sizeof(ctx.input) - 1, NULL);
+        status = ioread(client, ctx.input, sizeof(ctx.input) - 1, NULL);
         if (IS_ERR(status))
         {
-            printf("boxd: failed to read request %Y\n", status);
+            printf("boxd: failed to ioread request %Y\n", status);
             close(client);
             continue;
         }
@@ -459,7 +459,7 @@ int main(void)
         status = writes(client, ctx.result, NULL);
         if (IS_ERR(status))
         {
-            printf("boxd: failed to write response %Y\n", status);
+            printf("boxd: failed to iowrite response %Y\n", status);
         }
 
         close(client);

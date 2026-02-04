@@ -69,6 +69,9 @@ const char* _codeStrings[] = {
     [ST_CODE_NO_BOOT_INFO] = "bootloader did not provide needed info",
     [ST_CODE_ADDRINUSE] = "address already in use",
     [ST_CODE_INVAL_KEY] = "invalid key",
+    [ST_CODE_EXPECT_FILE] = "operation expected to be provided a file",
+    [ST_CODE_MJ_INVAL] = "invalid major number",
+    [ST_CODE_PENDING] = "operation is pending",
 };
 
 const char* codetostr(st_code_t code)

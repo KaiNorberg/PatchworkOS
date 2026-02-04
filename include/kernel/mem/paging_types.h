@@ -176,17 +176,17 @@ static_assert(sizeof(pml_entry_t) == 8, "pml_entry_t must be 8 bytes");
 typedef enum
 {
     PML_NONE = 0,
-    PML_PRESENT = (1ULL << 0),
-    PML_WRITE = (1ULL << 1),
-    PML_USER = (1ULL << 2),
-    PML_WRITE_THROUGH = (1ULL << 3),
-    PML_CACHE_DISABLED = (1ULL << 4),
-    PML_ACCESSED = (1ULL << 5),
-    PML_DIRTY = (1ULL << 6),
-    PML_SIZE = (1ULL << 7),
-    PML_GLOBAL = (1ULL << 8),
-    PML_OWNED = (1ULL << 9),
-    PML_NO_EXECUTE = (1ULL << 63),
+    PML_PRESENT = (1 << 0),
+    PML_WRITE = (1 << 1),
+    PML_USER = (1 << 2),
+    PML_WRITE_THROUGH = (1 << 3),
+    PML_CACHE_DISABLED = (1 << 4),
+    PML_ACCESSED = (1 << 5),
+    PML_DIRTY = (1 << 6),
+    PML_SIZE = (1 << 7),
+    PML_GLOBAL = (1 << 8),
+    PML_OWNED = (1 << 9),
+    PML_NO_EXECUTE = (1 << 10),
 } pml_flags_t;
 
 /**
@@ -195,6 +195,27 @@ typedef enum
 #define PML_FLAGS_MASK \
     (PML_PRESENT | PML_WRITE | PML_USER | PML_WRITE_THROUGH | PML_CACHE_DISABLED | PML_ACCESSED | PML_DIRTY | \
         PML_SIZE | PML_GLOBAL | PML_OWNED | PML_NO_EXECUTE)
+
+/**
+ * @brief Mask for all pml flags in their raw position in the page table entry.
+ */
+#define PML_RAW_FLAGS_MASK (0x3FFULL | (1ULL << 63))
+
+/**
+ * @brief Convert pml flags to their raw position in the page table entry.
+ *
+ * @param flags The flags to convert.
+ * @return The raw flags.
+ */
+static inline uint64_t pml_flags_to_raw(pml_flags_t flags)
+{
+    uint64_t raw = flags & 0x3FF;
+    if (flags & PML_NO_EXECUTE)
+    {
+        raw |= (1ULL << 63);
+    }
+    return raw;
+}
 
 /**
  * @brief Enums for the different page table levels.

@@ -57,21 +57,21 @@ typedef struct sysfs_desc
 } sysfs_desc_t;
 
 /**
- * @brief Create multiple dentrys in a sysfs directory.
+ * @brief Create multiple dentries in a sysfs directory.
  *
- * @param out Output list to store created dentries, can be `NULL`. The dentries use the `otherEntry` list entry.
+ * @param out Output list to store created dentries, can be `NULL`. The dentries use the `entry` list entry.
  * @param parent The parent directory, if `NULL` then the root is used.
  * @param descs Array of sysfs descriptors.
- * @param count The number of dentrys to create.
+ * @param count The number of dentries to create.
  * @return `true` on success, `false` on failure.
  */
 bool sysfs_dentrys_new(list_t* out, dentry_t* parent, const sysfs_desc_t* descs, size_t count);
 
 /**
- * @brief Free all dentrys in a list created by `sysfs_dentrys_new()`.
+ * @brief Free all dentries in a list created by `sysfs_dentrys_new()`.
  *
- * @param dentrys The list of dentrys to free.
+ * @param dentries The list of dentries to free.
  */
-void sysfs_dentrys_free(list_t* dentrys);
+void sysfs_dentrys_free(list_t* dentries);
 
 /** @} */

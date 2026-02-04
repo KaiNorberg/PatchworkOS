@@ -26,7 +26,7 @@
 static lock_t lock = LOCK_CREATE();
 
 static char klogBuffer[CONFIG_KLOG_SIZE];
-static uint64_t klogHead = 0;
+static size_t klogHead = 0;
 static dentry_t* klog = NULL;
 
 static char lineBuffer[LOG_MAX_BUFFER] = {0};
@@ -45,48 +45,42 @@ static const char* levelNames[] = {
 
 static void log_handle_char(log_level_t level, char chr);
 
-static void klog_read(irp_t* irp)
+static status_t klog_read(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
 
-    lock_acquire(&lock);
+    LOCK_SCOPE(&lock);
 
-    if (frame->read.offset >= klogHead)
+    if (*frame->read.offset >= klogHead)
     {
         irp->result = 0;
-        lock_release(&lock);
-        irp_complete(irp, OK);
-        return;
+        return OK;
     }
 
-    size_t available = klogHead - frame->read.offset;
+    size_t available = klogHead - *frame->read.offset;
     size_t toRead = MIN(frame->read.count, available);
 
-    status_t status = mdl_read_circular(frame->read.buffer, toRead, 0, &irp->result, klogBuffer, CONFIG_KLOG_SIZE,
-        frame->read.offset);
-    lock_release(&lock);
+    status_t status = mdl_copy_from_circular(frame->read.buffer, toRead, 0, &irp->result, klogBuffer, CONFIG_KLOG_SIZE,
+        *frame->read.offset);
 
     if (IS_ERR(status))
     {
-        irp_complete(irp, status);
-        return;
+        return status;
     }
 
-    if (frame->read.offset + irp->result < klogHead)
+    if (*frame->read.offset + irp->result < klogHead)
     {
-        irp_complete(irp, INFO(DRIVER, MORE));
+        return INFO(DRIVER, MORE);
     }
-    else
-    {
-        irp_complete(irp, OK);
-    }
+
+    return OK;
 }
 
-static void klog_write(irp_t* irp)
+static status_t klog_write(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
 
-    lock_acquire(&lock);
+    LOCK_SCOPE(&lock);
 
     size_t count = frame->write.count;
     size_t bytesWritten = 0;
@@ -101,10 +95,8 @@ static void klog_write(irp_t* irp)
         bytesWritten++;
     }
 
-    lock_release(&lock);
-
     irp->result = bytesWritten;
-    irp_complete(irp, OK);
+    return OK;
 }
 
 static vnode_class_t klogClass = {

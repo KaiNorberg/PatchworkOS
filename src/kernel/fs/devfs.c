@@ -6,9 +6,9 @@
 #include <kernel/fs/mount.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
-#include <kernel/fs/volume.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/fs/vnode.h>
+#include <kernel/fs/volume.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/sched/sched.h>
@@ -22,10 +22,6 @@
 #include <sys/list.h>
 
 static dentry_t* root = NULL;
-
-static dentry_ops_t dentryOps = {
-    .iterate = dentry_generic_iterate,
-};
 
 static status_t devfs_mount(filesystem_t* fs, dentry_t** out, const char* options, void* data)
 {
@@ -49,6 +45,7 @@ static filesystem_t devfs = {
 static vnode_class_t rootClass = {
     .name = "devfs root",
     .type = VNODE_DIR,
+    .iterate = dentry_generic_iterate,
 };
 
 void devfs_init(void)
@@ -59,7 +56,7 @@ void devfs_init(void)
         panic(NULL, "Failed to register devfs");
     }
 
-    volume_t* volume = volume_new(&devfs, NULL, &dentryOps);
+    volume_t* volume = volume_new(&devfs, NULL);
     if (volume == NULL)
     {
         panic(NULL, "Failed to create devfs volume");
@@ -137,40 +134,40 @@ bool devfs_dentrys_new(list_t* out, dentry_t* parent, const devfs_desc_t* descs,
         {
             while (!list_is_empty(&createdList))
             {
-                UNREF(CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, otherEntry));
+                UNREF(CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, entry));
             }
             return false;
         }
 
-        list_push_back(&createdList, &dentry->otherEntry);
+        list_push_back(&createdList, &dentry->entry);
     }
 
     if (out == NULL)
     {
         while (!list_is_empty(&createdList))
         {
-            UNREF(CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, otherEntry));
+            UNREF(CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, entry));
         }
         return true;
     }
 
     while (!list_is_empty(&createdList))
     {
-        dentry_t* file = CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, otherEntry);
-        list_push_back(out, &file->otherEntry);
+        dentry_t* file = CONTAINER_OF_SAFE(list_pop_front(&createdList), dentry_t, entry);
+        list_push_back(out, &file->entry);
     }
     return true;
 }
 
-void devfs_dentrys_free(list_t* dentrys)
+void devfs_dentrys_free(list_t* dentries)
 {
-    if (dentrys == NULL)
+    if (dentries == NULL)
     {
         return;
     }
 
-    while (!list_is_empty(dentrys))
+    while (!list_is_empty(dentries))
     {
-        UNREF(CONTAINER_OF_SAFE(list_pop_back(dentrys), dentry_t, otherEntry));
+        UNREF(CONTAINER_OF_SAFE(list_pop_back(dentries), dentry_t, entry));
     }
 }

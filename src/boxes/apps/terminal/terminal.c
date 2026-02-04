@@ -222,7 +222,7 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t*
 
     if (ansi.length > 0)
     {
-        write(term->stdin[PIPE_WRITE], ansi.buffer, ansi.length, NULL);
+        iowrite(term->stdin, ansi.buffer, ansi.length, NULL);
     }
 
     if (ansi.length == 1 && ansi.buffer[0] == '\003')
@@ -320,7 +320,7 @@ static void terminal_execute_ansi(terminal_t* term, element_t* elem, drawable_t*
         uint16_t cursorCol = term->cursor->col + 1;
         char response[MAX_NAME];
         int responseLen = snprintf(response, sizeof(response), "\033[%d;%dR", cursorRow, cursorCol);
-        write(term->stdin[PIPE_WRITE], response, responseLen, NULL);
+        iowrite(term->stdin, response, responseLen, NULL);
     }
     break;
     case 's': // Save Cursor Position
@@ -562,16 +562,15 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         term->cursorBlink = false;
         term->isCursorVisible = true;
 
-        if (IS_ERR(open2("/dev/pipe/new", term->stdin)))
+        if (IS_ERR(open(&term->stdin, "/dev/pipe/new")))
         {
             font_free(term->font);
             free(term);
             return PFAIL;
         }
-        if (IS_ERR(open2("/dev/pipe/new", term->stdout)))
+        if (IS_ERR(open(&term->stdout, "/dev/pipe/new")))
         {
-            close(term->stdin[0]);
-            close(term->stdin[1]);
+            close(term->stdin);
             font_free(term->font);
             free(term);
             return PFAIL;
@@ -597,24 +596,20 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         const char* argv[] = {"/base/bin/shell", NULL};
         if (IS_ERR(spawn(argv, SPAWN_SUSPEND | SPAWN_EMPTY_GROUP | SPAWN_COPY_NS, &term->shell)))
         {
-            close(term->stdin[0]);
-            close(term->stdin[1]);
-            close(term->stdout[0]);
-            close(term->stdout[1]);
+            close(term->stdin);
+            close(term->stdout);
             font_free(term->font);
             free(term);
             return PFAIL;
         }
 
         if (IS_ERR(writefiles(F("/proc/%d/ctl", term->shell),
-                F("dup %d 0 && dup %d 1 && dup %d 2 && close 3 -1 && start", term->stdin[0], term->stdout[1],
-                    term->stdout[1]))))
+                F("dup %d 0 && dup %d 1 && dup %d 2 && close 3 -1 && start", term->stdin, term->stdout,
+                    term->stdout))))
         {
             writefiles(F("/proc/%d/ctl", term->shell), "kill");
-            close(term->stdin[0]);
-            close(term->stdin[1]);
-            close(term->stdout[0]);
-            close(term->stdout[1]);
+            close(term->stdin);
+            close(term->stdout);
             font_free(term->font);
             free(term);
             return PFAIL;
@@ -632,10 +627,8 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
             break;
         }
 
-        close(term->stdin[0]);
-        close(term->stdin[1]);
-        close(term->stdout[0]);
-        close(term->stdout[1]);
+        close(term->stdin);
+        close(term->stdout);
 
         writefiles(F("/proc/%d/notegroup", term->shell), "terminate due to terminal close");
     }
@@ -757,7 +750,7 @@ void terminal_loop(window_t* win)
         }
 
         pollfd_t fds[1] = {{
-            .fd = terminal->stdout[PIPE_READ],
+            .fd = terminal->stdout,
             .events = POLLIN,
         }};
         if (display_poll(disp, fds, 1, timeout) == PFAIL)
@@ -790,7 +783,7 @@ void terminal_loop(window_t* win)
         {
             size_t readCount;
             status_t status =
-                read(terminal->stdout[PIPE_READ], &buffer[length], TERMINAL_MAX_DATA - length, &readCount);
+                ioread(terminal->stdout, &buffer[length], TERMINAL_MAX_DATA - length, &readCount);
             if (IS_ERR(status) || readCount == 0)
             {
                 break;

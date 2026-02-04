@@ -4,8 +4,8 @@
 #include <kernel/fs/file_table.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
-#include <kernel/fs/volume.h>
 #include <kernel/fs/vnode.h>
+#include <kernel/fs/volume.h>
 #include <kernel/io/irp.h>
 #include <kernel/mem/cache.h>
 #include <kernel/mem/mdl.h>
@@ -23,9 +23,9 @@ static void file_free(file_t* file)
         return;
     }
 
-    if (file->ops != NULL && file->ops->close != NULL)
+    if (file->vnode->cls->file_dtor != NULL)
     {
-        file->ops->close(file);
+        file->vnode->cls->file_dtor(file);
     }
 
     UNREF(file->vnode);
@@ -50,7 +50,52 @@ file_t* file_new(const path_t* path, mode_t mode)
     file->mode = mode;
     file->vnode = REF(path->dentry->vnode);
     file->path = PATH_CREATE(path->mount, path->dentry);
-    file->ops = path->dentry->vnode->fileOps;
     file->data = NULL;
     return file;
+}
+
+status_t file_call(file_t* file, irp_t* irp)
+{
+    irp_frame_t* frame = irp_next(irp);
+    if (UNLIKELY(frame->major >= IRP_MJ_MAX))
+    {
+        status_t status = ERR(IO, MJ_OVERFLOW);
+        irp_complete(irp, status);
+        return status;
+    }
+
+    if (file == NULL)
+    {
+        status_t status = ERR(IO, MJ_NOSYS);
+        irp_complete(irp, status);
+        return status;
+    }
+
+    irp_handler_t func = file->vnode->cls->handlers[frame->major];
+    if (func == NULL)
+    {
+        status_t status = ERR(IO, MJ_NOSYS);
+        irp_complete(irp, status);
+        return status;
+    }
+
+    frame->vnode = REF(file->vnode);
+    frame->file = REF(file);
+
+    if (frame->flags & IRP_FLAG_USE_FILE_POS)
+    {
+        switch (frame->major)
+        {
+        case IRP_MJ_READ:
+            frame->read.offset = &file->pos;
+            break;
+        case IRP_MJ_WRITE:
+            frame->write.offset = &file->pos;
+            break;
+        default:
+            break;
+        }
+    }
+
+    return irp_call(irp, func);
 }

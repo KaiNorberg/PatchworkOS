@@ -38,16 +38,15 @@ static status_t kbd_cancel(irp_t* irp)
     return OK;
 }
 
-static void kbd_name_read(irp_t* irp)
+static status_t kbd_name_read(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
     kbd_t* kbd = frame->vnode->data;
     assert(kbd != NULL);
 
     size_t length = strlen(kbd->name);
-    status_t status =
-        mdl_read(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, kbd->name, length);
-    irp_complete(irp, status);
+    return
+        mdl_copy_from_buffer(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, kbd->name, length);
 }
 
 static vnode_class_t nameClass = {
@@ -98,59 +97,53 @@ static void kbd_events_file_dtor(file_t* file)
     free(client);
 }
 
-static void kbd_events_read(irp_t* irp)
+static status_t kbd_events_read(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
     kbd_t* kbd = frame->vnode->data;
     assert(kbd != NULL);
 
-    kbd_client_t* client = frame->read.file->data;
+    if (frame->file == NULL)
+    {
+        return ERR(IO, EXPECT_FILE);
+    }
+
+    kbd_client_t* client = frame->file->data;
     assert(client != NULL);
 
-    lock_acquire(&kbd->lock);
+    LOCK_SCOPE(&kbd->lock);
 
     if (fifo_bytes_readable(&client->fifo) == 0)
     {
-        status_t status = irp_delay(irp, &kbd->pending, kbd_cancel);
-        lock_release(&kbd->lock);
-        if (IS_ERR(status))
-        {
-            irp_complete(irp, status);
-        }
-        return;
+        return irp_delay(irp, &kbd->pending, kbd_cancel);
     }
 
-    status_t status = fifo_read(&client->fifo, frame->read.buffer, frame->read.count, &irp->result);
-    lock_release(&kbd->lock);
-    irp_complete(irp, status);
+    return fifo_read(&client->fifo, frame->read.buffer, frame->read.count, &irp->result);
 }
 
-static void kbd_events_poll(irp_t* irp)
+static status_t kbd_events_poll(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
     kbd_t* kbd = frame->vnode->data;
     assert(kbd != NULL);
-    kbd_client_t* client = frame->poll.file->data;
+
+    if (frame->file == NULL)
+    {
+        return ERR(IO, EXPECT_FILE);
+    }
+
+    kbd_client_t* client = frame->file->data;
     assert(client != NULL);
 
-    lock_acquire(&kbd->lock);
+    LOCK_SCOPE(&kbd->lock);
 
     if (fifo_bytes_readable(&client->fifo) > 0)
     {
         irp->result = IOPOLL_READ;
-        lock_release(&kbd->lock);
-        irp_complete(irp, OK);
-        return;
+        return OK;
     }
 
-    status_t status = irp_delay(irp, &kbd->pending, kbd_cancel);
-    lock_release(&kbd->lock);
-
-    if (IS_ERR(status))
-    {
-        irp->result = 0;
-        irp_complete(irp, status);
-    }
+    return irp_delay(irp, &kbd->pending, kbd_cancel);
 }
 
 static vnode_class_t eventsClass = {
@@ -187,11 +180,13 @@ static vnode_class_t dirClass = {
     .name = "kbd dir",
     .type = VNODE_DIR,
     .cleanup = kbd_dir_cleanup,
+    .iterate = dentry_generic_iterate,
 };
 
 static vnode_class_t rootClass = {
     .name = "kbd root",
     .type = VNODE_DIR,
+    .iterate = dentry_generic_iterate,
 };
 
 status_t kbd_register(kbd_t* kbd)

@@ -147,23 +147,34 @@ status_t mdl_add(mdl_t* mdl, space_t* space, const void* addr, size_t size)
     return OK;
 }
 
-status_t mdl_read(mdl_t* mdl, size_t count, size_t offset, size_t* bytesRead, const void* source, size_t sourceLength)
+status_t mdl_copy_from_buffer(mdl_t* mdl, size_t count, size_t* offset, size_t* bytesCopied, const void* source,
+    size_t sourceLength)
 {
-    if (mdl == NULL || source == NULL)
+    if (source == NULL && sourceLength == 0)
     {
-        if (bytesRead != NULL)
+        if (bytesCopied != NULL)
         {
-            *bytesRead = 0;
+            *bytesCopied = 0;
+        }
+        return OK;
+    }
+
+    if (mdl == NULL || source == NULL || offset == NULL)
+    {
+        if (bytesCopied != NULL)
+        {
+            *bytesCopied = 0;
         }
         return ERR(MMU, INVAL);
     }
 
+    size_t currentOffset = *offset;
     size_t start = 0;
     size_t i = 0;
     for (; i < mdl->amount; i++)
     {
         mdl_seg_t* seg = &mdl->segments[i];
-        if (start + seg->size > offset)
+        if (start + seg->size > currentOffset)
         {
             break;
         }
@@ -173,7 +184,7 @@ status_t mdl_read(mdl_t* mdl, size_t count, size_t offset, size_t* bytesRead, co
     const uint8_t* ptr = source;
     size_t remaining = MIN(sourceLength, count);
 
-    size_t segOffset = offset - start;
+    size_t segOffset = currentOffset - start;
     while (remaining > 0 && i < mdl->amount)
     {
         mdl_seg_t* seg = &mdl->segments[i];
@@ -187,10 +198,11 @@ status_t mdl_read(mdl_t* mdl, size_t count, size_t offset, size_t* bytesRead, co
         i++;
     }
 
-    if (bytesRead != NULL)
+    if (bytesCopied != NULL)
     {
-        *bytesRead = count - remaining;
+        *bytesCopied = count - remaining;
     }
+    *offset += count - remaining;
 
     if (remaining > 0)
     {
@@ -200,23 +212,24 @@ status_t mdl_read(mdl_t* mdl, size_t count, size_t offset, size_t* bytesRead, co
     return OK;
 }
 
-status_t mdl_write(mdl_t* mdl, size_t count, size_t offset, size_t* bytesWritten, void* dest, size_t destLength)
+status_t mdl_copy_to_buffer(mdl_t* mdl, size_t count, size_t* offset, size_t* bytesCopied, void* dest, size_t destLength)
 {
-    if (mdl == NULL || dest == NULL)
+    if (mdl == NULL || dest == NULL || offset == NULL)
     {
-        if (bytesWritten != NULL)
+        if (bytesCopied != NULL)
         {
-            *bytesWritten = 0;
+            *bytesCopied = 0;
         }
         return ERR(MMU, INVAL);
     }
 
+    size_t currentOffset = *offset;
     size_t start = 0;
     size_t i = 0;
     for (; i < mdl->amount; i++)
     {
         mdl_seg_t* seg = &mdl->segments[i];
-        if (start + seg->size > offset)
+        if (start + seg->size > currentOffset)
         {
             break;
         }
@@ -226,7 +239,7 @@ status_t mdl_write(mdl_t* mdl, size_t count, size_t offset, size_t* bytesWritten
     uint8_t* ptr = dest;
     size_t remaining = MIN(destLength, count);
 
-    size_t segOffset = offset - start;
+    size_t segOffset = currentOffset - start;
     while (remaining > 0 && i < mdl->amount)
     {
         mdl_seg_t* seg = &mdl->segments[i];
@@ -240,25 +253,26 @@ status_t mdl_write(mdl_t* mdl, size_t count, size_t offset, size_t* bytesWritten
         i++;
     }
 
-    if (bytesWritten != NULL)
+    if (bytesCopied != NULL)
     {
-        *bytesWritten = count - remaining;
+        *bytesCopied = count - remaining;
     }
+    *offset += count - remaining;
 
     return OK;
 }
 
-status_t mdl_read_circular(mdl_t* mdl, size_t count, size_t offset, size_t* bytesRead, const void* src, size_t srcLen,
-    size_t srcIndex)
+status_t mdl_copy_from_circular(mdl_t* mdl, size_t count, size_t* offset, size_t* bytesCopied, const void* src,
+    size_t srcLen, size_t srcIndex)
 {
     size_t index = srcIndex % srcLen;
     size_t chunk1 = MIN(count, srcLen - index);
     size_t chunk2 = count - chunk1;
 
-    size_t bytesRead1 = 0;
-    size_t bytesRead2 = 0;
+    size_t bytesCopied1 = 0;
+    size_t bytesCopied2 = 0;
 
-    status_t status = mdl_read(mdl, chunk1, offset, &bytesRead1, (const uint8_t*)src + index, chunk1);
+    status_t status = mdl_copy_from_buffer(mdl, chunk1, offset, &bytesCopied1, (const uint8_t*)src + index, chunk1);
     if (IS_ERR(status))
     {
         return status;
@@ -266,12 +280,12 @@ status_t mdl_read_circular(mdl_t* mdl, size_t count, size_t offset, size_t* byte
 
     if (chunk2 > 0)
     {
-        status = mdl_read(mdl, chunk2, offset + bytesRead1, &bytesRead2, src, chunk2);
+        status = mdl_copy_from_buffer(mdl, chunk2, offset, &bytesCopied2, src, chunk2);
     }
 
-    if (bytesRead != NULL)
+    if (bytesCopied != NULL)
     {
-        *bytesRead = bytesRead1 + bytesRead2;
+        *bytesCopied = bytesCopied1 + bytesCopied2;
     }
 
     return status;

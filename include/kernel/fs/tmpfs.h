@@ -1,8 +1,8 @@
 #pragma once
 
 #include <kernel/fs/dentry.h>
-#include <kernel/fs/volume.h>
 #include <kernel/fs/vnode.h>
+#include <kernel/fs/volume.h>
 
 #include <boot/boot_info.h>
 
@@ -29,7 +29,7 @@
  */
 typedef struct
 {
-    list_t dentrys; // We store all dentries in here to keep them in memory.
+    list_t dentries; // We store all dentries in here to keep them in memory.
     lock_t lock;
 } tmpfs_volume_data_t;
 

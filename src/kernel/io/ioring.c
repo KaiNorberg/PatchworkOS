@@ -182,7 +182,7 @@ void ioring_ctx_deinit(ioring_ctx_t* ctx)
     wait_queue_deinit(&ctx->waitQueue);
 }
 
-static void ioring_ctx_complete(irp_t* irp, void* _ptr)
+static status_t ioring_ctx_complete(irp_t* irp, void* _ptr)
 {
     UNUSED(_ptr);
 
@@ -232,11 +232,11 @@ static void ioring_ctx_complete(irp_t* irp, void* _ptr)
         if (next != NULL)
         {
             irp_set_complete(next, ioring_ctx_complete, NULL);
-            irp_call_direct(next, io_op_dispatch);
+            irp_call(next, io_op_dispatch);
         }
     }
 
-    irp_complete(irp, OK);
+    return OK;
 }
 
 typedef struct

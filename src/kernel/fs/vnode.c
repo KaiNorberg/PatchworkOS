@@ -65,35 +65,28 @@ vnode_t* vnode_new(volume_t* volume, const vnode_class_t* cls)
     return vnode;
 }
 
-void vnode_call(vnode_t* vnode, irp_t* irp)
+status_t vnode_call(vnode_t* vnode, irp_t* irp)
 {
-    assert(irp->frame > 0);
-    irp->frame--;
-
-    irp_frame_t* frame = irp_current(irp);
+    irp_frame_t* frame = irp_next(irp);
     if (UNLIKELY(frame->major >= IRP_MJ_MAX))
     {
-        irp_complete(irp, ERR(IO, MJ_OVERFLOW));
-        return;
+        status_t status = ERR(IO, MJ_OVERFLOW);
+        irp_complete(irp, status);
+        return status;
     }
 
-    if (vnode == NULL || vnode->cls == NULL)
-    {
-        irp_complete(irp, ERR(IO, MJ_NOSYS));
-        return;
-    }
-
-    irp_func_t func = vnode->cls->handlers[frame->major];
+    irp_handler_t func = vnode->cls->handlers[frame->major];
     if (func == NULL)
     {
-        irp_complete(irp, ERR(IO, MJ_NOSYS));
-        return;
+        status_t status = ERR(IO, MJ_NOSYS);
+        irp_complete(irp, status);
+        return status;
     }
 
-    atomic_store_explicit(&irp->cancel, NULL, memory_order_relaxed);
     frame->vnode = REF(vnode);
+    frame->file = NULL;
 
-    func(irp);
+    return irp_call(irp, func);
 }
 
 void vnode_truncate(vnode_t* vnode)

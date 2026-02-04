@@ -20,7 +20,7 @@ typedef struct process process_t;
  * The Memory Descriptor List (MDL) is a structure used to describe non-contiguous physical memory, allowing it be
  * accessed as a single contiguous block regardless of the loaded address space.
  *
- * ## I/O Operations
+ * ## Direct I/O
  *
  * The MDL structure is primarily used to describe memory regions for I/O operations. For example, if a process
  * specifies a buffer to write to but that I/O operation is later completed while a different address space is loaded,
@@ -120,45 +120,46 @@ status_t mdl_from_region(mdl_t* mdl, mdl_t* prev, space_t* space, const void* ad
 status_t mdl_add(mdl_t* mdl, space_t* space, const void* addr, size_t size);
 
 /**
- * @brief Read from a buffer into a Memory Descriptor List.
+ * @brief Copy from a buffer into a Memory Descriptor List.
  *
- * @param mdl The MDL to read into.
- * @param count Number of bytes to read.
- * @param offset Offset within the MDL to start reading to.
- * @param bytesRead Output pointer for the amount of bytes read, can be `NULL`.
- * @param source The source buffer to read from.
+ * @param mdl The MDL to copy into.
+ * @param count Number of bytes to copy.
+ * @param offset Pointer to the offset within the MDL to start copying to, will be updated.
+ * @param bytesCopied Output pointer for the amount of bytes copied, can be `NULL`.
+ * @param source The source buffer to copy from, can be `NULL` if `sourceLength == 0`.
  * @param sourceLength The maximum length of the source buffer.
  * @return An appropriate status value.
  */
-status_t mdl_read(mdl_t* mdl, size_t count, size_t offset, size_t* bytesRead, const void* source, size_t sourceLength);
+status_t mdl_copy_from_buffer(mdl_t* mdl, size_t count, size_t* offset, size_t* bytesCopied, const void* source,
+    size_t sourceLength);
 
 /**
- * @brief Write to a buffer from a Memory Descriptor List.
+ * @brief Copy to a buffer from a Memory Descriptor List.
  *
- * @param mdl The MDL to write from.
- * @param count Number of bytes to write.
- * @param offset Offset within the MDL to start writing from.
- * @param bytesWritten Output pointer for the amount of bytes written, can be `NULL`.
- * @param dest The destination buffer to write to.
+ * @param mdl The MDL to copy from.
+ * @param count Number of bytes to copy.
+ * @param offset Pointer to the offset within the MDL to start copying to, will be updated.
+ * @param bytesCopied Output pointer for the amount of bytes copied, can be `NULL`.
+ * @param dest The destination buffer to copy to.
  * @param destLength The maximum length of the destination buffer.
  * @return An appropriate status value.
  */
-status_t mdl_write(mdl_t* mdl, size_t count, size_t offset, size_t* bytesWritten, void* dest, size_t destLength);
+status_t mdl_copy_to_buffer(mdl_t* mdl, size_t count, size_t* offset, size_t* bytesCopied, void* dest, size_t destLength);
 
 /**
- * @brief Read from a circular buffer into a Memory Descriptor List.
+ * @brief Copy from a circular buffer into a Memory Descriptor List.
  *
- * @param mdl The MDL to read into.
- * @param count Number of bytes to read.
- * @param offset Offset within the MDL to start reading to.
- * @param bytesRead Output pointer for the amount of bytes read, can be `NULL`.
+ * @param mdl The MDL to copy into.
+ * @param count Number of bytes to copy.
+ * @param offset Pointer to the offset within the MDL to start copying to, will be updated.
+ * @param bytesCopied Output pointer for the amount of bytes copied, can be `NULL`.
  * @param src The source circular buffer.
  * @param srcLen The size of the circular buffer.
- * @param srcIndex The monotonic index to start reading from in the circular buffer.
+ * @param srcIndex The monotonic index to start copying from in the circular buffer.
  * @return An appropriate status value.
  */
-status_t mdl_read_circular(mdl_t* mdl, size_t count, size_t offset, size_t* bytesRead, const void* src, size_t srcLen,
-    size_t srcIndex);
+status_t mdl_copy_from_circular(mdl_t* mdl, size_t count, size_t* offset, size_t* bytesCopied, const void* src,
+    size_t srcLen, size_t srcIndex);
 
 /**
  * @brief Memory Descriptor List Iterator structure.

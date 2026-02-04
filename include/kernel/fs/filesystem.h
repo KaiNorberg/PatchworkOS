@@ -5,8 +5,8 @@
 #include <kernel/fs/file.h>
 #include <kernel/fs/mount.h>
 #include <kernel/fs/path.h>
-#include <kernel/fs/volume.h>
 #include <kernel/fs/vnode.h>
+#include <kernel/fs/volume.h>
 #include <kernel/proc/process.h>
 #include <kernel/sync/rwlock.h>
 
@@ -31,13 +31,10 @@
  *
  * ```
  * id: %llu
- * block_size: %llu
- * max_file_size: %llu
  *
  * ```
  *
- * Where the `id` is the volume ID, `block_size` is the block size of the volume, and `max_file_size` is the
- * maximum size of a file on this volume.
+ * Where the `id` is the volume ID.
  *
  * @see kernel_fs_sysfs
  *
@@ -53,7 +50,7 @@ typedef struct filesystem
 {
     list_entry_t entry;   ///< Used internally.
     map_entry_t mapEntry; ///< Used internally.
-    list_t volumes;   ///< Used internally.
+    list_t volumes;       ///< Used internally.
     rwlock_t lock;        ///< Used internally.
     const char* name;
     /**

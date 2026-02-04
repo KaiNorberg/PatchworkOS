@@ -27,13 +27,13 @@ static void frontbuffer_init(void)
     char name[MAX_PATH] = {0};
     if (IS_ERR(readfile("/dev/fb/0/name", name, sizeof(name) - 1, 0, NULL)))
     {
-        printf("dwm: failed to read framebuffer name\n");
+        printf("dwm: failed to ioread framebuffer name\n");
         abort();
     }
 
     if (scanfile("/dev/fb/0/info", "%lu %lu %lu %s", &width, &height, &pitch, format) == PFAIL)
     {
-        printf("dwm: failed to read framebuffer info (%s)\n");
+        printf("dwm: failed to ioread framebuffer info (%s)\n");
         abort();
     }
 

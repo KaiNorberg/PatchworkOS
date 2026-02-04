@@ -13,9 +13,7 @@
 
 /**
  * @brief Dispatch an I/O request created by the I/O Ring system to the appropriate handler.
- *
- * @param irp The I/O request packet to dispatch.
  */
-void io_op_dispatch(irp_t* irp);
+status_t io_op_dispatch(irp_t* irp);
 
 /** @} */

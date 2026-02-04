@@ -47,7 +47,7 @@ static void ninep_super_cleanup(volume_t* volume)
     volume->data = NULL;
 }
 
-static volume_ops_t superOps = {
+static volume_ops_t volumeOps = {
     .cleanup = ninep_super_cleanup,
 };
 
@@ -100,7 +100,7 @@ static dentry_t* ninep_mount(filesystem_t* fs, const char* options, void* data)
         return NULL;
     }
 
-    volume_t* volume = volume_new(fs, &superOps, NULL);
+    volume_t* volume = volume_new(fs, &volumeOps, NULL);
     if (volume == NULL)
     {
         return NULL;

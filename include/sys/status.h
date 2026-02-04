@@ -154,6 +154,9 @@ typedef enum
     ST_CODE_TEST_FAIL,        ///< Test failure.
     ST_CODE_ADDRINUSE,        ///< Address already in use.
     ST_CODE_INVAL_KEY,        ///< Invalid key.
+    ST_CODE_EXPECT_FILE,      ///< Operation expected to be provided a file.
+    ST_CODE_MJ_INVAL,         ///< Invalid major number.
+    ST_CODE_PENDING,          ///< Operation is pending.
     ST_CODE_MAX,              ///< Maximum code value.
 } st_code_t;
 

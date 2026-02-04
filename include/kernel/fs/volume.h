@@ -11,7 +11,6 @@
 typedef struct filesystem filesystem_t;
 typedef struct volume volume_t;
 typedef struct volume_ops volume_ops_t;
-typedef struct dentry_ops dentry_ops_t;
 typedef struct vnode vnode_t;
 typedef struct dentry dentry_t;
 
@@ -21,7 +20,7 @@ typedef struct dentry dentry_t;
  * @ingroup kernel_fs
  *
  * A volume represents a single instance of a filesystem.
- * 
+ *
  * @{
  */
 
@@ -37,7 +36,6 @@ typedef struct volume
     void* data;
     dentry_t* root; ///< Root dentry of the filesystem, should not take a reference.
     const volume_ops_t* ops;
-    const dentry_ops_t* dentryOps;
     filesystem_t* fs;
 } volume_t;
 
@@ -66,9 +64,8 @@ typedef struct volume_ops
  *
  * @param fs The filesystem type of the volume.
  * @param ops The volume operations, can be NULL.
- * @param dentryOps The dentry operations for dentries in this volume, can be NULL.
  * @return On success, the new volume. On failure, returns `NULL`.
  */
-volume_t* volume_new(filesystem_t* fs, const volume_ops_t* ops, const dentry_ops_t* dentryOps);
+volume_t* volume_new(filesystem_t* fs, const volume_ops_t* ops);
 
 /** @} */

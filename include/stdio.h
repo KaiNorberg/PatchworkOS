@@ -10,10 +10,13 @@ extern "C"
 
 #include "_libstd/MAX_PATH.h"
 #include "_libstd/NULL.h"
-#include "_libstd/SEEK.h"
 #include "_libstd/config.h"
 #include "_libstd/fd_t.h"
 #include "_libstd/size_t.h"
+
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
 
 #define _IOFBF (1u << 0)
 #define _IOLBF (1u << 1)

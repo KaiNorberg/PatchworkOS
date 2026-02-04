@@ -8,6 +8,7 @@
 #include <sys/list.h>
 #include <sys/status.h>
 #include <sys/syscall.h>
+#include <sys/proc.h>
 
 #if defined(__cplusplus)
 extern "C"
@@ -21,8 +22,23 @@ extern "C"
 #include "_libstd/fd_t.h"
 #include "_libstd/ssize_t.h"
 
+#define _IO_B(x, n) (((uint64_t)(x)) << (8 * n))
+
+#define _IOCMD_1(a) (_IO_B(a, 0))
+#define _IOCMD_2(a, b) (_IO_B(a, 0) | _IO_B(b, 1))
+#define _IOCMD_3(a, b, c) (_IO_B(a, 0) | _IO_B(b, 1) | _IO_B(c, 2))
+#define _IOCMD_4(a, b, c, d) (_IO_B(a, 0) | _IO_B(b, 1) | _IO_B(c, 2) | _IO_B(d, 3))
+#define _IOCMD_5(a, b, c, d, e) (_IO_B(a, 0) | _IO_B(b, 1) | _IO_B(c, 2) | _IO_B(d, 3) | _IO_B(e, 4))
+#define _IOCMD_6(a, b, c, d, e, f) (_IO_B(a, 0) | _IO_B(b, 1) | _IO_B(c, 2) | _IO_B(d, 3) | _IO_B(e, 4) | _IO_B(f, 5))
+#define _IOCMD_7(a, b, c, d, e, f, g) \
+    (_IO_B(a, 0) | _IO_B(b, 1) | _IO_B(c, 2) | _IO_B(d, 3) | _IO_B(e, 4) | _IO_B(f, 5) | _IO_B(g, 6))
+#define _IOCMD_8(a, b, c, d, e, f, g, h) \
+    (_IO_B(a, 0) | _IO_B(b, 1) | _IO_B(c, 2) | _IO_B(d, 3) | _IO_B(e, 4) | _IO_B(f, 5) | _IO_B(g, 6) | _IO_B(h, 7))
+
+#define _IOCMD_ANY(_1, _2, _3, _4, _5, _6, _7, _8, NAME, ...) NAME
+
 /**
- * @brief Programmable submission/completion interface.
+ * @brief Scriptable submission/completion interface.
  * @defgroup libstd_sys_ioring I/O Ring ABI
  * @ingroup libstd
  *
@@ -35,7 +51,7 @@ extern "C"
  * @{
  */
 
-#define IOOFF_CUR (__SIZE_MAX__) ///< Use the current file offset.
+#define IOOFF_CUR (((ssize_t) - 1)) ///< Use the current file offset.
 
 typedef uint64_t iowhence_t; ///< Seek origin type.
 #define IOSEEK_SET (1)       ///< Use the start of the file.
@@ -54,67 +70,126 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
 /**
  * @brief No-op operation.
  *
- * Arguments:
- * - None.
- *
- * Result:
- * - `0`
+ * @param Unused
+ * @param Unused
+ * @param Unused
+ * @param Unused
+ * @param Unused
+ * @result Always `0`.
  */
 #define IOOP_NOP 0
 
 /**
  * @brief Cancel operation.
  *
- * Arguments:
- * - arg0: `uintptr_t target` - The user data of the operation(s) to cancel.
- * - arg1: `iocancel_t flags` - Cancellation flags.
- *
- * Result:
- * - `0`
+ * @param target The user data of the operation(s) to cancel.
+ * @param flags Cancellation flags.
+ * @param Unused
+ * @param Unused
+ * @param Unused
+ * @result The number of operations cancelled.
  */
 #define IOOP_CANCEL 1
 
 /**
  * @brief Read operation.
  *
- * Arguments:
- * - arg0: `fd_t fd` - The file descriptor to read from.
- * - arg1: `void* buffer` - The buffer to read into.
- * - arg2: `size_t count` - The number of bytes to read.
- * - arg3: `ssize_t offset` - The offset to read from, or `IOOFF_CUR`.
- *
- * Result:
- * - `size_t` - The number of bytes read.
+ * @param fd The file descriptor to read from.
+ * @param buffer The buffer to read into.
+ * @param count The number of bytes to read.
+ * @param offset The offset to read from, or `IOOFF_CUR`.
+ * @param Unused
+ * @result The number of bytes read.
  */
 #define IOOP_READ 2
 
 /**
  * @brief Write operation.
  *
- * Arguments:
- * - arg0: `fd_t fd` - The file descriptor to write to.
- * - arg1: `void* buffer` - The buffer to write from.
- * - arg2: `size_t count` - The number of bytes to write.
- * - arg3: `ssize_t offset` - The offset to write to, or `IOOFF_CUR`.
- *
- * Result:
- * - `size_t` - The number of bytes written.
+ * @param fd The file descriptor to write to.
+ * @param buffer The buffer to write from.
+ * @param count The number of bytes to write.
+ * @param offset The offset to write to, or `IOOFF_CUR`.
+ * @param Unused
+ * @result The number of bytes written.
  */
 #define IOOP_WRITE 3
 
 /**
  * @brief Poll operation.
  *
- * Arguments:
- * - arg0: `fd_t fd` - The file descriptor to poll.
- * - arg1: `ioevents_t events` - The events to wait for.
- *
- * Result:
- * - `ioevents_t` - The events that occurred.
+ * @param fd The file descriptor to poll.
+ * @param events The events to wait for.
+ * @param Unused
+ * @param Unused
+ * @param Unused
+ * @result The events that occurred stored as a `ioevents_t` value.
  */
 #define IOOP_POLL 4
 
-#define IOOP_MAX 5 ///< The maximum number of operation.
+/**
+ * @brief Seek operation.
+ * 
+ * @param fd The file descriptor to seek.
+ * @param Unused
+ * @param origin The origin of the seek operation (e.g., `IOSEEK_SET`, `IOSEEK_CUR`, `IOSEEK_END`).
+ * @param offset The offset to seek to.
+ * @param Unused
+ * @result The new file position.
+ */
+#define IOOP_SEEK 5
+
+/**
+ * @brief Memory map operation.
+ *
+ * @param fd The file descriptor to map.
+ * @param address The virtual address to map the file into, or `NULL` for any address.
+ * @param count The number of bytes to map.
+ * @param offset The offset within the file to start mapping from.
+ * @param mmap Memory mapping flags.
+ * @result The virtual address where the file was mapped.
+ */
+#define IOOP_MMAP 6
+
+/**
+ * @brief Control operation.
+ *
+ * @param fd The file descriptor to perform the command on.
+ * @param command The command to perform.
+ * @param args The arguments for the command.
+ * @param Unused
+ * @param Unused
+ * @result The result of the command.
+ */
+#define IOOP_CONTROL 7
+
+#define IOOP_MAX 8 ///< The maximum number of operation.
+
+/**
+ * @brief I/O command identifier type.
+ *
+ * An I/O command is identified by an 8-character zero-padded string packed into a 64-bit integer.
+ *
+ * This allows commands to be sent directly to files while also allowing control files to parse string input and convert
+ * it to their `iocmd_t` representation.
+ *
+ */
+typedef uint64_t iocmd_t;
+
+/**
+ * @brief Creates a command value from its text representation.
+ *
+ * The text will be padded with zeros.
+ *
+ * @param ... The text representation of the command, up to 8 characters.
+ */
+#define IOCMD(...) \
+    _IOCMD_ANY(__VA_ARGS__, _IOCMD_8, _IOCMD_7, _IOCMD_6, _IOCMD_5, _IOCMD_4, _IOCMD_3, _IOCMD_2, _IOCMD_1)(__VA_ARGS__)
+
+typedef uint64_t iommap_t; ///< I/O memory map flags.
+#define IOMMAP_READ (1 << 0)  ///< Map for reading.
+#define IOMMAP_WRITE (1 << 1) ///< Map for writing.
+#define IOMMAP_EXEC (1 << 2)  ///< Map for execution.
 
 typedef uint64_t iocancel_t;  ///< Cancel operation flags.
 #define IOCANCEL_ALL (1 << 0) ///< Cancel all matching requests.
@@ -186,10 +261,14 @@ typedef struct iosqe
         void* buffer;
         ioevents_t events;
         iocancel_t cancel;
+        iocmd_t command;
+        void* address;
     };
     union {
         uint64_t arg2;
         size_t count;
+        const char* args;
+        iowhence_t origin;
     };
     union {
         uint64_t arg3;
@@ -197,6 +276,7 @@ typedef struct iosqe
     };
     union {
         uint64_t arg4;
+        iommap_t mmap;
     };
 } iosqe_t;
 
@@ -391,6 +471,19 @@ static inline void ioprep_nop(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeo
 }
 
 /**
+ * @brief Prepare a cancel submission queue entry (SQE).
+ *
+ * @see `IOOP_CANCEL`
+ */
+static inline void ioprep_cancel(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, uintptr_t target,
+    iocancel_t cancel)
+{
+    *iosqe = IOSQE_CREATE(IOOP_CANCEL, flags, timeout, data);
+    iosqe->target = target;
+    iosqe->cancel = cancel;
+}
+
+/**
  * @brief Prepare a read submission queue entry (SQE).
  *
  * @see `IOOP_READ`
@@ -434,16 +527,206 @@ static inline void ioprep_poll(iosqe_t* iosqe, iosqe_flags_t flags, clock_t time
 }
 
 /**
- * @brief Prepare a cancel submission queue entry (SQE).
+ * @brief Prepare a seek submission queue entry (SQE).
  *
- * @see `IOOP_CANCEL`
+ * @see `IOOP_SEEK`
  */
-static inline void ioprep_cancel(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, uintptr_t target,
-    iocancel_t cancel)
+static inline void ioprep_seek(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
+    iowhence_t origin, ssize_t offset)
 {
-    *iosqe = IOSQE_CREATE(IOOP_CANCEL, flags, timeout, data);
-    iosqe->target = target;
-    iosqe->cancel = cancel;
+    *iosqe = IOSQE_CREATE(IOOP_SEEK, flags, timeout, data);
+    iosqe->fd = fd;
+    iosqe->origin = origin;
+    iosqe->offset = offset;
+}
+
+/**
+ * @brief Prepare a memory map submission queue entry (SQE).
+ *
+ * @see `IOOP_MMAP`
+ */
+static inline void ioprep_mmap(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
+    void* address, size_t count, ssize_t offset, iommap_t mmap)
+{
+    *iosqe = IOSQE_CREATE(IOOP_MMAP, flags, timeout, data);
+    iosqe->fd = fd;
+    iosqe->address = address;
+    iosqe->count = count;
+    iosqe->offset = offset;
+    iosqe->mmap = mmap;
+}
+
+/**
+ * @brief Prepare a control submission queue entry (SQE).
+ *
+ * @see `IOOP_CONTROL`
+ */
+static inline void ioprep_control(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
+    iocmd_t command, const char* args)
+{
+    *iosqe = IOSQE_CREATE(IOOP_CONTROL, flags, timeout, data);
+    iosqe->fd = fd;
+    iosqe->command = command;
+    iosqe->args = args;
+}
+
+/**
+ * @brief Synchronous wrapper for I/O ring operations.
+ *
+ * Will use a standard library defined per-process ring to perform the operation synchronously.
+ *
+ * @param sqe The submission queue entry to perform.
+ * @param cqe Output pointer for the completion queue entry.
+ */
+void iosync(iosqe_t* sqe, iocqe_t* cqe);
+
+/**
+ * @brief Synchronous wrapper for multiple I/O ring operations.
+ *
+ * Will use a standard library defined per-process ring to perform multiple operations synchronously.
+ *
+ * @param sqes Array of submission queue entries.
+ * @param cqes Array of completion queue entries.
+ * @param count Number of entries.
+ * @param wait Minimum number of completions to wait for.
+ * @param completed Output pointer for the number of completed entries.
+ */
+void iosync_many(iosqe_t* sqes, iocqe_t* cqes, size_t count, size_t wait, size_t* completed);
+
+/**
+ * @brief Synchronous wrapper for a read operation.
+ * 
+ * @param fd The file descriptor to read from.
+ * @param buffer The buffer to read into.
+ * @param count The number of bytes to read.
+ * @param offset The offset to read from, or `IOOFF_CUR`.
+ * @param bytesRead Output pointer for the number of bytes read, can be `NULL`.
+ * @return An appropriate status value.
+ */
+static inline status_t ioread(fd_t fd, void* buffer, size_t count, ssize_t offset, size_t* bytesRead)
+{
+    iosqe_t sqe;
+    iocqe_t cqe;
+    ioprep_read(&sqe, IOSQE_NORMAL, CLOCKS_NEVER, 0, fd, buffer, count, offset);
+    iosync(&sqe, &cqe);
+    if (bytesRead != NULL)
+    {
+        *bytesRead = cqe.result;
+    }
+    return cqe.status;
+}
+
+/**
+ * @brief Synchronous wrapper for a write operation.
+ *
+ * @param fd The file descriptor to write to.
+ * @param buffer The buffer to write from.
+ * @param count The number of bytes to write.
+ * @param offset The offset to write to, or `IOOFF_CUR`.
+ * @param bytesWritten Output pointer for the number of bytes written, can be `NULL`.
+ * @return An appropriate status value.
+ */
+static inline status_t iowrite(fd_t fd, const void* buffer, size_t count, ssize_t offset, size_t* bytesWritten)
+{
+    iosqe_t sqe;
+    iocqe_t cqe;
+    ioprep_write(&sqe, IOSQE_NORMAL, CLOCKS_NEVER, 0, fd, buffer, count, offset);
+    iosync(&sqe, &cqe);
+    if (bytesWritten != NULL)
+    {
+        *bytesWritten = cqe.result;
+    }
+    return cqe.status;
+}
+
+/**
+ * @brief Synchronous wrapper for a poll operation.
+ *
+ * @param fd The file descriptor to poll.
+ * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout.
+ * @param events The events to wait for.
+ * @param revents Output pointer for the events that occurred, can be `NULL`.
+ * @return An appropriate status value.
+ */
+static inline status_t iopoll(fd_t fd, clock_t timeout, ioevents_t events, ioevents_t* revents)
+{
+    iosqe_t sqe;
+    iocqe_t cqe;
+    ioprep_poll(&sqe, IOSQE_NORMAL, timeout, 0, fd, events);
+    iosync(&sqe, &cqe);
+    if (revents != NULL)
+    {
+        *revents = (ioevents_t)cqe.result;
+    }
+    return cqe.status;
+}
+/**
+ * @brief Poll file descriptor structure.
+ * @struct iopoll_t
+ */
+typedef struct iopoll
+{
+    fd_t fd; ///< The file descriptor to poll.
+    ioevents_t events;  ///< The events to wait for.
+    ioevents_t revents; ///< The events that occurred.
+} iopoll_t;
+
+/**
+ * @brief Synchronous wrapper for polling multiple files.
+ *
+ * @param fds Array of pollfd structures.
+ * @param nfds Number of file descriptors.
+ * @param timeout Timeout in clock ticks.
+ * @param count Output pointer for the number of events.
+ * @return An appropriate status value.
+ */
+status_t iopoll_many(iopoll_t* fds, size_t nfds, clock_t timeout, size_t* count);
+
+/**
+ * @brief Synchronous wrapper for a seek operation.
+ *
+ * @param fd The file descriptor to seek.
+ * @param origin The origin of the seek operation.
+ * @param offset The offset to seek to.
+ * @param pos Output pointer for the new file position, can be `NULL`.
+ * @return An appropriate status value.
+ */
+static inline status_t ioseek(fd_t fd, iowhence_t origin, ssize_t offset, size_t* pos)
+{
+    iosqe_t sqe;
+    iocqe_t cqe;
+    ioprep_seek(&sqe, IOSQE_NORMAL, CLOCKS_NEVER, 0, fd, origin, offset);
+    iosync(&sqe, &cqe);
+    if (pos != NULL)
+    {
+        *pos = (size_t)cqe.result;
+    }
+    return cqe.status;
+}
+
+/**
+ * @brief Synchronous wrapper for a memory map operation.
+ * 
+ * @param fd The file descriptor to map.
+ * @param address Input/Output pointer for the virtual address, if *address` is `NULL` the kernel will choose an address.
+ * @param count The number of bytes to map.
+ * @param offset The offset within the file to start mapping from.
+ * @param mmap Memory mapping flags.
+ * @return An appropriate status value.
+ */
+static inline status_t iomap(fd_t fd, void** address, size_t count, ssize_t offset, iommap_t mmap)
+{
+    if ((void*)address == NULL)
+    {
+        return ERR(LIBSTD, INVAL);
+    }
+
+    iosqe_t sqe;
+    iocqe_t cqe;
+    ioprep_mmap(&sqe, IOSQE_NORMAL, CLOCKS_NEVER, 0, fd, *address, count, offset, mmap);
+    iosync(&sqe, &cqe);
+    *address = (void*)cqe.result;
+    return cqe.status;
 }
 
 /** @} */

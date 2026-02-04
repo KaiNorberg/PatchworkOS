@@ -1,6 +1,7 @@
 #pragma once
 
 #include <kernel/fs/path.h>
+#include <kernel/io/irp.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/mutex.h>
 #include <kernel/sync/rwmutex.h>
@@ -19,6 +20,8 @@ typedef struct netfs_family netfs_family_t;
  *
  * The networking filesystem provides networking and socket IPC functionality to the operating system. It exposes a
  * common interface for various networking protocols and inter-process communication (IPC) mechanisms.
+ *
+ * @todo The NetFS system will need to be redone properly for the new IRP system.
  *
  * ## Network Families
  *
@@ -157,32 +160,6 @@ typedef struct netfs_family
      */
     void (*deinit)(socket_t* sock);
     /**
-     * @brief Bind a socket to its address.
-     *
-     * The address is stored in `socket_t::address`.
-     *
-     * @param sock Pointer to the socket to bind.
-     * @return An appropriate status value.
-     */
-    status_t (*bind)(socket_t* sock);
-    /**
-     * @brief Listen for incoming connections on a socket.
-     *
-     * @param sock Pointer to the socket to listen on.
-     * @param backlog Maximum number of pending connections.
-     * @return An appropriate status value.
-     */
-    status_t (*listen)(socket_t* sock, uint32_t backlog);
-    /**
-     * @brief Connect a socket to its address.
-     *
-     * The address is stored in `socket_t::address`.
-     *
-     * @param sock Pointer to the socket to connect.
-     * @return An appropriate status value.
-     */
-    status_t (*connect)(socket_t* sock);
-    /**
      * @brief Accept an incoming connection on a listening socket.
      *
      * @param sock Pointer to the listening socket.
@@ -192,38 +169,33 @@ typedef struct netfs_family
      */
     status_t (*accept)(socket_t* sock, socket_t* newSock, mode_t mode);
     /**
-     * @brief Send data on a socket.
+     * @brief Perform a control operation on a socket.
      *
-     * @param sock Pointer to the socket to send data on.
-     * @param buffer Pointer to the data to send.
-     * @param count Number of bytes to send.
-     * @param offset Pointer to the position in the file, families may ignore this.
-     * @param bytesSent Pointer to store the number of bytes sent.
-     * @param mode Mode flags for sending.
+     * @param irp A `IRP_MJ_CONTROL` IRP with the file storing the socket in its `data` member.
      * @return An appropriate status value.
      */
-    status_t (*send)(socket_t* sock, const void* buffer, size_t count, size_t* offset, size_t* bytesSent, mode_t mode);
+    status_t (*control)(irp_t* irp);
+    /**
+     * @brief Send data on a socket.
+     *
+     * @param irp A `IRP_MJ_WRITE` IRP with the file storing the socket in its `data` member.
+     * @return An appropriate status value.
+     */
+    status_t (*send)(irp_t* irp);
     /**
      * @brief Receive data on a socket.
      *
-     * @param sock Pointer to the socket to receive data on.
-     * @param buffer Pointer to the buffer to store received data.
-     * @param count Maximum number of bytes to receive.
-     * @param offset Pointer to the position in the file, families may ignore this.
-     * @param bytesReceived Pointer to store the number of bytes received.
-     * @param mode Mode flags for receiving.
+     * @param irp A `IRP_MJ_READ` IRP with the file storing the socket in its `data` member.
      * @return An appropriate status value.
      */
-    status_t (*recv)(socket_t* sock, void* buffer, size_t count, size_t* offset, size_t* bytesReceived, mode_t mode);
+    status_t (*recv)(irp_t* irp);
     /**
      * @brief Poll a socket for events.
      *
-     * @param sock Pointer to the socket to poll.
-     * @param revents Pointer to store the events that occurred.
-     * @param queue Pointer to store the wait queue to block on.
+     * @param irp A `IRP_MJ_POLL` IRP with the file storing the socket in its `data` member.
      * @return An appropriate status value.
      */
-    status_t (*poll)(socket_t* sock, poll_events_t* revents, wait_queue_t** queue);
+    status_t (*poll)(irp_t* irp);
     list_entry_t listEntry;
     list_t sockets;
     rwmutex_t mutex;

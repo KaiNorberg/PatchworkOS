@@ -478,7 +478,7 @@ void pipeline_wait(pipeline_t* pipeline)
 
         memset(pipeline->status, 0, sizeof(pipeline->status));
         size_t readCount;
-        status_t st = RETRY_ON_CODE(read(wait, pipeline->status, sizeof(pipeline->status), &readCount), INTR);
+        status_t st = RETRY_ON_CODE(ioread(wait, pipeline->status, sizeof(pipeline->status), &readCount), INTR);
         close(wait);
         if (IS_ERR(st))
         {

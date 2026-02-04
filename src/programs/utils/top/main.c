@@ -37,7 +37,7 @@ static void terminal_size_get(void)
     char buffer[MAX_NAME] = {0};
     for (uint32_t i = 0; i < sizeof(buffer) - 1; i++)
     {
-        read(STDIN_FILENO, &buffer[i], 1, NULL);
+        ioread(STDIN_FILENO, &buffer[i], 1, NULL);
         if (buffer[i] == 'R')
         {
             break;
@@ -350,7 +350,7 @@ static void perfs_update(perfs_t* perfs)
     while (currentTime - lastSampleTime < SAMPLE_INTERVAL)
     {
         clock_t remaining = SAMPLE_INTERVAL - (currentTime - lastSampleTime);
-        if (!(poll1(STDIN_FILENO, POLLIN, remaining) & POLLIN))
+        if (!(iopoll(STDIN_FILENO, POLLIN, remaining) & POLLIN))
         {
             break;
         }
@@ -360,7 +360,7 @@ static void perfs_update(perfs_t* perfs)
         uint64_t previousScrollOffset = processScrollOffset;
 
         char c;
-        read(STDIN_FILENO, &c, 1, NULL);
+        ioread(STDIN_FILENO, &c, 1, NULL);
         switch (c)
         {
         case 'p':
@@ -426,20 +426,20 @@ static void perfs_update(perfs_t* perfs)
 
     if (cpu_perf_read(perfs->cpuPerfs) == PFAIL)
     {
-        printf("Failed to read CPU performance data\n");
+        printf("Failed to ioread CPU performance data\n");
         abort();
     }
 
     if (mem_perf_read(&perfs->memPerfs) == PFAIL)
     {
-        printf("Failed to read memory performance data\n");
+        printf("Failed to ioread memory performance data\n");
         abort();
     }
 
     perfs->procPerfs = proc_perfs_read(&perfs->procAmount);
     if (perfs->procPerfs == NULL)
     {
-        printf("Failed to read process performance data\n");
+        printf("Failed to ioread process performance data\n");
         abort();
     }
 
@@ -718,7 +718,7 @@ int main(void)
     cpuAmount = cpu_perf_count_cpus();
     if (cpuAmount == PFAIL)
     {
-        printf("Failed to read CPU amount\n");
+        printf("Failed to ioread CPU amount\n");
         abort();
     }
 
