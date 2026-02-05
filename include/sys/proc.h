@@ -131,7 +131,7 @@ static inline tid_t gettid(void)
 /**
  * @brief Memory protection flags.
  * @typedef prot_t
- * 
+ *
  * @deprecated Should be removed as part of the async overhaul.
  */
 typedef enum

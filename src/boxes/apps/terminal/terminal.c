@@ -604,8 +604,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         }
 
         if (IS_ERR(writefiles(F("/proc/%d/ctl", term->shell),
-                F("dup %d 0 && dup %d 1 && dup %d 2 && close 3 -1 && start", term->stdin, term->stdout,
-                    term->stdout))))
+                F("dup %d 0 && dup %d 1 && dup %d 2 && close 3 -1 && start", term->stdin, term->stdout, term->stdout))))
         {
             writefiles(F("/proc/%d/ctl", term->shell), "kill");
             close(term->stdin);
@@ -782,8 +781,7 @@ void terminal_loop(window_t* win)
         if (fds[0].revents & POLLIN)
         {
             size_t readCount;
-            status_t status =
-                ioread(terminal->stdout, &buffer[length], TERMINAL_MAX_DATA - length, &readCount);
+            status_t status = ioread(terminal->stdout, &buffer[length], TERMINAL_MAX_DATA - length, &readCount);
             if (IS_ERR(status) || readCount == 0)
             {
                 break;

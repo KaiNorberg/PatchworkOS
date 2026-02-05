@@ -56,7 +56,7 @@ static status_t volume_read(irp_t* irp)
         return ERR(FS, IMPL);
     }
 
-    return mdl_copy_from_buffer(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, info, length);
+    return irp_read_helper(irp, info, (size_t)length);
 }
 
 static void volume_cleanup(vnode_t* vnode)

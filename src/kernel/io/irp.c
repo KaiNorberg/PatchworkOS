@@ -363,3 +363,53 @@ status_t irp_cancel(irp_t* irp)
     irp_perform_completion(irp);
     return status;
 }
+
+status_t irp_read_helper(irp_t* irp, const void* buffer, size_t size)
+{
+    assert(buffer != NULL);
+
+    irp_frame_t* frame = irp_current(irp);
+    assert(frame->major == IRP_MJ_READ);
+
+    if (*frame->read.offset > size)
+    {
+        irp->result = 0;
+        return OK;
+    }
+
+    size_t available = size - *frame->read.offset;
+    status_t status =
+        mdl_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, (uint8_t*)buffer + *frame->read.offset, available);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+
+    *frame->read.offset += irp->result;
+    return OK;
+}
+
+status_t irp_write_helper(irp_t* irp, void* buffer, size_t size)
+{
+    assert(buffer != NULL);
+
+    irp_frame_t* frame = irp_current(irp);
+    assert(frame->major == IRP_MJ_READ);
+
+    if (*frame->write.offset > size)
+    {
+        irp->result = 0;
+        return OK;
+    }
+
+    size_t available = size - *frame->write.offset;
+    status_t status = mdl_copy_out(frame->write.buffer, SIZE_MAX, 0, &irp->result,
+        (uint8_t*)buffer + *frame->write.offset, available);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+
+    *frame->write.offset += irp->result;
+    return OK;
+}

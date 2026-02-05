@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/bitmap.h>
 #include <sys/fs.h>
+#include <sys/ioring.h>
 #include <sys/math.h>
 #include <sys/proc.h>
 
@@ -52,7 +53,7 @@ void* _heap_map_memory(uint64_t size)
     }
 
     void* addr = NULL;
-    status_t status = mmap(zeroDev, &addr, size, PROT_READ | PROT_WRITE);
+    status_t status = iomap(zeroDev, &addr, size, 0, IOMAP_READ | IOMAP_WRITE);
     if (IS_ERR(status))
     {
         return NULL;

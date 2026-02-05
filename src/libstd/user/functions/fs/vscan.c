@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/fs.h>
+#include <sys/ioring.h>
 
 #define _SCAN_GET(ctx) \
     ({ \
@@ -9,7 +10,7 @@
         int res = EOF; \
         char c; \
         size_t count; \
-        status_t status = read(fd, &c, 1, &count); \
+        status_t status = ioread(fd, &c, 1, IOOFF_CUR, &count); \
         if (IS_OK(status) && count == 1) \
         { \
             res = c; \
@@ -22,7 +23,7 @@
         fd_t fd = (fd_t)(ctx)->data; \
         if ((c) != EOF) \
         { \
-            seek(fd, -1, SEEK_CUR, NULL); \
+            ioseek(fd, IOSEEK_CUR, -1, NULL); \
         } \
     })
 

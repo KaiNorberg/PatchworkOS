@@ -18,16 +18,17 @@ void mdl_deinit(mdl_t* mdl)
 
     for (size_t i = 0; i < mdl->amount; i++)
     {
-        pmm_ref_dec(mdl->segments[i].pfn, BYTES_TO_PAGES(mdl->segments[i].offset + mdl->segments[i].size));
+        pmm_ref_dec(mdl->descs[i].pfn, BYTES_TO_PAGES(mdl->descs[i].offset + mdl->descs[i].size));
     }
     mdl->amount = 0;
 
-    if (mdl->segments != mdl->small)
+    if (mdl->descs != mdl->small)
     {
-        free(mdl->segments);
+        free(mdl->descs);
     }
-    mdl->segments = NULL;
+    mdl->descs = NULL;
     mdl->capacity = 0;
+    mdl->size = 0;
 }
 
 void mdl_free_chain(mdl_t* mdl, void (*free)(void*))
@@ -77,31 +78,31 @@ static status_t mdl_push(mdl_t* mdl, phys_addr_t phys, size_t size)
     if (mdl->amount == mdl->capacity)
     {
         uint32_t newCapacity = mdl->capacity + 4;
-        mdl_seg_t* newSegments;
+        mdl_desc_t* newDescs;
 
-        if (mdl->segments == mdl->small)
+        if (mdl->descs == mdl->small)
         {
-            newSegments = malloc(newCapacity * sizeof(mdl_seg_t));
-            if (newSegments != NULL)
+            newDescs = malloc(newCapacity * sizeof(mdl_desc_t));
+            if (newDescs != NULL)
             {
-                memcpy(newSegments, mdl->small, sizeof(mdl->small));
+                memcpy(newDescs, mdl->small, sizeof(mdl->small));
             }
         }
         else
         {
-            newSegments = realloc(mdl->segments, newCapacity * sizeof(mdl_seg_t));
+            newDescs = realloc(mdl->descs, newCapacity * sizeof(mdl_desc_t));
         }
 
-        if (newSegments == NULL)
+        if (newDescs == NULL)
         {
             return ERR(MMU, NOMEM);
         }
 
-        mdl->segments = newSegments;
+        mdl->descs = newDescs;
         mdl->capacity = newCapacity;
     }
 
-    mdl_seg_t* seg = &mdl->segments[mdl->amount];
+    mdl_desc_t* seg = &mdl->descs[mdl->amount];
     pfn_t pfn = PHYS_TO_PFN(phys);
     uint32_t offset = phys % PAGE_SIZE;
     if (pmm_ref_inc(pfn, BYTES_TO_PAGES(offset + size)) == 0)
@@ -114,6 +115,7 @@ static status_t mdl_push(mdl_t* mdl, phys_addr_t phys, size_t size)
     seg->offset = offset;
 
     mdl->amount++;
+    mdl->size += size;
     return OK;
 }
 
@@ -147,33 +149,34 @@ status_t mdl_add(mdl_t* mdl, space_t* space, const void* addr, size_t size)
     return OK;
 }
 
-status_t mdl_copy_from_buffer(mdl_t* mdl, size_t count, size_t* offset, size_t* bytesCopied, const void* source,
-    size_t sourceLength)
+status_t mdl_copy_in(mdl_t* mdl, size_t count, size_t offset, size_t* copied, const void* source, size_t sourceLength)
 {
     if (source == NULL && sourceLength == 0)
     {
-        if (bytesCopied != NULL)
+        if (copied != NULL)
         {
-            *bytesCopied = 0;
+            *copied = 0;
         }
         return OK;
     }
 
-    if (mdl == NULL || source == NULL || offset == NULL)
+    if (mdl == NULL || source == NULL)
     {
-        if (bytesCopied != NULL)
+        if (copied != NULL)
         {
-            *bytesCopied = 0;
+            *copied = 0;
         }
         return ERR(MMU, INVAL);
     }
 
-    size_t currentOffset = *offset;
+    count = MIN(count, mdl->size);
+
+    size_t currentOffset = offset;
     size_t start = 0;
     size_t i = 0;
     for (; i < mdl->amount; i++)
     {
-        mdl_seg_t* seg = &mdl->segments[i];
+        mdl_desc_t* seg = &mdl->descs[i];
         if (start + seg->size > currentOffset)
         {
             break;
@@ -187,7 +190,7 @@ status_t mdl_copy_from_buffer(mdl_t* mdl, size_t count, size_t* offset, size_t* 
     size_t segOffset = currentOffset - start;
     while (remaining > 0 && i < mdl->amount)
     {
-        mdl_seg_t* seg = &mdl->segments[i];
+        mdl_desc_t* seg = &mdl->descs[i];
         size_t toWrite = MIN(remaining, seg->size - segOffset);
         void* addr = PFN_TO_VIRT(seg->pfn) + seg->offset + segOffset;
         memcpy(addr, ptr, toWrite);
@@ -198,11 +201,10 @@ status_t mdl_copy_from_buffer(mdl_t* mdl, size_t count, size_t* offset, size_t* 
         i++;
     }
 
-    if (bytesCopied != NULL)
+    if (copied != NULL)
     {
-        *bytesCopied = count - remaining;
+        *copied = count - remaining;
     }
-    *offset += count - remaining;
 
     if (remaining > 0)
     {
@@ -212,23 +214,25 @@ status_t mdl_copy_from_buffer(mdl_t* mdl, size_t count, size_t* offset, size_t* 
     return OK;
 }
 
-status_t mdl_copy_to_buffer(mdl_t* mdl, size_t count, size_t* offset, size_t* bytesCopied, void* dest, size_t destLength)
+status_t mdl_copy_out(mdl_t* mdl, size_t count, size_t offset, size_t* copied, void* dest, size_t destLength)
 {
-    if (mdl == NULL || dest == NULL || offset == NULL)
+    if (mdl == NULL || dest == NULL)
     {
-        if (bytesCopied != NULL)
+        if (copied != NULL)
         {
-            *bytesCopied = 0;
+            *copied = 0;
         }
         return ERR(MMU, INVAL);
     }
 
-    size_t currentOffset = *offset;
+    count = MIN(count, mdl->size);
+
+    size_t currentOffset = offset;
     size_t start = 0;
     size_t i = 0;
     for (; i < mdl->amount; i++)
     {
-        mdl_seg_t* seg = &mdl->segments[i];
+        mdl_desc_t* seg = &mdl->descs[i];
         if (start + seg->size > currentOffset)
         {
             break;
@@ -242,7 +246,7 @@ status_t mdl_copy_to_buffer(mdl_t* mdl, size_t count, size_t* offset, size_t* by
     size_t segOffset = currentOffset - start;
     while (remaining > 0 && i < mdl->amount)
     {
-        mdl_seg_t* seg = &mdl->segments[i];
+        mdl_desc_t* seg = &mdl->descs[i];
         size_t toRead = MIN(remaining, seg->size - segOffset);
         void* addr = PFN_TO_VIRT(seg->pfn) + seg->offset + segOffset;
         memcpy(ptr, addr, toRead);
@@ -253,40 +257,59 @@ status_t mdl_copy_to_buffer(mdl_t* mdl, size_t count, size_t* offset, size_t* by
         i++;
     }
 
-    if (bytesCopied != NULL)
+    if (copied != NULL)
     {
-        *bytesCopied = count - remaining;
+        *copied = count - remaining;
     }
-    *offset += count - remaining;
 
     return OK;
 }
 
-status_t mdl_copy_from_circular(mdl_t* mdl, size_t count, size_t* offset, size_t* bytesCopied, const void* src,
-    size_t srcLen, size_t srcIndex)
+status_t mdl_fill(mdl_t* mdl, size_t count, size_t offset, size_t* filled, uint8_t value)
 {
-    size_t index = srcIndex % srcLen;
-    size_t chunk1 = MIN(count, srcLen - index);
-    size_t chunk2 = count - chunk1;
-
-    size_t bytesCopied1 = 0;
-    size_t bytesCopied2 = 0;
-
-    status_t status = mdl_copy_from_buffer(mdl, chunk1, offset, &bytesCopied1, (const uint8_t*)src + index, chunk1);
-    if (IS_ERR(status))
+    if (mdl == NULL)
     {
-        return status;
+        if (filled != NULL)
+        {
+            *filled = 0;
+        }
+        return ERR(MMU, INVAL);
     }
 
-    if (chunk2 > 0)
+    count = MIN(count, mdl->size);
+
+    size_t currentOffset = offset;
+    size_t start = 0;
+    size_t i = 0;
+    for (; i < mdl->amount; i++)
     {
-        status = mdl_copy_from_buffer(mdl, chunk2, offset, &bytesCopied2, src, chunk2);
+        mdl_desc_t* seg = &mdl->descs[i];
+        if (start + seg->size > currentOffset)
+        {
+            break;
+        }
+        start += seg->size;
     }
 
-    if (bytesCopied != NULL)
+    size_t remaining = count;
+    size_t segOffset = currentOffset - start;
+
+    while (remaining > 0 && i < mdl->amount)
     {
-        *bytesCopied = bytesCopied1 + bytesCopied2;
+        mdl_desc_t* seg = &mdl->descs[i];
+        size_t toFill = MIN(remaining, seg->size - segOffset);
+        void* addr = PFN_TO_VIRT(seg->pfn) + seg->offset + segOffset;
+        memset(addr, value, toFill);
+
+        remaining -= toFill;
+        segOffset = 0;
+        i++;
     }
 
-    return status;
+    if (filled != NULL)
+    {
+        *filled = count - remaining;
+    }
+
+    return OK;
 }

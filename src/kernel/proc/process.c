@@ -73,7 +73,8 @@ static void process_ctor(void* ptr)
     process->perf = (perf_process_ctx_t){0};
     process->noteHandler = (note_handler_t){0};
     process->suspendQueue = (wait_queue_t){0};
-    process->dyingQueue = (wait_queue_t){0};
+    process->dyingIrps = (list_t)LIST_CREATE(process->dyingIrps);
+    process->dyingIrpsLock = (lock_t)LOCK_CREATE();
     atomic_init(&process->flags, PROCESS_NONE);
     atomic_init(&process->threads.newTid, 0);
     list_init(&process->threads.list);
@@ -121,7 +122,6 @@ static void process_free(process_t* process)
     {
         ioring_ctx_deinit(&process->rings[i]);
     }
-    wait_queue_deinit(&process->dyingQueue);
     wait_queue_deinit(&process->suspendQueue);
     env_deinit(&process->env);
 
@@ -165,7 +165,6 @@ status_t process_new(process_t** out, priority_t priority, group_member_t* group
     }
     note_handler_init(&process->noteHandler);
     wait_queue_init(&process->suspendQueue);
-    wait_queue_init(&process->dyingQueue);
     atomic_store(&process->flags, PROCESS_NONE);
     atomic_store(&process->threads.newTid, 0);
     lock_init(&process->threads.lock);
@@ -266,7 +265,30 @@ void process_kill(process_t* process, const char* status)
 
     group_remove(&process->group);
 
-    wait_unblock(&process->dyingQueue, WAIT_ALL, OK);
+    lock_acquire(&process->dyingIrpsLock);
+    while (!list_is_empty(&process->dyingIrps))
+    {
+        irp_t* irp = CONTAINER_OF(list_pop_front(&process->dyingIrps), irp_t, entry);
+        irp_frame_t* frame = irp_current(irp);
+        switch (frame->major)
+        {
+        case IRP_MJ_READ:
+            lock_acquire(&process->status.lock);
+            status_t status = mdl_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, process->status.buffer,
+                strlen(process->status.buffer));
+            lock_release(&process->status.lock);
+            irp_complete(irp, status);
+            break;
+        case IRP_MJ_POLL:
+            irp->result = IOPOLL_READ;
+            irp_complete(irp, OK);
+            break;
+        default:
+            irp_complete(irp, ERR(FS, IMPL));
+            break;
+        }
+    }
+    lock_release(&process->dyingIrpsLock);
 
     reaper_push(process);
 }

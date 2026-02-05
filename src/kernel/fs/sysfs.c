@@ -23,10 +23,6 @@
 
 static dentry_t* root = NULL;
 
-static dentry_ops_t dentryOps = {
-    .iterate = dentry_generic_iterate,
-};
-
 static status_t sysfs_mount(filesystem_t* fs, dentry_t** out, const char* options, void* data)
 {
     UNUSED(fs);
@@ -47,8 +43,9 @@ static filesystem_t sysfs = {
 };
 
 static vnode_class_t rootClass = {
-    .name = "sysfs root",
+    .name = "devfs root",
     .type = VNODE_DIR,
+    .iterate = dentry_generic_iterate,
 };
 
 void sysfs_init(void)
@@ -59,7 +56,7 @@ void sysfs_init(void)
         panic(NULL, "Failed to register sysfs");
     }
 
-    volume_t* volume = volume_new(&sysfs, NULL, &dentryOps);
+    volume_t* volume = volume_new(&sysfs, NULL);
     if (volume == NULL)
     {
         panic(NULL, "Failed to create sysfs volume");

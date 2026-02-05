@@ -29,8 +29,11 @@ typedef struct irp irp_t;
  * @ingroup kernel_io
  *
  * The I/O Request Packet (IRP) is a lock-less, self-contained and layered packet that allow requests to be sent to
- * various subsystems and then either processed immediately or, since it is self-contained, stored for latter
- * processing.
+ * various subsystems.
+ *
+ * These requests can be processed immediately or, if if the subsystem is unable to complete the IRP immediately, the
+ * self-contained nature of the IRP allows it to be stored and processed at a later time. This is what enables the
+ * kernel to act asynchronously without blocking the calling thread.
  *
  * The IRP is designed to be generic enough to be used by any system in the kernel, however it is primarily used by the
  * I/O ring system.
@@ -38,20 +41,44 @@ typedef struct irp irp_t;
  * @warning While the cancellation or completion of an IRP is thread safe, the setup of an IRP is not (as in pushing
  * layers to it). It is assumed that only one thread is manipulating an IRP during its setup.
  *
+ * ## Stack
+ *
+ * The IRP contains a stack of frames (`irp_frame_t`) which act like a call stack. Each frame contains the parameters to
+ * be passed to some function, most often specified using a major and minor number, along with a completion routine to
+ * be executed once the operation is completed. The result of each operation is stored in the `irp_t::result` and
+ * `irp_t::status` fields.
+ *
+ * @note A `irp_call()` function is provided to directly call a function with an IRP. However, usually an IRP will be
+ * dispatched to either a vnode or a file which contain a table of handlers, one for each major function number.
+ *
+ * @see vnode_call
+ * @see file_call
+ *
  * ## Completion
  *
- * @todo Write the IRP completion documentation.
+ * Completion is the process of unwinding the IRP stack, this occurs whether the operation was successful or otherwise.
+ *
+ * There are two ways that an IRP can be completed, immediately or delayed.
+ *
+ * To immediately complete an IRP simply return any status that is not an informational `ST_CODE_STATUS` status from the
+ * function invoked by any of the "call" functions.
+ *
+ * To delay the completion of an IRP, return an informational `ST_CODE_PENDING` status. This indicates that the
+ * subsystem has taken ownership of the IRP and will complete it at a later time by calling `irp_complete()`.
+ *
+ * For convenience, the `irp_delay()` helper can be used to add an IRP to a list and a timeout queue, while also setting
+ * a cancellation callback.
  *
  * ## Cancellation
  *
  * Cancelling an IRP can intuitively be considered equivalent to forcing the last completion to fail with an error
  * status, thus resulting in all the other completions to fail as well.
  *
- * The current owner of a IRP is responsible for handling cancellation by specifying a cancellation callback via
+ * The current owner of an IRP is responsible for handling cancellation by specifying a cancellation callback via
  * `irp_set_cancel()`. The current owner generally being the last subsystem or function to receive the IRP.
  *
  * One vital aspect of this system is the need to "claim" the IRP. When an IRP is "delayed", as in it is added to a
- * timeout queue or added to a queue for latter processing, it is considered to be unowned. At this point, it is
+ * timeout queue or added to a queue for later processing, it is considered to be unowned. At this point, it may be
  * possible for multiple threads to attempt to cancel or complete the IRP.
  *
  * As such, we need to establish a new owner for the IRP which is then the only thread allowed to cancel or complete it
@@ -66,7 +93,7 @@ typedef struct irp irp_t;
  * {
  *     // At this point we are considered the owner of the IRP.
  *
- *     if (IS_CODE(irp->status, TIMEOUT)
+ *     if (IS_CODE(irp->status, TIMEOUT))
  *     {
  *         // We timed out.
  *     }
@@ -157,7 +184,6 @@ typedef uint16_t irp_major_t; ///< IRP major function number type.
  * @brief Read operation.
  *
  * @param buffer The MDL describing the buffer to read into.
- * @param count The number of bytes to read.
  * @param offset The offset within the file to read from.
  * @return The number of bytes read.
  */
@@ -166,7 +192,6 @@ typedef uint16_t irp_major_t; ///< IRP major function number type.
  * @brief Write operation.
  *
  * @param buffer The MDL describing the buffer to write from.
- * @param count The number of bytes to write.
  * @param offset The offset within the file to write to.
  * @return The number of bytes written.
  */
@@ -210,8 +235,8 @@ typedef uint16_t irp_major_t; ///< IRP major function number type.
 typedef uint16_t irp_minor_t; ///< IRP minor function number type.
 #define IRP_MN_NORMAL 0       ///< No special behaviour.
 
-typedef uint16_t irp_flags_t; ///< IRP frame flags type.
-#define IRP_FLAG_NONE 0       ///< No flags.
+typedef uint16_t irp_flags_t;          ///< IRP frame flags type.
+#define IRP_FLAG_NONE 0                ///< No flags.
 #define IRP_FLAG_USE_FILE_POS (1 << 0) ///< If set, the operation will use and update the file's current position.
 
 /**
@@ -227,8 +252,9 @@ typedef status_t (*irp_handler_t)(irp_t* irp);
  * @brief IRP complete callback type.
  *
  * @param irp The IRP.
- * @param ctx The contxt pointer from the `irp_frame_t` structure.
- * @result A informational `ST_CODE_PENDING` status value if the IRP requires more processing, otherwise an appropriate status value.
+ * @param ctx The context pointer from the `irp_frame_t` structure.
+ * @result A informational `ST_CODE_PENDING` status value if the IRP requires more processing, otherwise an appropriate
+ * status value.
  */
 typedef status_t (*irp_complete_t)(irp_t* irp, void* ctx);
 
@@ -245,7 +271,7 @@ typedef status_t (*irp_cancel_t)(irp_t* irp);
  */
 #define IRP_CANCELLED ((irp_cancel_t)1)
 
-#define IRP_ARGS_MAX 4 ///< The maximum number of 64-bit arguments in an `irp_frame_t`.
+#define IRP_ARGS_MAX 3 ///< The maximum number of 64-bit arguments in an `irp_frame_t`.
 
 /**
  * @brief IRP stack frame structure.
@@ -268,14 +294,12 @@ typedef struct irp_frame
         struct
         {
             mdl_t* buffer;
-            size_t count;
             size_t* offset;
             size_t dummyOffset;
         } read;
         struct
         {
             mdl_t* buffer;
-            size_t count;
             size_t* offset;
             size_t dummyOffset;
         } write;
@@ -291,8 +315,8 @@ typedef struct irp_frame
         struct
         {
             void* address;
-            size_t length;
             size_t offset;
+            uint32_t length;
             pml_flags_t flags;
         } mmap;
         struct
@@ -637,11 +661,31 @@ static inline void irp_set_complete(irp_t* irp, irp_complete_t complete, void* c
 }
 
 /**
+ * @brief Helper function for implementing a read operation from a buffer into a read IRP's MDL.
+ *
+ * @param irp The IRP.
+ * @param buffer The source buffer.
+ * @param size The size of the source buffer.
+ * @return An appropriate status value.
+ */
+status_t irp_read_helper(irp_t* irp, const void* buffer, size_t size);
+
+/**
+ * @brief Helper function for implementing a write operation from a write IRP's MDL into a buffer.
+ *
+ * @param irp The IRP.
+ * @param buffer The destination buffer.
+ * @param size The size of the destination buffer.
+ * @return An appropriate status value.
+ */
+status_t irp_write_helper(irp_t* irp, void* buffer, size_t size);
+
+/**
  * @brief Prepares the next IRP stack frame for a read operation.
  *
  * @see `IRP_MJ_READ`
  */
-static inline void irp_prep_read(irp_t* irp, mdl_t* buffer, size_t count, ssize_t offset)
+static inline void irp_prep_read(irp_t* irp, mdl_t* buffer, ssize_t offset)
 {
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);
@@ -650,7 +694,6 @@ static inline void irp_prep_read(irp_t* irp, mdl_t* buffer, size_t count, ssize_
     next->minor = IRP_MN_NORMAL;
     next->flags = IRP_FLAG_NONE;
     next->read.buffer = buffer;
-    next->read.count = count;
     next->read.dummyOffset = offset;
     next->read.offset = &next->read.dummyOffset;
     if (offset == IOOFF_CUR)
@@ -664,7 +707,7 @@ static inline void irp_prep_read(irp_t* irp, mdl_t* buffer, size_t count, ssize_
  *
  * @see `IRP_MJ_WRITE`
  */
-static inline void irp_prep_write(irp_t* irp, mdl_t* buffer, size_t count, ssize_t offset)
+static inline void irp_prep_write(irp_t* irp, mdl_t* buffer, ssize_t offset)
 {
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);
@@ -673,7 +716,6 @@ static inline void irp_prep_write(irp_t* irp, mdl_t* buffer, size_t count, ssize
     next->minor = IRP_MN_NORMAL;
     next->flags = IRP_FLAG_NONE;
     next->write.buffer = buffer;
-    next->write.count = count;
     next->write.dummyOffset = offset;
     next->write.offset = &next->write.dummyOffset;
     if (offset == IOOFF_CUR)

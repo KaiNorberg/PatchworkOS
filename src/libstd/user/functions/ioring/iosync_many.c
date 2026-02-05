@@ -1,6 +1,6 @@
+#include <stdlib.h>
 #include <sys/ioring.h>
 #include <user/common/io.h>
-#include <stdlib.h>
 
 void iosync_many(iosqe_t* sqes, iocqe_t* cqes, size_t count, size_t wait, size_t* completed)
 {

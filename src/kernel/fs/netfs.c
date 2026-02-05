@@ -127,7 +127,7 @@ static status_t netfs_data_write(irp_t* irp)
     file_t* file = frame->file;
 
     if (file == NULL)
-    {        
+    {
         return ERR(FS, EXPECT_FILE);
     }
 
@@ -402,8 +402,7 @@ static status_t netfs_factory_read(irp_t* irp)
     socket_t* socket = file->data;
     assert(socket != NULL);
 
-    return mdl_copy_from_buffer(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, socket->id,
-        strlen(socket->id));
+    return irp_read_helper(irp, socket->id, strlen(socket->id));
 }
 
 static vnode_class_t factoryClass = {.name = "netfs factory",
@@ -458,7 +457,7 @@ static status_t netfs_addrs_read(irp_t* irp)
         length += snprintf(string + length, MAX_PATH, "%s\n", socket->address);
     }
 
-    status_t status = mdl_copy_from_buffer(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, string, length);
+    status_t status = irp_read_helper(irp, string, length);
     free(string);
     return status;
 }

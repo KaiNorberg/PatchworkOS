@@ -76,8 +76,7 @@ static status_t io_op_read(irp_t* irp)
         return status;
     }
 
-    irp_prep_read(irp, mdl, irp->sqe.count,
-        irp->sqe.offset);
+    irp_prep_read(irp, mdl, irp->sqe.offset);
     return file_call(file, irp);
 }
 
@@ -105,7 +104,7 @@ static status_t io_op_write(irp_t* irp)
         return status;
     }
 
-    irp_prep_write(irp, mdl, irp->sqe.count, irp->sqe.offset);
+    irp_prep_write(irp, mdl, irp->sqe.offset);
     return file_call(file, irp);
 }
 
@@ -148,15 +147,15 @@ static status_t io_op_mmap(irp_t* irp)
     }
 
     pml_flags_t pml = 0;
-    if (irp->sqe.flags & IOMMAP_READ)
+    if (irp->sqe.flags & IOMAP_READ)
     {
         pml |= PML_PRESENT | PML_USER;
     }
-    if (irp->sqe.flags & IOMMAP_WRITE)
+    if (irp->sqe.flags & IOMAP_WRITE)
     {
         pml |= PML_WRITE;
     }
-    if (!(irp->sqe.flags & IOMMAP_EXEC))
+    if (!(irp->sqe.flags & IOMAP_EXEC))
     {
         pml |= PML_NO_EXECUTE;
     }

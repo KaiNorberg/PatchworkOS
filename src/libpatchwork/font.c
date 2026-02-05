@@ -30,8 +30,8 @@ font_t* font_new(display_t* disp, const char* family, const char* weight, uint64
     }
 
     uint64_t fileSize;
-    seek(file, 0, SEEK_END, &fileSize);
-    seek(file, 0, SEEK_SET, NULL);
+    ioseek(file, IOSEEK_END, 0, &fileSize);
+    ioseek(file, IOSEEK_SET, 0, NULL);
 
     if (fileSize <= sizeof(font_t))
     {
@@ -47,7 +47,7 @@ font_t* font_new(display_t* disp, const char* family, const char* weight, uint64
     }
 
     grf_t grf;
-    status = read(file, &font->grf, fileSize, NULL);
+    status = ioread(file, &font->grf, fileSize, IOOFF_CUR, NULL);
     if (IS_ERR(status))
     {
         free(font);

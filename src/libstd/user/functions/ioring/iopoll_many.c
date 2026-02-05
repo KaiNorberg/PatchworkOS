@@ -1,6 +1,6 @@
+#include <stdlib.h>
 #include <sys/ioring.h>
 #include <sys/status.h>
-#include <stdlib.h>
 
 status_t iopoll_many(iopoll_t* fds, size_t nfds, clock_t timeout, size_t* count)
 {

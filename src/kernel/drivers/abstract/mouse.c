@@ -45,8 +45,7 @@ static status_t mouse_name_read(irp_t* irp)
     assert(mouse != NULL);
 
     size_t length = strlen(mouse->name);
-    return
-        mdl_copy_from_buffer(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, mouse->name, length);
+    return irp_read_helper(irp, mouse->name, length);
 }
 
 static vnode_class_t nameClass = {
@@ -118,7 +117,7 @@ static status_t mouse_events_read(irp_t* irp)
         return irp_delay(irp, &mouse->pending, mouse_cancel);
     }
 
-    return fifo_read(&client->fifo, frame->read.buffer, frame->read.count, &irp->result);
+    return fifo_read_mdl(&client->fifo, frame->read.buffer, 0, &irp->result);
 }
 
 static status_t mouse_events_poll(irp_t* irp)

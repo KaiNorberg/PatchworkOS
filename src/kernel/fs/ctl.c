@@ -115,8 +115,7 @@ status_t ctl_dispatch(irp_t* irp, vnode_t* vnode)
     }
 
     size_t bytesWritten;
-    status_t status =
-        mdl_copy_to_buffer(frame->write.buffer, frame->write.count, 0, &bytesWritten, state->buffer, CTL_BUFFER_SIZE - 1);
+    status_t status = mdl_copy_out(frame->write.buffer, SIZE_MAX, 0, &bytesWritten, state->buffer, CTL_BUFFER_SIZE - 1);
     if (IS_ERR(status))
     {
         free(state);

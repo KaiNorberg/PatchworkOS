@@ -92,7 +92,8 @@ typedef struct process
     ioring_ctx_t rings[CONFIG_MAX_RINGS];
     note_handler_t noteHandler;
     wait_queue_t suspendQueue;
-    wait_queue_t dyingQueue;
+    list_t dyingIrps;
+    lock_t dyingIrpsLock;
     _Atomic(process_flags_t) flags;
     process_threads_t threads;
     env_t env;

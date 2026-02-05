@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioring.h>
 #include <sys/list.h>
 
 static inline uint64_t display_events_read(display_t* disp, event_t* event)
@@ -200,7 +201,7 @@ void display_cmds_flush(display_t* disp)
     if (disp->isConnected && disp->cmds.amount != 0)
     {
         size_t count;
-        status_t status = write(disp->data, &disp->cmds, disp->cmds.size, &count);
+        status_t status = iowrite(disp->data, &disp->cmds, disp->cmds.size, IOOFF_CUR, &count);
         if (IS_ERR(status) || count != disp->cmds.size)
         {
             disp->isConnected = false;
@@ -232,18 +233,21 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
     {
         return 0;
     }
-    else if (readBytes == PFAIL)
+
+    if (readBytes == PFAIL)
     {
         return PFAIL;
     }
 
-    poll_events_t revents = poll1(disp->data, POLLIN, timeout);
-    if (revents & POLLERR)
+    ioevents_t revents;
+    status_t status = iopoll(disp->data, timeout, IOPOLL_READ, &revents);
+    if (IS_ERR(status))
     {
         display_disconnect(disp);
         return PFAIL;
     }
-    else if (!(revents & POLLIN))
+
+    if (!(revents & IOPOLL_READ))
     {
         errno = ETIMEDOUT;
         return PFAIL;
@@ -257,7 +261,7 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
         return PFAIL;
     }
     size_t bytesRead;
-    status_t status = read(disp->data, event, sizeof(event_t), &bytesRead);
+    status = ioread(disp->data, event, sizeof(event_t), IOOFF_CUR, &bytesRead);
     if (IS_ERR(status) || bytesRead != sizeof(event_t))
     {
         disp->isConnected = false;
@@ -268,7 +272,7 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
     return 0;
 }
 
-uint64_t display_poll(display_t* disp, pollfd_t* fds, uint64_t nfds, clock_t timeout)
+uint64_t display_poll(display_t* disp, iopoll_t* fds, uint64_t nfds, clock_t timeout)
 {
     if (disp == NULL || fds == NULL)
     {
@@ -282,7 +286,7 @@ uint64_t display_poll(display_t* disp, pollfd_t* fds, uint64_t nfds, clock_t tim
         return PFAIL;
     }
 
-    pollfd_t* allFds = malloc(sizeof(pollfd_t) * (nfds + 2));
+    iopoll_t* allFds = malloc(sizeof(iopoll_t) * (nfds + 2));
     if (allFds == NULL)
     {
         errno = ENOMEM;
@@ -290,21 +294,21 @@ uint64_t display_poll(display_t* disp, pollfd_t* fds, uint64_t nfds, clock_t tim
     }
 
     allFds[0].fd = disp->data;
-    allFds[0].events = POLLIN;
+    allFds[0].events = IOPOLL_READ;
     for (uint64_t i = 0; i < nfds; i++)
     {
         allFds[i + 1] = fds[i];
     }
 
     size_t ready;
-    status_t status = poll(allFds, nfds + 1, timeout, &ready);
+    status_t status = iopoll_many(allFds, nfds + 1, timeout, &ready);
     if (IS_ERR(status))
     {
         free(allFds);
         return PFAIL;
     }
 
-    if (allFds[0].revents & POLLERR)
+    if (allFds[0].revents & IOPOLL_ERROR)
     {
         display_disconnect(disp);
         free(allFds);
@@ -312,7 +316,7 @@ uint64_t display_poll(display_t* disp, pollfd_t* fds, uint64_t nfds, clock_t tim
     }
 
     uint64_t totalReady = ready;
-    if (allFds[0].revents & POLLIN)
+    if (allFds[0].revents & IOPOLL_READ)
     {
         totalReady--;
     }
@@ -374,7 +378,7 @@ uint64_t display_wait(display_t* disp, event_t* event, event_type_t expected)
     while (true)
     {
         size_t bytesRead;
-        status_t status = read(disp->data, event, sizeof(event_t), &bytesRead);
+        status_t status = ioread(disp->data, event, sizeof(event_t), IOOFF_CUR, &bytesRead);
         if (IS_ERR(status) || bytesRead != sizeof(event_t))
         {
             disp->isConnected = false;

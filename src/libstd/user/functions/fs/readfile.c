@@ -1,6 +1,7 @@
 #include <sys/fs.h>
+#include <sys/ioring.h>
 
-status_t readfile(const char* path, void* buffer, size_t count, size_t offset, size_t* bytesRead)
+status_t readfile(const char* path, void* buffer, size_t count, ssize_t offset, size_t* bytesRead)
 {
     fd_t fd;
     status_t status = open(&fd, path);
@@ -9,17 +10,7 @@ status_t readfile(const char* path, void* buffer, size_t count, size_t offset, s
         return status;
     }
 
-    if (offset != 0)
-    {
-        status = seek(fd, offset, SEEK_SET, NULL);
-        if (IS_ERR(status))
-        {
-            close(fd);
-            return status;
-        }
-    }
-
-    status = read(fd, buffer, count, bytesRead);
+    status = ioread(fd, buffer, count, offset, bytesRead);
     close(fd);
     return status;
 }

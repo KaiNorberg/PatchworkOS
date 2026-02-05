@@ -1,5 +1,6 @@
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
@@ -9,6 +10,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <sys/ioring.h>
 #include <sys/status.h>
 
 /**
@@ -32,101 +34,108 @@ static dentry_t* oneFile;
 static dentry_t* zeroFile;
 static dentry_t* nullFile;
 
-static status_t const_one_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static status_t const_one_read(irp_t* irp)
 {
-    UNUSED(file);
+    irp_frame_t* frame = irp_current(irp);
 
-    memset(buffer, -1, count);
-    *offset += count;
-    *bytesRead = count;
-    return INFO(DRIVER, MORE);
+    return mdl_fill(frame->read.buffer, SIZE_MAX, 0, &irp->result, UINT8_MAX);
 }
 
-static status_t const_one_mmap(file_t* file, void** addr, size_t length, size_t* offset, pml_flags_t flags)
+static status_t const_one_mmap(irp_t* irp)
 {
-    UNUSED(file); // Unused
-    UNUSED(offset);
+    irp_frame_t* frame = irp_current(irp);
+    void* addr = frame->mmap.address;
+    size_t length = frame->mmap.length;
+    pml_flags_t flags = frame->mmap.flags;
 
-    status_t status = vmm_alloc(&process_current()->space, addr, length, PAGE_SIZE, flags, VMM_ALLOC_OVERWRITE);
+    status_t status = vmm_alloc(&process_current()->space, &addr, length, PAGE_SIZE, flags, VMM_ALLOC_OVERWRITE);
     if (IS_ERR(status))
     {
         return status;
     }
 
-    memset(*addr, -1, length);
+    memset(addr, -1, length);
+    irp->result = (uintptr_t)addr;
     return OK;
 }
 
-static file_ops_t oneOps = {
-    .read = const_one_read,
-    .mmap = const_one_mmap,
+static vnode_class_t oneClass = {
+    .name = "const one",
+    .type = VNODE_REGULAR,
+    .handlers =
+        {
+            [IRP_MJ_READ] = const_one_read,
+            [IRP_MJ_MMAP] = const_one_mmap,
+        },
 };
 
-static status_t const_zero_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static status_t const_zero_read(irp_t* irp)
 {
-    UNUSED(file);
+    irp_frame_t* frame = irp_current(irp);
 
-    memset(buffer, 0, count);
-    *offset += count;
-    *bytesRead = count;
-    return INFO(DRIVER, MORE);
+    return mdl_fill(frame->read.buffer, SIZE_MAX, 0, &irp->result, 0);
 }
 
-static status_t const_zero_mmap(file_t* file, void** addr, size_t length, size_t* offset, pml_flags_t flags)
+static status_t const_zero_mmap(irp_t* irp)
 {
-    UNUSED(file); // Unused
-    UNUSED(offset);
+    irp_frame_t* frame = irp_current(irp);
+    void* addr = frame->mmap.address;
+    size_t length = frame->mmap.length;
+    pml_flags_t flags = frame->mmap.flags;
 
-    status_t status = vmm_alloc(&process_current()->space, addr, length, PAGE_SIZE, flags, VMM_ALLOC_OVERWRITE);
+    status_t status = vmm_alloc(&process_current()->space, &addr, length, PAGE_SIZE, flags, VMM_ALLOC_OVERWRITE);
     if (IS_ERR(status))
     {
         return status;
     }
 
-    memset(*addr, 0, length);
+    memset(addr, 0, length);
+    irp->result = (uintptr_t)addr;
     return OK;
 }
 
-static file_ops_t zeroOps = {
-    .read = const_zero_read,
-    .mmap = const_zero_mmap,
-};
+static vnode_class_t zeroClass = {.name = "const zero",
+    .type = VNODE_REGULAR,
+    .handlers = {
+        [IRP_MJ_READ] = const_zero_read,
+        [IRP_MJ_MMAP] = const_zero_mmap,
+    },};
 
-static status_t const_null_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static status_t const_null_read(irp_t* irp)
 {
-    UNUSED(file); // Unused
-    UNUSED(buffer);
-
-    *offset += count;
-    *bytesRead = 0;
-    return INFO(DRIVER, MORE);
-}
-
-static status_t const_null_write(file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
-{
-    UNUSED(file); // Unused
-    UNUSED(buffer);
-
-    *offset += count;
-    *bytesWritten = count;
+    irp->result = 0;
     return OK;
 }
 
-static file_ops_t nullOps = {
-    .read = const_null_read,
-    .write = const_null_write,
+static status_t const_null_write(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    irp->result = mdl_size(frame->write.buffer);
+    return OK;
+}
+
+static vnode_class_t nullClass = {.name = "const null",
+    .type = VNODE_REGULAR,
+    .handlers = {
+        [IRP_MJ_READ] = const_null_read,
+        [IRP_MJ_WRITE] = const_null_write,
+    },};
+
+static vnode_class_t constClass = {.name = "const",
+    .type = VNODE_DIR,
+    .iterate = dentry_generic_iterate,
 };
 
 static status_t const_init(void)
 {
-    constDir = devfs_dir_new(NULL, "const", NULL, NULL);
+    constDir = devfs_dentry_new(NULL, "const", &constClass, NULL);
     if (constDir == NULL)
     {
         LOG_ERR("failed to init const directory\n");
         return ERR(DRIVER, NOMEM);
     }
 
-    oneFile = devfs_file_new(constDir, "one", NULL, &oneOps, NULL);
+    oneFile = devfs_dentry_new(constDir, "one", &oneClass, NULL);
     if (oneFile == NULL)
     {
         UNREF(constDir);
@@ -134,7 +143,7 @@ static status_t const_init(void)
         return ERR(DRIVER, NOMEM);
     }
 
-    zeroFile = devfs_file_new(constDir, "zero", NULL, &zeroOps, NULL);
+    zeroFile = devfs_dentry_new(constDir, "zero", &zeroClass, NULL);
     if (zeroFile == NULL)
     {
         UNREF(constDir);
@@ -143,7 +152,7 @@ static status_t const_init(void)
         return ERR(DRIVER, NOMEM);
     }
 
-    nullFile = devfs_file_new(constDir, "null", NULL, &nullOps, NULL);
+    nullFile = devfs_dentry_new(constDir, "null", &nullClass, NULL);
     if (nullFile == NULL)
     {
         UNREF(constDir);

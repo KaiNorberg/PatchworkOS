@@ -29,24 +29,31 @@ typedef struct process process_t;
  * Instead, the kernel can create an MDL for the buffer, which describes the physical memory pages backing that buffer,
  * allowing the I/O operation to be completed regardless of the currently loaded address space.
  *
+ * ## Chains
+ *
+ * MDLs can be chained together by storing a pointer to the next MDL in the `mdl_t::next` field.
+ *
+ * This is primarily used by the IRP system to save a little bit of memory, and does not serve much purpose beyond that
+ * as a MDL is already capable of "Scatter Gather I/O".
+ *
  * @{
  */
 
 /**
- * @brief Amount of memory segments statically allocated for small MDLs.
+ * @brief Amount of memory descriptors statically allocated for small MDLs.
  */
-#define MDL_SEGS_SMALL_MAX 2
+#define MDL_SMALL_MAX 2
 
 /**
- * @brief Memory Descriptor List Segment structure.
- * @struct mdl_seg_t
+ * @brief Memory Descriptor List Descriptor structure.
+ * @struct mdl_desc_t
  */
-typedef struct mdl_seg
+typedef struct mdl_desc
 {
     pfn_t pfn;       ///< Page frame number.
-    uint32_t size;   ///< Size of the segment in bytes.
-    uint32_t offset; ///< Offset in bytes within the first page.
-} mdl_seg_t;
+    uint32_t size;   ///< Size of the region within the page.
+    uint32_t offset; ///< Offset in bytes within the page.
+} mdl_desc_t;
 
 /**
  * @brief Memory Descriptor List structure.
@@ -54,11 +61,12 @@ typedef struct mdl_seg
  */
 typedef struct mdl
 {
-    struct mdl* next;                    ///< Pointer to the next MDL.
-    mdl_seg_t small[MDL_SEGS_SMALL_MAX]; ///< Statically allocated segments for small regions.
-    mdl_seg_t* segments;                 ///< Pointer to segments array.
-    uint32_t amount;                     ///< Number of memory segments.
-    uint32_t capacity;                   ///< Capacity of the `large` array.
+    struct mdl* next;                ///< Pointer to the next MDL.
+    mdl_desc_t small[MDL_SMALL_MAX]; ///< Statically allocated descriptors for simple regions.
+    mdl_desc_t* descs;               ///< Pointer to descriptors array.
+    uint32_t amount;                 ///< Number of memory descriptors.
+    uint32_t capacity;               ///< Capacity of the `large` array.
+    size_t size;                     ///< Total size of the memory region described by the MDL.
 } mdl_t;
 
 /**
@@ -74,9 +82,10 @@ static inline void mdl_init(mdl_t* next, mdl_t* prev)
         prev->next = next;
     }
     next->next = NULL;
-    next->segments = next->small;
+    next->descs = next->small;
     next->amount = 0;
-    next->capacity = MDL_SEGS_SMALL_MAX;
+    next->capacity = MDL_SMALL_MAX;
+    next->size = 0;
 }
 
 /**
@@ -85,6 +94,17 @@ static inline void mdl_init(mdl_t* next, mdl_t* prev)
  * @param mdl Pointer to the MDL.
  */
 void mdl_deinit(mdl_t* mdl);
+
+/**
+ * @brief Get the size of a Memory Descriptor List.
+ *
+ * @param mdl Pointer to the MDL.
+ * @return The total size of the MDL in bytes.
+ */
+static inline size_t mdl_size(mdl_t* mdl)
+{
+    return mdl->size;
+}
 
 /**
  * @brief Free a Memory Descriptor List chain.
@@ -124,42 +144,38 @@ status_t mdl_add(mdl_t* mdl, space_t* space, const void* addr, size_t size);
  *
  * @param mdl The MDL to copy into.
  * @param count Number of bytes to copy.
- * @param offset Pointer to the offset within the MDL to start copying to, will be updated.
- * @param bytesCopied Output pointer for the amount of bytes copied, can be `NULL`.
+ * @param offset The offset within the MDL to start copying to.
+ * @param copied Output pointer for the amount of bytes copied, can be `NULL`.
  * @param source The source buffer to copy from, can be `NULL` if `sourceLength == 0`.
  * @param sourceLength The maximum length of the source buffer.
  * @return An appropriate status value.
  */
-status_t mdl_copy_from_buffer(mdl_t* mdl, size_t count, size_t* offset, size_t* bytesCopied, const void* source,
-    size_t sourceLength);
+status_t mdl_copy_in(mdl_t* mdl, size_t count, size_t offset, size_t* copied, const void* source, size_t sourceLength);
 
 /**
  * @brief Copy to a buffer from a Memory Descriptor List.
  *
  * @param mdl The MDL to copy from.
  * @param count Number of bytes to copy.
- * @param offset Pointer to the offset within the MDL to start copying to, will be updated.
- * @param bytesCopied Output pointer for the amount of bytes copied, can be `NULL`.
+ * @param offset The offset within the MDL to start copying from.
+ * @param copied Output pointer for the amount of bytes copied, can be `NULL`.
  * @param dest The destination buffer to copy to.
  * @param destLength The maximum length of the destination buffer.
  * @return An appropriate status value.
  */
-status_t mdl_copy_to_buffer(mdl_t* mdl, size_t count, size_t* offset, size_t* bytesCopied, void* dest, size_t destLength);
+status_t mdl_copy_out(mdl_t* mdl, size_t count, size_t offset, size_t* copied, void* dest, size_t destLength);
 
 /**
- * @brief Copy from a circular buffer into a Memory Descriptor List.
+ * @brief Set all bytes within a Memory Descriptor List to a specific value.
  *
- * @param mdl The MDL to copy into.
- * @param count Number of bytes to copy.
- * @param offset Pointer to the offset within the MDL to start copying to, will be updated.
- * @param bytesCopied Output pointer for the amount of bytes copied, can be `NULL`.
- * @param src The source circular buffer.
- * @param srcLen The size of the circular buffer.
- * @param srcIndex The monotonic index to start copying from in the circular buffer.
+ * @param mdl The MDL to fill.
+ * @param count Number of bytes to fill.
+ * @param offset The offset within the MDL to start filling from.
+ * @param filled Output pointer for the amount of bytes filled, can be `NULL`.
+ * @param value The value to fill with.
  * @return An appropriate status value.
  */
-status_t mdl_copy_from_circular(mdl_t* mdl, size_t count, size_t* offset, size_t* bytesCopied, const void* src,
-    size_t srcLen, size_t srcIndex);
+status_t mdl_fill(mdl_t* mdl, size_t count, size_t offset, size_t* filled, uint8_t value);
 
 /**
  * @brief Memory Descriptor List Iterator structure.
@@ -168,8 +184,8 @@ status_t mdl_copy_from_circular(mdl_t* mdl, size_t count, size_t* offset, size_t
 typedef struct
 {
     mdl_t* mdl;
-    size_t segIndex;
-    size_t segOffset;
+    size_t descIndex;
+    size_t descOffset;
 } mdl_iter_t;
 
 /**
@@ -181,33 +197,33 @@ typedef struct
 #define MDL_ITER_CREATE(_mdl) \
     { \
         .mdl = (_mdl), \
-        .segIndex = 0, \
-        .segOffset = 0, \
+        .descIndex = 0, \
+        .descOffset = 0, \
     }
 
 /**
  * @brief Get the next byte from a Memory Descriptor List Iterator.
  *
  * @param iter Pointer to the MDL Iterator.
- * @param byte Pointer to store the retrieved byte.
+ * @param ptr Pointer to store the address of the retrieved byte.
  * @return `true` if a byte was retrieved, `false` if the end of the MDL was reached.
  */
-static inline bool mdl_iter_next(mdl_iter_t* iter, uint8_t* byte)
+static inline bool mdl_iter_next(mdl_iter_t* iter, void** ptr)
 {
-    if (iter->segIndex >= iter->mdl->amount)
+    if (iter->descIndex >= iter->mdl->amount)
     {
         return false;
     }
 
-    mdl_seg_t* seg = &iter->mdl->segments[iter->segIndex];
-    uint8_t* addr = PFN_TO_VIRT(seg->pfn) + seg->offset + iter->segOffset;
-    *byte = *(addr);
+    mdl_desc_t* desc = &iter->mdl->descs[iter->descIndex];
+    uint8_t* addr = PFN_TO_VIRT(desc->pfn) + desc->offset + iter->descOffset;
+    *ptr = addr;
 
-    iter->segOffset++;
-    if (iter->segOffset >= seg->size)
+    iter->descOffset++;
+    if (iter->descOffset >= desc->size)
     {
-        iter->segIndex++;
-        iter->segOffset = 0;
+        iter->descIndex++;
+        iter->descOffset = 0;
     }
 
     return true;
@@ -216,9 +232,9 @@ static inline bool mdl_iter_next(mdl_iter_t* iter, uint8_t* byte)
 /**
  * @brief Iterate over bytes within a Memory Descriptor List.
  *
- * @param _byte The iterator variable.
+ * @param _ptr The iterator variable.
  * @param _mdl Pointer to the MDL.
  */
-#define MDL_FOR_EACH(_byte, _mdl) for (mdl_iter_t _iter = MDL_ITER_CREATE(_mdl); mdl_iter_next(&_iter, (_byte));)
+#define MDL_FOR_EACH(_ptr, _mdl) for (mdl_iter_t _iter = MDL_ITER_CREATE(_mdl); mdl_iter_next(&_iter, (void**)&(_ptr));)
 
 /** @} */

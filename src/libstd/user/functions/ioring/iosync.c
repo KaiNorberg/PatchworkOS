@@ -1,5 +1,5 @@
-#include <sys/ioring.h>
 #include <stdlib.h>
+#include <sys/ioring.h>
 
 #include "user/common/io.h"
 

@@ -2,6 +2,7 @@
 #include <kernel/fs/vfs.h>
 #include <kernel/init/boot_info.h>
 #include <kernel/init/init.h>
+#include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/log/screen.h>
@@ -37,43 +38,46 @@ static status_t gop_info(fb_t* fb, fb_info_t* info)
     return OK;
 }
 
-static status_t gop_read(fb_t* fb, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static status_t gop_read(irp_t* irp)
 {
-    UNUSED(fb);
-
     screen_hide();
 
     size_t fbSize = gop.height * gop.stride * sizeof(uint32_t);
-    return buffer_read(buffer, count, offset, bytesRead, (void*)gop.virtAddr, fbSize);
+    return irp_read_helper(irp, gop.virtAddr, fbSize);
 }
 
-static status_t gop_write(fb_t* fb, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
+static status_t gop_write(irp_t* irp)
 {
-    UNUSED(fb);
-
     screen_hide();
 
     size_t fbSize = gop.height * gop.stride * sizeof(uint32_t);
-    *bytesWritten = BUFFER_WRITE(buffer, count, offset, ((uint8_t*)gop.virtAddr), fbSize);
-    return OK;
+    return irp_write_helper(irp, gop.virtAddr, fbSize);
 }
 
-static status_t gop_mmap(fb_t* fb, void** addr, size_t length, size_t* offset, pml_flags_t flags)
+static status_t gop_mmap(irp_t* irp)
 {
-    UNUSED(fb);
-
     screen_hide();
+
+    irp_frame_t* frame = irp_current(irp);
 
     process_t* process = process_current();
 
-    uintptr_t physAddr = (uintptr_t)gop.physAddr + *offset;
-    phys_addr_t endAddr = physAddr + length;
+    uintptr_t physAddr = (uintptr_t)gop.physAddr + frame->mmap.offset;
+    phys_addr_t endAddr = physAddr + frame->mmap.length;
     if (endAddr > (uintptr_t)gop.physAddr + (gop.stride * gop.height * sizeof(uint32_t)))
     {
         return ERR(DRIVER, INVAL);
     }
 
-    return vmm_map(&process->space, addr, physAddr, length, flags, NULL, NULL);
+    void* addr = frame->mmap.address;
+    status_t status = vmm_map(&process->space, &addr, physAddr, frame->mmap.length, frame->mmap.flags, NULL, NULL);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+
+    irp->result = (uintptr_t)addr;
+    return OK;
 }
 
 static status_t gop_init(void)

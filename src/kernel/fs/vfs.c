@@ -185,14 +185,14 @@ typedef struct
     atomic_bool done;
 } vfs_sync_ctx_t;
 
-static irp_action_t vfs_sync_complete(irp_t* irp, void* _ctx)
+static status_t vfs_sync_complete(irp_t* irp, void* _ctx)
 {
     vfs_sync_ctx_t* ctx = (vfs_sync_ctx_t*)_ctx;
     ctx->status = irp->status;
     ctx->result = irp->result;
     atomic_store(&ctx->done, true);
     wait_unblock(&ctx->wait, WAIT_ALL, OK);
-    return IRP_CONTINUE;
+    return OK;
 }
 
 static status_t vfs_run_sync(irp_t* irp, file_t* file, uint64_t* result)
@@ -245,7 +245,7 @@ status_t vfs_read(file_t* file, void* buffer, size_t count, size_t* out)
         return status;
     }
 
-    irp_prep_read(irp, mdl, count, IOOFF_CUR);
+    irp_prep_read(irp, mdl, IOOFF_CUR);
     uint64_t result = 0;
     status = vfs_run_sync(irp, file, &result);
     if (out != NULL)
@@ -291,7 +291,7 @@ status_t vfs_write(file_t* file, const void* buffer, size_t count, size_t* out)
         return status;
     }
 
-    irp_prep_write(irp, mdl, count, IOOFF_CUR);
+    irp_prep_write(irp, mdl, IOOFF_CUR);
     uint64_t result = 0;
     status = vfs_run_sync(irp, file, &result);
     if (out != NULL)

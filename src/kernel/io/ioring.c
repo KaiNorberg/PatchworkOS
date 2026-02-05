@@ -326,7 +326,7 @@ status_t ioring_ctx_notify(ioring_ctx_t* ctx, size_t amount, size_t wait, size_t
         irp_t* irp = CONTAINER_OF(list_pop_front(&notify.irps), irp_t, entry);
 
         irp_set_complete(irp, ioring_ctx_complete, NULL);
-        irp_call_direct(irp, io_op_dispatch);
+        irp_call(irp, io_op_dispatch);
     }
 
     if (processed != NULL)

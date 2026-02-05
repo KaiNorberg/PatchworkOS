@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/fs.h>
+#include <sys/ioring.h>
 
 status_t reads(char** out, fd_t fd)
 {
@@ -27,7 +28,7 @@ status_t reads(char** out, fd_t fd)
         }
 
         uint64_t bytesRead;
-        status_t status = read(fd, buffer + totalRead, size - totalRead, &bytesRead);
+        status_t status = ioread(fd, buffer + totalRead, size - totalRead, IOOFF_CUR, &bytesRead);
         if (IS_ERR(status))
         {
             free(buffer);

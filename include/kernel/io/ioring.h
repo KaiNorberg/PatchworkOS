@@ -51,7 +51,7 @@
  *
  * ## Registers
  *
- * Operations performed on a I/O ring can load arguments from, and save their results to, seven 64-bit general purpose
+ * Operations performed on a I/O ring can load arguments from, and save their results to, seven 64-bit virtual
  * registers. All registers are stored in the shared control area of the I/O ring structure (`ioring_ctrl_t`), as such
  * they can be inspected and modified by user space.
  *

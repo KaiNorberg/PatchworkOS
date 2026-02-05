@@ -22,7 +22,7 @@ static status_t fb_name_read(irp_t* irp)
     assert(fb != NULL);
 
     uint64_t length = strlen(fb->name);
-    return mdl_copy_from_buffer(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, fb->name, length);
+    return irp_read_helper(irp, fb->name, length);
 }
 
 static vnode_class_t nameClass = {
@@ -45,7 +45,7 @@ static status_t fb_data_read(irp_t* irp)
         return ERR(DRIVER, INVAL);
     }
 
-    return fb->read(fb, frame->read.buffer, frame->read.count, frame->read.offset, &irp->result);
+    return fb->read(irp);
 }
 
 static status_t fb_data_write(irp_t* irp)
@@ -59,7 +59,7 @@ static status_t fb_data_write(irp_t* irp)
         return ERR(DRIVER, INVAL);
     }
 
-    return fb->write(fb, frame->write.buffer, frame->write.count, frame->write.offset, &irp->result);
+    return fb->write(irp);
 }
 
 static status_t fb_data_mmap(irp_t* irp)
@@ -68,15 +68,12 @@ static status_t fb_data_mmap(irp_t* irp)
     fb_t* fb = frame->vnode->data;
     assert(fb != NULL);
 
-    if (fb->write == NULL)
+    if (fb->mmap == NULL)
     {
         return ERR(DRIVER, INVAL);
     }
 
-    void* addr = frame->mmap.address;
-    status_t status = fb->mmap(fb, &addr, frame->mmap.length, frame->mmap.offset, frame->mmap.flags);
-    irp->result = (uintptr_t)addr;
-    return status;
+    return fb->mmap(irp);
 }
 
 static vnode_class_t dataClass = {
@@ -117,7 +114,7 @@ static status_t fb_info_read(irp_t* irp)
         return ERR(DRIVER, IMPL);
     }
 
-    return mdl_copy_from_buffer(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, string, length);
+    return irp_read_helper(irp, string, (size_t)length);
 }
 
 static vnode_class_t infoClass = {

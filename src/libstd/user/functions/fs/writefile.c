@@ -1,6 +1,7 @@
 #include <sys/fs.h>
+#include <sys/ioring.h>
 
-status_t writefile(const char* path, const void* buffer, size_t count, size_t offset, size_t* bytesWritten)
+status_t writefile(const char* path, const void* buffer, size_t count, ssize_t offset, size_t* bytesWritten)
 {
     fd_t fd;
     status_t status = open(&fd, path);
@@ -9,17 +10,7 @@ status_t writefile(const char* path, const void* buffer, size_t count, size_t of
         return status;
     }
 
-    if (offset != 0)
-    {
-        status = seek(fd, offset, SEEK_SET, NULL);
-        if (IS_ERR(status))
-        {
-            close(fd);
-            return status;
-        }
-    }
-
-    status = write(fd, buffer, count, bytesWritten);
+    status = iowrite(fd, buffer, count, offset, bytesWritten);
     close(fd);
     return status;
 }

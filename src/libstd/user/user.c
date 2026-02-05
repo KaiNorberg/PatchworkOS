@@ -16,7 +16,7 @@ static void _populate_std_descriptors(void)
 {
     for (fd_t i = 0; i <= STDERR_FILENO; i++)
     {
-        status_t status = seek(i, 0, SEEK_CUR, NULL);
+        status_t status = ioseek(i, SEEK_CUR, 0, NULL);
         if (status != ERR(VFS, BADFD))
         {
             continue;

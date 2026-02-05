@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/fs.h>
+#include <sys/ioring.h>
 #include <sys/proc.h>
 
 int system(const char* command)
@@ -21,7 +22,7 @@ int system(const char* command)
     }
 
     char buf[MAX_PATH];
-    status = read(wait, buf, MAX_PATH, NULL);
+    status = ioread(wait, buf, MAX_PATH, IOOFF_CUR, NULL);
     if (IS_ERR(status))
     {
         close(wait);

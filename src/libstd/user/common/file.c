@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/fs.h>
+#include <sys/ioring.h>
 
 static list_t files;
 static mtx_t filesMtx;
@@ -163,7 +164,7 @@ int _file_flush_buffer(FILE* stream)
     }
 
     size_t count;
-    status_t status = write(stream->fd, stream->buf, stream->bufIndex, &count);
+    status_t status = iowrite(stream->fd, stream->buf, stream->bufIndex, IOOFF_CUR, &count);
     if (IS_ERR(status))
     {
         stream->flags |= _FILE_ERROR;
@@ -178,7 +179,7 @@ int _file_flush_buffer(FILE* stream)
 int _file_fill_buffer(FILE* stream)
 {
     uint64_t count;
-    status_t status = read(stream->fd, stream->buf, stream->bufSize, &count);
+    status_t status = ioread(stream->fd, stream->buf, stream->bufSize, IOOFF_CUR, &count);
     if (IS_ERR(status))
     {
         stream->flags |= _FILE_ERROR;
@@ -209,8 +210,25 @@ int _file_seek(FILE* stream, int64_t offset, int whence)
         return EOF;
     }
 
+    iowhence_t ioWhence;
+    switch (whence)
+    {
+    case SEEK_SET:
+        ioWhence = IOSEEK_SET;
+        break;
+    case SEEK_CUR:
+        ioWhence = IOSEEK_CUR;
+        break;
+    case SEEK_END:
+        ioWhence = IOSEEK_END;
+        break;
+    default:
+        errno = EINVAL;
+        return EOF;
+    }
+
     size_t newPos;
-    status_t status = seek(stream->fd, offset, whence, &newPos);
+    status_t status = ioseek(stream->fd, ioWhence, offset, &newPos);
     if (IS_ERR(status))
     {
         return EOF;

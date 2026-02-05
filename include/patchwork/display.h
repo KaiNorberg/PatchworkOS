@@ -1,3 +1,4 @@
+#include <sys/ioring.h>
 #ifndef PATCHWORK_DISPLAY_H
 #define PATCHWORK_DISPLAY_H 1
 
@@ -106,7 +107,7 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout);
  * @return On success, number of file descriptors with events (not including the display connection). On failure,
  * returns `PFAIL` and `errno` is set.
  */
-uint64_t display_poll(display_t* disp, pollfd_t* fds, uint64_t nfds, clock_t timeout);
+uint64_t display_poll(display_t* disp, iopoll_t* fds, uint64_t nfds, clock_t timeout);
 
 /**
  * @brief Push an event to the display's internal event queue.

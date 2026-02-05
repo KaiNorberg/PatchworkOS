@@ -27,7 +27,7 @@
  * @{
  */
 
-#define CTL_BUFFER_SIZE 1008 ///< The maximum size of the control buffer. */
+#define CTL_BUFFER_SIZE 1004 ///< The maximum size of the control buffer. */
 
 /**
  * @brief Control file state structure.
@@ -37,8 +37,8 @@ typedef struct ctl_state
 {
     vnode_t* vnode;
     char* next;
-    char buffer[CTL_BUFFER_SIZE];
     uint32_t depth;
+    char buffer[CTL_BUFFER_SIZE];
 } ctl_state_t;
 
 /**

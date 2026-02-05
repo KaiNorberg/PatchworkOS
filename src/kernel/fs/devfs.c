@@ -83,7 +83,7 @@ void devfs_init(void)
 
 dentry_t* devfs_dentry_new(dentry_t* parent, const char* name, const vnode_class_t* cls, void* data)
 {
-    if (name == NULL)
+    if (name == NULL || cls == NULL)
     {
         return NULL;
     }

@@ -416,8 +416,8 @@ cleanup:
 
 int main(void)
 {
-    /// @todo Use nonblocking sockets to avoid hanging on accept or ioread, or just wait until we have filesystem servers
-    /// and do that instead.
+    /// @todo Use nonblocking sockets to avoid hanging on accept or ioread, or just wait until we have filesystem
+    /// servers and do that instead.
 
     char* id;
     status_t status = readfiles(&id, "/net/local/seqpacket");

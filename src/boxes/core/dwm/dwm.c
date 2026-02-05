@@ -725,7 +725,8 @@ static void dwm_poll(void)
     }
 
     uint64_t count;
-    status_t status = iopoll_many((pollfd_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(pollfd_t) + clientAmount, timeout, &count);
+    status_t status =
+        iopoll_many((pollfd_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(pollfd_t) + clientAmount, timeout, &count);
     if (IS_ERR(status))
     {
         printf("dwm: iopoll_many failed\n");

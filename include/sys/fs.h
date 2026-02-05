@@ -120,7 +120,7 @@ status_t reads(char** out, fd_t fd);
  * @param bytesRead Output pointer for the number of bytes read.
  * @return An appropriate status value.
  */
-status_t readfile(const char* path, void* buffer, size_t count, size_t offset, size_t* bytesRead);
+status_t readfile(const char* path, void* buffer, size_t count, ssize_t offset, size_t* bytesRead);
 
 /**
  * @brief Wrapper for reading an entire file directly into a null-terminated string.
@@ -158,7 +158,7 @@ status_t writes(fd_t fd, const char* string, size_t* bytesWritten);
  * @param bytesWritten Output pointer for the number of bytes written.
  * @return An appropriate status value.
  */
-status_t writefile(const char* path, const void* buffer, size_t count, size_t offset, size_t* bytesWritten);
+status_t writefile(const char* path, const void* buffer, size_t count, ssize_t offset, size_t* bytesWritten);
 
 /**
  * @brief Wrapper for writing a null-terminated string directly to a file using a path.

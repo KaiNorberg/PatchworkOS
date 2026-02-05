@@ -140,8 +140,19 @@ typedef struct socket
 } socket_t;
 
 /**
+ * @brief Macro to retrieve the socket associated with an IRP.
+ *
+ * @param _irp The IRP to retrieve the socket from.
+ * @return The socket.
+ */
+#define SOCKET_FROM_IRP(_irp) ((socket_t*)(_irp)->file->data)
+
+/**
  * @brief Socket Family structure.
  * @struct netfs_family_t
+ *
+ * To implement the handlers which simply take an IRP, the `SOCKET_FROM_IRP` macro can be used to retrieve the
+ * `socket_t` structure.
  */
 typedef struct netfs_family
 {

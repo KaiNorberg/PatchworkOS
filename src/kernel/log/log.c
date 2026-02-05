@@ -51,29 +51,8 @@ static status_t klog_read(irp_t* irp)
 
     LOCK_SCOPE(&lock);
 
-    if (*frame->read.offset >= klogHead)
-    {
-        irp->result = 0;
-        return OK;
-    }
-
-    size_t available = klogHead - *frame->read.offset;
-    size_t toRead = MIN(frame->read.count, available);
-
-    status_t status = mdl_copy_from_circular(frame->read.buffer, toRead, 0, &irp->result, klogBuffer, CONFIG_KLOG_SIZE,
-        *frame->read.offset);
-
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
-    if (*frame->read.offset + irp->result < klogHead)
-    {
-        return INFO(DRIVER, MORE);
-    }
-
-    return OK;
+    /// @todo Reimplement this.
+    return ERR(DRIVER, IMPL);
 }
 
 static status_t klog_write(irp_t* irp)
@@ -82,16 +61,11 @@ static status_t klog_write(irp_t* irp)
 
     LOCK_SCOPE(&lock);
 
-    size_t count = frame->write.count;
     size_t bytesWritten = 0;
-    uint8_t c;
-    MDL_FOR_EACH(&c, frame->write.buffer)
+    uint8_t* c;
+    MDL_FOR_EACH(c, frame->write.buffer)
     {
-        if (bytesWritten >= count)
-        {
-            break;
-        }
-        log_handle_char(LOG_LEVEL_INFO, (char)c);
+        log_handle_char(LOG_LEVEL_INFO, (char)*c);
         bytesWritten++;
     }
 

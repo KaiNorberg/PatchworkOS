@@ -6,9 +6,9 @@
 #include <stdint.h>
 #include <sys/defs.h>
 #include <sys/list.h>
+#include <sys/proc.h>
 #include <sys/status.h>
 #include <sys/syscall.h>
-#include <sys/proc.h>
 
 #if defined(__cplusplus)
 extern "C"
@@ -129,7 +129,7 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
 
 /**
  * @brief Seek operation.
- * 
+ *
  * @param fd The file descriptor to seek.
  * @param Unused
  * @param origin The origin of the seek operation (e.g., `IOSEEK_SET`, `IOSEEK_CUR`, `IOSEEK_END`).
@@ -186,10 +186,10 @@ typedef uint64_t iocmd_t;
 #define IOCMD(...) \
     _IOCMD_ANY(__VA_ARGS__, _IOCMD_8, _IOCMD_7, _IOCMD_6, _IOCMD_5, _IOCMD_4, _IOCMD_3, _IOCMD_2, _IOCMD_1)(__VA_ARGS__)
 
-typedef uint64_t iommap_t; ///< I/O memory map flags.
-#define IOMMAP_READ (1 << 0)  ///< Map for reading.
-#define IOMMAP_WRITE (1 << 1) ///< Map for writing.
-#define IOMMAP_EXEC (1 << 2)  ///< Map for execution.
+typedef uint64_t iomap_t;    ///< I/O memory map flags.
+#define IOMAP_READ (1 << 0)  ///< Map for reading.
+#define IOMAP_WRITE (1 << 1) ///< Map for writing.
+#define IOMAP_EXEC (1 << 2)  ///< Map for execution.
 
 typedef uint64_t iocancel_t;  ///< Cancel operation flags.
 #define IOCANCEL_ALL (1 << 0) ///< Cancel all matching requests.
@@ -276,7 +276,7 @@ typedef struct iosqe
     };
     union {
         uint64_t arg4;
-        iommap_t mmap;
+        iomap_t mmap;
     };
 } iosqe_t;
 
@@ -546,7 +546,7 @@ static inline void ioprep_seek(iosqe_t* iosqe, iosqe_flags_t flags, clock_t time
  * @see `IOOP_MMAP`
  */
 static inline void ioprep_mmap(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
-    void* address, size_t count, ssize_t offset, iommap_t mmap)
+    void* address, size_t count, ssize_t offset, iomap_t mmap)
 {
     *iosqe = IOSQE_CREATE(IOOP_MMAP, flags, timeout, data);
     iosqe->fd = fd;
@@ -595,7 +595,7 @@ void iosync_many(iosqe_t* sqes, iocqe_t* cqes, size_t count, size_t wait, size_t
 
 /**
  * @brief Synchronous wrapper for a read operation.
- * 
+ *
  * @param fd The file descriptor to read from.
  * @param buffer The buffer to read into.
  * @param count The number of bytes to read.
@@ -666,7 +666,7 @@ static inline status_t iopoll(fd_t fd, clock_t timeout, ioevents_t events, ioeve
  */
 typedef struct iopoll
 {
-    fd_t fd; ///< The file descriptor to poll.
+    fd_t fd;            ///< The file descriptor to poll.
     ioevents_t events;  ///< The events to wait for.
     ioevents_t revents; ///< The events that occurred.
 } iopoll_t;
@@ -706,15 +706,16 @@ static inline status_t ioseek(fd_t fd, iowhence_t origin, ssize_t offset, size_t
 
 /**
  * @brief Synchronous wrapper for a memory map operation.
- * 
+ *
  * @param fd The file descriptor to map.
- * @param address Input/Output pointer for the virtual address, if *address` is `NULL` the kernel will choose an address.
+ * @param address Input/Output pointer for the virtual address, if *address` is `NULL` the kernel will choose an
+ * address.
  * @param count The number of bytes to map.
  * @param offset The offset within the file to start mapping from.
  * @param mmap Memory mapping flags.
  * @return An appropriate status value.
  */
-static inline status_t iomap(fd_t fd, void** address, size_t count, ssize_t offset, iommap_t mmap)
+static inline status_t iomap(fd_t fd, void** address, size_t count, ssize_t offset, iomap_t mmap)
 {
     if ((void*)address == NULL)
     {

@@ -28,22 +28,25 @@
 
 static bool initialized = false;
 
-static void tmpfs_read(irp_t* irp);
-static void tmpfs_write(irp_t* irp);
-static void tmpfs_seek(irp_t* irp);
+static status_t tmpfs_read(irp_t* irp);
+static status_t tmpfs_write(irp_t* irp);
+static status_t tmpfs_seek(irp_t* irp);
 static void tmpfs_truncate(vnode_t* vnode);
 
 static void tmpfs_vnode_cleanup(vnode_t* vnode);
 
-static vnode_class_t fileClass = {.name = "tmpfs file",
+static vnode_class_t fileClass = {
+    .name = "tmpfs file",
     .type = VNODE_REGULAR,
     .truncate = tmpfs_truncate,
     .cleanup = tmpfs_vnode_cleanup,
-    .handlers = {
-        [IRP_MJ_READ] = tmpfs_read,
-        [IRP_MJ_WRITE] = tmpfs_write,
-        [IRP_MJ_SEEK] = tmpfs_seek,
-    }};
+    .handlers =
+        {
+            [IRP_MJ_READ] = tmpfs_read,
+            [IRP_MJ_WRITE] = tmpfs_write,
+            [IRP_MJ_SEEK] = tmpfs_seek,
+        },
+};
 
 static status_t tmpfs_create(vnode_t* dir, dentry_t* target, mode_t mode);
 static status_t tmpfs_link(vnode_t* dir, dentry_t* old, dentry_t* target);
@@ -118,76 +121,66 @@ static void tmpfs_dentry_remove(dentry_t* dentry)
     dentry_remove(dentry);
 }
 
-static void tmpfs_read(irp_t* irp)
+static status_t tmpfs_read(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
 
     mutex_acquire(&frame->vnode->mutex);
-    status_t status = mdl_copy_from_buffer(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result,
-        frame->vnode->data, frame->vnode->size);
+    status_t status = irp_read_helper(irp, frame->vnode->data, frame->vnode->size);
     mutex_release(&frame->vnode->mutex);
 
-    irp_complete(irp, status);
+    return status;
 }
 
-static void tmpfs_write(irp_t* irp)
+static status_t tmpfs_write(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
 
-    mutex_acquire(&frame->vnode->mutex);
+    MUTEX_SCOPE(&frame->vnode->mutex);
 
-    size_t required = frame->write.offset + frame->write.count;
+    size_t required = *frame->write.offset + mdl_size(frame->write.buffer);
     if (required > frame->vnode->size)
     {
         void* newData = realloc(frame->vnode->data, required);
         if (newData == NULL)
         {
-            mutex_release(&frame->vnode->mutex);
-            irp_complete(irp, ERR(FS, NOMEM));
-            return;
+            return ERR(FS, NOMEM);
         }
         memset((uint8_t*)newData + frame->vnode->size, 0, required - frame->vnode->size);
         frame->vnode->data = newData;
         frame->vnode->size = required;
     }
 
-    status_t status = mdl_copy_to_buffer(frame->write.buffer, frame->write.count, frame->write.offset, &irp->result,
-        frame->vnode->data, frame->vnode->size);
-    mutex_release(&frame->vnode->mutex);
-
-    irp_complete(irp, status);
+    return irp_write_helper(irp, frame->vnode->data, frame->vnode->size);
 }
 
-static void tmpfs_seek(irp_t* irp)
+static status_t tmpfs_seek(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
-    file_t* file = frame->seek.file;
+    file_t* file = frame->file;
 
-    mutex_acquire(&file->vnode->mutex);
+    MUTEX_SCOPE(&file->vnode->mutex);
 
     size_t pos;
     switch (frame->seek.origin)
     {
-    case SEEK_SET:
+    case IOSEEK_SET:
         pos = frame->seek.offset;
         break;
-    case SEEK_CUR:
-        pos = atomic_load(&file->pos) + frame->seek.offset;
+    case IOSEEK_CUR:
+        pos = file->pos + frame->seek.offset;
         break;
-    case SEEK_END:
+    case IOSEEK_END:
         pos = file->vnode->size + frame->seek.offset;
         break;
     default:
-        mutex_release(&file->vnode->mutex);
-        irp_complete(irp, ERR(FS, INVAL));
-        return;
+        return ERR(FS, INVAL);
     }
 
-    atomic_store(&file->pos, MIN(pos, file->vnode->size));
+    file->pos = pos;
     irp->result = pos;
 
-    mutex_release(&file->vnode->mutex);
-    irp_complete(irp, OK);
+    return OK;
 }
 
 static void tmpfs_truncate(vnode_t* vnode)

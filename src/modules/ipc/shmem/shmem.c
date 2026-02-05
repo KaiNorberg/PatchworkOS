@@ -1,6 +1,8 @@
 #include <kernel/fs/ctl.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/fs/vnode.h>
+#include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/pmm.h>
@@ -142,7 +144,7 @@ static status_t shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t page
     return OK;
 }
 
-static status_t shmem_open(file_t* file)
+static status_t shmem_file_ctor(file_t* file)
 {
     shmem_object_t* shmem = shmem_object_new();
     if (shmem == NULL)
@@ -154,7 +156,7 @@ static status_t shmem_open(file_t* file)
     return OK;
 }
 
-static void shmem_close(file_t* file)
+static void shmem_file_dtor(file_t* file)
 {
     shmem_object_t* shmem = file->data;
     if (shmem == NULL)
@@ -165,8 +167,16 @@ static void shmem_close(file_t* file)
     UNREF(shmem);
 }
 
-static status_t shmem_mmap(file_t* file, void** address, size_t length, size_t* offset, pml_flags_t flags)
+static status_t shmem_mmap(irp_t* irp)
 {
+    irp_frame_t* frame = irp_current(irp);
+
+    file_t* file = frame->file;
+    void** address = &frame->mmap.address;
+    size_t length = frame->mmap.length;
+    pml_flags_t flags = frame->mmap.flags;
+    size_t offset = frame->mmap.offset;
+
     shmem_object_t* shmem = file->data;
     if (shmem == NULL)
     {
@@ -186,7 +196,7 @@ static status_t shmem_mmap(file_t* file, void** address, size_t length, size_t* 
 
     if (shmem->pageAmount == 0) // First call to mmap()
     {
-        if (*offset != 0)
+        if (offset != 0)
         {
             return ERR(DRIVER, INVAL);
         }
@@ -197,38 +207,49 @@ static status_t shmem_mmap(file_t* file, void** address, size_t length, size_t* 
 
     assert(shmem->pages != NULL);
 
-    if (*offset >= shmem->pageAmount * PAGE_SIZE)
+    if (offset >= shmem->pageAmount * PAGE_SIZE)
     {
         return ERR(DRIVER, INVAL);
     }
 
-    if (*offset % PAGE_SIZE != 0)
+    if (offset % PAGE_SIZE != 0)
     {
         return ERR(DRIVER, INVAL);
     }
 
-    uint64_t pageOffset = *offset / PAGE_SIZE;
+    uint64_t pageOffset = offset / PAGE_SIZE;
     uint64_t availablePages = shmem->pageAmount - pageOffset;
     return vmm_map_pages(space, address, &shmem->pages[pageOffset], MIN(pageAmount, availablePages), flags,
         shmem_vmm_callback, REF(shmem));
 }
 
-static file_ops_t fileOps = {
-    .open = shmem_open,
-    .close = shmem_close,
-    .mmap = shmem_mmap,
+static vnode_class_t fileClass = {
+    .name = "shmem file",
+    .type = VNODE_REGULAR,
+    .file_ctor = shmem_file_ctor,
+    .file_dtor = shmem_file_dtor,
+    .handlers =
+        {
+            [IRP_MJ_MMAP] = shmem_mmap,
+        },
+};
+
+static vnode_class_t dirClass = {
+    .name = "shmem dir",
+    .type = VNODE_DIR,
+    .iterate = dentry_generic_iterate,
 };
 
 static status_t shmem_init(void)
 {
-    shmemDir = devfs_dir_new(NULL, "shmem", NULL, NULL);
+    shmemDir = devfs_dentry_new(NULL, "shmem", &dirClass, NULL);
     if (shmemDir == NULL)
     {
         LOG_ERR("failed to create /dev/shmem directory");
         return ERR(DRIVER, IO);
     }
 
-    newFile = devfs_file_new(shmemDir, "new", NULL, &fileOps, NULL);
+    newFile = devfs_dentry_new(shmemDir, "new", &fileClass, NULL);
     if (newFile == NULL)
     {
         UNREF(shmemDir);

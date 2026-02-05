@@ -95,8 +95,7 @@ static status_t perf_cpu_read(irp_t* irp)
     }
 
     size_t length = strlen(string);
-    status_t status =
-        mdl_copy_from_buffer(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, string, length);
+    status_t status = irp_read_helper(irp, string, length);
     free(string);
     return status;
 }
@@ -128,8 +127,7 @@ static status_t perf_mem_read(irp_t* irp)
         return ERR(DRIVER, IMPL);
     }
 
-    status_t status =
-        mdl_copy_from_buffer(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, string, length);
+    status_t status = irp_read_helper(irp, string, length);
     free(string);
     return status;
 }

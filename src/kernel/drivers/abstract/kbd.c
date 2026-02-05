@@ -45,8 +45,7 @@ static status_t kbd_name_read(irp_t* irp)
     assert(kbd != NULL);
 
     size_t length = strlen(kbd->name);
-    return
-        mdl_copy_from_buffer(frame->read.buffer, frame->read.count, frame->read.offset, &irp->result, kbd->name, length);
+    return irp_read_helper(irp, kbd->name, length);
 }
 
 static vnode_class_t nameClass = {
@@ -118,7 +117,7 @@ static status_t kbd_events_read(irp_t* irp)
         return irp_delay(irp, &kbd->pending, kbd_cancel);
     }
 
-    return fifo_read(&client->fifo, frame->read.buffer, frame->read.count, &irp->result);
+    return fifo_read_mdl(&client->fifo, frame->read.buffer, 0, &irp->result);
 }
 
 static status_t kbd_events_poll(irp_t* irp)

@@ -56,16 +56,27 @@ typedef struct fb_info
 } fb_info_t;
 
 /**
+ * @brief Macro to retrieve the framebuffer associated with an IRP.
+ *
+ * @param _irp The IRP to retrieve the framebuffer from.
+ * @return The framebuffer.
+ */
+#define FB_FROM_IRP(_irp) ((fb_t*)(_irp)->file->data)
+
+/**
  * @brief Framebuffer structure.
  * @struct fb_t
+ *
+ * To implement the handlers which simply take an IRP, the `FB_FROM_IRP` macro can be used to retrieve the `fb_t`
+ * structure.
  */
 typedef struct fb
 {
     char* name;
     status_t (*info)(fb_t* fb, fb_info_t* info);
-    status_t (*mmap)(fb_t* fb, void** address, size_t length, size_t offset, pml_flags_t flags);
-    status_t (*read)(fb_t* fb, mdl_t* buffer, size_t count, size_t* offset, size_t* bytesRead);
-    status_t (*write)(fb_t* fb, mdl_t* buffer, size_t count, size_t* offset, size_t* bytesWritten);
+    status_t (*mmap)(irp_t* irp);
+    status_t (*read)(irp_t* irp);
+    status_t (*write)(irp_t* irp);
     void (*cleanup)(fb_t* fb);
     void* data;
     dentry_t* dir;

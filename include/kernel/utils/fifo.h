@@ -1,6 +1,7 @@
 #pragma once
 
 #include <errno.h>
+#include <kernel/mem/mdl.h>
 #include <stdint.h>
 #include <string.h>
 #include <sys/status.h>
@@ -196,6 +197,132 @@ static inline status_t fifo_write(fifo_t* fifo, const void* buffer, size_t count
     if (bytesWritten != NULL)
     {
         *bytesWritten = count;
+    }
+
+    return OK;
+}
+
+/**
+ * @brief Read data from a fifo buffer into an MDL.
+ *
+ * @param fifo The fifo buffer structure.
+ * @param mdl The destination MDL.
+ * @param offset The offset within the MDL to start writing to.
+ * @param bytesRead Output pointer for the amount of bytes read, can be `NULL`.
+ * @return An appropriate status value.
+ */
+static inline status_t fifo_read_mdl(fifo_t* fifo, mdl_t* mdl, size_t offset, size_t* bytesRead)
+{
+    size_t readable = fifo_bytes_readable(fifo);
+    if (readable == 0)
+    {
+        if (bytesRead != NULL)
+        {
+            *bytesRead = 0;
+        }
+        return OK;
+    }
+
+    size_t firstSize = fifo->size - fifo->tail;
+    if (firstSize > readable)
+    {
+        firstSize = readable;
+    }
+
+    size_t copied1 = 0;
+    status_t status = mdl_copy_in(mdl, firstSize, offset, &copied1, fifo->buffer + fifo->tail, firstSize);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+
+    fifo->tail = (fifo->tail + copied1) % fifo->size;
+    size_t totalRead = copied1;
+
+    if (copied1 == firstSize)
+    {
+        size_t remaining = readable - firstSize;
+        if (remaining > 0)
+        {
+            size_t copied2 = 0;
+            status = mdl_copy_in(mdl, remaining, offset + copied1, &copied2, fifo->buffer, remaining);
+            if (IS_ERR(status))
+            {
+                if (bytesRead != NULL)
+                {
+                    *bytesRead = totalRead;
+                }
+                return status;
+            }
+            fifo->tail = (fifo->tail + copied2) % fifo->size;
+            totalRead += copied2;
+        }
+    }
+
+    if (bytesRead != NULL)
+    {
+        *bytesRead = totalRead;
+    }
+
+    if (fifo_bytes_readable(fifo) > 0)
+    {
+        return INFO(DRIVER, MORE);
+    }
+
+    return OK;
+}
+
+/**
+ * @brief Write data from an MDL to the fifo buffer.
+ *
+ * @param fifo Pointer to the fifo buffer structure.
+ * @param mdl The source MDL.
+ * @param offset The offset within the MDL to start reading from.
+ * @param bytesWritten Output pointer for the amount of bytes written, can be `NULL`.
+ * @return An appropriate status value.
+ */
+static inline status_t fifo_write_mdl(fifo_t* fifo, mdl_t* mdl, size_t offset, size_t* bytesWritten)
+{
+    size_t writeable = fifo_bytes_writeable(fifo);
+    size_t firstSize = fifo->size - fifo->head;
+    if (firstSize > writeable)
+    {
+        firstSize = writeable;
+    }
+
+    size_t copied1 = 0;
+    status_t status = mdl_copy_out(mdl, firstSize, offset, &copied1, fifo->buffer + fifo->head, firstSize);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+
+    fifo->head = (fifo->head + copied1) % fifo->size;
+    size_t totalWritten = copied1;
+
+    if (copied1 == firstSize)
+    {
+        size_t remaining = writeable - firstSize;
+        if (remaining > 0)
+        {
+            size_t copied2 = 0;
+            status = mdl_copy_out(mdl, remaining, offset + copied1, &copied2, fifo->buffer, remaining);
+            if (IS_ERR(status))
+            {
+                if (bytesWritten != NULL)
+                {
+                    *bytesWritten = totalWritten;
+                }
+                return status;
+            }
+            fifo->head = (fifo->head + copied2) % fifo->size;
+            totalWritten += copied2;
+        }
+    }
+
+    if (bytesWritten != NULL)
+    {
+        *bytesWritten = totalWritten;
     }
 
     return OK;

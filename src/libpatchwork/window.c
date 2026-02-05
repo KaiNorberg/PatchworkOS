@@ -376,10 +376,10 @@ window_t* window_new(display_t* disp, const char* name, const rect_t* rect, surf
         return NULL;
     }
     win->buffer = NULL;
-    status = mmap(shmem, (void**)&win->buffer, RECT_WIDTH(&win->rect) * RECT_HEIGHT(&win->rect) * sizeof(pixel_t),
-        PROT_READ | PROT_WRITE);
+    status = iomap(shmem, (void**)&win->buffer, RECT_WIDTH(&win->rect) * RECT_HEIGHT(&win->rect) * sizeof(pixel_t), 0,
+        IOMAP_READ | IOMAP_WRITE);
     close(shmem);
-    if (win->buffer == NULL)
+    if (IS_ERR(status))
     {
         window_free(win);
         return NULL;
