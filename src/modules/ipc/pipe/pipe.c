@@ -1,6 +1,8 @@
 #include <kernel/fs/file.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/fs/vnode.h>
+#include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/pmm.h>
@@ -12,6 +14,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <sys/fs.h>
+#include <sys/ioring.h>
 #include <sys/math.h>
 
 /**
@@ -19,14 +22,13 @@
  * @defgroup kernel_ipc_pipe Pipes
  * @ingroup kernel_ipc
  *
- * Pipes are exposed in the `/dev/pipe` directory. Pipes are unidirectional communication channels that can be used for
- * inter-process communication (IPC).
+ * Pipes are exposed in the `/dev/pipe` directory. Pipes are two way communication channels that can be used for
+ * inter process communication (IPC).
  *
  * ## Creating Pipes
  *
  * Pipes are created using the `/dev/pipe/new` file. Opening this file using `open()` will return one file descriptor
- * that can be used for both reading and writing. To create a pipe with separate file descriptors for reading and
- * writing, use `open2()` with the `/dev/pipe/new` file.
+ * that can be used for both reading and writing.
  *
  * ## Using Pipes
  *
@@ -38,225 +40,276 @@
 
 typedef struct
 {
-    void* buffer;
-    fifo_t ring;
-    bool isReadClosed;
-    bool isWriteClosed;
-    wait_queue_t waitQueue;
+    fifo_t fifo;
+    list_t readers;
+    list_t writers;
+    list_t polls;
     lock_t lock;
-    // Note: These pointers are just for checking which end the current file is, they should not be referenced.
-    void* readEnd;
-    void* writeEnd;
+    uint8_t buffer[PAGE_SIZE - sizeof(lock_t) - (sizeof(list_t) * 3) - sizeof(fifo_t)];
 } pipe_t;
 
 static dentry_t* pipeDir = NULL;
 static dentry_t* newFile = NULL;
 
-static status_t pipe_open(file_t* file)
+static status_t pipe_file_ctor(file_t* file)
 {
     pipe_t* data = malloc(sizeof(pipe_t));
     if (data == NULL)
     {
         return ERR(DRIVER, NOMEM);
     }
-    data->buffer = malloc(PAGE_SIZE);
-    if (data->buffer == NULL)
-    {
-        free(data);
-        return ERR(DRIVER, NOMEM);
-    }
-    fifo_init(&data->ring, data->buffer, PAGE_SIZE);
-    data->isReadClosed = false;
-    data->isWriteClosed = false;
-    wait_queue_init(&data->waitQueue);
+    fifo_init(&data->fifo, data->buffer, ARRAY_SIZE(data->buffer));
+    list_init(&data->readers);
+    list_init(&data->writers);
+    list_init(&data->polls);
     lock_init(&data->lock);
-    data->readEnd = file;
-    data->writeEnd = file;
 
     file->data = data;
     return OK;
 }
 
-static status_t pipe_open2(file_t* files[2])
-{
-    pipe_t* data = malloc(sizeof(pipe_t));
-    if (data == NULL)
-    {
-        return ERR(DRIVER, NOMEM);
-    }
-    data->buffer = malloc(PAGE_SIZE);
-    if (data->buffer == NULL)
-    {
-        free(data);
-        return ERR(DRIVER, NOMEM);
-    }
-    fifo_init(&data->ring, data->buffer, PAGE_SIZE);
-    data->isReadClosed = false;
-    data->isWriteClosed = false;
-    wait_queue_init(&data->waitQueue);
-    lock_init(&data->lock);
-
-    data->readEnd = files[PIPE_READ];
-    data->writeEnd = files[PIPE_WRITE];
-
-    files[0]->data = data;
-    files[1]->data = data;
-    return OK;
-}
-
-static void pipe_close(file_t* file)
+static void pipe_file_dtor(file_t* file)
 {
     pipe_t* data = file->data;
-    lock_acquire(&data->lock);
-    if (data->readEnd == file)
+    if (data == NULL)
     {
-        data->isReadClosed = true;
-    }
-    if (data->writeEnd == file)
-    {
-        data->isWriteClosed = true;
-    }
-
-    wait_unblock(&data->waitQueue, WAIT_ALL, OK);
-    if (data->isWriteClosed && data->isReadClosed)
-    {
-        lock_release(&data->lock);
-        wait_queue_deinit(&data->waitQueue);
-        free(data->buffer);
-        free(data);
         return;
     }
 
-    lock_release(&data->lock);
+    free(data);
+    file->data = NULL;
 }
 
-static status_t pipe_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static status_t pipe_cancel(irp_t* irp)
 {
-    UNUSED(offset);
+    irp_frame_t* frame = irp_current(irp);
+    pipe_t* data = frame->vnode->data;
 
+    lock_acquire(&data->lock);
+
+    if (list_contains(&irp->entry))
+    {
+        list_remove(&irp->entry);
+    }
+
+    lock_release(&data->lock);
+
+    return OK;
+}
+
+static status_t pipe_read(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
+    pipe_t* data = file->data;
+
+    size_t count = mdl_size(frame->read.buffer);
     if (count == 0)
     {
-        *bytesRead = 0;
+        irp->result = 0;
         return OK;
     }
 
-    pipe_t* data = file->data;
-    if (data->readEnd != file)
+    if (count >= ARRAY_SIZE(data->buffer))
     {
-        return ERR(DRIVER, INVAL);
-    }
-
-    if (count >= PAGE_SIZE)
-    {
-        return ERR(DRIVER, INVAL);
+        count = ARRAY_SIZE(data->buffer);
     }
 
     LOCK_SCOPE(&data->lock);
 
-    if (fifo_bytes_readable(&data->ring) == 0)
+    if (fifo_bytes_readable(&data->fifo) == 0)
     {
-        if (file->mode & MODE_NONBLOCK)
-        {
-            return ERR(DRIVER, AGAIN);
-        }
-
-        status_t status = WAIT_BLOCK_LOCK(&data->waitQueue, &data->lock,
-            fifo_bytes_readable(&data->ring) != 0 || data->isWriteClosed);
-        if (IS_ERR(status))
-        {
-            return status;
-        }
+        return irp_delay(irp, &data->readers, pipe_cancel);
     }
 
-    *bytesRead = fifo_read(&data->ring, buffer, count);
-    wait_unblock(&data->waitQueue, WAIT_ALL, OK);
-    return OK;
+    status_t status = fifo_read_mdl(&data->fifo, frame->read.buffer, count, &irp->result);
+
+    irp_t* writer;
+    irp_t* temp;
+    LIST_FOR_EACH_SAFE(writer, temp, &data->writers, entry)
+    {
+        if (fifo_bytes_writeable(&data->fifo) == 0)
+        {
+            break;
+        }
+
+        if (!irp_claim(writer))
+        {
+            continue;
+        }
+        list_remove(&writer->entry);
+
+        irp_frame_t* writerFrame = irp_current(writer);
+        irp_complete(writer, fifo_write_mdl(&data->fifo, writerFrame->write.buffer, 0, &writer->result));
+    }
+
+    irp_t* poll;
+    LIST_FOR_EACH_SAFE(poll, temp, &data->polls, entry)
+    {
+        irp_frame_t* pollFrame = irp_current(poll);
+
+        ioevents_t events = 0;
+        if (fifo_bytes_readable(&data->fifo) > 0)
+        {
+            events |= IOPOLL_READ;
+        }
+        if (fifo_bytes_writeable(&data->fifo) > 0)
+        {
+            events |= IOPOLL_WRITE;
+        }
+
+        if (!(pollFrame->poll.events & events))
+        {
+            continue;
+        }
+
+        if (!irp_claim(poll))
+        {
+            continue;
+        }
+        list_remove(&poll->entry);
+
+        poll->result = events & pollFrame->poll.events;
+        irp_complete(poll, OK);
+    }
+
+    return status;
 }
 
-static status_t pipe_write(file_t* file, const void* buffer, size_t count, size_t* offset, size_t* bytesWritten)
+static status_t pipe_write(irp_t* irp)
 {
-    UNUSED(offset);
-
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
     pipe_t* data = file->data;
-    if (data->writeEnd != file)
+
+    size_t count = mdl_size(frame->write.buffer);
+    if (count == 0)
     {
-        return ERR(DRIVER, INVAL);
+        irp->result = 0;
+        return OK;
     }
 
-    if (count >= PAGE_SIZE)
+    if (count >= ARRAY_SIZE(data->buffer))
     {
-        return ERR(DRIVER, INVAL);
+        count = ARRAY_SIZE(data->buffer);
     }
 
     LOCK_SCOPE(&data->lock);
 
-    if (fifo_bytes_writeable(&data->ring) == 0)
+    if (fifo_bytes_writeable(&data->fifo) == 0)
     {
-        if (file->mode & MODE_NONBLOCK)
-        {
-            return ERR(DRIVER, AGAIN);
-        }
-
-        status_t status = WAIT_BLOCK_LOCK(&data->waitQueue, &data->lock,
-            fifo_bytes_writeable(&data->ring) != 0 || data->isReadClosed);
-        if (IS_ERR(status))
-        {
-            return status;
-        }
+        return irp_delay(irp, &data->writers, pipe_cancel);
     }
 
-    if (data->isReadClosed)
+    status_t status = fifo_write_mdl(&data->fifo, frame->write.buffer, count, &irp->result);
+
+    irp_t* reader;
+    irp_t* temp;
+    LIST_FOR_EACH_SAFE(reader, temp, &data->readers, entry)
     {
-        wait_unblock(&data->waitQueue, WAIT_ALL, OK);
-        return ERR(DRIVER, IO);
+        if (fifo_bytes_readable(&data->fifo) == 0)
+        {
+            break;
+        }
+
+        if (!irp_claim(reader))
+        {
+            continue;
+        }
+        list_remove(&reader->entry);
+
+        irp_frame_t* readerFrame = irp_current(reader);
+        irp_complete(reader, fifo_read_mdl(&data->fifo, readerFrame->read.buffer, 0, &reader->result));
     }
 
-    *bytesWritten = fifo_write(&data->ring, buffer, count);
-    wait_unblock(&data->waitQueue, WAIT_ALL, OK);
-    return OK;
+    irp_t* poll;
+    LIST_FOR_EACH_SAFE(poll, temp, &data->polls, entry)
+    {
+        irp_frame_t* pollFrame = irp_current(poll);
+
+        ioevents_t events = 0;
+        if (fifo_bytes_readable(&data->fifo) > 0)
+        {
+            events |= IOPOLL_READ;
+        }
+        if (fifo_bytes_writeable(&data->fifo) > 0)
+        {
+            events |= IOPOLL_WRITE;
+        }
+
+        if (!(pollFrame->poll.events & events))
+        {
+            continue;
+        }
+
+        if (!irp_claim(poll))
+        {
+            continue;
+        }
+        list_remove(&poll->entry);
+
+        poll->result = events & pollFrame->poll.events;
+        irp_complete(poll, OK);
+    }
+
+    return status;
 }
 
-static status_t pipe_poll(file_t* file, poll_events_t* revents, wait_queue_t** queue)
+static status_t pipe_poll(irp_t* irp)
 {
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
     pipe_t* data = file->data;
+
     LOCK_SCOPE(&data->lock);
 
-    if (fifo_bytes_readable(&data->ring) != 0 || data->isWriteClosed)
+    irp->result = 0;
+    if (fifo_bytes_readable(&data->fifo) > 0)
     {
-        *revents |= POLLIN;
+        irp->result |= IOPOLL_READ;
     }
-    if (fifo_bytes_writeable(&data->ring) > 0 || data->isReadClosed)
+    if (fifo_bytes_writeable(&data->fifo) > 0)
     {
-        *revents |= POLLOUT;
-    }
-    if ((file == data->readEnd && data->isWriteClosed) || (file == data->writeEnd && data->isReadClosed))
-    {
-        *revents |= POLLHUP;
+        irp->result |= IOPOLL_WRITE;
     }
 
-    *queue = &data->waitQueue;
-    return OK;
+    if (irp->result & frame->poll.events)
+    {
+        return OK;
+    }
+
+    return irp_delay(irp, &data->polls, pipe_cancel);
 }
 
-static file_ops_t fileOps = {
-    .open = pipe_open,
-    .open2 = pipe_open2,
-    .close = pipe_close,
-    .read = pipe_read,
-    .write = pipe_write,
-    .poll = pipe_poll,
+static vnode_class_t pipeClass = {
+    .name = "pipe",
+    .type = VNODE_REGULAR,
+    .file_ctor = pipe_file_ctor,
+    .file_dtor = pipe_file_dtor,
+    .handlers =
+        {
+            [IRP_MJ_READ] = pipe_read,
+            [IRP_MJ_WRITE] = pipe_write,
+            [IRP_MJ_POLL] = pipe_poll,
+        },
+};
+
+static vnode_class_t dirClass = {
+    .name = "pipe",
+    .type = VNODE_DIR,
+    .iterate = dentry_generic_iterate,
 };
 
 status_t pipe_init(void)
 {
-    pipeDir = devfs_dir_new(NULL, "pipe", NULL, NULL);
+    pipeDir = devfs_dentry_new(NULL, "pipe", &dirClass, NULL);
     if (pipeDir == NULL)
     {
         LOG_ERR("failed to initialize pipe directory");
         return ERR(DRIVER, IO);
     }
 
-    newFile = devfs_file_new(pipeDir, "new", NULL, &fileOps, NULL);
+    newFile = devfs_dentry_new(pipeDir, "new", &pipeClass, NULL);
     if (newFile == NULL)
     {
         UNREF(pipeDir);
