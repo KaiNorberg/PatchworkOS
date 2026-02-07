@@ -48,6 +48,7 @@ static status_t socket_new(socket_t** out, netfs_family_t* family, socket_type_t
     ref_init(&socket->ref, socket_free);
     list_entry_init(&socket->listEntry);
     snprintf(socket->id, sizeof(socket->id), "%llu", atomic_fetch_add_explicit(&nextId, 1, memory_order_relaxed));
+    socket->address[0] = '\0';
     socket->family = family;
     socket->type = type;
     socket->state = SOCKET_NEW;
@@ -217,15 +218,18 @@ static status_t netfs_accept_file_ctor(file_t* file)
     return OK;
 }
 
-static vnode_class_t acceptClass = {.name = "netfs accept",
+static vnode_class_t acceptClass = {
+    .name = "netfs accept",
     .type = VNODE_REGULAR,
     .file_ctor = netfs_accept_file_ctor,
     .file_dtor = netfs_data_file_dtor,
-    .handlers = {
-        [IRP_MJ_READ] = netfs_data_read,
-        [IRP_MJ_WRITE] = netfs_data_write,
-        [IRP_MJ_POLL] = netfs_data_poll,
-    },};
+    .handlers =
+        {
+            [IRP_MJ_READ] = netfs_data_read,
+            [IRP_MJ_WRITE] = netfs_data_write,
+            [IRP_MJ_POLL] = netfs_data_poll,
+        },
+};
 
 static status_t netfs_control(irp_t* irp)
 {
@@ -247,7 +251,30 @@ static status_t netfs_control(irp_t* irp)
 
     MUTEX_SCOPE(&sock->mutex);
 
-    return sock->family->control(irp);
+    status_t status = sock->family->control(irp);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+
+    switch (frame->control.command)
+    {
+    case IOCMD('b', 'i', 'n', 'd'):
+        strncpy(sock->address, frame->control.args, sizeof(sock->address));
+        sock->address[sizeof(sock->address) - 1] = '\0';
+        sock->state = SOCKET_BOUND;
+        break;
+    case IOCMD('l', 'i', 's', 't', 'e', 'n'):
+        sock->state = SOCKET_LISTENING;
+        break;
+    case IOCMD('c', 'o', 'n', 'n', 'e', 'c', 't'):
+        sock->state = SOCKET_CONNECTED;
+        break;
+    default:
+        break;
+    }
+
+    return status;
 }
 
 static vnode_class_t ctlClass = {.name = "netfs ctl",

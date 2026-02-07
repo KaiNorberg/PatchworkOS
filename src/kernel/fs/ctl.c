@@ -96,7 +96,7 @@ static status_t ctl_do_next(irp_t* irp, ctl_state_t* state)
     {
         args = "";
     }
-    
+
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);
 

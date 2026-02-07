@@ -97,6 +97,11 @@ static status_t local_socket_bind(socket_t* sock, const char* address)
         return ERR(PROTO, INVAL);
     }
 
+    if (data->conn != NULL)
+    {
+        return ERR(PROTO, INVAL);
+    }
+
     local_listen_t* listen;
     status_t status = local_listen_new(address, &listen);
     if (IS_ERR(status))
@@ -149,6 +154,11 @@ static status_t local_socket_connect(socket_t* sock, const char* address)
     if (data->conn != NULL)
     {
         return ERR(PROTO, ALREADY_INIT);
+    }
+
+    if (data->listen != NULL)
+    {
+        return ERR(PROTO, INVAL);
     }
 
     local_listen_t* listen;
@@ -396,22 +406,17 @@ static status_t local_socket_recv(irp_t* irp)
     local_packet_header_t header;
     fifo_read(ring, &header, sizeof(local_packet_header_t), NULL);
 
+    status_t error = OK;
     if (header.magic != LOCAL_PACKET_MAGIC)
     {
-        conn->isClosed = true;
-        list_t pending = LIST_CREATE(pending);
-        irp_claim_list(&pending, readers);
-        irp_claim_list(&pending, writers);
-        irp_claim_list(&pending, &conn->polls);
-        while (!list_is_empty(&pending))
-        {
-            irp_t* item = CONTAINER_OF(list_pop_front(&pending), irp_t, entry);
-            irp_complete(item, ERR(PROTO, ILSEQ));
-        }
-        return ERR(PROTO, ILSEQ);
+        error = ERR(PROTO, ILSEQ);
+    }
+    else if (header.size > LOCAL_MAX_PACKET_SIZE)
+    {
+        error = ERR(PROTO, TOOBIG);
     }
 
-    if (header.size > LOCAL_MAX_PACKET_SIZE)
+    if (IS_ERR(error))
     {
         conn->isClosed = true;
         list_t pending = LIST_CREATE(pending);
@@ -421,9 +426,9 @@ static status_t local_socket_recv(irp_t* irp)
         while (!list_is_empty(&pending))
         {
             irp_t* item = CONTAINER_OF(list_pop_front(&pending), irp_t, entry);
-            irp_complete(item, ERR(PROTO, TOOBIG));
+            irp_complete(item, error);
         }
-        return ERR(PROTO, TOOBIG);
+        return error;
     }
 
     size_t count = mdl_size(frame->read.buffer);

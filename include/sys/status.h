@@ -32,7 +32,8 @@
  *
  * ## Format
  *
- * A status is made up of a severity, source, kind and detail values. The kind and detail value are often combined into a "code" value. Included is a table describing the bit format of a status value:
+ * A status is made up of a severity, source, kind and detail values. The kind and detail value are often combined into
+ * a "code" value. Included is a table describing the bit format of a status value:
  *
  * | Bit(s) | Description  |
  * | :----- | :----------- |
@@ -42,7 +43,8 @@
  * | 8-15   | Kind         |
  * | 0-7    | Detail       |
  *
- * @note For convenience, the standard libraries `printf()` implementation provides the `%Y` specifier for easily formatting status values.
+ * @note For convenience, the standard libraries `printf()` implementation provides the `%Y` specifier for easily
+ * formatting status values.
  *
  * @{
  */

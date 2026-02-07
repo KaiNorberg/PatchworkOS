@@ -23,30 +23,39 @@ typedef struct process process_t;
  * ## Direct I/O
  *
  * The MDL structure is primarily used to describe memory regions for I/O operations. For example, if a process
- * specifies a buffer to write to but that I/O operation is later completed while a different address space is loaded,
- * the kernel would be unable to access the buffer directly.
+ * specifies a buffer for a write operation to but that operation is later completed while a different address space is
+ * loaded, the kernel would be unable to access the buffer.
  *
  * Instead, the kernel can create an MDL for the buffer, which describes the physical memory pages backing that buffer,
- * allowing the I/O operation to be completed regardless of the currently loaded address space.
+ * allowing the operation to be completed regardless of the currently loaded address space.
+ *
+ * This is especially powerfull as we already identity map all physical memory to the higher half of the address space,
+ * as such we dont need to map the physical pages but can access them directly.
  *
  * ## Chains
  *
  * MDLs can be chained together by storing a pointer to the next MDL in the `mdl_t::next` field.
  *
  * This is primarily used by the IRP system to save a little bit of memory, and does not serve much purpose beyond that
- * as a MDL is already capable of "Scatter Gather I/O".
+ * as a single MDL is already capable of "Scatter Gather I/O".
  *
  * @{
  */
 
 /**
  * @brief Amount of memory descriptors statically allocated for small MDLs.
+ *
+ * @note By setting this value to atleast 2, we ensure that any contiguous virtual buffer that is less than or equal to
+ * a page in size can be described without any dynamic allocation.
  */
 #define MDL_SMALL_MAX 2
 
 /**
  * @brief Memory Descriptor List Descriptor structure.
  * @struct mdl_desc_t
+ *
+ * Each descriptor only describes a single physical memory page, if a buffer crosses a page boundary an additional
+ * descriptor will be needed.
  */
 typedef struct mdl_desc
 {
