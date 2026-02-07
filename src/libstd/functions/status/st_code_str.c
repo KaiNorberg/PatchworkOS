@@ -1,85 +1,175 @@
 #include <sys/status.h>
 
-const char* _codeStrings[] = {
-    [ST_CODE_NONE] = "no specific code",
-    [ST_CODE_UNKNOWN] = "unknown error",
-    [ST_CODE_INVAL] = "invalid argument",
-    [ST_CODE_OVERFLOW] = "buffer overflow",
-    [ST_CODE_TOOBIG] = "value too big",
-    [ST_CODE_NOMEM] = "out of memory",
-    [ST_CODE_TIMEOUT] = "operation timed out",
-    [ST_CODE_NOSPACE] = "no space left",
-    [ST_CODE_MJ_OVERFLOW] = "major number overflow",
-    [ST_CODE_MJ_NOSYS] = "major number not found",
-    [ST_CODE_CANCELLED] = "operation cancelled",
-    [ST_CODE_NOT_CANCELLABLE] = "operation cannot be cancelled",
-    [ST_CODE_FAULT] = "bad address",
-    [ST_CODE_DYING] = "process is dying",
-    [ST_CODE_ACCESS] = "permission denied",
-    [ST_CODE_ALIGN] = "alignment error",
-    [ST_CODE_MAPPED] = "already mapped",
-    [ST_CODE_UNMAPPED] = "not mapped",
-    [ST_CODE_PINNED] = "page pinned",
-    [ST_CODE_SHARED_LIMIT] = "shared memory limit reached",
-    [ST_CODE_IN_STACK] = "address in stack",
-    [ST_CODE_IMPL] = "implementation error",
-    [ST_CODE_AGAIN] = "resource temporarily unavailable",
-    [ST_CODE_INTR] = "interrupted system call",
-    [ST_CODE_PATHTOOLONG] = "path too long",
-    [ST_CODE_NAMETOOLONG] = "name too long",
-    [ST_CODE_INVALCHAR] = "invalid character",
-    [ST_CODE_INVALFLAG] = "invalid flag",
-    [ST_CODE_CHANGED] = "state changed",
-    [ST_CODE_FULL] = "buffer full",
-    [ST_CODE_MORE] = "more data available",
-    [ST_CODE_FD_OVERFLOW] = "file descriptor overflow",
-    [ST_CODE_MFILE] = "too many open files",
-    [ST_CODE_BADFD] = "bad file descriptor",
-    [ST_CODE_RAND] = "random number generator error",
-    [ST_CODE_NOENT] = "no such file or directory",
-    [ST_CODE_NOTDIR] = "not a directory",
-    [ST_CODE_ISDIR] = "is a directory",
-    [ST_CODE_BUSY] = "device or resource busy",
-    [ST_CODE_EXIST] = "file exists",
-    [ST_CODE_XDEV] = "cross-device link",
-    [ST_CODE_NOTEMPTY] = "directory not empty",
-    [ST_CODE_NODEV] = "no such device",
-    [ST_CODE_IO] = "i/o error",
-    [ST_CODE_SHADOW_LIMIT] = "shadow mount limit reached",
-    [ST_CODE_LOOP] = "too many symbolic links",
-    [ST_CODE_NOFS] = "no filesystem found",
-    [ST_CODE_NEGATIVE] = "path component does not exist",
-    [ST_CODE_ARGC] = "invalid argument count",
-    [ST_CODE_INVALCTL] = "invalid control command",
-    [ST_CODE_NOGROUP] = "not within a group",
-    [ST_CODE_PERM] = "operation not permitted",
-    [ST_CODE_NOTTY] = "inappropriate ioctl for device",
-    [ST_CODE_SPIPE] = "invalid seek",
-    [ST_CODE_MCLOCK] = "too many clock sources",
-    [ST_CODE_TOCTOU] = "time-of-check to time-of-use race condition",
-    [ST_CODE_INVALELF] = "invalid elf executable",
-    [ST_CODE_NOT_INIT] = "resource is not initialized",
-    [ST_CODE_ALREADY_INIT] = "resource is already initialized",
-    [ST_CODE_ACQUIRED] = "resource is already acquired",
-    [ST_CODE_MTIMER] = "to many timer sources",
-    [ST_CODE_ILSEQ] = "invalid byte sequence",
-    [ST_CODE_NO_ACPI_TABLE] = "unable to locate acpu table",
-    [ST_CODE_INVAL_ACPI_TABLE] = "invalid acpi table",
-    [ST_CODE_DEADLOCK] = "deadlock detected",
-    [ST_CODE_NO_BOOT_INFO] = "bootloader did not provide needed info",
-    [ST_CODE_ADDRINUSE] = "address already in use",
-    [ST_CODE_INVAL_KEY] = "invalid key",
-    [ST_CODE_EXPECT_FILE] = "operation expected to be provided a file",
-    [ST_CODE_MJ_INVAL] = "invalid major number",
-    [ST_CODE_PENDING] = "operation is pending",
-    [ST_CODE_COMPLETE] = "operation has been completed",
-};
-
 const char* st_code_str(st_code_t code)
 {
-    if (code < ST_CODE_NONE || code >= ST_CODE_MAX)
+    switch (code)
     {
+    case ST_CODE_NONE:
+        return "no specific code";
+
+    // Generic
+    case ST_CODE_UNKNOWN:
+        return "unknown error";
+    case ST_CODE_INVAL:
+        return "invalid argument";
+    case ST_CODE_OVERFLOW:
+        return "buffer overflow";
+    case ST_CODE_TOOBIG:
+        return "value too big";
+    case ST_CODE_TIMEOUT:
+        return "operation timed out";
+    case ST_CODE_CANCELLED:
+        return "operation cancelled";
+    case ST_CODE_NOT_CANCELLABLE:
+        return "operation cannot be cancelled";
+    case ST_CODE_IMPL:
+        return "implementation error";
+    case ST_CODE_AGAIN:
+        return "resource temporarily unavailable";
+    case ST_CODE_INTR:
+        return "interrupted system call";
+    case ST_CODE_INVALFLAG:
+        return "invalid flag";
+    case ST_CODE_CHANGED:
+        return "state changed";
+    case ST_CODE_FULL:
+        return "buffer full";
+    case ST_CODE_MORE:
+        return "more data available";
+    case ST_CODE_ARGC:
+        return "invalid argument count";
+    case ST_CODE_INVALCTL:
+        return "invalid control command";
+    case ST_CODE_TOCTOU:
+        return "time-of-check to time-of-use race condition";
+    case ST_CODE_TEST_FAIL:
+        return "test failure";
+    case ST_CODE_PENDING:
+        return "operation is pending";
+    case ST_CODE_COMPLETE:
+        return "operation has been completed";
+
+    // Memory
+    case ST_CODE_NOMEM:
+        return "out of memory";
+    case ST_CODE_NOSPACE:
+        return "no space left";
+    case ST_CODE_FAULT:
+        return "bad address";
+    case ST_CODE_ALIGN:
+        return "alignment error";
+    case ST_CODE_MAPPED:
+        return "already mapped";
+    case ST_CODE_UNMAPPED:
+        return "not mapped";
+    case ST_CODE_PINNED:
+        return "page pinned";
+    case ST_CODE_SHARED_LIMIT:
+        return "shared memory limit reached";
+    case ST_CODE_IN_STACK:
+        return "address in stack";
+
+    // I/O
+    case ST_CODE_PATHTOOLONG:
+        return "path too long";
+    case ST_CODE_NAMETOOLONG:
+        return "name too long";
+    case ST_CODE_INVALCHAR:
+        return "invalid character";
+    case ST_CODE_FD_OVERFLOW:
+        return "file descriptor overflow";
+    case ST_CODE_MFILE:
+        return "too many open files";
+    case ST_CODE_BADFD:
+        return "bad file descriptor";
+    case ST_CODE_NOENT:
+        return "no such file or directory";
+    case ST_CODE_NOTDIR:
+        return "not a directory";
+    case ST_CODE_ISDIR:
+        return "is a directory";
+    case ST_CODE_BUSY:
+        return "device or resource busy";
+    case ST_CODE_EXIST:
+        return "file exists";
+    case ST_CODE_XDEV:
+        return "cross-device link";
+    case ST_CODE_NOTEMPTY:
+        return "directory not empty";
+    case ST_CODE_IO:
+        return "i/o error";
+    case ST_CODE_SHADOW_LIMIT:
+        return "shadow mount limit reached";
+    case ST_CODE_LOOP:
+        return "too many symbolic links";
+    case ST_CODE_NOFS:
+        return "no filesystem found";
+    case ST_CODE_NEGATIVE:
+        return "path component does not exist";
+    case ST_CODE_SPIPE:
+        return "invalid seek";
+    case ST_CODE_ADDRINUSE:
+        return "address already in use";
+    case ST_CODE_EXPECT_FILE:
+        return "operation expected to be provided a file";
+
+    // Access
+    case ST_CODE_ACCESS:
+        return "permission denied";
+    case ST_CODE_PERM:
+        return "operation not permitted";
+    case ST_CODE_NOGROUP:
+        return "not within a group";
+    case ST_CODE_INVAL_KEY:
+        return "invalid key";
+
+    // Resource
+    case ST_CODE_NOT_INIT:
+        return "resource is not initialized";
+    case ST_CODE_ALREADY_INIT:
+        return "resource is already initialized";
+    case ST_CODE_ACQUIRED:
+        return "resource is already acquired";
+
+    // Process
+    case ST_CODE_DYING:
+        return "process is dying";
+    case ST_CODE_DEADLOCK:
+        return "deadlock detected";
+
+    // Device
+    case ST_CODE_NODEV:
+        return "no such device";
+    case ST_CODE_NOTTY:
+        return "inappropriate ioctl for device";
+    case ST_CODE_RAND:
+        return "random number generator error";
+    case ST_CODE_MCLOCK:
+        return "too many clock sources";
+    case ST_CODE_MTIMER:
+        return "too many timer sources";
+
+    // Format
+    case ST_CODE_INVALELF:
+        return "invalid elf executable";
+    case ST_CODE_ILSEQ:
+        return "invalid byte sequence";
+    case ST_CODE_NO_ACPI_TABLE:
+        return "unable to locate acpi table";
+    case ST_CODE_INVAL_ACPI_TABLE:
+        return "invalid acpi table";
+    case ST_CODE_NO_BOOT_INFO:
+        return "bootloader did not provide needed info";
+
+    // System
+    case ST_CODE_MJ_OVERFLOW:
+        return "major number overflow";
+    case ST_CODE_MJ_NOSYS:
+        return "major number not found";
+    case ST_CODE_MJ_INVAL:
+        return "invalid major number";
+
+    default:
         return "unknown";
     }
-    return _codeStrings[code];
 }

@@ -45,7 +45,7 @@ static inline status_t aml_parse(const uint8_t* start, const uint8_t* end)
 
     status = aml_term_list_read(&state, root, start, end, NULL);
 
-    if (IS_OK(status))
+    if (IS_INFO(status))
     {
         aml_namespace_commit(&state.overlay);
     }

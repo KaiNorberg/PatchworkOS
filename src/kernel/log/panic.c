@@ -72,7 +72,7 @@ static void panic_registers(const interrupt_frame_t* frame)
     LOG_PANIC("rip: %04llx:0x%016llx ", frame->cs, frame->rip);
 
     symbol_info_t symbol;
-    if (IS_OK(symbol_resolve_addr(&symbol, (void*)frame->rip)))
+    if (IS_INFO(symbol_resolve_addr(&symbol, (void*)frame->rip)))
     {
         LOG_PANIC("<%s+0x%llx>", symbol.name, frame->rip - (uintptr_t)symbol.addr);
     }

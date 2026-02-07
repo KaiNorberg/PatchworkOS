@@ -247,8 +247,8 @@ typedef uint16_t irp_flags_t;          ///< IRP frame flags type.
  * @brief IRP function type.
  *
  * @param irp The IRP to send.
- * @result A informational `ST_CODE_PENDING` or `ST_CODE_COMPLETE` status value if the IRP was not completed immediately, otherwise an
- * appropriate status value.
+ * @result A informational `ST_CODE_PENDING` or `ST_CODE_COMPLETE` status value if the IRP was not completed
+ * immediately, otherwise an appropriate status value.
  */
 typedef status_t (*irp_handler_t)(irp_t* irp);
 
@@ -257,8 +257,8 @@ typedef status_t (*irp_handler_t)(irp_t* irp);
  *
  * @param irp The IRP.
  * @param ctx The context pointer from the `irp_frame_t` structure.
- * @result A informational `ST_CODE_PENDING` or `ST_CODE_COMPLETE` status value if the IRP requires more processing, otherwise an appropriate
- * status value.
+ * @result A informational `ST_CODE_PENDING` or `ST_CODE_COMPLETE` status value if the IRP requires more processing,
+ * otherwise an appropriate status value.
  */
 typedef status_t (*irp_complete_t)(irp_t* irp, void* ctx);
 
@@ -299,13 +299,13 @@ typedef struct irp_frame
         {
             mdl_t* buffer;
             size_t* offset;
-            size_t dummyOffset;
+            size_t dummyOffset; ///< Allows the offset to be redirected to the file's current position.
         } read;
         struct
         {
             mdl_t* buffer;
             size_t* offset;
-            size_t dummyOffset;
+            size_t dummyOffset; ///< Allows the offset to be redirected to the file's current position.
         } write;
         struct
         {

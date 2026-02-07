@@ -596,7 +596,7 @@ cleanup:
     if (globalMutex != NULL)
     {
         status_t release_status = aml_mutex_release(&globalMutex->mutex);
-        if (IS_OK(status) && IS_ERR(release_status))
+        if (IS_INFO(status) && IS_ERR(release_status))
         {
             status = release_status;
         }

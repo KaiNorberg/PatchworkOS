@@ -51,7 +51,7 @@ typedef struct wait wait_t;
     ({ \
         assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE); \
         status_t status = OK; \
-        while (!(condition) && IS_OK(status)) \
+        while (!(condition) && IS_INFO(status)) \
         { \
             wait_queue_t* temp = queue; \
             status = wait_block_prepare(&temp, 1, CLOCKS_NEVER); \
@@ -76,7 +76,7 @@ typedef struct wait wait_t;
         status_t status = OK; \
         clock_t uptime = clock_uptime(); \
         clock_t deadline = CLOCKS_DEADLINE(timeout, uptime); \
-        while (!(condition) && IS_OK(status)) \
+        while (!(condition) && IS_INFO(status)) \
         { \
             if (deadline <= uptime) \
             { \
@@ -106,7 +106,7 @@ typedef struct wait wait_t;
     ({ \
         assert(!(rflags_read() & RFLAGS_INTERRUPT_ENABLE)); \
         status_t status = OK; \
-        while (!(condition) && IS_OK(status)) \
+        while (!(condition) && IS_INFO(status)) \
         { \
             wait_queue_t* temp = queue; \
             status = wait_block_prepare(&temp, 1, CLOCKS_NEVER); \
@@ -133,7 +133,7 @@ typedef struct wait wait_t;
         status_t status = OK; \
         clock_t uptime = clock_uptime(); \
         clock_t deadline = CLOCKS_DEADLINE(timeout, uptime); \
-        while (!(condition) && IS_OK(status)) \
+        while (!(condition) && IS_INFO(status)) \
         { \
             if (deadline <= uptime) \
             { \

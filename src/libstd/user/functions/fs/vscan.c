@@ -11,7 +11,7 @@
         char c; \
         size_t count; \
         status_t status = ioread(fd, &c, 1, IOOFF_CUR, &count); \
-        if (IS_OK(status) && count == 1) \
+        if (IS_INFO(status) && count == 1) \
         { \
             res = c; \
         } \

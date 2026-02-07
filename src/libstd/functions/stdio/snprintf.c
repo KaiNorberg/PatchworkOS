@@ -501,7 +501,7 @@ TEST_DEFINE(print)
 {
     for (int k = 0; k < 1; ++k)
     {
-        TEST_ASSERT(IS_OK(_test_print_iter()));
+        TEST_ASSERT(IS_INFO(_test_print_iter()));
     }
 
     return OK;

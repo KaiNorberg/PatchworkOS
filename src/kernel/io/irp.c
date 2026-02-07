@@ -91,7 +91,7 @@ static void irp_perform_completion(irp_t* irp)
             status = frame->complete(irp, frame->ctx);
         }
 
-        if (IS_OK(status) && (IS_CODE(status, PENDING) || IS_CODE(status, COMPLETE)))
+        if (IS_INFO(status) && (IS_CODE(status, PENDING) || IS_CODE(status, COMPLETE)))
         {
             return;
         }
@@ -336,7 +336,7 @@ status_t irp_call(irp_t* irp, irp_handler_t func)
         status = ERR(IO, INVAL);
     }
 
-    if (IS_OK(status) && (IS_CODE(status, PENDING) || IS_CODE(status, COMPLETE)))
+    if (IS_INFO(status) && (IS_CODE(status, PENDING) || IS_CODE(status, COMPLETE)))
     {
         return status;
     }

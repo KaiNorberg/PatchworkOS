@@ -343,7 +343,7 @@ typedef struct
 static void vfs_poll_complete(irp_t* irp, void* _ctx)
 {
     vfs_poll_ctx_t* ctx = _ctx;
-    if (IS_OK(irp->status))
+    if (IS_INFO(irp->status))
     {
         atomic_fetch_add(&ctx->triggered, 1);
     }
@@ -696,7 +696,7 @@ status_t vfs_getdents(file_t* file, dirent_t* buffer, size_t count, size_t* byte
     status_t status = file->path.dentry->vnode->cls->iterate(file->path.dentry, &ctx.ctx);
     file->pos = ctx.ctx.pos;
 
-    if (IS_OK(status))
+    if (IS_INFO(status))
     {
         *bytesRead = ctx.written;
         if (ctx.more)
@@ -1078,7 +1078,7 @@ SYSCALL_DEFINE(SYS_GETDENTS, fd_t fd, dirent_t* buffer, uint64_t count)
     size_t bytesWritten = 0;
     status = vfs_getdents(file, buffer, count, &bytesWritten);
     space_unpin(&process->space, buffer, count);
-    if (IS_OK(status))
+    if (IS_INFO(status))
     {
         *_result = bytesWritten;
     }
@@ -1170,7 +1170,7 @@ SYSCALL_DEFINE(SYS_READLINK, const char* pathString, char* buffer, uint64_t coun
     size_t bytesRead = 0;
     status = vfs_readlink(path.dentry->vnode, buffer, count, &bytesRead);
     space_unpin(&process->space, buffer, count);
-    if (IS_OK(status))
+    if (IS_INFO(status))
     {
         *_result = bytesRead;
     }

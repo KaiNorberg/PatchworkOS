@@ -405,13 +405,16 @@ static status_t netfs_factory_read(irp_t* irp)
     return irp_read_helper(irp, socket->id, strlen(socket->id));
 }
 
-static vnode_class_t factoryClass = {.name = "netfs factory",
+static vnode_class_t factoryClass = {
+    .name = "netfs factory",
     .type = VNODE_REGULAR,
     .file_ctor = netfs_factory_file_ctor,
     .file_dtor = netfs_factory_file_dtor,
-    .handlers = {
-        [IRP_MJ_READ] = netfs_factory_read,
-    },};
+    .handlers =
+        {
+            [IRP_MJ_READ] = netfs_factory_read,
+        },
+};
 
 static status_t netfs_addrs_read(irp_t* irp)
 {

@@ -188,7 +188,7 @@ status_t symbol_add(const char* name, void* addr, symbol_group_id_t groupId, Elf
     if (binding == STB_GLOBAL)
     {
         symbol_info_t existingSymbol;
-        if (IS_OK(symbol_resolve_name_unlocked(&existingSymbol, name)))
+        if (IS_INFO(symbol_resolve_name_unlocked(&existingSymbol, name)))
         {
             LOG_DEBUG("global symbol name conflict for '%s'\n", name);
             return ERR(MODULE, EXIST);

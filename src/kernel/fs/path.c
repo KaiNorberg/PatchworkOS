@@ -351,7 +351,7 @@ static inline status_t path_walk_get_result(path_walk_ctx_t* ctx, path_t* path)
 static status_t path_rcu_dotdot(path_walk_ctx_t* ctx)
 {
     status_t status = path_walk_acquire(ctx);
-    if (!IS_OK(status))
+    if (!IS_INFO(status))
     {
         return status;
     }
@@ -402,7 +402,7 @@ static status_t path_rcu_symlink(path_walk_ctx_t* ctx, dentry_t* symlink)
     UNREF_DEFER(symlink);
 
     status_t status = path_walk_acquire(ctx);
-    if (!IS_OK(status))
+    if (!IS_INFO(status))
     {
         return status;
     }
@@ -413,7 +413,7 @@ static status_t path_rcu_symlink(path_walk_ctx_t* ctx, dentry_t* symlink)
 
     path_walk_release(ctx);
 
-    if (!IS_OK(status))
+    if (!IS_INFO(status))
     {
         return status;
     }
@@ -421,7 +421,7 @@ static status_t path_rcu_symlink(path_walk_ctx_t* ctx, dentry_t* symlink)
 
     pathname_t pathname;
     status = pathname_init(&pathname, symlinkPath);
-    if (!IS_OK(status))
+    if (!IS_INFO(status))
     {
         return status;
     }
@@ -822,23 +822,23 @@ TEST_DEFINE(path)
 {
     pathname_t pathname;
 
-    TEST_ASSERT(IS_OK(pathname_init(&pathname, "/usr/bin/init")));
+    TEST_ASSERT(IS_INFO(pathname_init(&pathname, "/usr/bin/init")));
     TEST_ASSERT(strcmp(pathname.string, "/usr/bin/init") == 0);
     TEST_ASSERT(pathname.mode == MODE_NONE);
 
-    TEST_ASSERT(IS_OK(pathname_init(&pathname, "/dev/sda:read:write")));
+    TEST_ASSERT(IS_INFO(pathname_init(&pathname, "/dev/sda:read:write")));
     TEST_ASSERT(strcmp(pathname.string, "/dev/sda") == 0);
     TEST_ASSERT((pathname.mode & (MODE_READ | MODE_WRITE)) == (MODE_READ | MODE_WRITE));
 
-    TEST_ASSERT(IS_OK(pathname_init(&pathname, "/tmp/file:c:w")));
+    TEST_ASSERT(IS_INFO(pathname_init(&pathname, "/tmp/file:c:w")));
     TEST_ASSERT(strcmp(pathname.string, "/tmp/file") == 0);
     TEST_ASSERT((pathname.mode & (MODE_CREATE | MODE_WRITE)) == (MODE_CREATE | MODE_WRITE));
 
-    TEST_ASSERT(IS_OK(pathname_init(&pathname, "/var/log:append:c")));
+    TEST_ASSERT(IS_INFO(pathname_init(&pathname, "/var/log:append:c")));
     TEST_ASSERT(strcmp(pathname.string, "/var/log") == 0);
     TEST_ASSERT((pathname.mode & (MODE_APPEND | MODE_CREATE)) == (MODE_APPEND | MODE_CREATE));
 
-    TEST_ASSERT(IS_OK(pathname_init(&pathname, "/file:rw")));
+    TEST_ASSERT(IS_INFO(pathname_init(&pathname, "/file:rw")));
     TEST_ASSERT(strcmp(pathname.string, "/file") == 0);
     TEST_ASSERT((pathname.mode & (MODE_READ | MODE_WRITE)) == (MODE_READ | MODE_WRITE));
 
@@ -846,10 +846,10 @@ TEST_DEFINE(path)
 
     TEST_ASSERT(IS_CODE(pathname_init(&pathname, "/home:invalid"), INVALFLAG));
 
-    TEST_ASSERT(IS_OK(pathname_init(&pathname, "")));
+    TEST_ASSERT(IS_INFO(pathname_init(&pathname, "")));
     TEST_ASSERT(strcmp(pathname.string, "") == 0);
 
-    TEST_ASSERT(IS_OK(pathname_init(&pathname, ":read")));
+    TEST_ASSERT(IS_INFO(pathname_init(&pathname, ":read")));
     TEST_ASSERT(strcmp(pathname.string, "") == 0);
     TEST_ASSERT(pathname.mode == MODE_READ);
 

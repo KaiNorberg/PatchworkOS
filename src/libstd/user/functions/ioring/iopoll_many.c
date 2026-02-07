@@ -49,7 +49,7 @@ status_t iopoll_many(iopoll_t* fds, size_t nfds, clock_t timeout, size_t* count)
         size_t index = poll - fds;
         sqes[index].data = 0;
 
-        if (IS_OK(cqes[i].status))
+        if (IS_INFO(cqes[i].status))
         {
             poll->revents = (ioevents_t)cqes[i].result;
             if (poll->revents != 0)

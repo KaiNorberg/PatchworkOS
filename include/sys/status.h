@@ -8,19 +8,41 @@
  * @defgroup libstd_sys_status Status
  * @ingroup libstd
  *
- * The status system is used to report errors, warnings, and informational messages from various functions and
+ * The status system is used to report errors and informational messages from various functions and
  * subsystems.
+ *
+ * ## Errors
+ *
+ * Using this system allows for more expressive error reporting, as you can know not just what happened, but also where
+ * it happened and the "kind" of error that occurred.
+ *
+ * ## Information.
+ *
+ * The status value allows information to be passed even if a operation completed successfully.
+ *
+ * For example, if a partial-read is performed, meaning that the provided buffer was not large enough to store all
+ * available data, an informational `ST_CODE_MORE` status value will be returned.
+ *
+ * Using the `ST_CODE_MORE` status can in some cases allow us to avoid an entire additional read operation just to check
+ * if there is more data available.
+ *
+ * @note There are no "warning" or similar status values. The reasoning for this decision is that it is often not
+ * possible to distinguish between warnings and errors in a meaningful way, which leads to confusion. In practice, all a
+ * system needs to know is "Can I use the result of this operation?".
  *
  * ## Format
  *
- * A status is made up of a severity, source and code values. Included is a table describing the bit
- * format of a status value:
+ * A status is made up of a severity, source, kind and detail values. The kind and detail value are often combined into a "code" value. Included is a table describing the bit format of a status value:
  *
  * | Bit(s) | Description  |
  * | :----- | :----------- |
  * | 31     | Severity bit |
- * | 16-30  | Source       |
- * | 15-0   | Code         |
+ * | 24-30  | Source       |
+ * | 16-23  | Reserved     |
+ * | 8-15   | Kind         |
+ * | 0-7    | Detail       |
+ *
+ * @note For convenience, the standard libraries `printf()` implementation provides the `%Y` specifier for easily formatting status values.
  *
  * @{
  */
@@ -78,6 +100,27 @@ typedef enum
 } st_src_t;
 
 /**
+ * @brief Status kind.
+ * @enum st_kind_t
+ *
+ * Specifies the category of the status code.
+ */
+typedef enum
+{
+    ST_KIND_NONE,     ///< No specific kind.
+    ST_KIND_GENERIC,  ///< Generic errors.
+    ST_KIND_MEM,      ///< Memory errors.
+    ST_KIND_IO,       ///< I/O errors.
+    ST_KIND_ACCESS,   ///< Access/Permission errors.
+    ST_KIND_RESOURCE, ///< Resource errors.
+    ST_KIND_PROC,     ///< Process errors.
+    ST_KIND_DEV,      ///< Device errors.
+    ST_KIND_FMT,      ///< Format errors.
+    ST_KIND_SYS,      ///< System errors.
+    ST_KIND_MAX,      ///< Maximum kind value.
+} st_kind_t;
+
+/**
  * @brief Status code.
  * @enum st_code_t
  *
@@ -85,80 +128,88 @@ typedef enum
  */
 typedef enum
 {
-    ST_CODE_NONE,             ///< No specific code.
-    ST_CODE_UNKNOWN,          ///< Unknown error.
-    ST_CODE_INVAL,            ///< Invalid argument.
-    ST_CODE_OVERFLOW,         ///< Buffer overflow.
-    ST_CODE_TOOBIG,           ///< Value too big.
-    ST_CODE_NOMEM,            ///< Out of memory.
-    ST_CODE_TIMEOUT,          ///< Operation timed out.
-    ST_CODE_NOSPACE,          ///< No space left.
-    ST_CODE_MJ_OVERFLOW,      ///< Major number overflow.
-    ST_CODE_MJ_NOSYS,         ///< Major number not found.
-    ST_CODE_CANCELLED,        ///< Operation cancelled.
-    ST_CODE_NOT_CANCELLABLE,  ///< Operation cannot be cancelled.
-    ST_CODE_FAULT,            ///< Bad address.
-    ST_CODE_DYING,            ///< Process is dying.
-    ST_CODE_ACCESS,           ///< Permission denied.
-    ST_CODE_ALIGN,            ///< Alignment error.
-    ST_CODE_MAPPED,           ///< Already mapped.
-    ST_CODE_UNMAPPED,         ///< Not mapped.
-    ST_CODE_PINNED,           ///< Page pinned.
-    ST_CODE_SHARED_LIMIT,     ///< Shared memory limit reached.
-    ST_CODE_IN_STACK,         ///< Address in stack.
-    ST_CODE_IMPL,             ///< Implementation error.
-    ST_CODE_AGAIN,            ///< Resource temporarily unavailable.
-    ST_CODE_INTR,             ///< Interrupted system call.
-    ST_CODE_PATHTOOLONG,      ///< Path too long.
-    ST_CODE_NAMETOOLONG,      ///< Name too long.
-    ST_CODE_INVALCHAR,        ///< Invalid character.
-    ST_CODE_INVALFLAG,        ///< Invalid flag.
-    ST_CODE_CHANGED,          ///< State changed.
-    ST_CODE_FULL,             ///< Buffer full.
-    ST_CODE_MORE,             ///< More data is available then what was returned.
-    ST_CODE_FD_OVERFLOW,      ///< File descriptor is over the maximum value.
-    ST_CODE_MFILE,            ///< Too many file descriptors open.
-    ST_CODE_BADFD,            ///< File descriptor is not open.
-    ST_CODE_RAND,             ///< Hardware random number generator error.
-    ST_CODE_NOENT,            ///< No such file or directory.
-    ST_CODE_NOTDIR,           ///< Not a directory.
-    ST_CODE_ISDIR,            ///< Is a directory.
-    ST_CODE_BUSY,             ///< Device or resource busy.
-    ST_CODE_EXIST,            ///< File exists.
-    ST_CODE_XDEV,             ///< Cross-device link.
-    ST_CODE_NOTEMPTY,         ///< Directory not empty.
-    ST_CODE_NODEV,            ///< No such device.
-    ST_CODE_IO,               ///< I/O error.
-    ST_CODE_SHADOW_LIMIT,     ///< Maximum shadow mount depth reached.
-    ST_CODE_LOOP,             ///< Too many levels of symbolic links.
-    ST_CODE_NOFS,             ///< No filesystem found.
-    ST_CODE_NEGATIVE,         ///< Path component does not exist.
-    ST_CODE_ARGC,             ///< Invalid argument count.
-    ST_CODE_INVALCTL,         ///< Invalid control command.
-    ST_CODE_NOGROUP,          ///< Not within a group.
-    ST_CODE_PERM,             ///< Operation not permitted.
-    ST_CODE_NOTTY,            ///< Inappropriate ioctl for device.
-    ST_CODE_SPIPE,            ///< Invalid seek.
-    ST_CODE_MCLOCK,           ///< Too many clock sources.
-    ST_CODE_TOCTOU,           ///< Time-of-check to time-of-use race condition.
-    ST_CODE_INVALELF,         ///< Invalid ELF executable.
-    ST_CODE_NOT_INIT,         ///< Resource is not initialized.
-    ST_CODE_ALREADY_INIT,     ///< Resource is already initialized.
-    ST_CODE_ACQUIRED,         ///< Resource is already acquired.
-    ST_CODE_MTIMER,           ///< To many timer sources.
-    ST_CODE_ILSEQ,            ///< Invalid byte sequence.
-    ST_CODE_NO_ACPI_TABLE,    ///< Unable to locate ACPI table.
-    ST_CODE_INVAL_ACPI_TABLE, ///< Invalid ACPI table.
-    ST_CODE_DEADLOCK,         ///< Deadlock detected.
-    ST_CODE_NO_BOOT_INFO,     ///< Bootloader did not provide needed info.
-    ST_CODE_TEST_FAIL,        ///< Test failure.
-    ST_CODE_ADDRINUSE,        ///< Address already in use.
-    ST_CODE_INVAL_KEY,        ///< Invalid key.
-    ST_CODE_EXPECT_FILE,      ///< Operation expected to be provided a file.
-    ST_CODE_MJ_INVAL,         ///< Invalid major number.
-    ST_CODE_PENDING,          ///< Operation is pending.
-    ST_CODE_COMPLETE,        ///< Operation has been completed.
-    ST_CODE_MAX,              ///< Maximum code value.
+    ST_CODE_NONE = 0, ///< No specific code.
+
+    ST_CODE_UNKNOWN = (ST_KIND_GENERIC << 8) | 1, ///< Unknown error.
+    ST_CODE_INVAL,                                ///< Invalid argument.
+    ST_CODE_OVERFLOW,                             ///< Buffer overflow.
+    ST_CODE_TOOBIG,                               ///< Value too big.
+    ST_CODE_TIMEOUT,                              ///< Operation timed out.
+    ST_CODE_CANCELLED,                            ///< Operation cancelled.
+    ST_CODE_NOT_CANCELLABLE,                      ///< Operation cannot be cancelled.
+    ST_CODE_IMPL,                                 ///< Implementation error.
+    ST_CODE_AGAIN,                                ///< Resource temporarily unavailable.
+    ST_CODE_INTR,                                 ///< Interrupted system call.
+    ST_CODE_INVALFLAG,                            ///< Invalid flag.
+    ST_CODE_CHANGED,                              ///< State changed.
+    ST_CODE_FULL,                                 ///< Buffer full.
+    ST_CODE_MORE,                                 ///< More data is available then what was returned.
+    ST_CODE_ARGC,                                 ///< Invalid argument count.
+    ST_CODE_INVALCTL,                             ///< Invalid control command.
+    ST_CODE_TOCTOU,                               ///< Time-of-check to time-of-use race condition.
+    ST_CODE_TEST_FAIL,                            ///< Test failure.
+    ST_CODE_PENDING,                              ///< Operation is pending.
+    ST_CODE_COMPLETE,                             ///< Operation has been completed.
+
+    ST_CODE_NOMEM = (ST_KIND_MEM << 8) | 1, ///< Out of memory.
+    ST_CODE_NOSPACE,                        ///< No space left.
+    ST_CODE_FAULT,                          ///< Bad address.
+    ST_CODE_ALIGN,                          ///< Alignment error.
+    ST_CODE_MAPPED,                         ///< Already mapped.
+    ST_CODE_UNMAPPED,                       ///< Not mapped.
+    ST_CODE_PINNED,                         ///< Page pinned.
+    ST_CODE_SHARED_LIMIT,                   ///< Shared memory limit reached.
+    ST_CODE_IN_STACK,                       ///< Address in stack.
+
+    ST_CODE_PATHTOOLONG = (ST_KIND_IO << 8) | 1, ///< Path too long.
+    ST_CODE_NAMETOOLONG,                         ///< Name too long.
+    ST_CODE_INVALCHAR,                           ///< Invalid character.
+    ST_CODE_FD_OVERFLOW,                         ///< File descriptor is over the maximum value.
+    ST_CODE_MFILE,                               ///< Too many file descriptors open.
+    ST_CODE_BADFD,                               ///< File descriptor is not open.
+    ST_CODE_NOENT,                               ///< No such file or directory.
+    ST_CODE_NOTDIR,                              ///< Not a directory.
+    ST_CODE_ISDIR,                               ///< Is a directory.
+    ST_CODE_BUSY,                                ///< Device or resource busy.
+    ST_CODE_EXIST,                               ///< File exists.
+    ST_CODE_XDEV,                                ///< Cross-device link.
+    ST_CODE_NOTEMPTY,                            ///< Directory not empty.
+    ST_CODE_IO,                                  ///< I/O error.
+    ST_CODE_SHADOW_LIMIT,                        ///< Maximum shadow mount depth reached.
+    ST_CODE_LOOP,                                ///< Too many levels of symbolic links.
+    ST_CODE_NOFS,                                ///< No filesystem found.
+    ST_CODE_NEGATIVE,                            ///< Path component does not exist.
+    ST_CODE_SPIPE,                               ///< Invalid seek.
+    ST_CODE_ADDRINUSE,                           ///< Address already in use.
+    ST_CODE_EXPECT_FILE,                         ///< Operation expected to be provided a file.
+
+    ST_CODE_ACCESS = (ST_KIND_ACCESS << 8) | 1, ///< Permission denied.
+    ST_CODE_PERM,                               ///< Operation not permitted.
+    ST_CODE_NOGROUP,                            ///< Not within a group.
+    ST_CODE_INVAL_KEY,                          ///< Invalid key.
+
+    ST_CODE_NOT_INIT = (ST_KIND_RESOURCE << 8) | 1, ///< Resource is not initialized.
+    ST_CODE_ALREADY_INIT,                           ///< Resource is already initialized.
+    ST_CODE_ACQUIRED,                               ///< Resource is already acquired.
+
+    ST_CODE_DYING = (ST_KIND_PROC << 8) | 1, ///< Process is dying.
+    ST_CODE_DEADLOCK,                        ///< Deadlock detected.
+
+    ST_CODE_NODEV = (ST_KIND_DEV << 8) | 1, ///< No such device.
+    ST_CODE_NOTTY,                          ///< Inappropriate ioctl for device.
+    ST_CODE_RAND,                           ///< Hardware random number generator error.
+    ST_CODE_MCLOCK,                         ///< Too many clock sources.
+    ST_CODE_MTIMER,                         ///< To many timer sources.
+
+    ST_CODE_INVALELF = (ST_KIND_FMT << 8) | 1, ///< Invalid ELF executable.
+    ST_CODE_ILSEQ,                             ///< Invalid byte sequence.
+    ST_CODE_NO_ACPI_TABLE,                     ///< Unable to locate ACPI table.
+    ST_CODE_INVAL_ACPI_TABLE,                  ///< Invalid ACPI table.
+    ST_CODE_NO_BOOT_INFO,                      ///< Bootloader did not provide needed info.
+
+    ST_CODE_MJ_OVERFLOW = (ST_KIND_SYS << 8) | 1, ///< Major number overflow.
+    ST_CODE_MJ_NOSYS,                             ///< Major number not found.
+    ST_CODE_MJ_INVAL,                             ///< Invalid major number.
 } st_code_t;
 
 /**
@@ -170,7 +221,7 @@ typedef enum
  * @return The constructed status value.
  */
 #define STATUS(_severity, _source, _code) \
-    ((status_t)(((uint32_t)(_severity) & 0x1) << 31) | (((uint32_t)(_source) & 0x7FFF) << 16) | \
+    ((status_t)(((uint32_t)(_severity) & 0x1) << 31) | (((uint32_t)(_source) & 0x7F) << 24) | \
         ((uint32_t)(_code) & 0xFFFF))
 
 /**
@@ -187,7 +238,7 @@ typedef enum
  * @param _status The status value.
  * @return The source.
  */
-#define ST_SRC(_status) (((_status) >> 16) & 0x7FFF)
+#define ST_SRC(_status) (((_status) >> 24) & 0x7F)
 
 /**
  * @brief Extract the code from a status value.
@@ -198,12 +249,28 @@ typedef enum
 #define ST_CODE(_status) ((_status) & 0xFFFF)
 
 /**
+ * @brief Extract the kind from a status value.
+ *
+ * @param _status The status value.
+ * @return The kind.
+ */
+#define ST_KIND(_status) (((_status) >> 8) & 0xFF)
+
+/**
+ * @brief Extract the detail code from a status value.
+ *
+ * @param _status The status value.
+ * @return The detail code.
+ */
+#define ST_DETAIL(_status) ((_status) & 0xFF)
+
+/**
  * @brief Check if a status indicates success.
  *
  * @param _status The status value.
  * @return True if success, false otherwise.
  */
-#define IS_OK(_status) (ST_SEV(_status) == ST_SEV_INFO)
+#define IS_INFO(_status) (ST_SEV(_status) == ST_SEV_INFO)
 
 /**
  * @brief Check if a status indicates an error.
@@ -221,6 +288,15 @@ typedef enum
  * @return True if match, false otherwise.
  */
 #define IS_CODE(_status, _code) (ST_CODE(_status) == ST_CODE_##_code)
+
+/**
+ * @brief Check if a status matches a specific kind.
+ *
+ * @param _status The status value.
+ * @param _kind The kind to check against (without ST_KIND_ prefix).
+ * @return True if match, false otherwise.
+ */
+#define IS_KIND(_status, _kind) (ST_KIND(_status) == ST_KIND_##_kind)
 
 /**
  * @brief Check if a status matches a specific severity.
@@ -344,6 +420,14 @@ const char* st_sev_str(st_sev_t sev);
  * @return The source string.
  */
 const char* st_src_str(st_src_t src);
+
+/**
+ * @brief Convert a status kind to a string.
+ *
+ * @param kind The kind.
+ * @return The kind string.
+ */
+const char* st_kind_str(st_kind_t kind);
 
 /**
  * @brief Convert a status code to a string.

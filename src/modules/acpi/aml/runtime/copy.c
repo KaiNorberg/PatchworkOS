@@ -57,7 +57,7 @@ status_t aml_copy_data_and_type(aml_object_t* src, aml_object_t* dest)
         return ERR(ACPI, INVAL);
     }
 
-    if (IS_OK(status))
+    if (IS_INFO(status))
     {
         // To make debugging easier we copy the name of the object to if the dest is not already named.
         // The copied name would be overwritten if the dest is named later.

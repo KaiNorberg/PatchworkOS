@@ -27,7 +27,7 @@ static status_t ctl_completion(irp_t* irp, void* ctx)
 {
     ctl_state_t* state = (ctl_state_t*)ctx;
 
-    if (IS_OK(irp->status) && state->next != NULL)
+    if (IS_INFO(irp->status) && state->next != NULL)
     {
         status_t status = ctl_do_next(irp, state);
         if (IS_ERR(status))
