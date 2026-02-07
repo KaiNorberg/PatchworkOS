@@ -38,7 +38,8 @@ typedef struct local_listen
     uint32_t maxBacklog;
     bool isClosed;
     lock_t lock;
-    wait_queue_t waitQueue;
+    wait_queue_t waitQueue; ///< @deprecated Should be removed as part of the async overhaul. For now its still needed.
+    list_t polls;
 } local_listen_t;
 
 /**
@@ -56,6 +57,15 @@ status_t local_listen_new(const char* address, local_listen_t** out);
  * @param listen Pointer to the local listener to free.
  */
 void local_listen_free(local_listen_t* listen);
+
+/**
+ * @brief Close a local listener.
+ *
+ * Will process all pending IRPs, and mark the listener as closed but will not free the listener immediately.
+ *
+ * @param listen Pointer to the local listener to close.
+ */
+void local_listen_close(local_listen_t* listen);
 
 /**
  * @brief Find a local listener by its address.

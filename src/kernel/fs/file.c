@@ -56,27 +56,15 @@ file_t* file_new(const path_t* path, mode_t mode)
 
 status_t file_call(file_t* file, irp_t* irp)
 {
+    assert(file != NULL);
+    assert(irp != NULL);
+
+    irp_handler_t handler = NULL;
+
     irp_frame_t* frame = irp_next(irp);
-    if (UNLIKELY(frame->major >= IRP_MJ_MAX))
+    if (LIKELY(frame->major < IRP_MJ_MAX) && file->vnode->cls->handlers[frame->major] != NULL)
     {
-        status_t status = ERR(IO, MJ_OVERFLOW);
-        irp_complete(irp, status);
-        return status;
-    }
-
-    if (file == NULL)
-    {
-        status_t status = ERR(IO, MJ_NOSYS);
-        irp_complete(irp, status);
-        return status;
-    }
-
-    irp_handler_t func = file->vnode->cls->handlers[frame->major];
-    if (func == NULL)
-    {
-        status_t status = ERR(IO, MJ_NOSYS);
-        irp_complete(irp, status);
-        return status;
+        handler = file->vnode->cls->handlers[frame->major];
     }
 
     frame->vnode = REF(file->vnode);
@@ -97,5 +85,5 @@ status_t file_call(file_t* file, irp_t* irp)
         }
     }
 
-    return irp_call(irp, func);
+    return irp_call(irp, handler);
 }

@@ -62,8 +62,8 @@ static void process_ctor(void* ptr)
     list_entry_init(&process->zombieEntry);
     process->id = 0;
     atomic_init(&process->priority, 0);
-    memset_s(process->status.buffer, PROCESS_STATUS_MAX, 0, PROCESS_STATUS_MAX);
-    lock_init(&process->status.lock);
+    memset_s(process->result.buffer, PROCESS_RESULT_MAX, 0, PROCESS_RESULT_MAX);
+    lock_init(&process->result.lock);
     process->space = (space_t){0};
     process->nspace = NULL;
     lock_init(&process->nspaceLock);
@@ -144,7 +144,7 @@ status_t process_new(process_t** out, priority_t priority, group_member_t* group
     ref_init(&process->ref, process_free);
     process->id = atomic_fetch_add_explicit(&newPid, 1, memory_order_relaxed);
     atomic_store(&process->priority, priority);
-    process->status.buffer[0] = '\0';
+    process->result.buffer[0] = '\0';
 
     status_t status = space_init(&process->space, VMM_USER_SPACE_MIN, VMM_USER_SPACE_MAX,
         SPACE_MAP_KERNEL_BINARY | SPACE_MAP_KERNEL_HEAP | SPACE_MAP_IDENTITY);
@@ -226,17 +226,19 @@ void process_set_ns(process_t* process, namespace_t* ns)
     lock_release(&process->nspaceLock);
 }
 
-void process_kill(process_t* process, const char* status)
+void process_kill(process_t* process, const char* result)
 {
     if (atomic_fetch_or(&process->flags, PROCESS_DYING) & PROCESS_DYING)
     {
         return;
     }
 
-    lock_acquire(&process->status.lock);
-    strncpy(process->status.buffer, status, PROCESS_STATUS_MAX - 1);
-    process->status.buffer[PROCESS_STATUS_MAX - 1] = '\0';
-    lock_release(&process->status.lock);
+    LOG_DEBUG("killing process pid=%d result='%s'\n", process->id, result);
+
+    lock_acquire(&process->result.lock);
+    strncpy(process->result.buffer, result, PROCESS_RESULT_MAX - 1);
+    process->result.buffer[PROCESS_RESULT_MAX - 1] = '\0';
+    lock_release(&process->result.lock);
 
     RCU_READ_SCOPE();
 
@@ -273,10 +275,10 @@ void process_kill(process_t* process, const char* status)
         switch (frame->major)
         {
         case IRP_MJ_READ:
-            lock_acquire(&process->status.lock);
-            status_t status = mdl_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, process->status.buffer,
-                strlen(process->status.buffer));
-            lock_release(&process->status.lock);
+            lock_acquire(&process->result.lock);
+            status_t status = mdl_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, process->result.buffer,
+                strlen(process->result.buffer));
+            lock_release(&process->result.lock);
             irp_complete(irp, status);
             break;
         case IRP_MJ_POLL:

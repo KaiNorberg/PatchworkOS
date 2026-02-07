@@ -5,7 +5,6 @@
 #include <sys/proc.h>
 #include <threads.h>
 
-#include "user/common/syscalls.h"
 #include "user/common/threading.h"
 
 int mtx_lock(mtx_t* mutex)

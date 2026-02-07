@@ -4,8 +4,6 @@
 #include <string.h>
 #include <sys/fs.h>
 
-#include "user/common/syscalls.h"
-
 int mkdir(const char* path)
 {
     fd_t fd;

@@ -19,7 +19,7 @@ static void ctl_state_free(ctl_state_t* state)
         return;
     }
 
-    UNREF(state->vnode);
+    UNREF(state->file);
     free(state);
 }
 
@@ -36,7 +36,7 @@ static status_t ctl_completion(irp_t* irp, void* ctx)
             ctl_state_free(state);
             return OK;
         }
-        return INFO(IO, PENDING);
+        return INFO(IO, COMPLETE);
     }
 
     ctl_state_free(state);
@@ -97,10 +97,10 @@ static status_t ctl_do_next(irp_t* irp, ctl_state_t* state)
 
     irp_set_complete(irp, ctl_completion, state);
     irp_prep_control(irp, cmd, args);
-    return vnode_call(state->vnode, irp);
+    return file_call(state->file, irp);
 }
 
-status_t ctl_dispatch(irp_t* irp, vnode_t* vnode)
+status_t ctl_dispatch(irp_t* irp, file_t* file)
 {
     irp_frame_t* frame = irp_current(irp);
     if (frame->major != IRP_MJ_WRITE)
@@ -124,7 +124,7 @@ status_t ctl_dispatch(irp_t* irp, vnode_t* vnode)
 
     state->buffer[bytesWritten] = '\0';
     state->next = state->buffer;
-    state->vnode = REF(vnode);
+    state->file = REF(file);
     state->depth = 0;
 
     ctl_do_next(irp, state);
@@ -139,5 +139,5 @@ status_t ctl_generic_write(irp_t* irp)
         return ERR(VFS, MJ_NOSYS);
     }
 
-    return ctl_dispatch(irp, frame->vnode);
+    return ctl_dispatch(irp, frame->file);
 }

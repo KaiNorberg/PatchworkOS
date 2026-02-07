@@ -1,4 +1,5 @@
 #include <kernel/acpi/tables.h>
+#include <kernel/io/irp.h>
 #include <kernel/mem/paging_types.h>
 #include <sys/status.h>
 
@@ -21,24 +22,27 @@ static acpi_cached_table_t* cachedTables = NULL;
 
 static dentry_t* tablesDir = NULL;
 
-static status_t acpi_table_read(file_t* file, void* buffer, size_t count, size_t* offset, size_t* bytesRead)
+static status_t acpi_table_read(irp_t* irp)
 {
-    if (file == NULL || buffer == NULL || offset == NULL || bytesRead == NULL)
-    {
-        return ERR(ACPI, INVAL);
-    }
+    irp_frame_t* frame = irp_current(irp);
 
-    sdt_header_t* table = file->vnode->data;
+    sdt_header_t* table = frame->vnode->data;
     if (table == NULL)
     {
         return ERR(ACPI, INVAL);
     }
 
-    return buffer_read(buffer, count, offset, bytesRead, table, table->length);
+    return irp_read_helper(irp, table, table->length);
 }
 
-static file_ops_t tableFileOps = {
-    .read = acpi_table_read,
+static vnode_class_t tableClass = {
+    .name = "acpi table",
+    .type = VNODE_DIR,
+    .iterate = dentry_generic_iterate,
+    .handlers =
+        {
+            [IRP_MJ_READ] = acpi_table_read,
+        },
 };
 
 static bool acpi_is_table_valid(sdt_header_t* table)
@@ -225,7 +229,7 @@ status_t acpi_tables_expose(void)
     assert(acpiRoot != NULL);
     UNREF_DEFER(acpiRoot);
 
-    tablesDir = sysfs_dir_new(acpiRoot, "tables", NULL, NULL);
+    tablesDir = sysfs_dentry_new(acpiRoot, "tables", &tableClass, NULL);
     if (tablesDir == NULL)
     {
         LOG_ERR("failed to create ACPI tables sysfs directory");
@@ -247,7 +251,7 @@ status_t acpi_tables_expose(void)
             name[SDT_SIGNATURE_LENGTH] = '\0';
         }
 
-        cachedTables[i].file = sysfs_file_new(tablesDir, name, NULL, &tableFileOps, table);
+        cachedTables[i].file = sysfs_dentry_new(tablesDir, name, &tableClass, table);
         if (cachedTables[i].file == NULL)
         {
             LOG_ERR("failed to create ACPI table sysfs file for %.*s", SDT_SIGNATURE_LENGTH, table->signature);

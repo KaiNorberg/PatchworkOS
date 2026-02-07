@@ -489,9 +489,9 @@ void sched_enable(void);
  *
  * @note Will never return, instead it triggers an interrupt that kills the current thread.
  *
- * @param status The exit status of the process.
+ * @param result The exit result of the process.
  */
-_NORETURN void sched_exits(const char* status);
+_NORETURN void sched_exits(const char* result);
 
 /**
  * @brief Terminates the currently executing thread.

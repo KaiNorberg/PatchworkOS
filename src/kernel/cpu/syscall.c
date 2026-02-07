@@ -5,6 +5,7 @@
 #include <kernel/cpu/gdt.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/vmm.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 

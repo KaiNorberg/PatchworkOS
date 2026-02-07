@@ -1,7 +1,6 @@
 #include <sys/fs.h>
 #include <sys/proc.h>
 #include <user/common/note.h>
-#include <user/common/syscalls.h>
 
 #include <signal.h>
 #include <stdatomic.h>
@@ -64,9 +63,10 @@ _NORETURN static void _note_kernel_handler(char* note)
 
 void _note_init(void)
 {
-    if (IS_ERR(notify(_note_kernel_handler)))
+    status_t status = notify(_note_kernel_handler);
+    if (IS_ERR(status))
     {
-        exits("notify failed");
+        exits(F("notify failed %Y", status));
     }
 }
 

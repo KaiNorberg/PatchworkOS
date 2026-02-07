@@ -72,9 +72,10 @@ const char* _codeStrings[] = {
     [ST_CODE_EXPECT_FILE] = "operation expected to be provided a file",
     [ST_CODE_MJ_INVAL] = "invalid major number",
     [ST_CODE_PENDING] = "operation is pending",
+    [ST_CODE_COMPLETE] = "operation has been completed",
 };
 
-const char* codetostr(st_code_t code)
+const char* st_code_str(st_code_t code)
 {
     if (code < ST_CODE_NONE || code >= ST_CODE_MAX)
     {

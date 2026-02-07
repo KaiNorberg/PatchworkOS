@@ -39,8 +39,8 @@ typedef uint32_t status_t;
  */
 typedef enum
 {
-    ST_SEV_OK = 0,  ///< Success/Informational.
-    ST_SEV_ERR = 1, ///< Error.
+    ST_SEV_INFO = 0, ///< Success/Informational.
+    ST_SEV_ERR = 1,  ///< Error.
 } st_sev_t;
 
 /**
@@ -157,6 +157,7 @@ typedef enum
     ST_CODE_EXPECT_FILE,      ///< Operation expected to be provided a file.
     ST_CODE_MJ_INVAL,         ///< Invalid major number.
     ST_CODE_PENDING,          ///< Operation is pending.
+    ST_CODE_COMPLETE,        ///< Operation has been completed.
     ST_CODE_MAX,              ///< Maximum code value.
 } st_code_t;
 
@@ -202,7 +203,7 @@ typedef enum
  * @param _status The status value.
  * @return True if success, false otherwise.
  */
-#define IS_OK(_status) (ST_SEV(_status) == ST_SEV_OK)
+#define IS_OK(_status) (ST_SEV(_status) == ST_SEV_INFO)
 
 /**
  * @brief Check if a status indicates an error.
@@ -310,7 +311,7 @@ typedef enum
 /**
  * @brief Status OK constant.
  */
-#define OK STATUS(ST_SEV_OK, ST_SRC_NONE, ST_CODE_NONE)
+#define OK STATUS(ST_SEV_INFO, ST_SRC_NONE, ST_CODE_NONE)
 
 /**
  * @brief Create an information status.
@@ -318,7 +319,7 @@ typedef enum
  * @param _source The source of the status (without ST_SRC_ prefix).
  * @param _code The code of the status (without ST_CODE_ prefix).
  */
-#define INFO(_source, _code) STATUS(ST_SEV_OK, ST_SRC_##_source, ST_CODE_##_code)
+#define INFO(_source, _code) STATUS(ST_SEV_INFO, ST_SRC_##_source, ST_CODE_##_code)
 
 /**
  * @brief Create an error status.
@@ -334,7 +335,7 @@ typedef enum
  * @param sev The severity
  * @return The severity string.
  */
-const char* sevtostr(st_sev_t sev);
+const char* st_sev_str(st_sev_t sev);
 
 /**
  * @brief Convert a status source to a string.
@@ -342,7 +343,7 @@ const char* sevtostr(st_sev_t sev);
  * @param src The source.
  * @return The source string.
  */
-const char* srctostr(st_src_t src);
+const char* st_src_str(st_src_t src);
 
 /**
  * @brief Convert a status code to a string.
@@ -350,7 +351,7 @@ const char* srctostr(st_src_t src);
  * @param code The code.
  * @return The code string.
  */
-const char* codetostr(st_code_t code);
+const char* st_code_str(st_code_t code);
 
 /** @} */
 

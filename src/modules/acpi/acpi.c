@@ -38,6 +38,12 @@ bool acpi_is_checksum_valid(void* table, uint64_t length)
     return sum == 0;
 }
 
+static vnode_class_t acpiClass = {
+    .name = "acpi",
+    .type = VNODE_DIR,
+    .iterate = dentry_generic_iterate,
+};
+
 dentry_t* acpi_get_dir(void)
 {
     if (!dirInitialized)
@@ -49,7 +55,7 @@ dentry_t* acpi_get_dir(void)
         }
         UNREF_DEFER(ns);
 
-        acpi = sysfs_dir_new(NULL, "acpi", NULL, NULL);
+        acpi = sysfs_dentry_new(NULL, "acpi", &acpiClass, NULL);
         if (acpi == NULL)
         {
             panic(NULL, "failed to initialize ACPI sysfs group");

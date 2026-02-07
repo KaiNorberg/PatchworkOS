@@ -71,14 +71,17 @@ static void volume_cleanup(vnode_t* vnode)
     vnode->data = NULL;
 }
 
-static vnode_class_t volumeClass = {.name = "volume file",
+static vnode_class_t volumeClass = {
+    .name = "volume file",
     .type = VNODE_REGULAR,
     .cleanup = volume_cleanup,
-    .handlers = {
-        [IRP_MJ_READ] = volume_read,
-    }};
+    .handlers =
+        {
+            [IRP_MJ_READ] = volume_read,
+        },
+};
 
-static status_t filesystem_dir_lookup(vnode_t* dir, dentry_t* dentry)
+static status_t filesystem_lookup(vnode_t* dir, dentry_t* dentry)
 {
     filesystem_t* fs = dir->data;
     assert(fs != NULL);
@@ -112,7 +115,7 @@ static status_t filesystem_dir_lookup(vnode_t* dir, dentry_t* dentry)
     return INFO(FS, NEGATIVE);
 }
 
-static status_t filesystem_dir_iterate(dentry_t* dentry, dir_ctx_t* ctx)
+static status_t filesystem_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 {
     if (!dentry_iterate_dots(dentry, ctx))
     {
@@ -144,11 +147,11 @@ static status_t filesystem_dir_iterate(dentry_t* dentry, dir_ctx_t* ctx)
     return OK;
 }
 
-static vnode_class_t dirClass = {
+static vnode_class_t fsClass = {
     .name = "fs dir",
     .type = VNODE_DIR,
-    .lookup = filesystem_dir_lookup,
-    .iterate = filesystem_dir_iterate,
+    .lookup = filesystem_lookup,
+    .iterate = filesystem_iterate,
 };
 
 static status_t filesystem_root_lookup(vnode_t* dir, dentry_t* dentry)
@@ -165,7 +168,7 @@ static status_t filesystem_root_lookup(vnode_t* dir, dentry_t* dentry)
     }
     filesystem_t* fs = CONTAINER_OF(entry, filesystem_t, mapEntry);
 
-    vnode_t* vnode = vnode_new(dentry->volume, &dirClass);
+    vnode_t* vnode = vnode_new(dentry->volume, &fsClass);
     if (vnode == NULL)
     {
         return ERR(MEM, NOMEM);
@@ -312,7 +315,7 @@ filesystem_t* filesystem_get_by_path(const char* path, process_t* process)
         return NULL;
     }
 
-    if (target.dentry->vnode->cls != &volumeClass)
+    if (target.dentry->vnode->cls != &fsClass)
     {
         return NULL;
     }

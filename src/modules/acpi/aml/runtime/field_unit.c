@@ -36,7 +36,7 @@ static void* aml_ensure_mem_is_mapped(uint64_t address, aml_bit_size_t accessSiz
         if (IS_ERR(status))
         {
             LOG_ERR("failed to map physical address %p for opregion access: %s\n", physAddr,
-                codetostr(ST_CODE(status)));
+                st_code_str(ST_CODE(status)));
             return NULL;
         }
     }

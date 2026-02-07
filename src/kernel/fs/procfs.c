@@ -390,10 +390,10 @@ static status_t procfs_wait_read(irp_t* irp)
         return irp_delay(irp, &process->dyingIrps, procfs_wait_cancel);
     }
 
-    lock_acquire(&process->status.lock);
-    status_t status = mdl_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, process->status.buffer,
-        strlen(process->status.buffer));
-    lock_release(&process->status.lock);
+    lock_acquire(&process->result.lock);
+    status_t status = mdl_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, process->result.buffer,
+        strlen(process->result.buffer));
+    lock_release(&process->result.lock);
     return status;
 }
 
@@ -650,10 +650,10 @@ static status_t procfs_ctl_control(irp_t* irp)
     }
     case IOCMD('k', 'i', 'l', 'l'):
     {
-        char statusStr[MAX_NAME];
-        if (sscanf(args, "%s", statusStr) == 1)
+        char resultStr[MAX_NAME];
+        if (sscanf(args, "%s", resultStr) == 1)
         {
-            process_kill(process, statusStr);
+            process_kill(process, resultStr);
         }
         else
         {

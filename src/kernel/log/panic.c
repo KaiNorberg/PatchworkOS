@@ -319,7 +319,7 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
     status_t status = cpu_halt_others();
     if (IS_ERR(status))
     {
-        LOG_PANIC("failed to halt other CPUs due to '%s'\n", codetostr(status));
+        LOG_PANIC("failed to halt other CPUs due to '%s'\n", st_code_str(status));
     }
 
     screen_panic();

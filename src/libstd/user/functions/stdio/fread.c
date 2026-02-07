@@ -2,7 +2,6 @@
 #include <stdlib.h>
 
 #include "user/common/file.h"
-#include "user/common/syscalls.h"
 
 size_t fread(void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTRICT stream)
 {

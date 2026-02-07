@@ -1,13 +1,13 @@
 #include <sys/status.h>
 
 const char* _severityStrings[] = {
-    [ST_SEV_OK] = "ok",
+    [ST_SEV_INFO] = "info",
     [ST_SEV_ERR] = "error",
 };
 
-const char* sevtostr(st_sev_t sev)
+const char* st_sev_str(st_sev_t sev)
 {
-    if (sev < ST_SEV_OK || sev > ST_SEV_ERR)
+    if (sev < ST_SEV_INFO || sev > ST_SEV_ERR)
     {
         return "unknown";
     }

@@ -436,7 +436,7 @@ uint64_t client_receive_cmds(client_t* client)
     }
 
     size_t readSize;
-    status_t status = ioread(client->fd, client->recvBuffer + client->recvLen, freeSpace, &readSize);
+    status_t status = ioread(client->fd, client->recvBuffer + client->recvLen, freeSpace, IOOFF_CUR, &readSize);
     if (IS_ERR(status))
     {
         if (IS_CODE(status, AGAIN))
@@ -491,7 +491,7 @@ static uint64_t client_send_all(fd_t fd, const void* data, size_t size)
     while (sent < size)
     {
         size_t n;
-        status_t status = iowrite(fd, p + sent, size - sent, &n);
+        status_t status = iowrite(fd, p + sent, size - sent, IOOFF_CUR, &n);
         if (IS_ERR(status))
         {
             if (IS_CODE(status, AGAIN))

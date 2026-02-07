@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/fs.h>
+#include <sys/ioring.h>
 #include <sys/list.h>
 
 static surface_id_t newId = 0;
@@ -33,8 +34,8 @@ surface_t* surface_new(client_t* client, const char* name, const point_t* point,
         return NULL;
     }
     surface->buffer = NULL;
-    if (IS_ERR(
-            mmap(surface->shmem, (void**)&surface->buffer, width * height * sizeof(pixel_t), PROT_READ | PROT_WRITE)))
+    if (IS_ERR(iomap(surface->shmem, (void**)&surface->buffer, width * height * sizeof(pixel_t), IOOFF_CUR,
+            IOMAP_READ | IOMAP_WRITE)))
     {
         close(surface->shmem);
         free(surface);

@@ -3,7 +3,6 @@
 #include <sys/fs.h>
 
 #include "user/common/file.h"
-#include "user/common/syscalls.h"
 
 static const char* _flags_to_string(_file_flags_t flags)
 {

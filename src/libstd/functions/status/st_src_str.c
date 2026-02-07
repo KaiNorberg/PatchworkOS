@@ -24,7 +24,7 @@ const char* _sourceStrings[] = {
     [ST_SRC_PROTO] = "proto",
 };
 
-const char* srctostr(st_src_t src)
+const char* st_src_str(st_src_t src)
 {
     if (src < ST_SRC_NONE || src >= ST_SRC_MAX)
     {

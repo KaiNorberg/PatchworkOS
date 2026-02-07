@@ -66,8 +66,8 @@ void loader_exec(void)
     }
 
     size_t fileSize;
-    vfs_seek(file, 0, SEEK_END, &fileSize);
-    vfs_seek(file, 0, SEEK_SET, NULL);
+    vfs_seek(file, 0, IOSEEK_END, &fileSize);
+    vfs_seek(file, 0, IOSEEK_SET, NULL);
 
     fileData = malloc(fileSize);
     if (fileData == NULL)
@@ -168,7 +168,7 @@ cleanup:
     {
         thread_jump(thread);
     }
-    LOG_DEBUG("exec failed due to %s pid=%llu\n", codetostr(ST_CODE(status)), pid);
+    LOG_DEBUG("exec failed due to %s pid=%llu\n", st_code_str(ST_CODE(status)), pid);
     sched_exits("exec failed");
 }
 

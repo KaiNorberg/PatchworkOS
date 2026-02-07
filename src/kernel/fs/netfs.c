@@ -411,7 +411,7 @@ static vnode_class_t factoryClass = {.name = "netfs factory",
     .file_dtor = netfs_factory_file_dtor,
     .handlers = {
         [IRP_MJ_READ] = netfs_factory_read,
-    }};
+    },};
 
 static status_t netfs_addrs_read(irp_t* irp)
 {
@@ -489,12 +489,6 @@ static void netfs_file_cleanup(vnode_t* vnode)
     vnode->data = NULL;
 }
 
-static vnode_class_t familyFileClass = {
-    .name = "netfs family file",
-    .type = VNODE_REGULAR,
-    .cleanup = netfs_file_cleanup,
-};
-
 static status_t netfs_family_lookup(vnode_t* dir, dentry_t* dentry)
 {
     netfs_family_t* family = dir->data;
@@ -507,7 +501,7 @@ static status_t netfs_family_lookup(vnode_t* dir, dentry_t* dentry)
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dir->volume, &familyFileClass);
+        vnode_t* vnode = vnode_new(dir->volume, familyFiles[i].cls);
         if (vnode == NULL)
         {
             return ERR(FS, NOMEM);

@@ -6,7 +6,6 @@
 #include <sys/syscall.h>
 #include <threads.h>
 
-#include "user/common/syscalls.h"
 #include "user/common/threading.h"
 
 void thrd_exit(int res)
@@ -14,8 +13,7 @@ void thrd_exit(int res)
     _thread_t* thread = _THREAD_SELF->self;
     if (thread == NULL)
     {
-        fprintf(stderr, "libstd: thrd_exit called from unknown thread\n");
-        abort();
+        exits("libstd: thrd_exit called from unknown thread");
     }
 
     thread->result = res;

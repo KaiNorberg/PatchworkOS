@@ -505,7 +505,7 @@ static inline void list_move(list_t* dest, list_entry_t* entry)
  * @param dest The destination list.
  * @param src The source list.
  */
-static inline void list_move_all(list_t* dest, list_t* src)
+static inline void list_splice(list_t* dest, list_t* src)
 {
     assert(dest != NULL);
     assert(src != NULL);

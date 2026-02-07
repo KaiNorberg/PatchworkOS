@@ -4,7 +4,9 @@
 #include <kernel/acpi/aml/aml.h>
 #include <kernel/acpi/aml/object.h>
 #include <kernel/acpi/aml/to_string.h>
+#include <kernel/fs/dentry.h>
 #include <kernel/fs/sysfs.h>
+#include <kernel/fs/vnode.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 
@@ -90,6 +92,12 @@ void aml_namespace_init(aml_object_t* root)
     namespaceRoot = REF(root);
 }
 
+static vnode_class_t amlClass = {
+    .name = "aml",
+    .type = VNODE_DIR,
+    .iterate = dentry_generic_iterate,
+};
+
 static status_t aml_namespace_expose_object(aml_object_t* object, dentry_t* parentDir)
 {
     if (object == NULL || parentDir == NULL)
@@ -105,7 +113,7 @@ static status_t aml_namespace_expose_object(aml_object_t* object, dentry_t* pare
         return ERR(ACPI, INVAL);
     }
 
-    object->dir = sysfs_dir_new(parentDir, AML_NAME_TO_STRING(object->name), NULL, NULL);
+    object->dir = sysfs_dentry_new(parentDir, AML_NAME_TO_STRING(object->name), &amlClass, NULL);
     if (object->dir == NULL)
     {
         LOG_ERR("Failed to create sysfs directory %s\n", AML_NAME_TO_STRING(object->name));
@@ -135,7 +143,7 @@ status_t aml_namespace_expose(void)
     dentry_t* acpiDir = acpi_get_dir();
     assert(acpiDir != NULL);
 
-    namespaceDir = sysfs_dir_new(acpiDir, "namespace", NULL, NULL);
+    namespaceDir = sysfs_dentry_new(acpiDir, "namespace", &amlClass, NULL);
     UNREF(acpiDir);
     if (namespaceDir == NULL)
     {

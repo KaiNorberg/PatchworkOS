@@ -3,9 +3,11 @@
 #include "local_conn.h"
 #include "local_listen.h"
 
+#include <kernel/fs/ctl.h>
 #include <kernel/fs/filesystem.h>
 #include <kernel/fs/netfs.h>
 #include <kernel/fs/path.h>
+#include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/module/module.h>
@@ -16,8 +18,11 @@
 
 #include <stdlib.h>
 #include <sys/fs.h>
+#include <sys/ioring.h>
 #include <sys/list.h>
 #include <sys/status.h>
+
+static status_t local_socket_recv(irp_t* irp);
 
 static local_listen_t* local_socket_get_listen(local_socket_t* data)
 {
@@ -63,27 +68,15 @@ static void local_socket_deinit(socket_t* sock)
         return;
     }
 
-    switch (sock->state)
-    {
-    default:
-        break;
-    }
-
     if (data->listen != NULL)
     {
-        lock_acquire(&data->listen->lock);
-        data->listen->isClosed = true;
-        wait_unblock(&data->listen->waitQueue, WAIT_ALL, OK);
-        lock_release(&data->listen->lock);
+        local_listen_close(data->listen);
         UNREF(data->listen);
     }
 
     if (data->conn != NULL)
     {
-        lock_acquire(&data->conn->lock);
-        data->conn->isClosed = true;
-        wait_unblock(&data->conn->waitQueue, WAIT_ALL, OK);
-        lock_release(&data->conn->lock);
+        local_conn_close(data->conn);
         UNREF(data->conn);
     }
 
@@ -91,7 +84,7 @@ static void local_socket_deinit(socket_t* sock)
     sock->data = NULL;
 }
 
-static status_t local_socket_bind(socket_t* sock)
+static status_t local_socket_bind(socket_t* sock, const char* address)
 {
     local_socket_t* data = sock->data;
     if (data == NULL)
@@ -105,7 +98,7 @@ static status_t local_socket_bind(socket_t* sock)
     }
 
     local_listen_t* listen;
-    status_t status = local_listen_new(sock->address, &listen);
+    status_t status = local_listen_new(address, &listen);
     if (IS_ERR(status))
     {
         return status;
@@ -139,7 +132,7 @@ static status_t local_socket_listen(socket_t* sock, uint32_t backlog)
     return OK;
 }
 
-static status_t local_socket_connect(socket_t* sock)
+static status_t local_socket_connect(socket_t* sock, const char* address)
 {
     local_socket_t* data = sock->data;
     if (data == NULL)
@@ -153,7 +146,7 @@ static status_t local_socket_connect(socket_t* sock)
     }
 
     local_listen_t* listen;
-    status_t status = local_listen_find(sock->address, &listen);
+    status_t status = local_listen_find(address, &listen);
     if (IS_ERR(status))
     {
         return status;
@@ -184,6 +177,16 @@ static status_t local_socket_connect(socket_t* sock)
 
     wait_unblock(&listen->waitQueue, WAIT_ALL, OK);
 
+    irp_t* irp;
+    list_t pending = LIST_CREATE(pending);
+    irp_claim_list(&pending, &listen->polls);
+    while (!list_is_empty(&pending))
+    {
+        irp = CONTAINER_OF(list_pop_front(&pending), irp_t, entry);
+        irp->result = IOPOLL_READ;
+        irp_complete(irp, OK);
+    }
+
     data->conn = REF(conn);
     data->isServer = false;
     return OK;
@@ -191,6 +194,8 @@ static status_t local_socket_connect(socket_t* sock)
 
 static status_t local_socket_accept(socket_t* sock, socket_t* newSock, mode_t mode)
 {
+    UNUSED(mode);
+
     local_socket_t* data = sock->data;
     if (data == NULL)
     {
@@ -223,11 +228,6 @@ static status_t local_socket_accept(socket_t* sock, socket_t* newSock, mode_t mo
             break;
         }
 
-        if (mode & MODE_NONBLOCK)
-        {
-            return ERR(PROTO, AGAIN);
-        }
-
         status_t status =
             WAIT_BLOCK_LOCK(&listen->waitQueue, &listen->lock, listen->isClosed || !list_is_empty(&listen->backlog));
         if (IS_ERR(status))
@@ -250,10 +250,27 @@ static status_t local_socket_accept(socket_t* sock, socket_t* newSock, mode_t mo
     return OK;
 }
 
-static status_t local_socket_send(socket_t* sock, const void* buffer, size_t count, size_t* offset, size_t* bytesSent,
-    mode_t mode)
+static status_t local_conn_cancel(irp_t* irp)
 {
-    UNUSED(offset);
+    irp_frame_t* frame = irp_current(irp);
+    socket_t* sock = SOCKET_FROM_IRP(irp);
+    local_socket_t* data = sock->data;
+    local_conn_t* conn = data->conn;
+
+    lock_acquire(&conn->lock);
+    if (list_contains(&irp->entry))
+    {
+        list_remove(&irp->entry);
+    }
+    lock_release(&conn->lock);
+
+    return OK;
+}
+
+static status_t local_socket_send(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    socket_t* sock = SOCKET_FROM_IRP(irp);
 
     local_socket_t* data = sock->data;
     if (data == NULL)
@@ -274,50 +291,73 @@ static status_t local_socket_send(socket_t* sock, const void* buffer, size_t cou
         return ERR(PROTO, IO);
     }
 
+    size_t count = mdl_size(frame->write.buffer);
     if (count > LOCAL_MAX_PACKET_SIZE)
     {
         return ERR(PROTO, TOOBIG);
     }
 
-    fifo_t* ring = data->isServer ? &conn->serverToClient : &conn->clientToServer;
+    fifo_t* ring = data->isServer ? &conn->s2cFifo : &conn->c2sFifo;
+    list_t* writers = data->isServer ? &conn->s2cWriters : &conn->c2sWriters;
+    list_t* readers = data->isServer ? &conn->s2cReaders : &conn->c2sReaders;
 
     local_packet_header_t header = {.magic = LOCAL_PACKET_MAGIC, .size = count};
 
     size_t totalSize = sizeof(local_packet_header_t) + count;
-    while (fifo_bytes_writeable(ring) < totalSize)
+    if (fifo_bytes_writeable(ring) < totalSize)
     {
-        if (conn->isClosed)
+        return irp_delay(irp, writers, local_conn_cancel);
+    }
+
+    fifo_write(ring, &header, sizeof(local_packet_header_t), NULL);
+    fifo_write_mdl(ring, frame->write.buffer, count, NULL);
+    irp->result = count;
+
+    irp_t* reader;
+    list_t pending = LIST_CREATE(pending);
+    irp_claim_list(&pending, readers);
+    while (!list_is_empty(&pending))
+    {
+        reader = CONTAINER_OF(list_pop_front(&pending), irp_t, entry);
+        local_socket_recv(reader);
+    }
+
+    irp_claim_list(&pending, &conn->polls);
+    while (!list_is_empty(&pending))
+    {
+        irp_t* poll = CONTAINER_OF(list_pop_front(&pending), irp_t, entry);
+        irp_frame_t* pollFrame = irp_current(poll);
+        poll->result = 0;
+
+        fifo_t* readRing = data->isServer ? &conn->c2sFifo : &conn->s2cFifo;
+        fifo_t* writeRing = data->isServer ? &conn->s2cFifo : &conn->c2sFifo;
+
+        if (fifo_bytes_readable(readRing) >= sizeof(local_packet_header_t))
         {
-            return ERR(PROTO, IO);
+            poll->result |= IOPOLL_READ;
         }
-        if (mode & MODE_NONBLOCK)
+        if (fifo_bytes_writeable(writeRing) >= sizeof(local_packet_header_t) + 1)
         {
-            return ERR(PROTO, AGAIN);
+            poll->result |= IOPOLL_WRITE;
         }
-        status_t status =
-            WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock, conn->isClosed || fifo_bytes_writeable(ring) >= totalSize);
-        if (IS_ERR(status))
+
+        if (poll->result & pollFrame->poll.events)
         {
-            return status;
+            irp_complete(poll, OK);
         }
-        if (conn->isClosed)
+        else
         {
-            return ERR(PROTO, IO);
+            irp_delay(poll, &conn->polls, local_conn_cancel);
         }
     }
 
-    fifo_write(ring, &header, sizeof(local_packet_header_t));
-    fifo_write(ring, buffer, count);
-
-    wait_unblock(&conn->waitQueue, WAIT_ALL, OK);
-    *bytesSent = count;
     return OK;
 }
 
-static status_t local_socket_recv(socket_t* sock, void* buffer, size_t count, size_t* offset, size_t* bytesReceived,
-    mode_t mode)
+static status_t local_socket_recv(irp_t* irp)
 {
-    UNUSED(offset);
+    irp_frame_t* frame = irp_current(irp);
+    socket_t* sock = SOCKET_FROM_IRP(irp);
 
     local_socket_t* data = sock->data;
     if (data == NULL)
@@ -333,46 +373,56 @@ static status_t local_socket_recv(socket_t* sock, void* buffer, size_t count, si
     UNREF_DEFER(conn);
     LOCK_SCOPE(&conn->lock);
 
-    fifo_t* ring = data->isServer ? &conn->clientToServer : &conn->serverToClient;
+    fifo_t* ring = data->isServer ? &conn->c2sFifo : &conn->s2cFifo;
+    list_t* writers = data->isServer ? &conn->c2sWriters : &conn->s2cWriters;
+    list_t* readers = data->isServer ? &conn->c2sReaders : &conn->s2cReaders;
 
-    while (fifo_bytes_readable(ring) < sizeof(local_packet_header_t))
+    if (fifo_bytes_readable(ring) < sizeof(local_packet_header_t))
     {
         if (conn->isClosed)
         {
-            *bytesReceived = 0;
-            return OK; // EOF
+            irp->result = 0;
+            return OK;
         }
-        if (mode & MODE_NONBLOCK)
-        {
-            return ERR(PROTO, AGAIN);
-        }
-        status_t status = WAIT_BLOCK_LOCK(&conn->waitQueue, &conn->lock,
-            conn->isClosed || fifo_bytes_readable(ring) >= sizeof(local_packet_header_t));
-        if (IS_ERR(status))
-        {
-            return status;
-        }
+        return irp_delay(irp, readers, local_conn_cancel);
     }
 
     local_packet_header_t header;
-    fifo_read(ring, &header, sizeof(local_packet_header_t));
+    fifo_read(ring, &header, sizeof(local_packet_header_t), NULL);
 
     if (header.magic != LOCAL_PACKET_MAGIC)
     {
         conn->isClosed = true;
-        wait_unblock(&conn->waitQueue, WAIT_ALL, OK);
+        list_t pending = LIST_CREATE(pending);
+        irp_claim_list(&pending, readers);
+        irp_claim_list(&pending, writers);
+        irp_claim_list(&pending, &conn->polls);
+        while (!list_is_empty(&pending))
+        {
+            irp_t* item = CONTAINER_OF(list_pop_front(&pending), irp_t, entry);
+            irp_complete(item, ERR(PROTO, ILSEQ));
+        }
         return ERR(PROTO, ILSEQ);
     }
 
     if (header.size > LOCAL_MAX_PACKET_SIZE)
     {
         conn->isClosed = true;
-        wait_unblock(&conn->waitQueue, WAIT_ALL, OK);
+        list_t pending = LIST_CREATE(pending);
+        irp_claim_list(&pending, readers);
+        irp_claim_list(&pending, writers);
+        irp_claim_list(&pending, &conn->polls);
+        while (!list_is_empty(&pending))
+        {
+            irp_t* item = CONTAINER_OF(list_pop_front(&pending), irp_t, entry);
+            irp_complete(item, ERR(PROTO, TOOBIG));
+        }
         return ERR(PROTO, TOOBIG);
     }
 
+    size_t count = mdl_size(frame->read.buffer);
     size_t readCount = header.size < count ? header.size : count;
-    fifo_read(ring, buffer, readCount);
+    fifo_read_mdl(ring, frame->read.buffer, readCount, NULL);
 
     if (header.size > readCount)
     {
@@ -381,22 +431,82 @@ static status_t local_socket_recv(socket_t* sock, void* buffer, size_t count, si
         while (remaining > 0)
         {
             uint64_t toRead = remaining < sizeof(temp) ? remaining : sizeof(temp);
-            fifo_read(ring, temp, toRead);
+            fifo_read(ring, temp, toRead, NULL);
             remaining -= toRead;
         }
     }
-    wait_unblock(&conn->waitQueue, WAIT_ALL, OK);
-    *bytesReceived = readCount;
+    irp->result = readCount;
+
+    irp_t* writer;
+    list_t pending = LIST_CREATE(pending);
+    irp_claim_list(&pending, writers);
+    while (!list_is_empty(&pending))
+    {
+        writer = CONTAINER_OF(list_pop_front(&pending), irp_t, entry);
+        local_socket_send(writer);
+    }
+
+    irp_claim_list(&pending, &conn->polls);
+    while (!list_is_empty(&pending))
+    {
+        irp_t* poll = CONTAINER_OF(list_pop_front(&pending), irp_t, entry);
+        irp_frame_t* pollFrame = irp_current(poll);
+        poll->result = 0;
+
+        fifo_t* readRing = data->isServer ? &conn->c2sFifo : &conn->s2cFifo;
+        fifo_t* writeRing = data->isServer ? &conn->s2cFifo : &conn->c2sFifo;
+
+        if (fifo_bytes_readable(readRing) >= sizeof(local_packet_header_t))
+        {
+            poll->result |= IOPOLL_READ;
+        }
+        if (fifo_bytes_writeable(writeRing) >= sizeof(local_packet_header_t) + 1)
+        {
+            poll->result |= IOPOLL_WRITE;
+        }
+
+        if (poll->result & pollFrame->poll.events)
+        {
+            irp_complete(poll, OK);
+        }
+        else
+        {
+            irp_delay(poll, &conn->polls, local_conn_cancel);
+        }
+    }
+
     return OK;
 }
 
-static status_t local_socket_poll(socket_t* sock, poll_events_t* revents, wait_queue_t** queue)
+static status_t local_listen_cancel(irp_t* irp)
 {
+    irp_frame_t* frame = irp_current(irp);
+    socket_t* sock = SOCKET_FROM_IRP(irp);
+    local_socket_t* data = sock->data;
+    local_listen_t* listen = data->listen;
+
+    lock_acquire(&listen->lock);
+    if (list_contains(&irp->entry))
+    {
+        list_remove(&irp->entry);
+    }
+    lock_release(&listen->lock);
+
+    return OK;
+}
+
+static status_t local_socket_poll(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    socket_t* sock = SOCKET_FROM_IRP(irp);
+
     local_socket_t* data = sock->data;
     if (data == NULL)
     {
         return ERR(PROTO, INVAL);
     }
+
+    irp->result = 0;
 
     switch (sock->state)
     {
@@ -405,56 +515,82 @@ static status_t local_socket_poll(socket_t* sock, poll_events_t* revents, wait_q
         local_listen_t* listen = data->listen;
         if (listen == NULL)
         {
-            *revents |= POLLERR;
+            irp->result |= IOPOLL_ERROR;
             return OK;
         }
 
         LOCK_SCOPE(&listen->lock);
         if (listen->isClosed)
         {
-            *revents |= POLLERR;
+            irp->result |= IOPOLL_ERROR;
         }
         else if (listen->pendingAmount > 0)
         {
-            *revents |= POLLIN;
+            irp->result |= IOPOLL_READ;
         }
 
-        *queue = &listen->waitQueue;
-        return OK;
+        if (irp->result & frame->poll.events)
+        {
+            return OK;
+        }
+
+        return irp_delay(irp, &listen->polls, local_listen_cancel);
     }
     case SOCKET_CONNECTED:
     {
         local_conn_t* conn = data->conn;
         if (conn == NULL)
         {
-            *revents |= POLLERR;
+            irp->result |= IOPOLL_ERROR;
             return OK;
         }
 
         LOCK_SCOPE(&conn->lock);
         if (conn->isClosed)
         {
-            *revents |= POLLHUP;
+            irp->result |= IOPOLL_HUP;
         }
         else
         {
-            fifo_t* readRing = data->isServer ? &conn->clientToServer : &conn->serverToClient;
-            fifo_t* writeRing = data->isServer ? &conn->serverToClient : &conn->clientToServer;
+            fifo_t* readRing = data->isServer ? &conn->c2sFifo : &conn->s2cFifo;
+            fifo_t* writeRing = data->isServer ? &conn->s2cFifo : &conn->c2sFifo;
 
             if (fifo_bytes_readable(readRing) >= sizeof(local_packet_header_t))
             {
-                *revents |= POLLIN;
+                irp->result |= IOPOLL_READ;
             }
 
             if (fifo_bytes_writeable(writeRing) >= sizeof(local_packet_header_t) + 1)
             {
-                *revents |= POLLOUT;
+                irp->result |= IOPOLL_WRITE;
             }
         }
 
-        *queue = &conn->waitQueue;
-        return OK;
+        if (irp->result & frame->poll.events)
+        {
+            return OK;
+        }
+
+        return irp_delay(irp, &conn->polls, local_conn_cancel);
     }
+    default:
+        return ERR(PROTO, INVAL);
+    }
+}
+
+static status_t local_socket_control(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    socket_t* sock = SOCKET_FROM_IRP(irp);
+
+    switch (frame->control.command)
+    {
+    case IOCMD('b', 'i', 'n', 'd'):
+        return local_socket_bind(sock, frame->control.args);
+    case IOCMD('l', 'i', 's', 't', 'e', 'n'):
+        return local_socket_listen(sock, atoi(frame->control.args));
+    case IOCMD('c', 'o', 'n', 'n', 'e', 'c', 't'):
+        return local_socket_connect(sock, frame->control.args);
     default:
         return ERR(PROTO, INVAL);
     }
@@ -464,10 +600,8 @@ static netfs_family_t local = {
     .name = "local",
     .init = local_socket_init,
     .deinit = local_socket_deinit,
-    .bind = local_socket_bind,
-    .listen = local_socket_listen,
-    .connect = local_socket_connect,
     .accept = local_socket_accept,
+    .control = local_socket_control,
     .send = local_socket_send,
     .recv = local_socket_recv,
     .poll = local_socket_poll,

@@ -67,26 +67,21 @@ vnode_t* vnode_new(volume_t* volume, const vnode_class_t* cls)
 
 status_t vnode_call(vnode_t* vnode, irp_t* irp)
 {
-    irp_frame_t* frame = irp_next(irp);
-    if (UNLIKELY(frame->major >= IRP_MJ_MAX))
-    {
-        status_t status = ERR(IO, MJ_OVERFLOW);
-        irp_complete(irp, status);
-        return status;
-    }
+    assert(vnode != NULL);
+    assert(irp != NULL);
 
-    irp_handler_t func = vnode->cls->handlers[frame->major];
-    if (func == NULL)
+    irp_handler_t handler = NULL;
+
+    irp_frame_t* frame = irp_next(irp);
+    if (LIKELY(frame->major < IRP_MJ_MAX) && vnode->cls->handlers[frame->major] != NULL)
     {
-        status_t status = ERR(IO, MJ_NOSYS);
-        irp_complete(irp, status);
-        return status;
+        handler = vnode->cls->handlers[frame->major];
     }
 
     frame->vnode = REF(vnode);
     frame->file = NULL;
 
-    return irp_call(irp, func);
+    return irp_call(irp, handler);
 }
 
 void vnode_truncate(vnode_t* vnode)

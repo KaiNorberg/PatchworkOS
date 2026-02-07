@@ -147,15 +147,15 @@ static status_t io_op_mmap(irp_t* irp)
     }
 
     pml_flags_t pml = 0;
-    if (irp->sqe.flags & IOMAP_READ)
+    if (irp->sqe.mmap & IOMAP_READ)
     {
         pml |= PML_PRESENT | PML_USER;
     }
-    if (irp->sqe.flags & IOMAP_WRITE)
+    if (irp->sqe.mmap & IOMAP_WRITE)
     {
         pml |= PML_WRITE;
     }
-    if (!(irp->sqe.flags & IOMAP_EXEC))
+    if (!(irp->sqe.mmap & IOMAP_EXEC))
     {
         pml |= PML_NO_EXECUTE;
     }

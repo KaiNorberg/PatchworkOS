@@ -193,7 +193,7 @@ dentry_t* dentry_rcu_get(const dentry_t* parent, const char* name, size_t length
 
     if (DENTRY_IS_POSITIVE(dentry))
     {
-        if (!dentry->vnode->cls->revalidate(dentry))
+        if (dentry->vnode->cls->revalidate != NULL && !dentry->vnode->cls->revalidate(dentry))
         {
             UNREF(dentry);
             return NULL;
@@ -258,7 +258,7 @@ status_t dentry_lookup(dentry_t** out, dentry_t* parent, const char* name, size_
 
     if (DENTRY_IS_POSITIVE(dentry))
     {
-        if (!dentry->vnode->cls->revalidate(dentry))
+        if (dentry->vnode->cls->revalidate != NULL && !dentry->vnode->cls->revalidate(dentry))
         {
             UNREF(dentry);
             return ERR(VFS, NOENT);

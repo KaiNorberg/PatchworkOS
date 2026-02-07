@@ -35,7 +35,7 @@
  */
 typedef struct ctl_state
 {
-    vnode_t* vnode;
+    file_t* file;
     char* next;
     uint32_t depth;
     char buffer[CTL_BUFFER_SIZE];
@@ -44,13 +44,13 @@ typedef struct ctl_state
 /**
  * @brief Dispatch control commands from a write IRP.
  *
- * Will parse the buffer of the provided write IRP and send the commands to the provided vnode.
+ * Will parse the buffer of the provided write IRP and send the commands to the provided file.
  *
  * @param irp The IRP containing the control command.
- * @param vnode The vnode to dispatch the command to.
+ * @param file The file to dispatch the command to.
  * @return An appropriate status value.
  */
-status_t ctl_dispatch(irp_t* irp, vnode_t* vnode);
+status_t ctl_dispatch(irp_t* irp, file_t* file);
 
 /**
  * @brief A generic write IRP handler for control files.

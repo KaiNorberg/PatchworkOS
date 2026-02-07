@@ -48,6 +48,7 @@ void* _heap_map_memory(uint64_t size)
         status_t status = open(&zeroDev, "/dev/const/zero:rw");
         if (IS_ERR(status))
         {
+            printf("libstd: failed to open /dev/const/zero %Y\n", status);
             return NULL;
         }
     }
@@ -56,6 +57,7 @@ void* _heap_map_memory(uint64_t size)
     status_t status = iomap(zeroDev, &addr, size, 0, IOMAP_READ | IOMAP_WRITE);
     if (IS_ERR(status))
     {
+        printf("libstd: failed to map memory %Y\n", status);
         return NULL;
     }
 

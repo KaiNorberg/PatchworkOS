@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include "user/common/file.h"
-#include "user/common/syscalls.h"
 
 size_t fwrite(const void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTRICT stream)
 {

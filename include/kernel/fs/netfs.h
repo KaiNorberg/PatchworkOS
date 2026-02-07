@@ -145,7 +145,7 @@ typedef struct socket
  * @param _irp The IRP to retrieve the socket from.
  * @return The socket.
  */
-#define SOCKET_FROM_IRP(_irp) ((socket_t*)(_irp)->file->data)
+#define SOCKET_FROM_IRP(_irp) ((socket_t*)(irp_current(_irp))->file->data)
 
 /**
  * @brief Socket Family structure.

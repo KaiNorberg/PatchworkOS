@@ -5,7 +5,6 @@
 #include <threads.h>
 #include <time.h>
 
-#include "user/common/syscalls.h"
 #include "user/common/threading.h"
 
 int thrd_join(thrd_t thr, int* res)

@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <sys/defs.h>
 #include <sys/fs.h>
+#include <sys/ioring.h>
 #include <sys/kbd.h>
 #include <sys/proc.h>
 #include <time.h>
@@ -222,7 +223,7 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t*
 
     if (ansi.length > 0)
     {
-        iowrite(term->stdin, ansi.buffer, ansi.length, NULL);
+        iowrite(term->stdin, ansi.buffer, ansi.length, IOOFF_CUR, NULL);
     }
 
     if (ansi.length == 1 && ansi.buffer[0] == '\003')
@@ -320,7 +321,7 @@ static void terminal_execute_ansi(terminal_t* term, element_t* elem, drawable_t*
         uint16_t cursorCol = term->cursor->col + 1;
         char response[MAX_NAME];
         int responseLen = snprintf(response, sizeof(response), "\033[%d;%dR", cursorRow, cursorCol);
-        iowrite(term->stdin, response, responseLen, NULL);
+        iowrite(term->stdin, response, responseLen, IOOFF_CUR, NULL);
     }
     break;
     case 's': // Save Cursor Position
@@ -748,9 +749,9 @@ void terminal_loop(window_t* win)
             timeout = nextFrameTime - currentTime;
         }
 
-        pollfd_t fds[1] = {{
+        iopoll_t fds[1] = {{
             .fd = terminal->stdout,
-            .events = POLLIN,
+            .events = IOPOLL_READ,
         }};
         if (display_poll(disp, fds, 1, timeout) == PFAIL)
         {
@@ -763,7 +764,7 @@ void terminal_loop(window_t* win)
             display_dispatch(disp, &event);
         }
 
-        if ((!(fds[0].revents & POLLIN) && length > 0) || length == TERMINAL_MAX_DATA)
+        if ((!(fds[0].revents & IOPOLL_READ) && length > 0) || length == TERMINAL_MAX_DATA)
         {
             element_t* elem = window_get_client_element(terminal->win);
             terminal_t* term = element_get_private(elem);
@@ -778,10 +779,11 @@ void terminal_loop(window_t* win)
             display_cmds_flush(disp);
         }
 
-        if (fds[0].revents & POLLIN)
+        if (fds[0].revents & IOPOLL_READ)
         {
             size_t readCount;
-            status_t status = ioread(terminal->stdout, &buffer[length], TERMINAL_MAX_DATA - length, &readCount);
+            status_t status =
+                ioread(terminal->stdout, &buffer[length], TERMINAL_MAX_DATA - length, IOOFF_CUR, &readCount);
             if (IS_ERR(status) || readCount == 0)
             {
                 break;

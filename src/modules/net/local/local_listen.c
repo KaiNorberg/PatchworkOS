@@ -3,6 +3,7 @@
 #include "local_conn.h"
 
 #include <kernel/fs/devfs.h>
+#include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/sched/wait.h>
@@ -45,6 +46,7 @@ status_t local_listen_new(const char* address, local_listen_t** out)
     listen->isClosed = false;
     lock_init(&listen->lock);
     wait_queue_init(&listen->waitQueue);
+    list_init(&listen->polls);
 
     RWLOCK_WRITE_SCOPE(&listenersLock);
 
@@ -82,13 +84,42 @@ void local_listen_free(local_listen_t* listen)
         list_remove(&conn->entry);
         lock_acquire(&conn->lock);
         conn->isClosed = true;
-        wait_unblock(&conn->waitQueue, WAIT_ALL, OK);
         lock_release(&conn->lock);
         UNREF(conn);
     }
 
-    wait_queue_deinit(&listen->waitQueue);
+    local_listen_close(listen);
+
     free(listen);
+}
+
+void local_listen_close(local_listen_t* listen)
+{
+    if (listen == NULL)
+    {
+        return;
+    }
+
+    lock_acquire(&listen->lock);
+    if (listen->isClosed)
+    {
+        lock_release(&listen->lock);
+        return;
+    }
+
+    listen->isClosed = true;
+
+    list_t pending = LIST_CREATE(pending);
+    list_splice(&pending, &listen->polls);
+    lock_release(&listen->lock);
+
+    wait_unblock(&listen->waitQueue, WAIT_ALL, OK);
+
+    while (!list_is_empty(&pending))
+    {
+        irp_t* irp = CONTAINER_OF(list_pop_front(&pending), irp_t, entry);
+        irp_cancel(irp);
+    }
 }
 
 status_t local_listen_find(const char* address, local_listen_t** out)

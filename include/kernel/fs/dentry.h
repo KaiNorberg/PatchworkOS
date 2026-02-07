@@ -68,7 +68,7 @@ typedef uint64_t dentry_id_t;
  * @param dentry The dentry to check.
  * @return true if the dentry is positive, false if it is negative.
  */
-#define DENTRY_IS_POSITIVE(dentry) ((dentry)->vnode != NULL)
+#define DENTRY_IS_POSITIVE(dentry) (dentry != NULL && (dentry)->vnode != NULL)
 
 /**
  * @brief Check if the vnode associated with a dentry is a regular file.

@@ -94,12 +94,15 @@ static status_t const_zero_mmap(irp_t* irp)
     return OK;
 }
 
-static vnode_class_t zeroClass = {.name = "const zero",
+static vnode_class_t zeroClass = {
+    .name = "const zero",
     .type = VNODE_REGULAR,
-    .handlers = {
-        [IRP_MJ_READ] = const_zero_read,
-        [IRP_MJ_MMAP] = const_zero_mmap,
-    },};
+    .handlers =
+        {
+            [IRP_MJ_READ] = const_zero_read,
+            [IRP_MJ_MMAP] = const_zero_mmap,
+        },
+};
 
 static status_t const_null_read(irp_t* irp)
 {
@@ -114,14 +117,18 @@ static status_t const_null_write(irp_t* irp)
     return OK;
 }
 
-static vnode_class_t nullClass = {.name = "const null",
+static vnode_class_t nullClass = {
+    .name = "const null",
     .type = VNODE_REGULAR,
-    .handlers = {
-        [IRP_MJ_READ] = const_null_read,
-        [IRP_MJ_WRITE] = const_null_write,
-    },};
+    .handlers =
+        {
+            [IRP_MJ_READ] = const_null_read,
+            [IRP_MJ_WRITE] = const_null_write,
+        },
+};
 
-static vnode_class_t constClass = {.name = "const",
+static vnode_class_t constClass = {
+    .name = "const",
     .type = VNODE_DIR,
     .iterate = dentry_generic_iterate,
 };

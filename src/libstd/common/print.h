@@ -429,13 +429,30 @@ static inline int _print_format_status(_print_ctx_t* ctx, _print_format_ctx_t* f
 {
     status_t status = va_arg(ctx->arg, status_t);
 
+    if (status == OK)
+    {
+        int padding = _print_padding_left(ctx, format, 4);
+        if (padding < 0)
+        {
+            return EOF;
+        }
+
+        if (_PRINT_WRITE(ctx, "(ok)", 4) == EOF)
+        {
+            return EOF;
+        }
+        ctx->written += 4;
+
+        return _print_padding_right(ctx, format, padding);
+    }
+
     st_sev_t sev = ST_SEV(status);
     st_src_t src = ST_SRC(status);
     st_code_t code = ST_CODE(status);
 
-    const char* sevStr = sevtostr(sev);
-    const char* srcStr = srctostr(src);
-    const char* codeStr = codetostr(code);
+    const char* sevStr = st_sev_str(sev);
+    const char* srcStr = st_src_str(src);
+    const char* codeStr = st_code_str(code);
 
     if (sevStr == NULL)
     {

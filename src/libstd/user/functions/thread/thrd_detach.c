@@ -4,7 +4,6 @@
 #include <sys/proc.h>
 #include <threads.h>
 
-#include "user/common/syscalls.h"
 #include "user/common/threading.h"
 
 int thrd_detach(thrd_t thr)

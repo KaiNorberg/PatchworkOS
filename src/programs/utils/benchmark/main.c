@@ -25,7 +25,8 @@ static void init_generic()
 static void* mmap_generic(size_t length)
 {
     void* ptr = NULL;
-    if (mmap(zeroDev, &ptr, length, PROT_READ | PROT_WRITE))
+    status_t status = iomap(zeroDev, &ptr, length, 0, IOMAP_READ | IOMAP_WRITE);
+    if (IS_ERR(status))
     {
         return NULL;
     }

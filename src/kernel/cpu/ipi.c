@@ -13,7 +13,7 @@
 static ipi_chip_t* registeredChip = NULL;
 static rwlock_t chipLock = RWLOCK_CREATE();
 
-PERCPU_DEFINE_CTOR(static void, pcpu_ipi)
+PERCPU_DEFINE_CTOR(static ipi_cpu_t, pcpu_ipi)
 {
     ipi_cpu_t* ctx = SELF_PTR(pcpu_ipi);
 

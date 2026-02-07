@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/fs.h>
+#include <sys/ioring.h>
 #include <sys/list.h>
 #include <sys/math.h>
 #include <sys/proc.h>
@@ -630,8 +631,15 @@ static void dwm_mouse_read(void)
 
     int64_t x = 0;
     int64_t y = 0;
-    while (iopoll(mouse, POLLIN, 0) & POLLIN)
+    while (true)
     {
+        ioevents_t revents;
+        iopoll(mouse, 0, IOPOLL_READ, &revents);
+        if (!(revents & IOPOLL_READ))
+        {
+            break;
+        }
+
         int64_t value;
         char suffix;
         if (scan(mouse, "%lld%c", &value, &suffix) != 2)
@@ -681,7 +689,7 @@ static void dwm_mouse_read(void)
 
 static void dwm_poll_ctx_update(void)
 {
-    void* newCtx = realloc(pollCtx, sizeof(poll_ctx_t) + (sizeof(pollfd_t) * clientAmount));
+    void* newCtx = realloc(pollCtx, sizeof(poll_ctx_t) + (sizeof(iopoll_t) * clientAmount));
     if (newCtx == NULL)
     {
         printf("dwm: failed to realloc pollCtx\n");
@@ -692,22 +700,22 @@ static void dwm_poll_ctx_update(void)
         pollCtx = newCtx;
     }
     pollCtx->data.fd = data;
-    pollCtx->data.events = POLLIN;
+    pollCtx->data.events = IOPOLL_READ;
     pollCtx->data.revents = 0;
     pollCtx->kbd.fd = kbd;
-    pollCtx->kbd.events = POLLIN;
+    pollCtx->kbd.events = IOPOLL_READ;
     pollCtx->kbd.revents = 0;
     pollCtx->mouse.fd = mouse;
-    pollCtx->mouse.events = POLLIN;
+    pollCtx->mouse.events = IOPOLL_READ;
     pollCtx->mouse.revents = 0;
 
     uint64_t i = 0;
     client_t* client;
     LIST_FOR_EACH(client, &clients, entry)
     {
-        pollfd_t* fd = &pollCtx->clients[i++];
+        iopoll_t* fd = &pollCtx->clients[i++];
         fd->fd = client->fd;
-        fd->events = POLLIN;
+        fd->events = IOPOLL_READ;
         fd->revents = 0;
     }
 }
@@ -726,7 +734,7 @@ static void dwm_poll(void)
 
     uint64_t count;
     status_t status =
-        iopoll_many((pollfd_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(pollfd_t) + clientAmount, timeout, &count);
+        iopoll_many((iopoll_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(iopoll_t) + clientAmount, timeout, &count);
     if (IS_ERR(status))
     {
         printf("dwm: iopoll_many failed\n");
@@ -752,16 +760,16 @@ static void dwm_update(void)
 {
     dwm_poll();
 
-    if (pollCtx->data.revents & POLLIN)
+    if (pollCtx->data.revents & IOPOLL_READ)
     {
         dwm_client_accept();
         return; // The clients array is now invalid, so we have to update it.
     }
-    if (pollCtx->kbd.revents & POLLIN)
+    if (pollCtx->kbd.revents & IOPOLL_READ)
     {
         dwm_kbd_read();
     }
-    if (pollCtx->mouse.revents & POLLIN)
+    if (pollCtx->mouse.revents & IOPOLL_READ)
     {
         dwm_mouse_read();
     }
@@ -771,18 +779,18 @@ static void dwm_update(void)
     client_t* temp;
     LIST_FOR_EACH_SAFE(client, temp, &clients, entry)
     {
-        pollfd_t* fd = &pollCtx->clients[i++];
-        if (fd->revents & POLLHUP)
+        iopoll_t* fd = &pollCtx->clients[i++];
+        if (fd->revents & IOPOLL_HUP)
         {
             printf("dwm: client %d hung up\n", client->fd);
             dwm_client_disconnect(client);
         }
-        else if (fd->revents & POLLERR)
+        else if (fd->revents & IOPOLL_ERROR)
         {
             printf("dwm: client %d error\n", client->fd);
             dwm_client_disconnect(client);
         }
-        else if (fd->revents & POLLIN)
+        else if (fd->revents & IOPOLL_READ)
         {
             if (IS_ERR(client_receive_cmds(client)))
             {

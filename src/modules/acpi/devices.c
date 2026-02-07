@@ -397,7 +397,8 @@ static status_t acpi_device_configure(const char* name)
             device->device.cfg = cfg;
             return OK;
         }
-        LOG_ERR("failed to get current resources for ACPI device '%s' due to '%s'\n", name, codetostr(ST_CODE(status)));
+        LOG_ERR("failed to get current resources for ACPI device '%s' due to '%s'\n", name,
+            st_code_str(ST_CODE(status)));
         free(cfg);
         return status;
     }
@@ -429,7 +430,7 @@ static status_t acpi_device_configure(const char* name)
                 if (IS_ERR(status))
                 {
                     LOG_ERR("failed to allocate virtual IRQ for ACPI device '%s' due to '%s'\n", name,
-                        codetostr(ST_CODE(status)));
+                        st_code_str(ST_CODE(status)));
                     goto error;
                 }
 
@@ -465,7 +466,7 @@ static status_t acpi_device_configure(const char* name)
             if (IS_ERR(status))
             {
                 LOG_ERR("failed to reserve IO ports for ACPI device '%s' due to '%s'\n", name,
-                    codetostr(ST_CODE(status)));
+                    st_code_str(ST_CODE(status)));
                 goto error;
             }
 
@@ -556,7 +557,7 @@ status_t acpi_devices_init(void)
         status_t status = module_device_attach(ids.array[i].hid, ids.array[i].path, MODULE_LOAD_ONE, &loadedModules);
         if (IS_ERR(status))
         {
-            LOG_ERR("failed to load module for HID '%s' due to '%s'\n", ids.array[i].hid, codetostr(status));
+            LOG_ERR("failed to load module for HID '%s' due to '%s'\n", ids.array[i].hid, st_code_str(status));
             continue;
         }
 
@@ -568,7 +569,7 @@ status_t acpi_devices_init(void)
         status = module_device_attach(ids.array[i].cid, ids.array[i].path, MODULE_LOAD_ONE, NULL);
         if (IS_ERR(status))
         {
-            LOG_ERR("failed to load module for CID '%s' due to '%s'\n", ids.array[i].cid, codetostr(status));
+            LOG_ERR("failed to load module for CID '%s' due to '%s'\n", ids.array[i].cid, st_code_str(status));
         }
     }
 

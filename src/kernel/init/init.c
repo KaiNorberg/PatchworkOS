@@ -114,7 +114,7 @@ static void init_finalize(void)
         status_t status = module_device_attach("BOOT_GOP", "BOOT_GOP", MODULE_LOAD_ALL, NULL);
         if (IS_ERR(status))
         {
-            panic(NULL, "Failed to load modules with BOOT_GOP due to %s", codetostr(status));
+            panic(NULL, "Failed to load modules with BOOT_GOP due to %s", st_code_str(status));
         }
     }
     else
@@ -127,7 +127,7 @@ static void init_finalize(void)
         status_t status = module_device_attach("BOOT_RSDP", "BOOT_RSDP", MODULE_LOAD_ALL, NULL);
         if (IS_ERR(status))
         {
-            panic(NULL, "Failed to load modules with BOOT_RSDP due to %s", codetostr(status));
+            panic(NULL, "Failed to load modules with BOOT_RSDP due to %s", st_code_str(status));
         }
     }
     else
@@ -138,7 +138,7 @@ static void init_finalize(void)
     status_t status = module_device_attach("BOOT_ALWAYS", "BOOT_ALWAYS", MODULE_LOAD_ALL, NULL);
     if (IS_ERR(status))
     {
-        panic(NULL, "Failed to load modules with BOOT_ALWAYS due to %s", codetostr(status));
+        panic(NULL, "Failed to load modules with BOOT_ALWAYS due to %s", st_code_str(status));
     }
 
     boot_info_free();

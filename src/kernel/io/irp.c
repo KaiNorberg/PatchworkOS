@@ -91,7 +91,7 @@ static void irp_perform_completion(irp_t* irp)
             status = frame->complete(irp, frame->ctx);
         }
 
-        if (IS_OK(status) && IS_CODE(status, PENDING))
+        if (IS_OK(status) && (IS_CODE(status, PENDING) || IS_CODE(status, COMPLETE)))
         {
             return;
         }
@@ -276,7 +276,12 @@ status_t irp_get(irp_pool_t* pool, irp_t** out)
 
 status_t irp_get_mdl(irp_t* irp, mdl_t** out, const void* addr, size_t size)
 {
-    if (irp == NULL || out == NULL || addr == NULL || size == 0)
+    if (irp == NULL || out == NULL)
+    {
+        return ERR(IO, INVAL);
+    }
+
+    if (size > 0 && addr == NULL)
     {
         return ERR(IO, INVAL);
     }
@@ -314,20 +319,30 @@ status_t irp_get_mdl(irp_t* irp, mdl_t** out, const void* addr, size_t size)
 
 status_t irp_call(irp_t* irp, irp_handler_t func)
 {
-    assert(func != NULL);
+    assert(irp != NULL);
+
     atomic_store_explicit(&irp->cancel, NULL, memory_order_relaxed);
 
     assert(irp->loc > 0);
     irp->loc--;
 
-    status_t status = func(irp);
-    if (IS_OK(status) && IS_CODE(status, PENDING))
+    status_t status;
+    if (func != NULL)
+    {
+        status = func(irp);
+    }
+    else
+    {
+        status = ERR(IO, INVAL);
+    }
+
+    if (IS_OK(status) && (IS_CODE(status, PENDING) || IS_CODE(status, COMPLETE)))
     {
         return status;
     }
 
     irp_complete(irp, status);
-    return status;
+    return INFO(IO, COMPLETE);
 }
 
 void irp_complete(irp_t* irp, status_t status)
@@ -366,7 +381,7 @@ status_t irp_cancel(irp_t* irp)
 
 status_t irp_read_helper(irp_t* irp, const void* buffer, size_t size)
 {
-    assert(buffer != NULL);
+    assert(buffer != NULL || size == 0);
 
     irp_frame_t* frame = irp_current(irp);
     assert(frame->major == IRP_MJ_READ);
@@ -391,7 +406,7 @@ status_t irp_read_helper(irp_t* irp, const void* buffer, size_t size)
 
 status_t irp_write_helper(irp_t* irp, void* buffer, size_t size)
 {
-    assert(buffer != NULL);
+    assert(buffer != NULL || size == 0);
 
     irp_frame_t* frame = irp_current(irp);
     assert(frame->major == IRP_MJ_READ);

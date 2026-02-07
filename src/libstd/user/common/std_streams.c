@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/fs.h>
+#include <sys/proc.h>
 
 static uint8_t _stdin_buff[BUFSIZ];
 static uint8_t _stdout_buff[BUFSIZ];
@@ -25,8 +26,7 @@ static void _std_stream_init(fd_t fd, FILE* stream, FILE** streamPtr, void* buff
 
     if (_file_init(stream, fd, flags, buffer, BUFSIZ) == EOF)
     {
-        fprintf(stderr, "libstd: failed to initialize standard stream (fd=%d)\n", fd);
-        abort();
+        exits(F("libstd: failed to initialize standard stream (fd=%d)\n", fd));
     }
 
     _files_push(stream);

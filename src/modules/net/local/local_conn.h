@@ -1,5 +1,6 @@
 #pragma once
 
+#include "local.h"
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 #include <kernel/utils/fifo.h>
@@ -29,14 +30,16 @@ typedef struct local_conn
 {
     ref_t ref;
     list_entry_t entry;
-    fifo_t clientToServer;
-    void* clientToServerBuffer;
-    fifo_t serverToClient;
-    void* serverToClientBuffer;
     local_listen_t* listen;
     bool isClosed;
     lock_t lock;
-    wait_queue_t waitQueue;
+    list_t c2sReaders;
+    list_t c2sWriters;
+    list_t s2cReaders;
+    list_t s2cWriters;
+    list_t polls;
+    FIFO_DEFINE(c2sFifo, LOCAL_BUFFER_SIZE);
+    FIFO_DEFINE(s2cFifo, LOCAL_BUFFER_SIZE);
 } local_conn_t;
 
 /**
@@ -53,5 +56,14 @@ local_conn_t* local_conn_new(local_listen_t* listen);
  * @param conn Pointer to the local connection to free.
  */
 void local_conn_free(local_conn_t* conn);
+
+/**
+ * @brief Close a local connection.
+ *
+ * Will process all pending IRPs, and mark the connection as closed but will not free the connection immediately.
+ *
+ * @param conn Pointer to the local connection to close.
+ */
+void local_conn_close(local_conn_t* conn);
 
 /** @} */

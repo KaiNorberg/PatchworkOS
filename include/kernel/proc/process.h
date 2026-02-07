@@ -55,19 +55,21 @@ typedef struct
 } process_threads_t;
 
 /**
- * @brief Maximum length of a process exit status.
+ * @brief Maximum length of a process exit result.
  */
-#define PROCESS_STATUS_MAX 256
+#define PROCESS_RESULT_MAX 256
 
 /**
- * @brief Process exit status structure.
- * @struct process_status_t
+ * @brief Process exit result structure.
+ * @struct process_result_t
+ *
+ * The term "exit result" is used over the more common "exit status" to avoid confusion with the `status_t` type.
  */
 typedef struct
 {
-    char buffer[PROCESS_STATUS_MAX];
+    char buffer[PROCESS_RESULT_MAX];
     lock_t lock;
-} process_status_t;
+} process_result_t;
 
 /**
  * @brief Process structure.
@@ -81,7 +83,7 @@ typedef struct process
     list_entry_t zombieEntry;
     pid_t id;
     _Atomic(priority_t) priority;
-    process_status_t status;
+    process_result_t result;
     space_t space;
     namespace_t* nspace;
     lock_t nspaceLock;
@@ -184,9 +186,9 @@ void process_set_ns(process_t* process, namespace_t* ns);
  * The process will still exist until the reaper removes it.
  *
  * @param process The process to kill.
- * @param status The exit status of the process.
+ * @param result The exit result of the process.
  */
-void process_kill(process_t* process, const char* status);
+void process_kill(process_t* process, const char* result);
 
 /**
  * @brief Removes a process from the system.

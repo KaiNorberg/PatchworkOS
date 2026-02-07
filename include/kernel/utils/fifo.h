@@ -35,16 +35,23 @@ typedef struct fifo
 #define FIFO_CREATE(_buf, _size) {.buffer = (uint8_t*)(_buf), .size = (_size), .head = 0, .tail = 0}
 
 /**
- * @brief Define and initialize a fifo buffer.
- *
- * Helps define a fifo buffer with a backing buffer.
+ * @brief Define a fifo buffer and its backing buffer.
  *
  * @param _name The name of the fifo buffer.
  * @param _size The size of the fifo buffer in bytes.
  */
 #define FIFO_DEFINE(_name, _size) \
     uint8_t _name##_buffer[_size]; \
-    fifo_t _name = FIFO_CREATE(_name##_buffer, _size)
+    fifo_t _name
+
+/**
+ * @brief Initialize a fifo buffer defined with `FIFO_DEFINE`.
+ *
+ * @param _name The name of the fifo buffer.
+ */
+#define FIFO_DEFINE_INIT(_name) \
+    fifo_init(&(_name), _name##_buffer, ARRAY_SIZE(_name##_buffer)); \
+    memset(_name##_buffer, 0, ARRAY_SIZE(_name##_buffer))
 
 /**
  * @brief Initialize a fifo buffer.

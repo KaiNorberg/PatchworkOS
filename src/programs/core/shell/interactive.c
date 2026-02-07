@@ -248,7 +248,7 @@ void interactive_shell(void)
     {
         char buffer[MAX_PATH];
         size_t readCount;
-        status_t status = RETRY_ON_CODE(ioread(STDIN_FILENO, buffer, MAX_PATH, &readCount), INTR);
+        status_t status = RETRY_ON_CODE(ioread(STDIN_FILENO, buffer, MAX_PATH, IOOFF_CUR, &readCount), INTR);
         if (IS_ERR(status))
         {
             printf("shell: failed to ioread input (%s)\n", strerror(errno));

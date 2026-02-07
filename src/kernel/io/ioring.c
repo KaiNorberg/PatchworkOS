@@ -182,17 +182,14 @@ void ioring_ctx_deinit(ioring_ctx_t* ctx)
     wait_queue_deinit(&ctx->waitQueue);
 }
 
-static status_t ioring_ctx_complete(irp_t* irp, void* _ptr)
+static void ioring_commit_cqe(ioring_ctx_t* ctx, iosqe_t* sqe, status_t status, uintptr_t result)
 {
-    UNUSED(_ptr);
-
-    ioring_ctx_t* ctx = irp_get_ctx(irp);
     ioring_t* ring = &ctx->ring;
 
-    iosqe_flags_t reg = (irp->sqe.flags >> IOSQE_SAVE) & IOSQE_REG_MASK;
+    iosqe_flags_t reg = (sqe->flags >> IOSQE_SAVE) & IOSQE_REG_MASK;
     if (reg != IOSQE_REG_NONE)
     {
-        atomic_store_explicit(&ring->ctrl->regs[reg - 1], irp->result, memory_order_release);
+        atomic_store_explicit(&ring->ctrl->regs[reg - 1], result, memory_order_release);
     }
 
     uint32_t tail = atomic_load_explicit(&ring->ctrl->ctail, memory_order_relaxed);
@@ -205,25 +202,32 @@ static status_t ioring_ctx_complete(irp_t* irp, void* _ptr)
     }
 
     iocqe_t* cqe = &ring->cqueue[tail & ring->cmask];
-    cqe->op = irp->sqe.op;
-    cqe->data = irp->sqe.data;
-    cqe->status = irp->status;
-    cqe->result = irp->result;
+    cqe->op = sqe->op;
+    cqe->data = sqe->data;
+    cqe->status = status;
+    cqe->result = result;
 
     atomic_store_explicit(&ring->ctrl->ctail, tail + 1, memory_order_release);
     wait_unblock(&ctx->waitQueue, WAIT_ALL, EOK);
+}
+
+static status_t ioring_ctx_complete(irp_t* irp, void* _ptr)
+{
+    UNUSED(_ptr);
+
+    ioring_ctx_t* ctx = irp_get_ctx(irp);
+    ioring_commit_cqe(ctx, &irp->sqe, irp->status, irp->result);
 
     if (IS_ERR(irp->status) && !(irp->sqe.flags & IOSQE_HARDLINK))
     {
-        while (true)
+        irp_t* next = irp_chain_next(irp);
+        while (next != NULL)
         {
-            irp_t* next = irp_chain_next(irp);
-            if (next == NULL)
-            {
-                break;
-            }
+            irp_t* current = next;
+            next = irp_chain_next(current);
 
-            irp_complete(next, ERR(IO, CANCELLED));
+            ioring_commit_cqe(ctx, &current->sqe, ERR(IO, CANCELLED), 0);
+            irp_complete(current, ERR(IO, CANCELLED));
         }
     }
     else

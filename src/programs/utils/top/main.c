@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/fs.h>
+#include <sys/ioring.h>
 #include <sys/proc.h>
 #include <threads.h>
 #include <time.h>
@@ -37,7 +38,7 @@ static void terminal_size_get(void)
     char buffer[MAX_NAME] = {0};
     for (uint32_t i = 0; i < sizeof(buffer) - 1; i++)
     {
-        ioread(STDIN_FILENO, &buffer[i], 1, NULL);
+        ioread(STDIN_FILENO, &buffer[i], 1, IOOFF_CUR, NULL);
         if (buffer[i] == 'R')
         {
             break;
@@ -350,7 +351,10 @@ static void perfs_update(perfs_t* perfs)
     while (currentTime - lastSampleTime < SAMPLE_INTERVAL)
     {
         clock_t remaining = SAMPLE_INTERVAL - (currentTime - lastSampleTime);
-        if (!(iopoll(STDIN_FILENO, POLLIN, remaining) & POLLIN))
+        // if (!(iopoll(STDIN_FILENO, IOPOLL_READ, remaining) & IOPOLL_READ))
+        ioevents_t revents;
+        iopoll(STDIN_FILENO, remaining, IOPOLL_READ, &revents);
+        if (!(revents & IOPOLL_READ))
         {
             break;
         }
@@ -360,7 +364,7 @@ static void perfs_update(perfs_t* perfs)
         uint64_t previousScrollOffset = processScrollOffset;
 
         char c;
-        ioread(STDIN_FILENO, &c, 1, NULL);
+        ioread(STDIN_FILENO, &c, 1, IOOFF_CUR, NULL);
         switch (c)
         {
         case 'p':

@@ -4,6 +4,7 @@
 
 #include <patchwork/event.h>
 #include <sys/fs.h>
+#include <sys/ioring.h>
 #include <sys/list.h>
 
 /**
@@ -19,10 +20,10 @@
 
 typedef struct
 {
-    pollfd_t data;
-    pollfd_t kbd;
-    pollfd_t mouse;
-    pollfd_t clients[];
+    iopoll_t data;
+    iopoll_t kbd;
+    iopoll_t mouse;
+    iopoll_t clients[];
 } poll_ctx_t;
 
 void dwm_init(void);

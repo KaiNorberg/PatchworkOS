@@ -60,11 +60,16 @@ typedef struct irp irp_t;
  *
  * There are two ways that an IRP can be completed, immediately or delayed.
  *
- * To immediately complete an IRP simply return any status that is not an informational `ST_CODE_STATUS` status from the
- * function invoked by any of the "call" functions.
+ * To immediately complete an IRP simply return any status that is not an informational `ST_CODE_PENDING` or
+ * `ST_CODE_COMPLETE` status from the function invoked by any of the "call" functions.
  *
  * To delay the completion of an IRP, return an informational `ST_CODE_PENDING` status. This indicates that the
  * subsystem has taken ownership of the IRP and will complete it at a later time by calling `irp_complete()`.
+ *
+ * To indicate that the IRP has already been completed, return an informational
+ * `ST_CODE_COMPLETE` status. This is usefull if a handler invokes another handler, for example when `irp_call()`
+ * completes an IRP it will return an informational `ST_CODE_COMPLETE` status, making sure that a lower `irp_call()`
+ * does not try to complete the same IRP again.
  *
  * For convenience, the `irp_delay()` helper can be used to add an IRP to a list and a timeout queue, while also setting
  * a cancellation callback.
@@ -211,7 +216,6 @@ typedef uint16_t irp_major_t; ///< IRP major function number type.
  * @return The new file position.
  */
 #define IRP_MJ_SEEK 3
-
 /**
  * @brief Memory map operation.
  *
@@ -243,7 +247,7 @@ typedef uint16_t irp_flags_t;          ///< IRP frame flags type.
  * @brief IRP function type.
  *
  * @param irp The IRP to send.
- * @result A informational `ST_CODE_PENDING` status value if the IRP was not completed immediately, otherwise an
+ * @result A informational `ST_CODE_PENDING` or `ST_CODE_COMPLETE` status value if the IRP was not completed immediately, otherwise an
  * appropriate status value.
  */
 typedef status_t (*irp_handler_t)(irp_t* irp);
@@ -253,7 +257,7 @@ typedef status_t (*irp_handler_t)(irp_t* irp);
  *
  * @param irp The IRP.
  * @param ctx The context pointer from the `irp_frame_t` structure.
- * @result A informational `ST_CODE_PENDING` status value if the IRP requires more processing, otherwise an appropriate
+ * @result A informational `ST_CODE_PENDING` or `ST_CODE_COMPLETE` status value if the IRP requires more processing, otherwise an appropriate
  * status value.
  */
 typedef status_t (*irp_complete_t)(irp_t* irp, void* ctx);
@@ -477,22 +481,21 @@ static inline process_t* irp_get_process(irp_t* irp)
 }
 
 /**
- * @brief Retrieve the next IRP in a chain and advance the chain.
+ * @brief Retrieve the next IRP in a chain and clear its next pointer.
  *
  * @param irp The current IRP.
  * @return The next IRP, or `NULL` if there is no next IRP.
  */
 static inline irp_t* irp_chain_next(irp_t* irp)
 {
-    irp_pool_t* pool = irp_get_pool(irp);
     if (irp->next == POOL_IDX_MAX)
     {
         return NULL;
     }
 
+    irp_pool_t* pool = irp_get_pool(irp);
     irp_t* next = &pool->irps[irp->next];
-    irp->next = next->next;
-    next->next = POOL_IDX_MAX;
+    irp->next = POOL_IDX_MAX;
     return next;
 }
 

@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/fs.h>
+#include <sys/ioring.h>
 #include <sys/proc.h>
 
 static uint64_t width;
@@ -50,7 +51,7 @@ static void frontbuffer_init(void)
     }
 
     frontbuffer = NULL;
-    if (IS_ERR(mmap(data, &frontbuffer, height * pitch, PROT_READ | PROT_WRITE)))
+    if (IS_ERR(iomap(data, &frontbuffer, height * pitch, IOOFF_CUR, IOMAP_READ | IOMAP_WRITE)))
     {
         printf("dwm: failed to map framebuffer memory (%s)\n", strerror(errno));
         abort();

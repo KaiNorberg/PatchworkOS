@@ -751,20 +751,7 @@ static EFI_STATUS disk_init(boot_disk_t* disk, EFI_FILE* rootHandle)
         return EFI_INVALID_PARAMETER;
     }
 
-    EFI_FILE* rootDir = NULL;
-    EFI_STATUS status = uefi_call_wrapper(rootHandle->Open, 5, rootHandle, &rootDir, L"root", EFI_FILE_MODE_READ,
-        EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
-
-    if (EFI_ERROR(status))
-    {
-        Print(L"  No 'root' subdirectory, loading from volume root...\n");
-        disk->root = disk_load_dir(rootHandle, L"root");
-    }
-    else
-    {
-        disk->root = disk_load_dir(rootDir, L"root");
-        uefi_call_wrapper(rootDir->Close, 1, rootDir);
-    }
+    disk->root = disk_load_dir(rootHandle, L"root");
 
     if (disk->root == NULL)
     {

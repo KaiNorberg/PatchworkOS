@@ -343,9 +343,9 @@ status_t atnotify(atnotify_func_t handler, atnotify_t action);
 /**
  * @brief System call that exists the current process.
  *
- * @param status The string exit status of the process.
+ * @param result The string exit result of the process.
  */
-_NORETURN void exits(const char* status);
+_NORETURN void exits(const char* result);
 
 /**
  * @brief Helper for sending the "kill" command to a process.

@@ -216,6 +216,15 @@ status_t mdl_copy_in(mdl_t* mdl, size_t count, size_t offset, size_t* copied, co
 
 status_t mdl_copy_out(mdl_t* mdl, size_t count, size_t offset, size_t* copied, void* dest, size_t destLength)
 {
+    if (dest == NULL && destLength == 0)
+    {
+        if (copied != NULL)
+        {
+            *copied = 0;
+        }
+        return OK;
+    }
+
     if (mdl == NULL || dest == NULL)
     {
         if (copied != NULL)

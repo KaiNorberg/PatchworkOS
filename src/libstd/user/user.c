@@ -16,7 +16,7 @@ static void _populate_std_descriptors(void)
 {
     for (fd_t i = 0; i <= STDERR_FILENO; i++)
     {
-        status_t status = ioseek(i, SEEK_CUR, 0, NULL);
+        status_t status = ioseek(i, IOSEEK_CUR, 0, NULL);
         if (status != ERR(VFS, BADFD))
         {
             continue;
@@ -42,9 +42,9 @@ void _user_init(void)
 {
     _clock_init();
     _threading_init();
+    _io_init();
     _populate_std_descriptors();
     _exit_stack_init();
-    _io_init();
     _files_init();
     _std_streams_init();
     _note_init();

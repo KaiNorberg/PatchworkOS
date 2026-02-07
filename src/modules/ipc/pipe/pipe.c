@@ -101,6 +101,11 @@ static status_t pipe_read(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
     file_t* file = frame->file;
+    if (file == NULL)
+    {
+        return ERR(DRIVER, EXPECT_FILE);
+    }
+
     pipe_t* data = file->data;
 
     size_t count = mdl_size(frame->read.buffer);
@@ -180,6 +185,11 @@ static status_t pipe_write(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
     file_t* file = frame->file;
+    if (file == NULL)
+    {
+        return ERR(DRIVER, EXPECT_FILE);
+    }
+
     pipe_t* data = file->data;
 
     size_t count = mdl_size(frame->write.buffer);
@@ -259,6 +269,11 @@ static status_t pipe_poll(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
     file_t* file = frame->file;
+    if (file == NULL)
+    {
+        return ERR(DRIVER, EXPECT_FILE);
+    }
+
     pipe_t* data = file->data;
 
     LOCK_SCOPE(&data->lock);

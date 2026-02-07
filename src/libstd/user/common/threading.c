@@ -1,5 +1,4 @@
 #include "threading.h"
-#include "syscalls.h"
 
 #include <stdlib.h>
 #include <sys/syscall.h>

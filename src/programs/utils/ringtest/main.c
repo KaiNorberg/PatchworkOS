@@ -15,7 +15,7 @@ int main()
     status_t status = ioring_setup(&ring, NULL, SENTRIES, CENTRIES);
     if (IS_ERR(status))
     {
-        printf("failed to set up ring (%s, %s)\n", srctostr(ST_SRC(status)), codetostr(ST_CODE(status)));
+        printf("failed to set up ring (%s, %s)\n", st_src_str(ST_SRC(status)), st_code_str(ST_CODE(status)));
         ;
         return errno;
     }
@@ -36,7 +36,7 @@ int main()
     status = ioring_enter(&ring, 2, 0, NULL);
     if (IS_ERR(status))
     {
-        printf("failed to enter ring (%s, %s)\n", srctostr(ST_SRC(status)), codetostr(ST_CODE(status)));
+        printf("failed to enter ring (%s, %s)\n", st_src_str(ST_SRC(status)), st_code_str(ST_CODE(status)));
         return errno;
     }
 
@@ -49,7 +49,7 @@ int main()
     status = ioring_enter(&ring, 1, 0, NULL);
     if (IS_ERR(status))
     {
-        printf("failed to enter ring (%s, %s)\n", srctostr(ST_SRC(status)), codetostr(ST_CODE(status)));
+        printf("failed to enter ring (%s, %s)\n", st_src_str(ST_SRC(status)), st_code_str(ST_CODE(status)));
         return errno;
     }
 

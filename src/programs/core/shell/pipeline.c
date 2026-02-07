@@ -84,15 +84,15 @@ status_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
             cmd->argv = currentArgv;
             cmd->argc = currentArg;
 
-            fd_t pipe[2];
-            status_t status = open2("/dev/pipe/new", pipe);
+            fd_t pipe;
+            status_t status = open(&pipe, "/dev/pipe/new");
             if (IS_ERR(status))
             {
-                printf("shell: unable to open pipe (%s)\n", codetostr(ST_CODE(status)));
+                printf("shell: unable to open pipe (%s)\n", st_code_str(ST_CODE(status)));
                 goto token_parse_error;
             }
 
-            cmd->stdout = pipe[PIPE_WRITE];
+            cmd->stdout = pipe;
             cmd->shouldCloseStdout = true;
 
             currentCmd++;
@@ -105,7 +105,7 @@ status_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
             }
 
             cmd_t* nextCmd = &pipeline->cmds[currentCmd];
-            nextCmd->stdin = pipe[PIPE_READ];
+            nextCmd->stdin = pipe;
             nextCmd->shouldCloseStdin = true;
         }
         else if (strcmp(tokens[i], "<") == 0)
@@ -120,7 +120,7 @@ status_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
             status_t status = open(&fd, tokens[i + 1]);
             if (IS_ERR(status))
             {
-                printf("shell: unable to open %s (%s)\n", tokens[i + 1], codetostr(ST_CODE(status)));
+                printf("shell: unable to open %s (%s)\n", tokens[i + 1], st_code_str(ST_CODE(status)));
                 goto token_parse_error;
             }
 
@@ -146,7 +146,7 @@ status_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
             status_t status = open(&fd, tokens[i + 1]);
             if (IS_ERR(status))
             {
-                printf("shell: unable to open %s (%s)\n", tokens[i + 1], codetostr(ST_CODE(status)));
+                printf("shell: unable to open %s (%s)\n", tokens[i + 1], st_code_str(ST_CODE(status)));
                 goto token_parse_error;
             }
 
@@ -172,7 +172,7 @@ status_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
             status_t status = open(&fd, tokens[i + 1]);
             if (IS_ERR(status))
             {
-                printf("shell: unable to open %s (%s)\n", tokens[i + 1], codetostr(ST_CODE(status)));
+                printf("shell: unable to open %s (%s)\n", tokens[i + 1], st_code_str(ST_CODE(status)));
                 goto token_parse_error;
             }
 
@@ -478,7 +478,8 @@ void pipeline_wait(pipeline_t* pipeline)
 
         memset(pipeline->status, 0, sizeof(pipeline->status));
         size_t readCount;
-        status_t st = RETRY_ON_CODE(ioread(wait, pipeline->status, sizeof(pipeline->status), &readCount), INTR);
+        status_t st =
+            RETRY_ON_CODE(ioread(wait, pipeline->status, sizeof(pipeline->status), IOOFF_CUR, &readCount), INTR);
         close(wait);
         if (IS_ERR(st))
         {

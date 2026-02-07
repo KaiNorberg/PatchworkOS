@@ -421,8 +421,8 @@ static status_t module_file_read(module_file_t* outFile, const path_t* dirPath, 
     UNREF_DEFER(file);
 
     size_t fileSize;
-    vfs_seek(file, 0, SEEK_END, &fileSize);
-    vfs_seek(file, 0, SEEK_SET, NULL);
+    vfs_seek(file, 0, IOSEEK_END, &fileSize);
+    vfs_seek(file, 0, IOSEEK_SET, NULL);
 
     uint8_t* fileData = malloc(fileSize);
     if (fileData == NULL)
@@ -445,9 +445,10 @@ static status_t module_file_read(module_file_t* outFile, const path_t* dirPath, 
         return ERR(MODULE, TOCTOU);
     }
 
-    if (elf64_validate(&outFile->elf, fileData, fileSize) != 0)
+    uint64_t res = elf64_validate(&outFile->elf, fileData, fileSize);
+    if (res != 0)
     {
-        LOG_ERR("failed to validate ELF file '%s' while reading module metadata\n", filename);
+        LOG_ERR("failed to validate ELF file '%s' while reading module metadata (%llu) \n", filename, res);
         free(fileData);
         return ERR(MODULE, INVALELF);
     }
