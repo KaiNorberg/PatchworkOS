@@ -92,6 +92,11 @@ static status_t ctl_do_next(irp_t* irp, ctl_state_t* state)
         cmd |= (iocmd_t)(unsigned char)string[i] << (i * 8);
     }
 
+    if (args == NULL)
+    {
+        args = "";
+    }
+    
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);
 

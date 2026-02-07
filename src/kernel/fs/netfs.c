@@ -225,7 +225,7 @@ static vnode_class_t acceptClass = {.name = "netfs accept",
         [IRP_MJ_READ] = netfs_data_read,
         [IRP_MJ_WRITE] = netfs_data_write,
         [IRP_MJ_POLL] = netfs_data_poll,
-    }};
+    },};
 
 static status_t netfs_control(irp_t* irp)
 {
@@ -252,6 +252,8 @@ static status_t netfs_control(irp_t* irp)
 
 static vnode_class_t ctlClass = {.name = "netfs ctl",
     .type = VNODE_REGULAR,
+    .file_ctor = netfs_data_file_ctor,
+    .file_dtor = netfs_data_file_dtor,
     .handlers = {
         [IRP_MJ_WRITE] = ctl_generic_write,
         [IRP_MJ_CONTROL] = netfs_control,

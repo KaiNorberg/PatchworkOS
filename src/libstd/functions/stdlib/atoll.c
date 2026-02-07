@@ -2,11 +2,14 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "common/digits.h"
 
 long long int atoll(const char* nptr)
 {
+    assert(nptr != NULL);
+
     long long int result = 0;
     bool isNegative = false;
 

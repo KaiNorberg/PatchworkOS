@@ -108,12 +108,18 @@ static status_t local_socket_bind(socket_t* sock, const char* address)
     return OK;
 }
 
-static status_t local_socket_listen(socket_t* sock, uint32_t backlog)
+static status_t local_socket_listen(socket_t* sock, const char* backlog)
 {
     local_socket_t* data = sock->data;
     if (data == NULL)
     {
         return ERR(PROTO, INVAL);
+    }
+
+    uint32_t backlogInt;
+    if (sscanf(backlog, "%u", &backlogInt) != 1)
+    {
+        backlogInt = NETFS_BACKLOG_DEFAULT;
     }
 
     local_listen_t* listen = data->listen;
@@ -123,9 +129,9 @@ static status_t local_socket_listen(socket_t* sock, uint32_t backlog)
     }
     LOCK_SCOPE(&listen->lock);
 
-    if (backlog < LOCAL_MAX_BACKLOG)
+    if (backlogInt < LOCAL_MAX_BACKLOG)
     {
-        listen->maxBacklog = backlog;
+        listen->maxBacklog = backlogInt;
     }
 
     listen->isClosed = false;
@@ -588,7 +594,7 @@ static status_t local_socket_control(irp_t* irp)
     case IOCMD('b', 'i', 'n', 'd'):
         return local_socket_bind(sock, frame->control.args);
     case IOCMD('l', 'i', 's', 't', 'e', 'n'):
-        return local_socket_listen(sock, atoi(frame->control.args));
+        return local_socket_listen(sock, frame->control.args);
     case IOCMD('c', 'o', 'n', 'n', 'e', 'c', 't'):
         return local_socket_connect(sock, frame->control.args);
     default:
