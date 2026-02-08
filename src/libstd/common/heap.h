@@ -28,8 +28,6 @@
  * Included is the internal heap allocation, the functions that the kernel and user space should use are the expected
  * `malloc()`, `free()`, `realloc()`, etc functions.
  *
- * @todo Implement a slab allocator.
- *
  * @{
  */
 

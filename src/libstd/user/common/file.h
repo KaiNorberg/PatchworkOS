@@ -54,13 +54,9 @@ typedef struct FILE
 
 _file_flags_t _file_flags_parse(const char* mode);
 
-FILE* _file_new(void);
-
-void _file_free(FILE* stream);
-
 int _file_init(FILE* stream, fd_t fd, _file_flags_t flags, void* buffer, size_t size);
 
-void _file_deinit(FILE* stream);
+int _file_deinit(FILE* stream);
 
 int _file_flush_buffer(FILE* stream);
 
@@ -73,10 +69,6 @@ int _file_prepare_read(FILE* stream);
 int _file_prepare_write(FILE* stream);
 
 void _files_init(void);
-
-void _files_push(FILE* file);
-
-void _files_remove(FILE* file);
 
 void _files_close(void);
 

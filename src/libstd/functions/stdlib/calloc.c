@@ -3,6 +3,12 @@
 
 #include "common/heap.h"
 
+#ifdef _KERNEL_
+#include <kernel/log/panic.h>
+#else
+#include <stdio.h>
+#endif
+
 void* calloc(size_t nmemb, size_t size)
 {
     size_t totalSize = nmemb * size;
@@ -18,6 +24,15 @@ void* calloc(size_t nmemb, size_t size)
     {
         _heap_release();
         return NULL;
+    }
+
+    if (block->magic != _HEAP_HEADER_MAGIC)
+    {
+#ifdef _KERNEL_
+        panic(NULL, "heap corruption detected in calloc()");
+#else
+        exits("libstd: heap corruption detected in calloc()");
+#endif
     }
 
     if (!(block->flags & _HEAP_ZEROED))

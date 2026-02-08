@@ -29,18 +29,18 @@ void* realloc(void* ptr, size_t size)
     if (block->magic != _HEAP_HEADER_MAGIC)
     {
 #ifdef _KERNEL_
-        panic(NULL, "heap corruption detected in free()");
+        panic(NULL, "heap corruption detected in realloc()");
 #else
-        exits("heap corruption detected in free()");
+        exits("heap corruption detected in realloc()");
 #endif
     }
 
     if (!(block->flags & _HEAP_ALLOCATED))
     {
 #ifdef _KERNEL_
-        panic(NULL, "double free detected in free()");
+        panic(NULL, "double free detected in realloc()");
 #else
-        exits("double free detected in free()");
+        exits("double free detected in realloc()");
 #endif
     }
 
@@ -85,6 +85,32 @@ void* realloc(void* ptr, size_t size)
 
                 _heap_release();
                 return ptr;
+            }
+        }
+
+        _heap_header_t* prev = CONTAINER_OF_SAFE(block->listEntry.prev, _heap_header_t, listEntry);
+
+        if (prev != NULL && !(prev->flags & _HEAP_ALLOCATED) && (prev->data + prev->size == (uint8_t*)block))
+        {
+            uint64_t combinedSize = prev->size + sizeof(_heap_header_t) + block->size;
+            if (combinedSize >= alignedSize && combinedSize <= _HEAP_LARGE_ALLOC_THRESHOLD)
+            {
+                assert(!(prev->flags & _HEAP_MAPPED));
+                _heap_remove_from_free_list(prev);
+                prev->size = combinedSize;
+                prev->flags = _HEAP_ALLOCATED;
+                list_remove(&block->listEntry);
+
+                memmove(prev->data, block->data, MIN(block->size, size));
+
+                uint64_t remainder = combinedSize - alignedSize;
+                if (remainder >= sizeof(_heap_header_t) + _HEAP_ALIGNMENT)
+                {
+                    _heap_block_split(prev, alignedSize);
+                }
+
+                _heap_release();
+                return prev->data;
             }
         }
     }

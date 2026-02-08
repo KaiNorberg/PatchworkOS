@@ -78,28 +78,10 @@ _file_flags_t _file_flags_parse(const char* mode)
     return 0;
 }
 
-FILE* _file_new(void)
-{
-    FILE* stream = calloc(1, sizeof(FILE));
-    if (stream == NULL)
-    {
-        return NULL;
-    }
-
-    list_entry_init(&stream->entry);
-    return stream;
-}
-
-void _file_free(FILE* stream)
-{
-    if (stream != stdin && stream != stdout && stream != stderr)
-    {
-        free(stream);
-    }
-}
-
 int _file_init(FILE* stream, fd_t fd, _file_flags_t flags, void* buffer, size_t size)
 {
+    list_entry_init(&stream->entry);
+
     if (buffer == NULL)
     {
         void* oldBuf = stream->buf;
@@ -141,11 +123,32 @@ int _file_init(FILE* stream, fd_t fd, _file_flags_t flags, void* buffer, size_t 
         return EOF;
     }
 
+    mtx_lock(&filesMtx);
+    list_push_back(&files, &stream->entry);
+    mtx_unlock(&filesMtx);
+
     return 0;
 }
 
-void _file_deinit(FILE* stream)
+int _file_deinit(FILE* stream)
 {
+    mtx_lock(&filesMtx);
+    list_remove(&stream->entry);
+    mtx_unlock(&filesMtx);
+
+    mtx_lock(&stream->mtx);
+
+    int status = 0;
+    if (stream->flags & _FILE_WRITE)
+    {
+        if (_file_flush_buffer(stream) == EOF)
+        {
+            status = EOF;
+        }
+    }
+
+    mtx_unlock(&stream->mtx);
+
     if (stream->flags & _FILE_OWNS_BUFFER)
     {
         free(stream->buf);
@@ -154,6 +157,7 @@ void _file_deinit(FILE* stream)
     close(stream->fd);
 
     mtx_destroy(&stream->mtx);
+    return status;
 }
 
 int _file_flush_buffer(FILE* stream)
@@ -278,20 +282,6 @@ void _files_init(void)
     {
         exits("libstd: failed to initialize files mutex");
     }
-}
-
-void _files_push(FILE* file)
-{
-    mtx_lock(&filesMtx);
-    list_push_back(&files, &file->entry);
-    mtx_unlock(&filesMtx);
-}
-
-void _files_remove(FILE* file)
-{
-    mtx_lock(&filesMtx);
-    list_remove(&file->entry);
-    mtx_unlock(&filesMtx);
 }
 
 void _files_close(void)

@@ -83,13 +83,13 @@ static status_t const_zero_mmap(irp_t* irp)
     size_t length = frame->mmap.length;
     pml_flags_t flags = frame->mmap.flags;
 
-    status_t status = vmm_alloc(&process_current()->space, &addr, length, PAGE_SIZE, flags, VMM_ALLOC_OVERWRITE);
+    status_t status = vmm_alloc(&process_current()->space, &addr, length, PAGE_SIZE, flags,
+        VMM_ALLOC_ZERO);
     if (IS_ERR(status))
     {
         return status;
     }
 
-    memset(addr, 0, length);
     irp->result = (uintptr_t)addr;
     return OK;
 }

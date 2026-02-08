@@ -28,24 +28,20 @@ int main(int argc, char** argv)
     status_t status = notify(note_handler);
     if (IS_ERR(status))
     {
-        printf("boxspawn: failed to register note handler %Y\n", status);
-        return EXIT_FAILURE;
+        exits(F("boxspawn: failed to register note handler %Y", status));
     }
 
     char* id;
     status = readfiles(&id, "/net/local/seqpacket");
     if (IS_ERR(status))
     {
-        printf("boxspawn: failed to open local seqpacket socket %Y\n", status);
-        return EXIT_FAILURE;
+        exits(F("boxspawn: failed to open local seqpacket socket %Y", status));
     }
 
     status = writefiles(F("/net/local/%s/ctl", id), "connect boxspawn");
     if (IS_ERR(status))
     {
-        printf("boxspawn: failed to connect to boxspawn %Y\n", status);
-        free(id);
-        return EXIT_FAILURE;
+        exits(F("boxspawn: failed to connect to boxspawn %Y", status));
     }
 
     char stdio[3][KEY_128BIT];
@@ -54,9 +50,7 @@ int main(int argc, char** argv)
         status = share(stdio[i], sizeof(stdio[i]), i, CLOCKS_PER_SEC);
         if (IS_ERR(status))
         {
-            printf("boxspawn: failed to share stdio %d %Y\n", i, status);
-            free(id);
-            return EXIT_FAILURE;
+            exits(F("boxspawn: failed to share stdio %d %Y", i, status));
         }
     }
 
@@ -67,9 +61,7 @@ int main(int argc, char** argv)
     {
         if (ST_CODE(status) != ST_CODE_NOENT)
         {
-            printf("boxspawn: failed to share group %Y\n", status);
-            free(id);
-            return EXIT_FAILURE;
+            exits(F("boxspawn: failed to share group %Y", status));
         }
 
         printf("boxspawn: `/proc` does not appear to be mounted, foreground boxes will not work correctly\n");
@@ -79,9 +71,7 @@ int main(int argc, char** argv)
         status = sharefile(namespace, sizeof(namespace), "/proc/self/ns", CLOCKS_PER_SEC);
         if (IS_ERR(status))
         {
-            printf("boxspawn: failed to share namespace %Y\n", status);
-            free(id);
-            return EXIT_FAILURE;
+            exits(F("boxspawn: failed to share namespace %Y", status));
         }
     }
 
@@ -111,9 +101,7 @@ int main(int argc, char** argv)
     {
         if (strlen(buffer) + 1 + strlen(argv[i]) >= BUFFER_MAX)
         {
-            printf("boxspawn: arguments too long\n");
-            free(id);
-            return EXIT_FAILURE;
+            exits("boxspawn: arguments too long");
         }
         strcat(buffer, " ");
         strcat(buffer, argv[i]);
@@ -123,18 +111,13 @@ int main(int argc, char** argv)
     status = open(&data, F("/net/local/%s/data", id));
     if (IS_ERR(status))
     {
-        printf("boxspawn: failed to open data socket %Y\n", status);
-        free(id);
-        return EXIT_FAILURE;
+        exits(F("boxspawn: failed to open data socket %Y", status));
     }
 
     status = writes(data, buffer, NULL);
     if (IS_ERR(status))
     {
-        printf("boxspawn: failed to send request %Y\n", status);
-        free(id);
-        close(data);
-        return EXIT_FAILURE;
+        exits(F("boxspawn: failed to send request %Y", status));
     }
 
     memset(buffer, 0, sizeof(buffer));
@@ -142,18 +125,15 @@ int main(int argc, char** argv)
     status = ioread(data, buffer, sizeof(buffer) - 1, IOOFF_CUR, NULL);
     if (IS_ERR(status))
     {
-        printf("boxspawn: failed to ioread response %Y\n", status);
-        free(id);
-        close(data);
-        return EXIT_FAILURE;
+        exits(F("boxspawn: failed to ioread response %Y", status));
     }
     close(data);
 
+    printf("boxspawn: received response '%s'\n", buffer);
+
     if (wordcmp(buffer, "error") == 0)
     {
-        printf("boxspawn: %s\n", buffer);
-        free(id);
-        return EXIT_FAILURE;
+        exits(F("boxspawn: %s", buffer));
     }
 
     if (wordcmp(buffer, "background") == 0)
@@ -165,28 +145,21 @@ int main(int argc, char** argv)
     char waitkey[KEY_MAX];
     if (sscanf(buffer, "foreground %s", waitkey) != 1)
     {
-        printf("boxspawn: failed to parse response (%s)\n", strerror(errno));
-        free(id);
-        return EXIT_FAILURE;
+        exits(F("boxspawn: failed to parse response (%s)", strerror(errno)));
     }
 
     fd_t wait;
     status = claim(&wait, waitkey);
     if (IS_ERR(status))
     {
-        printf("boxspawn: failed to claim response %Y\n", status);
-        free(id);
-        return EXIT_FAILURE;
+        exits(F("boxspawn: failed to claim response %Y", status));
     }
 
     char string[NOTE_MAX];
     status = RETRY_ON_CODE(ioread(wait, string, sizeof(string) - 1, IOOFF_CUR, NULL), INTR);
     if (IS_ERR(status))
     {
-        printf("boxspawn: failed to ioread status %Y\n", status);
-        free(id);
-        close(wait);
-        return EXIT_FAILURE;
+        exits(F("boxspawn: failed to ioread status %Y", status));
     }
     close(wait);
 

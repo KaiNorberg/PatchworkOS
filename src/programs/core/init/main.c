@@ -186,7 +186,7 @@ static void init_config_load(void)
         nanosleep(CLOCKS_PER_MS);
         printf("init: spawned service '%s'\n", services->items[i]);
         const char* argv[] = {services->items[i], NULL};
-        status = spawn(argv, SPAWN_EMPTY_FDS | SPAWN_EMPTY_ENV | SPAWN_EMPTY_CWD | SPAWN_EMPTY_GROUP, NULL);
+        status = spawn(argv, SPAWN_EMPTY_ENV | SPAWN_EMPTY_CWD | SPAWN_EMPTY_GROUP, NULL);
         if (IS_ERR(status))
         {
             printf("init: failed to spawn service '%s' %Y", services->items[i], status);
@@ -209,7 +209,7 @@ static void init_config_load(void)
         nanosleep(CLOCKS_PER_MS);
         printf("init: spawn program '%s'\n", programs->items[i]);
         const char* argv[] = {programs->items[i], NULL};
-        status = spawn(argv, SPAWN_EMPTY_FDS | SPAWN_EMPTY_ENV | SPAWN_EMPTY_CWD | SPAWN_EMPTY_GROUP, NULL);
+        status = spawn(argv, SPAWN_EMPTY_ENV | SPAWN_EMPTY_CWD | SPAWN_EMPTY_GROUP, NULL);
         if (IS_ERR(status))
         {
             printf("init: failed to spawn program '%s' %Y", programs->items[i], status);
@@ -237,7 +237,7 @@ int main(void)
         exits(F("init: failed to dup klog %Y", status));
     }
     close(klog);
-
+    
     init_spawn_boxd();
 
     init_create_pkg_links();

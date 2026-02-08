@@ -108,16 +108,10 @@ static status_t pipe_read(irp_t* irp)
 
     pipe_t* data = file->data;
 
-    size_t count = mdl_size(frame->read.buffer);
-    if (count == 0)
+    if (mdl_size(frame->read.buffer) == 0)
     {
         irp->result = 0;
         return OK;
-    }
-
-    if (count >= ARRAY_SIZE(data->buffer))
-    {
-        count = ARRAY_SIZE(data->buffer);
     }
 
     LOCK_SCOPE(&data->lock);
@@ -127,7 +121,7 @@ static status_t pipe_read(irp_t* irp)
         return irp_delay(irp, &data->readers, pipe_cancel);
     }
 
-    status_t status = fifo_read_mdl(&data->fifo, frame->read.buffer, count, &irp->result);
+    status_t status = fifo_read_mdl(&data->fifo, frame->read.buffer, 0, &irp->result);
 
     irp_t* writer;
     irp_t* temp;
@@ -199,11 +193,6 @@ static status_t pipe_write(irp_t* irp)
         return OK;
     }
 
-    if (count >= ARRAY_SIZE(data->buffer))
-    {
-        count = ARRAY_SIZE(data->buffer);
-    }
-
     LOCK_SCOPE(&data->lock);
 
     if (fifo_bytes_writeable(&data->fifo) == 0)
@@ -211,7 +200,7 @@ static status_t pipe_write(irp_t* irp)
         return irp_delay(irp, &data->writers, pipe_cancel);
     }
 
-    status_t status = fifo_write_mdl(&data->fifo, frame->write.buffer, count, &irp->result);
+    status_t status = fifo_write_mdl(&data->fifo, frame->write.buffer, 0, &irp->result);
 
     irp_t* reader;
     irp_t* temp;

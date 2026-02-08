@@ -168,7 +168,7 @@ cleanup:
     {
         thread_jump(thread);
     }
-    LOG_DEBUG("exec failed due to %s pid=%llu\n", st_code_str(ST_CODE(status)), pid);
+    LOG_DEBUG("exec failed due to %Y pid=%llu\n", status, pid);
     sched_exits("exec failed");
 }
 

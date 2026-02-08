@@ -76,9 +76,15 @@ static status_t ctl_do_next(irp_t* irp, ctl_state_t* state)
     {
         *args = '\0';
         args++;
-        while (*args == ' ')
+        while (isspace(*args))
         {
             args++;
+        }
+
+        size_t len = strlen(args);
+        while (len > 0 && isspace(args[len - 1]))
+        {
+            args[--len] = '\0';
         }
     }
 

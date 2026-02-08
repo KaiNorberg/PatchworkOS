@@ -35,6 +35,7 @@ void _heap_unmap_memory(void* addr, uint64_t size)
 #else
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <threads.h>
 
 mtx_t _heapLock;
@@ -48,8 +49,7 @@ void* _heap_map_memory(uint64_t size)
         status_t status = open(&zeroDev, "/dev/const/zero:rw");
         if (IS_ERR(status))
         {
-            printf("libstd: failed to open /dev/const/zero %Y\n", status);
-            return NULL;
+            exits(F("libstd: failed to open /dev/const/zero %Y\n", status));
         }
     }
 
@@ -129,7 +129,7 @@ _heap_header_t* _heap_block_new(uint64_t minSize)
 
     if (last == NULL)
     {
-        list_push_back(&_heapList, &newBlock->listEntry);
+        list_push_front(&_heapList, &newBlock->listEntry);
     }
     else
     {

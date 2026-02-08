@@ -6,7 +6,7 @@
 status_t reads(char** out, fd_t fd)
 {
     uint64_t size = 4096;
-    char* buffer = malloc(size);
+    char* buffer = malloc(size + 1);
     if (buffer == NULL)
     {
         return ERR(LIBSTD, NOMEM);
@@ -18,7 +18,7 @@ status_t reads(char** out, fd_t fd)
         if (totalRead == size)
         {
             size *= 2;
-            char* newBuffer = realloc(buffer, size);
+            char* newBuffer = realloc(buffer, size + 1);
             if (newBuffer == NULL)
             {
                 free(buffer);
@@ -42,7 +42,7 @@ status_t reads(char** out, fd_t fd)
         }
     }
 
-    if (totalRead + 1 < size)
+    if (totalRead < size)
     {
         char* newBuffer = realloc(buffer, totalRead + 1);
         if (newBuffer != NULL)

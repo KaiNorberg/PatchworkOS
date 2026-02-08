@@ -445,6 +445,7 @@ int main(void)
             goto error;
         }
 
+
         box_spawn_t ctx = {0};
         status = ioread(client, ctx.input, sizeof(ctx.input) - 1, IOOFF_CUR, NULL);
         if (IS_ERR(status))

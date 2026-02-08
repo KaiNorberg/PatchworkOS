@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <sys/fs.h>
+#include <sys/proc.h>
 
 #include "user/common/file.h"
 
@@ -48,7 +49,7 @@ FILE* fopen(const char* _RESTRICT filename, const char* _RESTRICT mode)
         return NULL;
     }
 
-    FILE* stream = _file_new();
+    FILE* stream = calloc(1, sizeof(FILE));
     if (stream == NULL)
     {
         errno = ENOMEM;
@@ -60,10 +61,8 @@ FILE* fopen(const char* _RESTRICT filename, const char* _RESTRICT mode)
     {
         errno = ENOMEM;
         close(fd);
-        _file_free(stream);
+        free(stream);
         return NULL;
     }
-
-    _files_push(stream);
     return stream;
 }

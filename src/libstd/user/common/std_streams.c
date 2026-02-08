@@ -29,7 +29,6 @@ static void _std_stream_init(fd_t fd, FILE* stream, FILE** streamPtr, void* buff
         exits(F("libstd: failed to initialize standard stream (fd=%d)\n", fd));
     }
 
-    _files_push(stream);
     *streamPtr = stream;
 }
 

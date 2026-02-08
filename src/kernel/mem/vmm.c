@@ -231,6 +231,8 @@ status_t vmm_alloc(space_t* space, void** addr, size_t length, size_t alignment,
         return ERR(MMU, INVAL);
     }
 
+    pmlFlags |= PML_OWNED;
+
     if (*addr + length < *addr)
     {
         return ERR(MMU, TOOBIG);

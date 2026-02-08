@@ -326,7 +326,7 @@ static status_t local_socket_send(irp_t* irp)
     }
 
     fifo_write(ring, &header, sizeof(local_packet_header_t), NULL);
-    fifo_write_mdl(ring, frame->write.buffer, count, NULL);
+    fifo_write_mdl(ring, frame->write.buffer, 0, NULL);
     irp->result = count;
 
     irp_t* reader;
@@ -335,7 +335,13 @@ static status_t local_socket_send(irp_t* irp)
     while (!list_is_empty(&pending))
     {
         reader = CONTAINER_OF(list_pop_front(&pending), irp_t, entry);
-        local_socket_recv(reader);
+        lock_release(&conn->lock);
+        status_t status = local_socket_recv(reader);
+        if (!IS_INFO(status) || (!IS_CODE(status, PENDING) && !IS_CODE(status, COMPLETE)))
+        {
+            irp_complete(reader, status);
+        }
+        lock_acquire(&conn->lock);
     }
 
     irp_claim_list(&pending, &conn->polls);
@@ -433,18 +439,12 @@ static status_t local_socket_recv(irp_t* irp)
 
     size_t count = mdl_size(frame->read.buffer);
     size_t readCount = header.size < count ? header.size : count;
-    fifo_read_mdl(ring, frame->read.buffer, readCount, NULL);
+    fifo_read_mdl(ring, frame->read.buffer, 0, NULL);
 
     if (header.size > readCount)
     {
         uint64_t remaining = header.size - readCount;
-        char temp[128];
-        while (remaining > 0)
-        {
-            uint64_t toRead = remaining < sizeof(temp) ? remaining : sizeof(temp);
-            fifo_read(ring, temp, toRead, NULL);
-            remaining -= toRead;
-        }
+        fifo_advance_tail(ring, remaining);
     }
     irp->result = readCount;
 
@@ -454,7 +454,13 @@ static status_t local_socket_recv(irp_t* irp)
     while (!list_is_empty(&pending))
     {
         writer = CONTAINER_OF(list_pop_front(&pending), irp_t, entry);
-        local_socket_send(writer);
+        lock_release(&conn->lock);
+        status_t status = local_socket_send(writer);
+        if (!IS_INFO(status) || (!IS_CODE(status, PENDING) && !IS_CODE(status, COMPLETE)))
+        {
+            irp_complete(writer, status);
+        }
+        lock_acquire(&conn->lock);
     }
 
     irp_claim_list(&pending, &conn->polls);

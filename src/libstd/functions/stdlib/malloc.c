@@ -2,6 +2,12 @@
 
 #include "common/heap.h"
 
+#ifdef _KERNEL_
+#include <kernel/log/panic.h>
+#else
+#include <stdio.h>
+#endif
+
 void* malloc(size_t size)
 {
     _heap_acquire();
@@ -11,6 +17,15 @@ void* malloc(size_t size)
     {
         _heap_release();
         return NULL;
+    }
+
+    if (block->magic != _HEAP_HEADER_MAGIC)
+    {
+#ifdef _KERNEL_
+        panic(NULL, "heap corruption detected in malloc()");
+#else
+        exits("libstd: heap corruption detected in malloc()");
+#endif
     }
 
     // When this function returns we have no way of knowing whether the caller

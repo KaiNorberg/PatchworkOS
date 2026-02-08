@@ -85,18 +85,19 @@ static void dwm_send_event_to_all(surface_id_t target, event_type_t type, void* 
 void dwm_init(void)
 {
     fd_t klog;
-    if (IS_ERR(open(&klog, "/dev/klog")))
+    status_t status = open(&klog, "/dev/klog");
+    if (IS_ERR(status))
     {
-        abort();
+        exits(F("dwm: failed to open klog %Y", status));
     }
 
     fd_t stdoutFd = STDOUT_FILENO;
-    if (IS_ERR(dup(klog, &stdoutFd)))
-    {
-        close(klog);
-        abort();
-    }
+    status = dup(klog, &stdoutFd);
     close(klog);
+    if (IS_ERR(status))
+    {
+        exits(F("dwm: failed to dup klog %Y", status));
+    }
 
     if (IS_ERR(open(&kbd, "/dev/kbd/0/events")))
     {

@@ -1,25 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/proc.h>
 
 #include "user/common/file.h"
 
 int fclose(struct FILE* stream)
 {
-    mtx_lock(&stream->mtx);
-
-    if (stream->flags & _FILE_WRITE)
+    int status = _file_deinit(stream);
+    if (stream != stdin && stream != stdout && stream != stderr)
     {
-        if (_file_flush_buffer(stream) == EOF)
-        {
-            mtx_unlock(&stream->mtx);
-            return EOF;
-        }
+        free(stream);
     }
-
-    mtx_unlock(&stream->mtx);
-
-    _files_remove(stream);
-    _file_deinit(stream);
-    _file_free(stream);
-    return 0;
+    return status;
 }
