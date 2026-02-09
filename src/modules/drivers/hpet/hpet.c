@@ -99,7 +99,7 @@ static uint64_t period;   ///< Main counter tick period in femtoseconds (10^-15 
 static atomic_uint64_t counter = ATOMIC_VAR_INIT(0); ///< Accumulated nanosecond counter, used to avoid overflows.
 static seqlock_t counterLock = SEQLOCK_CREATE();     ///< Seqlock for the accumulated counter.
 
-static tid_t overflowThreadTid = 0;                                   ///< Thread ID of the overflow thread.
+static thrd_t overflowThreadTid = 0;                                  ///< Thread ID of the overflow thread.
 static wait_queue_t overflowQueue = WAIT_QUEUE_CREATE(overflowQueue); ///< Wait queue for the overflow thread.
 static atomic_bool overflowShouldStop = ATOMIC_VAR_INIT(false);       ///< Flag to signal the overflow thread to stop.
 

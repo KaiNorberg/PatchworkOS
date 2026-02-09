@@ -16,6 +16,7 @@
 #include <sys/list.h>
 #include <sys/proc.h>
 #include <sys/status.h>
+#include <threads.h>
 
 typedef struct process process_t;
 typedef struct thread thread_t;
@@ -62,7 +63,7 @@ typedef struct thread
 {
     process_t* process;        ///< The parent process that the thread executes within.
     list_entry_t processEntry; ///< The entry for the parent process.
-    tid_t id;                  ///< The thread id, unique within a `process_t`.
+    thrd_t id;                 ///< The thread id, unique within a `process_t`.
     /**
      * The current state of the thread, used to prevent race conditions and make debugging easier.
      */
@@ -119,7 +120,7 @@ typedef void (*thread_kernel_entry_t)(void* arg);
  * @param out Output pointer to store the thread ID, can be `NULL`.
  * @return An appropriate status value.
  */
-status_t thread_kernel_create(thread_kernel_entry_t entry, void* arg, tid_t* out);
+status_t thread_kernel_create(thread_kernel_entry_t entry, void* arg, thrd_t* out);
 
 /**
  * @brief Retrieves the currently running thread.

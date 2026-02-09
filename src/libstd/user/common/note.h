@@ -2,15 +2,15 @@
 
 #include <signal.h>
 #include <stdint.h>
-#include <sys/proc.h>
+#include <sys/note.h>
 
 #define _NOTE_MAX_HANDLERS 32
 
 void _note_init(void);
 
-bool _note_handler_add(atnotify_func_t func);
+bool _note_handler_add(note_func_t func);
 
-void _note_handler_remove(atnotify_func_t func);
+void _note_handler_remove(note_func_t func);
 
 int _signal_raise(int sig);
 

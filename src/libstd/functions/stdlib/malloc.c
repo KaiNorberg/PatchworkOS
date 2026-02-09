@@ -24,7 +24,7 @@ void* malloc(size_t size)
 #ifdef _KERNEL_
         panic(NULL, "heap corruption detected in malloc()");
 #else
-        exits("libstd: heap corruption detected in malloc()");
+        proc_exit("libstd: heap corruption detected in malloc()");
 #endif
     }
 

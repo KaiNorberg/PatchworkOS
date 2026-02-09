@@ -69,7 +69,7 @@ typedef enum
      * return to where it was called from.
      *
      * Intended to be used by modifying the interrupt frame stored in the syscall context and setting this flag. As an
-     * example, consider the `SYS_NOTED` syscall.
+     * example, consider the `SYS_NOTE_DONE` syscall.
      */
     SYSCALL_FORCE_FAKE_INTERRUPT = 1 << 0,
 } syscall_flags_t;

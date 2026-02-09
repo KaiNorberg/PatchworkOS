@@ -15,7 +15,7 @@ typedef struct
     bool shouldCloseStdin;
     bool shouldCloseStdout;
     bool shouldCloseStderr;
-    pid_t pid;
+    proc_t pid;
 } cmd_t;
 
 typedef struct

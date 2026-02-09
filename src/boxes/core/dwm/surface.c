@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/fs.h>
-#include <sys/ioring.h>
+#include <sys/io.h>
 #include <sys/list.h>
 
 static surface_id_t newId = 0;
@@ -57,7 +57,7 @@ surface_t* surface_new(client_t* client, const char* name, const point_t* point,
 
 void surface_free(surface_t* surface)
 {
-    munmap(surface->buffer, surface->width * surface->height * sizeof(pixel_t));
+    iounmap(surface->buffer, surface->width * surface->height * sizeof(pixel_t));
     free(surface);
 }
 

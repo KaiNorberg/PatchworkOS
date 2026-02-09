@@ -70,12 +70,12 @@ typedef struct mdl_entry
  */
 typedef struct mdl
 {
-    struct mdl* next;                ///< Pointer to the next MDL.
+    struct mdl* next;                 ///< Pointer to the next MDL.
     mdl_entry_t small[MDL_SMALL_MAX]; ///< Statically allocated entry for simple regions.
-    mdl_entry_t* entries;               ///< Pointer to entries array.
-    uint32_t amount;                 ///< Number of entries.
-    uint32_t capacity;               ///< Capacity of the `large` array.
-    size_t size;                     ///< Total size of the memory region described by the MDL.
+    mdl_entry_t* entries;             ///< Pointer to entries array.
+    uint32_t amount;                  ///< Number of entries.
+    uint32_t capacity;                ///< Capacity of the `large` array.
+    size_t size;                      ///< Total size of the memory region described by the MDL.
 } mdl_t;
 
 /**

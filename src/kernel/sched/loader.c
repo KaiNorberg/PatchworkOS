@@ -163,13 +163,13 @@ cleanup:
     {
         free(addrs);
     }
-    pid_t pid = process->id;
+    proc_t pid = process->id;
     if (status == OK)
     {
         thread_jump(thread);
     }
     LOG_DEBUG("exec failed due to %Y pid=%llu\n", status, pid);
-    sched_exits("exec failed");
+    sched_exit("exec failed");
 }
 
 static void loader_entry(void)
@@ -183,7 +183,7 @@ static void loader_entry(void)
     loader_exec();
 }
 
-SYSCALL_DEFINE(SYS_SPAWN, const char** argv, spawn_flags_t flags)
+SYSCALL_DEFINE(SYS_PROC_CREATE, const char** argv, proc_flags_t flags)
 {
     if (argv == NULL)
     {
@@ -203,7 +203,7 @@ SYSCALL_DEFINE(SYS_SPAWN, const char** argv, spawn_flags_t flags)
     UNREF_DEFER(ns);
 
     namespace_t* childNs;
-    if (flags & SPAWN_EMPTY_NS || flags & SPAWN_COPY_NS)
+    if (flags & PROC_EMPTY_NS || flags & PROC_COPY_NS)
     {
         childNs = namespace_new(ns);
         if (childNs == NULL)
@@ -211,7 +211,7 @@ SYSCALL_DEFINE(SYS_SPAWN, const char** argv, spawn_flags_t flags)
             return ERR(SCHED, NOMEM);
         }
 
-        if (!(flags & SPAWN_EMPTY_NS))
+        if (!(flags & PROC_EMPTY_NS))
         {
             status_t status = namespace_copy(childNs, ns);
             if (IS_ERR(status))
@@ -229,7 +229,7 @@ SYSCALL_DEFINE(SYS_SPAWN, const char** argv, spawn_flags_t flags)
 
     process_t* child;
     status_t status = process_new(&child, atomic_load(&process->priority),
-        flags & SPAWN_EMPTY_GROUP ? NULL : &process->group, childNs);
+        flags & PROC_EMPTY_GROUP ? NULL : &process->group, childNs);
     if (IS_ERR(status))
     {
         return status;
@@ -264,14 +264,14 @@ SYSCALL_DEFINE(SYS_SPAWN, const char** argv, spawn_flags_t flags)
         return status;
     }
 
-    if (flags & SPAWN_SUSPEND)
+    if (flags & PROC_SUSPEND)
     {
         atomic_fetch_or(&child->flags, PROCESS_SUSPENDED);
     }
 
-    if (!(flags & SPAWN_EMPTY_FDS))
+    if (!(flags & PROC_EMPTY_FDS))
     {
-        if (flags & SPAWN_STDIO_FDS)
+        if (flags & PROC_STDIO_FDS)
         {
             file_table_copy(&child->files, &process->files, 0, 3);
         }
@@ -281,7 +281,7 @@ SYSCALL_DEFINE(SYS_SPAWN, const char** argv, spawn_flags_t flags)
         }
     }
 
-    if (!(flags & SPAWN_EMPTY_ENV))
+    if (!(flags & PROC_EMPTY_ENV))
     {
         status = env_copy(&child->env, &process->env);
         if (IS_ERR(status))
@@ -291,7 +291,7 @@ SYSCALL_DEFINE(SYS_SPAWN, const char** argv, spawn_flags_t flags)
         }
     }
 
-    if (!(flags & SPAWN_EMPTY_CWD))
+    if (!(flags & PROC_EMPTY_CWD))
     {
         path_t cwd = cwd_get(&process->cwd, ns);
         cwd_set(&child->cwd, &cwd);
@@ -311,7 +311,7 @@ SYSCALL_DEFINE(SYS_SPAWN, const char** argv, spawn_flags_t flags)
     return OK;
 }
 
-SYSCALL_DEFINE(SYS_THREAD_CREATE, void* entry, void* arg)
+SYSCALL_DEFINE(SYS_THRD_CREATE, void* entry, void* arg)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;

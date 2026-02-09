@@ -1,3 +1,4 @@
+#include <_libstd/clock_t.h>
 #include <errno.h>
 #include <patchwork/patchwork.h>
 #include <stdio.h>
@@ -55,10 +56,13 @@ static status_t init_socket_addr_wait(const char* family, const char* addr)
         return init_socket_addr_wait(family, addr);
     }
 
-    clock_t start = uptime();
+    clock_t start = clock();
     while (true)
     {
-        nanosleep(CLOCKS_PER_SEC / 10);
+        struct timespec ts;
+        ts.tv_sec = 0;
+        ts.tv_nsec = CLOCKS_PER_MS;
+        thrd_sleep(&ts, NULL);
 
         char* data;
         status = readfiles(&data, F("/net/%s/addrs", family));
@@ -75,7 +79,7 @@ static status_t init_socket_addr_wait(const char* family, const char* addr)
 
         free(data);
 
-        if ((uptime() - start) >= CLOCKS_PER_SEC * 10)
+        if (clock() - start >= CLOCKS_PER_SEC * 10)
         {
             close(addrs);
             return ERR(USER, TIMEOUT);
@@ -91,41 +95,41 @@ static void init_root_ns(void)
     status_t status = mount("/dev:rwL", "/sys/fs/devfs", NULL);
     if (IS_ERR(status))
     {
-        exits(F("init: failed to mount devfs %Y", status));
+        proc_exit(F("init: failed to mount devfs %Y", status));
     }
 
     status = mount("/net:rwL", "/sys/fs/netfs", NULL);
     if (IS_ERR(status))
     {
-        exits(F("init: failed to mount netfs %Y", status));
+        proc_exit(F("init: failed to mount netfs %Y", status));
     }
 
     status = mount("/proc:rwL", "/sys/fs/procfs", NULL);
     if (IS_ERR(status))
     {
-        exits(F("init: failed to mount procfs %Y", status));
+        proc_exit(F("init: failed to mount procfs %Y", status));
     }
 
     status = mount("/tmp:rwL", "/sys/fs/tmpfs", NULL);
     if (IS_ERR(status))
     {
-        exits(F("init: failed to mount tmpfs %Y", status));
+        proc_exit(F("init: failed to mount tmpfs %Y", status));
     }
 }
 
 static void init_spawn_boxd(void)
 {
     const char* argv[] = {"/sbin/boxd", NULL};
-    status_t status = spawn(argv, SPAWN_DEFAULT, NULL);
+    status_t status = proc_create(argv, PROC_DEFAULT, NULL);
     if (IS_ERR(status))
     {
-        exits(F("init: failed to spawn boxd %Y", status));
+        proc_exit(F("init: failed to spawn boxd %Y", status));
     }
 
     status = init_socket_addr_wait("local", "boxspawn");
     if (IS_ERR(status))
     {
-        exits(F("init: timeout waiting for boxd to create boxspawn socket %Y", status));
+        proc_exit(F("init: timeout waiting for boxd to create boxspawn socket %Y", status));
     }
 }
 
@@ -137,7 +141,7 @@ static void init_create_pkg_links(void)
     status = open(&box, "/box");
     if (IS_ERR(status))
     {
-        exits(F("init: failed to open /box %Y", status));
+        proc_exit(F("init: failed to open /box %Y", status));
     }
 
     dirent_t* dirents;
@@ -146,7 +150,7 @@ static void init_create_pkg_links(void)
     if (IS_ERR(status))
     {
         close(box);
-        exits(F("init: failed to ioread /box %Y", status));
+        proc_exit(F("init: failed to ioread /box %Y", status));
     }
     close(box);
 
@@ -161,7 +165,7 @@ static void init_create_pkg_links(void)
         if (IS_ERR(status) && !IS_CODE(status, EXIST))
         {
             free(dirents);
-            exits(F("init: failed to create launch symlink for box '%s' %Y\n", dirents[i].path, status));
+            proc_exit(F("init: failed to create launch symlink for box '%s' %Y\n", dirents[i].path, status));
         }
     }
 
@@ -182,10 +186,12 @@ static void init_config_load(void)
     config_array_t* services = config_get_array(config, "startup", "services");
     for (uint64_t i = 0; i < services->length; i++)
     {
-        nanosleep(CLOCKS_PER_MS);
+        struct timespec ts = {.tv_sec = 0, .tv_nsec = CLOCKS_PER_MS * 10};
+        thrd_sleep(&ts, NULL);    
+
         printf("init: spawned service '%s'\n", services->items[i]);
         const char* argv[] = {services->items[i], NULL};
-        status = spawn(argv, SPAWN_EMPTY_ENV | SPAWN_EMPTY_CWD | SPAWN_EMPTY_GROUP, NULL);
+        status = proc_create(argv, PROC_EMPTY_ENV | PROC_EMPTY_CWD | PROC_EMPTY_GROUP, NULL);
         if (IS_ERR(status))
         {
             printf("init: failed to spawn service '%s' %Y", services->items[i], status);
@@ -205,10 +211,12 @@ static void init_config_load(void)
     config_array_t* programs = config_get_array(config, "startup", "programs");
     for (uint64_t i = 0; i < programs->length; i++)
     {
-        nanosleep(CLOCKS_PER_MS);
+        struct timespec ts = {.tv_sec = 0, .tv_nsec = CLOCKS_PER_MS * 10};
+        thrd_sleep(&ts, NULL);    
+
         printf("init: spawn program '%s'\n", programs->items[i]);
         const char* argv[] = {programs->items[i], NULL};
-        status = spawn(argv, SPAWN_EMPTY_ENV | SPAWN_EMPTY_CWD | SPAWN_EMPTY_GROUP, NULL);
+        status = proc_create(argv, PROC_EMPTY_ENV | PROC_EMPTY_CWD | PROC_EMPTY_GROUP, NULL);
         if (IS_ERR(status))
         {
             printf("init: failed to spawn program '%s' %Y", programs->items[i], status);
@@ -226,17 +234,17 @@ int main(void)
     status_t status = open(&klog, "/dev/klog:rw");
     if (IS_ERR(status))
     {
-        exits(F("init: failed to open klog %Y", status));
+        proc_exit(F("init: failed to open klog %Y", status));
     }
     fd_t stdoutFd = STDOUT_FILENO;
     fd_t stderrFd = STDERR_FILENO;
     if (IS_ERR(status = dup(klog, &stdoutFd)) || IS_ERR(status = dup(klog, &stderrFd)))
     {
         close(klog);
-        exits(F("init: failed to dup klog %Y", status));
+        proc_exit(F("init: failed to dup klog %Y", status));
     }
     close(klog);
-    
+
     init_spawn_boxd();
 
     init_create_pkg_links();

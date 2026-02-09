@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/proc.h>
+#include <sys/sync.h>
 #include <sys/syscall.h>
 #include <threads.h>
 
@@ -13,7 +13,7 @@ void thrd_exit(int res)
     _thread_t* thread = _THREAD_SELF->self;
     if (thread == NULL)
     {
-        exits("libstd: thrd_exit called from unknown thread");
+        proc_exit("libstd: thrd_exit called from unknown thread");
     }
 
     thread->result = res;
@@ -25,9 +25,9 @@ void thrd_exit(int res)
     }
     else
     {
-        futex(&thread->state, FUTEX_ALL, FUTEX_WAKE, CLOCKS_NEVER, NULL);
+        sync_ctl(&thread->state, UINT64_MAX, SYNC_WAKE, CLOCKS_NEVER, NULL);
     }
 
-    syscall0(SYS_THREAD_EXIT, NULL);
+    syscall0(SYS_THRD_EXIT, NULL);
     __builtin_unreachable();
 }

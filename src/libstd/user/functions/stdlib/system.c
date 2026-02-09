@@ -1,14 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/fs.h>
-#include <sys/ioring.h>
+#include <sys/io.h>
 #include <sys/proc.h>
 
 int system(const char* command)
 {
     const char* argv[] = {"/bin/shell", command, NULL};
-    pid_t shell;
-    status_t status = spawn(argv, SPAWN_DEFAULT, &shell);
+    proc_t shell;
+    status_t status = proc_create(argv, PROC_DEFAULT, &shell);
     if (IS_ERR(status))
     {
         return -1;

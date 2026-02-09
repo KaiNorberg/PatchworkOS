@@ -81,11 +81,13 @@ CFLAGS_MODULE := \
 	-mno-red-zone \
 	-fPIC \
 	-D_KERNEL_MODULE_ \
+	-D_KERNEL_ \
 	-D__STDC_WANT_LIB_EXT1__=1
 
 ASFLAGS_MODULE := \
 	-fPIC \
 	-D_KERNEL_MODULE_ \
+	-D_KERNEL_ \
 	-D__STDC_WANT_LIB_EXT1__=1
 
 LDFLAGS_MODULE := \

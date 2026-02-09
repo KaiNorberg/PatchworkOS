@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/fs.h>
-#include <sys/ioring.h>
+#include <sys/io.h>
 
 static list_t files;
 static mtx_t filesMtx;
@@ -296,7 +296,7 @@ void _files_init(void)
     list_init(&files);
     if (mtx_init(&filesMtx, mtx_recursive) != thrd_success)
     {
-        exits("libstd: failed to initialize files mutex");
+        proc_exit("libstd: failed to initialize files mutex");
     }
 }
 

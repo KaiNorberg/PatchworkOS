@@ -297,9 +297,9 @@ void pipeline_deinit(pipeline_t* pipeline)
     }
 }
 
-static pid_t pipeline_execute_cmd(cmd_t* cmd)
+static proc_t pipeline_execute_cmd(cmd_t* cmd)
 {
-    pid_t result = PFAIL;
+    proc_t result = PFAIL;
 
     fd_t originalStdin = FD_NONE;
     if (IS_ERR(dup(STDIN_FILENO, &originalStdin)))
@@ -350,7 +350,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
         stat_t info;
         if (IS_INFO(stat(argv[0], &info)) && info.type != VNODE_DIR)
         {
-            if (IS_ERR(spawn(argv, SPAWN_STDIO_FDS, &result)))
+            if (IS_ERR(proc_create(argv, PROC_STDIO_FDS, &result)))
             {
                 result = PFAIL;
             }
@@ -392,7 +392,7 @@ static pid_t pipeline_execute_cmd(cmd_t* cmd)
                             newArgv[k] = argv[k];
                         }
                         newArgv[argc] = NULL;
-                        if (IS_ERR(spawn(newArgv, SPAWN_STDIO_FDS, &result)))
+                        if (IS_ERR(proc_create(newArgv, PROC_STDIO_FDS, &result)))
                         {
                             result = PFAIL;
                         }

@@ -2,14 +2,14 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/proc.h>
+#include <sys/sync.h>
 #include <threads.h>
 
 #include "user/common/threading.h"
 
 int mtx_lock(mtx_t* mutex)
 {
-    tid_t self = gettid();
+    thrd_t self = thrd_current();
     if (mutex->owner == self)
     {
         mutex->depth++;
@@ -42,6 +42,6 @@ int mtx_lock(mtx_t* mutex)
         {
             atomic_compare_exchange_strong(&(mutex->state), &expected, _MTX_CONTESTED);
         }
-        futex(&(mutex->state), _MTX_CONTESTED, FUTEX_WAIT, CLOCKS_NEVER, NULL);
+        sync_ctl(&(mutex->state), _MTX_CONTESTED, SYNC_WAIT, CLOCKS_NEVER, NULL);
     } while (1);
 }

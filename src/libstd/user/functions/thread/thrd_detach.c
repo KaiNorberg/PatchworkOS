@@ -8,7 +8,7 @@
 
 int thrd_detach(thrd_t thr)
 {
-    _thread_t* thread = _thread_get(thr.id);
+    _thread_t* thread = _thread_get(thr);
     if (thread == NULL)
     {
         return thrd_error;

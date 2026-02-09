@@ -31,7 +31,7 @@ void* realloc(void* ptr, size_t size)
 #ifdef _KERNEL_
         panic(NULL, "heap corruption detected in realloc()");
 #else
-        exits("heap corruption detected in realloc()");
+        proc_exit("heap corruption detected in realloc()");
 #endif
     }
 
@@ -40,7 +40,7 @@ void* realloc(void* ptr, size_t size)
 #ifdef _KERNEL_
         panic(NULL, "double free detected in realloc()");
 #else
-        exits("double free detected in realloc()");
+        proc_exit("double free detected in realloc()");
 #endif
     }
 

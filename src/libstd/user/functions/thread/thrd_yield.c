@@ -8,5 +8,5 @@
 
 void thrd_yield(void)
 {
-    syscall0(SYS_YIELD, NULL);
+    syscall0(SYS_THRD_YIELD, NULL);
 }

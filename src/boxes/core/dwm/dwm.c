@@ -12,11 +12,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/fs.h>
-#include <sys/ioring.h>
+#include <sys/io.h>
 #include <sys/list.h>
 #include <sys/math.h>
 #include <sys/proc.h>
 #include <threads.h>
+#include <time.h>
 
 static char* id = NULL;
 static fd_t data;
@@ -88,7 +89,7 @@ void dwm_init(void)
     status_t status = open(&klog, "/dev/klog");
     if (IS_ERR(status))
     {
-        exits(F("dwm: failed to open klog %Y", status));
+        proc_exit(F("dwm: failed to open klog %Y", status));
     }
 
     fd_t stdoutFd = STDOUT_FILENO;
@@ -96,7 +97,7 @@ void dwm_init(void)
     close(klog);
     if (IS_ERR(status))
     {
-        exits(F("dwm: failed to dup klog %Y", status));
+        proc_exit(F("dwm: failed to dup klog %Y", status));
     }
 
     status = open(&kbd, "/dev/kbd/0/events");
@@ -734,7 +735,7 @@ static void dwm_poll(void)
     clock_t timeout = CLOCKS_NEVER;
     if (timer != NULL)
     {
-        clock_t time = uptime();
+        clock_t time = clock();
         timeout = timer->timer.deadline > time ? timer->timer.deadline - time : 0;
     }
 
@@ -747,7 +748,7 @@ static void dwm_poll(void)
         abort();
     }
 
-    clock_t time = uptime();
+    clock_t time = clock();
     if (timer != NULL && time >= timer->timer.deadline)
     {
         if (timer->timer.flags & TIMER_REPEAT)
@@ -765,7 +766,7 @@ static void dwm_poll(void)
 static void dwm_update(void)
 {
     dwm_poll();
-    printf("dwm: updating pid=%d\n", getpid());
+    printf("dwm: updating pid=%d\n", proc_current());
     if (pollCtx->data.revents & IOPOLL_READ)
     {
         printf("dwm: accepting new client\n");
@@ -821,7 +822,7 @@ static void dwm_update(void)
         .cursor = cursor,
         .fullscreen = fullscreen,
     };
-    
+
     printf("dwm: drawing\n");
 
     compositor_draw(&ctx);

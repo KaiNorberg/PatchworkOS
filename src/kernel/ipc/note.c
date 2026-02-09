@@ -138,7 +138,7 @@ void note_handle_pending(interrupt_frame_t* frame)
         (void*)frame->rip);
 }
 
-SYSCALL_DEFINE(SYS_NOTIFY, note_func_t handler)
+SYSCALL_DEFINE(SYS_NOTE_SET, note_func_t handler)
 {
     process_t* process = process_current();
     note_handler_t* noteHandler = &process->noteHandler;
@@ -150,7 +150,7 @@ SYSCALL_DEFINE(SYS_NOTIFY, note_func_t handler)
     return OK;
 }
 
-SYSCALL_DEFINE(SYS_NOTED)
+SYSCALL_DEFINE(SYS_NOTE_DONE)
 {
     thread_t* thread = thread_current();
     note_queue_t* queue = &thread->notes;

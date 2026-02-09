@@ -105,7 +105,7 @@ typedef struct terminal
     terminal_char_t* savedCursor;
     terminal_char_t* prevCursor;
     terminal_char_t* cursor;
-    pid_t shell;
+    proc_t shell;
 } terminal_t;
 
 /**

@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/ioring.h>
+#include <sys/io.h>
 #include <sys/list.h>
 
 static inline uint64_t display_events_read(display_t* disp, event_t* event)
@@ -378,7 +378,9 @@ uint64_t display_wait(display_t* disp, event_t* event, event_type_t expected)
     while (true)
     {
         size_t bytesRead;
+        printf("display: waiting for event\n");
         status_t status = ioread(disp->data, event, sizeof(event_t), IOOFF_CUR, &bytesRead);
+        printf("display: got event\n");
         if (IS_ERR(status) || bytesRead != sizeof(event_t))
         {
             disp->isConnected = false;

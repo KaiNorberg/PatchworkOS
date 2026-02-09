@@ -1,6 +1,5 @@
 #include "user.h"
 
-#include "common/clock.h"
 #include "common/exit_stack.h"
 #include "common/std_streams.h"
 #include "common/threading.h"
@@ -40,7 +39,6 @@ static void _populate_std_descriptors(void)
 
 void _user_init(void)
 {
-    _clock_init();
     _threading_init();
     _io_init();
     _populate_std_descriptors();

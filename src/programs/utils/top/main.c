@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/fs.h>
-#include <sys/ioring.h>
+#include <sys/io.h>
 #include <sys/proc.h>
 #include <threads.h>
 #include <time.h>
@@ -81,7 +81,7 @@ typedef struct
 
 typedef struct
 {
-    pid_t pid;
+    proc_t pid;
     clock_t userClocks;
     clock_t kernelClocks;
     clock_t startClocks;
@@ -214,7 +214,7 @@ static proc_perfs_t* proc_perfs_read(uint64_t* procAmount)
                 continue;
             }
 
-            pid_t pid = (pid_t)atoi(buffer[i].path);
+            proc_t pid = (proc_t)atoi(buffer[i].path);
             if (pid == 0)
             {
                 continue;

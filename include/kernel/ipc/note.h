@@ -6,6 +6,7 @@
 
 #include <sys/fs.h>
 #include <sys/map.h>
+#include <sys/note.h>
 #include <sys/proc.h>
 
 typedef struct cpu cpu_t;
@@ -34,10 +35,10 @@ typedef struct cpu cpu_t;
  * asuming there is a note pending.
  *
  * The interruption works by having the kernel save the current interrupt frame of the thread and replacing it with a
- * new frame that calls the note handler function registered using `notify()`. During the handling of the note, no
+ * new frame that calls the note handler function registered using `note_set()`. During the handling of the note, no
  * further notes will be delivered to the thread.
  *
- * Later, when the note handler function calls `noted()`, the kernel will restore the saved interrupt frame and continue
+ * Later, when the note handler function calls `note_done()`, the kernel will restore the saved interrupt frame and continue
  * execution from where it left off as if nothing happened. Alternatively, the note handler can choose to exit the
  * thread. If no handler is registered, the thread is killed.
  *
@@ -120,7 +121,7 @@ typedef enum
 typedef struct note
 {
     char buffer[NOTE_MAX];
-    pid_t sender;
+    proc_t sender;
 } note_t;
 
 /**

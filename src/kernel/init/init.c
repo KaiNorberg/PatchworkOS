@@ -184,7 +184,7 @@ static inline void init_process_spawn(void)
     }
 
     process_t* initProcess;
-    status = process_new(&initProcess, PRIORITY_MAX_USER, NULL, rootNs);
+    status = process_new(&initProcess, PROC_PRIO_MAX_USER, NULL, rootNs);
     if (IS_ERR(status))
     {
         panic(NULL, "Failed to create init process");

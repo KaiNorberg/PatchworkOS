@@ -1,3 +1,4 @@
+#include <kernel/proc/process.h>
 #include <kernel/sched/clock.h>
 
 #include <kernel/cpu/cpu.h>
@@ -135,9 +136,9 @@ void clock_wait(clock_t nanoseconds)
     }
 }
 
-SYSCALL_DEFINE(SYS_UPTIME)
+SYSCALL_DEFINE(SYS_CLOCK)
 {
-    *_result = clock_uptime();
+    *_result = clock_uptime() - process_current()->start;
     return OK;
 }
 

@@ -24,7 +24,7 @@ void free(void* ptr)
 #ifdef _KERNEL_
         panic(NULL, "heap corruption detected in free()");
 #else
-        exits("libstd: heap corruption detected in free()");
+        proc_exit("libstd: heap corruption detected in free()");
 #endif
     }
 
@@ -33,7 +33,7 @@ void free(void* ptr)
 #ifdef _KERNEL_
         panic(NULL, "double free detected in free()");
 #else
-        exits("libstd: double free detected in free()");
+        proc_exit("libstd: double free detected in free()");
 #endif
     }
 

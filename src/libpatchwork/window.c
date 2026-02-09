@@ -440,7 +440,7 @@ void window_free(window_t* win)
 
     if (win->buffer != NULL)
     {
-        munmap(win->buffer, RECT_WIDTH(&win->rect) * RECT_HEIGHT(&win->rect) * sizeof(pixel_t));
+        iounmap(win->buffer, RECT_WIDTH(&win->rect) * RECT_HEIGHT(&win->rect) * sizeof(pixel_t));
     }
 
     cmd_surface_free_t* cmd = display_cmd_alloc(win->disp, CMD_SURFACE_FREE, sizeof(cmd_surface_free_t));

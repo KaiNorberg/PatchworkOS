@@ -39,12 +39,12 @@
 
 static process_t* kernelProcess = NULL;
 
-static _Atomic(pid_t) newPid = ATOMIC_VAR_INIT(0);
+static _Atomic(proc_t) newPid = ATOMIC_VAR_INIT(0);
 
 static bool pid_map_cmp(map_entry_t* entry, const void* key)
 {
     process_t* process = CONTAINER_OF(entry, process_t, mapEntry);
-    return process->id == (pid_t)(uintptr_t)key;
+    return process->id == (proc_t)(uintptr_t)key;
 }
 
 static MAP_CREATE(pidMap, 64, pid_map_cmp);
@@ -69,7 +69,7 @@ static void process_ctor(void* ptr)
     lock_init(&process->nspaceLock);
     process->cwd = (cwd_t){0};
     process->files = (file_table_t){0};
-    process->futexCtx = (futex_ctx_t){0};
+    process->sync = (sync_ctl_t){0};
     process->perf = (perf_process_ctx_t){0};
     process->noteHandler = (note_handler_t){0};
     process->suspendQueue = (wait_queue_t){0};
@@ -81,6 +81,7 @@ static void process_ctor(void* ptr)
     process->threads.count = 0;
     lock_init(&process->threads.lock);
     env_init(&process->env);
+    process->start = 0;
     process->argv = NULL;
     process->argc = 0;
     process->group = (group_member_t){0};
@@ -117,7 +118,7 @@ static void process_free(process_t* process)
         UNREF(process->nspace);
     }
     space_deinit(&process->space);
-    futex_ctx_deinit(&process->futexCtx);
+    sync_ctl_deinit(&process->sync);
     for (uint64_t i = 0; i < ARRAY_SIZE(process->rings); i++)
     {
         ioring_ctx_deinit(&process->rings[i]);
@@ -128,7 +129,7 @@ static void process_free(process_t* process)
     rcu_call(&process->rcu, rcu_call_cache_free, process);
 }
 
-status_t process_new(process_t** out, priority_t priority, group_member_t* group, namespace_t* ns)
+status_t process_new(process_t** out, proc_prio_t priority, group_member_t* group, namespace_t* ns)
 {
     if (out == NULL || ns == NULL)
     {
@@ -157,7 +158,7 @@ status_t process_new(process_t** out, priority_t priority, group_member_t* group
     process->nspace = REF(ns);
     cwd_init(&process->cwd);
     file_table_init(&process->files);
-    futex_ctx_init(&process->futexCtx);
+    sync_ctl_init(&process->sync);
     perf_process_ctx_init(&process->perf);
     for (uint64_t i = 0; i < ARRAY_SIZE(process->rings); i++)
     {
@@ -169,6 +170,9 @@ status_t process_new(process_t** out, priority_t priority, group_member_t* group
     atomic_store(&process->threads.newTid, 0);
     lock_init(&process->threads.lock);
     env_init(&process->env);
+    process->start = clock_uptime();
+    process->argv = NULL;
+    process->argc = 0;
 
     status = group_member_init(&process->group, group);
     if (IS_ERR(status))
@@ -178,18 +182,17 @@ status_t process_new(process_t** out, priority_t priority, group_member_t* group
     }
 
     lock_acquire(&processesLock);
-
     map_insert(&pidMap, &process->mapEntry, hash_uint64(process->id));
+    list_push_back_rcu(&_processes, &process->entry);
+    lock_release(&processesLock);
 
     LOG_DEBUG("created process pid=%d\n", process->id);
 
-    list_push_back_rcu(&_processes, &process->entry);
-    lock_release(&processesLock);
     *out = REF(process);
     return OK;
 }
 
-process_t* process_get(pid_t id)
+process_t* process_get(proc_t id)
 {
     RCU_READ_SCOPE();
 
@@ -366,7 +369,7 @@ status_t process_set_cmdline(process_t* process, char** argv, uint64_t argc)
     return OK;
 }
 
-bool process_has_thread(process_t* process, tid_t tid)
+bool process_has_thread(process_t* process, thrd_t tid)
 {
     RCU_READ_SCOPE();
 
@@ -393,7 +396,7 @@ process_t* process_get_kernel(void)
         }
         UNREF_DEFER(ns);
 
-        if (IS_ERR(process_new(&kernelProcess, PRIORITY_MAX, NULL, ns)))
+        if (IS_ERR(process_new(&kernelProcess, PROC_PRIO_MAX, NULL, ns)))
         {
             panic(NULL, "Failed to create kernel process");
         }
@@ -403,7 +406,7 @@ process_t* process_get_kernel(void)
     return kernelProcess;
 }
 
-SYSCALL_DEFINE(SYS_GETPID)
+SYSCALL_DEFINE(SYS_PROC_CURRENT)
 {
     *_result = process_current()->id;
     return OK;

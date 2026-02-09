@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <sys/proc.h>
 
 #define BLOCK_SIZE 32
@@ -722,7 +723,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
     {
     case EVENT_LIB_INIT:
     {
-        srand(uptime());
+        srand(time(NULL));
 
         currentScore = 0;
         completedLines = 0;

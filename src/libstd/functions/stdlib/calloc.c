@@ -31,7 +31,7 @@ void* calloc(size_t nmemb, size_t size)
 #ifdef _KERNEL_
         panic(NULL, "heap corruption detected in calloc()");
 #else
-        exits("libstd: heap corruption detected in calloc()");
+        proc_exit("libstd: heap corruption detected in calloc()");
 #endif
     }
 

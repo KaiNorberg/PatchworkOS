@@ -1,14 +1,14 @@
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <sys/proc.h>
+#include <sys/sync.h>
 #include <threads.h>
 
 #include "user/common/threading.h"
 
 int mtx_unlock(mtx_t* mutex)
 {
-    tid_t self = gettid();
+    thrd_t self = thrd_current();
     if (mutex->owner != self)
     {
         return thrd_error;
@@ -23,7 +23,7 @@ int mtx_unlock(mtx_t* mutex)
 
     if (atomic_exchange(&(mutex->state), _MTX_UNLOCKED) == _MTX_CONTESTED)
     {
-        futex(&(mutex->state), 1, FUTEX_WAKE, CLOCKS_NEVER, NULL);
+        sync_ctl(&(mutex->state), 1, SYNC_WAKE, CLOCKS_NEVER, NULL);
     }
     return thrd_success;
 }

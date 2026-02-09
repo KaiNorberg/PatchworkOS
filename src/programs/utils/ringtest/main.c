@@ -1,9 +1,11 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/ioring.h>
+#include <sys/io.h>
 #include <sys/proc.h>
 #include <sys/status.h>
+#include <threads.h>
+#include <time.h>
 
 #define SENTRIES 64
 #define CENTRIES 128
@@ -54,7 +56,8 @@ int main()
     }
 
     printf("sleeping for 5 seconds...\n");
-    nanosleep(CLOCKS_PER_SEC * 5);
+    struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
+    thrd_sleep(&ts, NULL);    
 
     iocqe_t* iocqe;
     while ((iocqe = iocqe_get(&ring)) != NULL)

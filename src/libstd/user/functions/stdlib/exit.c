@@ -7,5 +7,5 @@
 
 void exit(int status)
 {
-    exits(F("%d", status));
+    proc_exit(F("%d", status));
 }

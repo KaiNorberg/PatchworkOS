@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <sys/syscall.h>
+#include <sys/arch.h>
 
 static _thread_t thread0;
 
@@ -9,7 +10,7 @@ static _Atomic(_thread_t*) threads[_THREADS_MAX];
 
 static mtx_t entryMutex;
 
-static uint64_t _thread_hash(tid_t id)
+static uint64_t _thread_hash(thrd_t id)
 {
     return id % _THREADS_MAX;
 }
@@ -69,16 +70,16 @@ void _threading_init(void)
     mtx_init(&entryMutex, mtx_recursive);
 
     _thread_init(&thread0);
-    thread0.id = gettid();
+    thread0.id = thrd_current();
 
     _thread_insert(&thread0);
 
-    arch_prctl(ARCH_SET_FS, (uintptr_t)&thread0);
+    arch_ctl(ARCH_SET_FS, (uintptr_t)&thread0);
 }
 
 _NORETURN static void _thread_entry(_thread_t* thread)
 {
-    arch_prctl(ARCH_SET_FS, (uintptr_t)thread);
+    arch_ctl(ARCH_SET_FS, (uintptr_t)thread);
 
     thrd_exit(thread->func(thread->arg));
 }
@@ -97,7 +98,7 @@ _thread_t* _thread_new(thrd_start_t func, void* arg)
 
     mtx_lock(&entryMutex);
 
-    status_t status = syscall2(SYS_THREAD_CREATE, &thread->id, (uintptr_t)_thread_entry, (uintptr_t)thread);
+    status_t status = syscall2(SYS_THRD_CREATE, &thread->id, (uintptr_t)_thread_entry, (uintptr_t)thread);
     if (IS_ERR(status))
     {
         errno = ENOMEM;
@@ -127,7 +128,7 @@ void _thread_free(_thread_t* thread)
     }
 }
 
-_thread_t* _thread_get(tid_t id)
+_thread_t* _thread_get(thrd_t id)
 {
     uint64_t index = _thread_hash(id);
     for (uint64_t i = 0; i < _THREADS_MAX; i++)

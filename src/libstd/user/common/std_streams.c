@@ -26,7 +26,7 @@ static void _std_stream_init(fd_t fd, FILE* stream, FILE** streamPtr, void* buff
 
     if (_file_init(stream, fd, flags, buffer, BUFSIZ) == EOF)
     {
-        exits(F("libstd: failed to initialize standard stream (fd=%d)\n", fd));
+        proc_exit(F("libstd: failed to initialize standard stream (fd=%d)\n", fd));
     }
 
     *streamPtr = stream;

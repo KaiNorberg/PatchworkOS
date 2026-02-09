@@ -7,11 +7,11 @@
 #include <kernel/drivers/com.h>
 #include <kernel/init/boot_info.h>
 #include <kernel/log/screen.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
-#include <kernel/proc/process.h>
 
 #include <boot/boot_info.h>
 #include <kernel/version.h>

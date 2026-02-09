@@ -21,7 +21,7 @@
  *
  * [exec]
  * bin = <path to the main executable, specified in the boxes namespace>
- * priority = <scheduler priority [`PRIORITY_MIN`, `PRIORITY_MAX_USER`]>
+ * priority = <scheduler priority [`PROC_PRIO_MIN`, `PROC_PRIO_MAX_USER`]>
  *
  * [sandbox]
  * profile = <empty|inherit>

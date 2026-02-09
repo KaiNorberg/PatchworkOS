@@ -35,7 +35,7 @@ typedef struct _thread
 {
     _thread_t* self;
     atomic_uint64_t state;
-    tid_t id;
+    thrd_t id;
     int result;
     errno_t err;
     thrd_start_t func;
@@ -48,7 +48,7 @@ _thread_t* _thread_new(thrd_start_t func, void* arg);
 
 void _thread_free(_thread_t* thread);
 
-_thread_t* _thread_get(tid_t id);
+_thread_t* _thread_get(thrd_t id);
 
 #define _THREAD_SELF ((_thread_t __seg_fs*)0)
 

@@ -10,6 +10,7 @@
 #include <sys/list.h>
 #include <sys/math.h>
 #include <sys/proc.h>
+#include <sys/io.h>
 
 // Include functions directly to avoid multiple object files
 #include <functions/assert/assert.c>

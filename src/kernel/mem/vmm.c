@@ -124,19 +124,23 @@ space_t* vmm_kernel_space_get(void)
     return &kernelSpace;
 }
 
-pml_flags_t vmm_prot_to_flags(prot_t prot)
+pml_flags_t vmm_iomem_to_flags(iomem_t mem)
 {
-    switch ((int)prot)
+    pml_flags_t pml = 0;
+    if (mem & IOMAP_READ)
     {
-    case PROT_NONE:
-        return 0;
-    case PROT_READ:
-        return PML_PRESENT;
-    case PROT_READ | PROT_WRITE:
-        return PML_PRESENT | PML_WRITE;
-    default:
-        return 0;
+        pml |= PML_PRESENT | PML_USER;
     }
+    if (mem & IOMAP_WRITE)
+    {
+        pml |= PML_WRITE;
+    }
+    if (!(mem & IOMAP_EXEC))
+    {
+        pml |= PML_NO_EXECUTE;
+    }
+
+    return pml;
 }
 
 static pml_callback_id_t vmm_alloc_callback(space_t* space, size_t pageAmount, space_callback_func_t func, void* data)
@@ -529,7 +533,7 @@ status_t vmm_unmap(space_t* space, void* virtAddr, size_t length)
     return OK;
 }
 
-SYSCALL_DEFINE(SYS_MUNMAP, void* address, size_t length)
+SYSCALL_DEFINE(SYS_IO_UNMAP, void* address, size_t length)
 {
     process_t* process = process_current();
     space_t* space = &process->space;
@@ -699,7 +703,7 @@ void vmm_tlb_shootdown(space_t* space, void* virtAddr, size_t pageAmount)
     }
 }
 
-SYSCALL_DEFINE(SYS_MPROTECT, void* address, size_t length, prot_t prot)
+SYSCALL_DEFINE(SYS_IO_PROTECT, void* address, size_t length, iomem_t prot)
 {
     process_t* process = process_current();
     space_t* space = &process->space;
@@ -709,5 +713,5 @@ SYSCALL_DEFINE(SYS_MPROTECT, void* address, size_t length, prot_t prot)
         return ERR(MMU, FAULT);
     }
 
-    return vmm_protect(space, address, length, vmm_prot_to_flags(prot));
+    return vmm_protect(space, address, length, vmm_iomem_to_flags(prot));
 }

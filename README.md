@@ -336,12 +336,12 @@ For a full list of available permissions, check the [Documentation](https://kain
 
 ### Spawning Processes
 
-Another example of the "everything is a file" philosophy is the `spawn()` syscall used to create new processes. We will skip the usual debate on `fork()` vs `spawn()` and just focus on how `spawn()` works in PatchworkOS as there are enough discussions about that online.
+Another example of the "everything is a file" philosophy is the `proc_create()` syscall used to create new processes. We will skip the usual debate on `fork()` vs `proc_create()` and just focus on how `proc_create()` works in PatchworkOS as there are enough discussions about that online.
 
-The `spawn()` syscall takes in two arguments:
+The `proc_create()` syscall takes in two arguments:
 
 - `const char** argv`: The argument vector, similar to POSIX systems except that the first argument is always the path to the executable.
-- `spawn_flags_t flags`: Flags controlling the creation of the new process, primarily what to inherit from the parent process.
+- `proc_flags_t flags`: Flags controlling the creation of the new process, primarily what to inherit from the parent process.
 
 The system call may seem very small in comparison to, for example, `posix_spawn()` or `CreateProcess()`. This is intentional, trying to squeeze every possible combination of things one might want to do when creating a new process into a single syscall would be highly impractical, as those familiar with `CreateProcess()` may know.
 
@@ -349,7 +349,7 @@ PatchworkOS instead allows the creation of processes in a suspended state, allow
 
 As an example, let's say we wish to create a child such that its stdio is redirected to some file descriptors in the parent and create an environment variable `MY_VAR=my_value`.
 
-First, let's pretend we have some set of file descriptors and spawn the new process in a suspended state using the `SPAWN_SUSPENDED` flag
+First, let's pretend we have some set of file descriptors and spawn the new process in a suspended state using the `PROC_SUSPENDED` flag
 
 ```c
 fd_t stdin = ...;
@@ -357,7 +357,7 @@ fd_t stdout = ...;
 fd_t stderr = ...;
 
 const char* argv[] = {"/base/bin/shell", NULL};
-pid_t child = spawn(argv, SPAWN_SUSPENDED);
+proc_t child = proc_create(argv, PROC_SUSPENDED);
 ```
 
 At this point, the process exists but its stuck blocking before it is can load its executable. Additionally, the child process has inherited all file descriptors and environment variables from the parent process.
@@ -386,7 +386,7 @@ At this point the child process will begin executing with its stdio redirected t
 
 The advantages of this approach are numerous, we avoid COW issues with `fork()`, weirdness with `vfork()`, system call bloat with `CreateProcess()`, and we get a very flexible and powerful process creation system that can use any of the other file based APIs to modify the child process. In exchange, the only real price we pay is overhead from additional context switches, string parsing and path traversals, how much this matters in practice is debatable.
 
-For more on `spawn()`, check the [Userspace Process API Documentation](https://kainorberg.github.io/PatchworkOS/html/d1/d10/group__libstd__sys__proc.html#gae41c1cb67e3bc823c6d0018e043022eb) and for more information on the `/proc` filesystem, check the [Kernel Process Documentation](https://kainorberg.github.io/PatchworkOS/html/da/d0f/group__kernel__proc.html).
+For more on `proc_create()`, check the [Userspace Process API Documentation](https://kainorberg.github.io/PatchworkOS/html/d1/d10/group__libstd__sys__proc.html#gae41c1cb67e3bc823c6d0018e043022eb) and for more information on the `/proc` filesystem, check the [Kernel Process Documentation](https://kainorberg.github.io/PatchworkOS/html/da/d0f/group__kernel__proc.html).
 
 ### Notes (Signals)
 
@@ -412,7 +412,7 @@ For more details, see the [Notes Documentation](https://kainorberg.github.io/Pat
 
 I'm sure you have heard many an argument for and against the "everything is a file" philosophy. So I won't go over everything, but the primary reason for using it in PatchworkOS is "emergent behavior" or "composability" whichever term you prefer.
 
-Take the `spawn()` example, notice how there is no specialized system for setting up a child after it's been created? Instead, we have a set of small, simple building blocks that when added together form a more complex whole. That is emergent behavior, by keeping things simple and most importantly composable, we can create very complex behavior without needing to explicitly design it.
+Take the `proc_create()` example, notice how there is no specialized system for setting up a child after it's been created? Instead, we have a set of small, simple building blocks that when added together form a more complex whole. That is emergent behavior, by keeping things simple and most importantly composable, we can create very complex behavior without needing to explicitly design it.
 
 Let's take another example, say you wanted to wait on multiple processes with a `waitpid()` syscall. Well, that's not possible. So now we suddenly need a new system call. Meanwhile, in an "everything is a file system" we just have a pollable `/proc/[pid]/wait` file that blocks until the process dies and returns the exit status, now any behavior that can be implemented with `poll()` can be used while waiting on processes, including waiting on multiple processes at once, waiting on a keyboard and a process, waiting with a timeout, or any weird combination you can think of.
 
@@ -428,7 +428,7 @@ For a basic example, say we have a process A which creates a child process B. Pr
 
 ```c
 const char* argv[] = {"/base/bin/b", NULL};
-pid_t child = spawn(argv, SPAWN_EMPTY_NS | SPAWN_SUSPENDED);
+proc_t child = proc_create(argv, PROC_EMPTY_NS | PROC_SUSPENDED);
 // Mount/bind other needed directories but not /secret
 writefiles(F("/proc/%d/ctl", child), "mount ... && bind ... && start");
 ```
@@ -441,7 +441,7 @@ mount("/secret:private", "tmpfs", NULL);
 fd_t secretFile = open("/secret/file:create");
 ...
 const char* argv[] = {"/base/bin/b", NULL};
-pid_t child = spawn(argv, SPAWN_COPY_NS); // Create a child namespace copying the parent's
+proc_t child = proc_create(argv, PROC_COPY_NS); // Create a child namespace copying the parent's
 
 // In process B
 fd_t secretFile = open("/secret/file"); // Will fail to access the file
@@ -626,7 +626,7 @@ All code for benchmarks can be found in the [benchmark program](https://github.c
 
 ### Memory Allocation/Mapping
 
-The test maps and unmaps memory in varying page amounts for a set amount of iterations using generic mmap and munmap functions. Below is the results from PatchworkOS as of commit `4b00a88` and Fedora 40, kernel version `6.14.5-100.fc40.x86_64`.
+The test maps and unmaps memory in varying page amounts for a set amount of iterations using generic mmap and iounmap functions. Below is the results from PatchworkOS as of commit `4b00a88` and Fedora 40, kernel version `6.14.5-100.fc40.x86_64`.
 
 ```mermaid
 xychart-beta
@@ -643,7 +643,7 @@ There are a few potential reasons for this, one is that PatchworkOS does not use
 
 In the end we end up with a $O(1)$ complexity per page operation, we do of course get $O(n)$ complexity per allocation/mapping operation where $n$ is the number of pages.
 
-Of course, there are limitations to this approach, for example, it is in no way portable (which isn't a concern in our case), each address space can only contain $2^8 - 1$ unique shared memory regions, and copy-on-write would not be easy to implement (however, the need for this is reduced due to PatchworkOS using a `spawn()` instead of a `fork()`).
+Of course, there are limitations to this approach, for example, it is in no way portable (which isn't a concern in our case), each address space can only contain $2^8 - 1$ unique shared memory regions, and copy-on-write would not be easy to implement (however, the need for this is reduced due to PatchworkOS using a `proc_create()` instead of a `fork()`).
 
 All in all, this algorithm would not be a viable replacement for existing algorithms, but for PatchworkOS, it serves its purpose very efficiently.
 

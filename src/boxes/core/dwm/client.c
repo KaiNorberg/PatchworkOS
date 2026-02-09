@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 static surface_t* client_surface_find(client_t* client, surface_id_t id)
 {
@@ -227,7 +228,7 @@ static uint64_t client_action_surface_timer_set(client_t* client, const cmd_head
 
     surface->timer.flags = cmd->flags;
     surface->timer.timeout = cmd->timeout;
-    surface->timer.deadline = CLOCKS_DEADLINE(cmd->timeout, uptime());
+    surface->timer.deadline = CLOCKS_DEADLINE(cmd->timeout, clock());
     return 0;
 }
 

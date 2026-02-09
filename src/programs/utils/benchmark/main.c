@@ -35,7 +35,7 @@ static void* mmap_generic(size_t length)
 
 static uint64_t munmap_generic(void* addr, size_t length)
 {
-    return IS_ERR(munmap(addr, length)) ? PFAIL : 0;
+    return IS_ERR(iounmap(addr, length)) ? PFAIL : 0;
 }
 
 static void benchmark_getpid(void)
@@ -44,7 +44,7 @@ static void benchmark_getpid(void)
 
     for (uint64_t i = 0; i < GETPID_ITER; i++)
     {
-        getpid();
+        proc_current();
     }
 
     clock_t end = clock();
@@ -88,7 +88,7 @@ static void* mmap_generic(size_t length)
 
 static uint64_t munmap_generic(void* addr, size_t length)
 {
-    return munmap(addr, length) == -1 ? PFAIL : 0;
+    return iounmap(addr, length) == -1 ? PFAIL : 0;
 }
 
 #endif
@@ -113,7 +113,7 @@ static void benchmark_mmap(uint64_t pages)
 
         if (munmap_generic(ptr, pages * 0x1000) != 0)
         {
-            perror("munmap failed");
+            perror("iounmap failed");
             return;
         }
     }

@@ -6,12 +6,12 @@
 #include <kernel/cpu/ipi.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
+#include <kernel/proc/process.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sync/lock.h>
-#include <kernel/proc/process.h>
 
 #include <assert.h>
 #include <stdatomic.h>

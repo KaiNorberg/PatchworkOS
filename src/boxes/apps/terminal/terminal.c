@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <sys/defs.h>
 #include <sys/fs.h>
-#include <sys/ioring.h>
+#include <sys/io.h>
 #include <sys/kbd.h>
 #include <sys/proc.h>
 #include <time.h>
@@ -595,7 +595,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         term->prevCursor = &term->screen[0][0];
 
         const char* argv[] = {"/base/bin/shell", NULL};
-        if (IS_ERR(spawn(argv, SPAWN_SUSPEND | SPAWN_EMPTY_GROUP | SPAWN_COPY_NS, &term->shell)))
+        if (IS_ERR(proc_create(argv, PROC_SUSPEND | PROC_EMPTY_GROUP | PROC_COPY_NS, &term->shell)))
         {
             close(term->stdin);
             close(term->stdout);

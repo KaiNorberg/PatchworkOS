@@ -356,7 +356,7 @@ typedef int128_t lag_t;
 /**
  * @brief The maximum weight a thread can have.
  */
-#define SCHED_WEIGHT_MAX (PRIORITY_MAX + SCHED_WEIGHT_BASE)
+#define SCHED_WEIGHT_MAX (PROC_PRIO_MAX + SCHED_WEIGHT_BASE)
 
 /**
  * @brief Base weight added to all threads.
@@ -491,7 +491,7 @@ void sched_enable(void);
  *
  * @param result The exit result of the process.
  */
-_NORETURN void sched_exits(const char* result);
+_NORETURN void sched_exit(const char* result);
 
 /**
  * @brief Terminates the currently executing thread.

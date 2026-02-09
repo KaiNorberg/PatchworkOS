@@ -168,7 +168,7 @@ static void box_spawn(box_spawn_t* ctx)
 {
     box_args_t args = {.box = NULL, .stdio = {FD_NONE}, .group = FD_NONE, .namespace = FD_NONE};
     fd_t ctl = FD_NONE;
-    pid_t pid = PFAIL;
+    proc_t pid = PFAIL;
     status_t status;
 
     char argBuffer[BUFFER_MAX];
@@ -223,10 +223,10 @@ static void box_spawn(box_spawn_t* ctx)
     bool isForeground = foreground != NULL && strcmp(foreground, "true") == 0;
     bool shouldInheritNamespace = false;
 
-    spawn_flags_t flags = SPAWN_SUSPEND | SPAWN_EMPTY_ENV | SPAWN_EMPTY_CWD | SPAWN_EMPTY_GROUP;
+    proc_flags_t flags = PROC_SUSPEND | PROC_EMPTY_ENV | PROC_EMPTY_CWD | PROC_EMPTY_GROUP;
     if (strcmp(profile, "empty") == 0)
     {
-        flags |= SPAWN_EMPTY_NS;
+        flags |= PROC_EMPTY_NS;
     }
     else if (strcmp(profile, "inherit") == 0)
     {
@@ -240,7 +240,7 @@ static void box_spawn(box_spawn_t* ctx)
     }
 
     args.argv[0] = bin;
-    status = spawn(args.argv, flags, &pid);
+    status = proc_create(args.argv, flags, &pid);
     if (IS_ERR(status))
     {
         snprintf(ctx->result, sizeof(ctx->result), "error due to spawn failure for '%s' %Y", args.box, status);
@@ -390,7 +390,7 @@ static void box_spawn(box_spawn_t* ctx)
 error:
     if (pid != PFAIL)
     {
-        kill(pid);
+        proc_kill(pid);
     }
 cleanup:
     for (int i = 0; i < 3; i++)
@@ -444,7 +444,6 @@ int main(void)
             printf("boxd: failed to accept connection %Y\n", status);
             goto error;
         }
-
 
         box_spawn_t ctx = {0};
         status = ioread(client, ctx.input, sizeof(ctx.input) - 1, IOOFF_CUR, NULL);

@@ -3,7 +3,7 @@
 #include <string.h>
 #include <sys/bitmap.h>
 #include <sys/fs.h>
-#include <sys/ioring.h>
+#include <sys/io.h>
 #include <sys/math.h>
 #include <sys/proc.h>
 
@@ -34,8 +34,8 @@ void _heap_unmap_memory(void* addr, uint64_t size)
 
 #else
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <threads.h>
 
 mtx_t _heapLock;
@@ -49,7 +49,7 @@ void* _heap_map_memory(uint64_t size)
         status_t status = open(&zeroDev, "/dev/const/zero:rw");
         if (IS_ERR(status))
         {
-            exits(F("libstd: failed to open /dev/const/zero %Y\n", status));
+            proc_exit(F("libstd: failed to open /dev/const/zero %Y\n", status));
         }
     }
 
@@ -66,7 +66,7 @@ void* _heap_map_memory(uint64_t size)
 
 void _heap_unmap_memory(void* addr, uint64_t size)
 {
-    munmap(addr, size);
+    iounmap(addr, size);
 }
 
 #endif

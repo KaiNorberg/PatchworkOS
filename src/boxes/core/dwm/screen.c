@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/fs.h>
-#include <sys/ioring.h>
+#include <sys/io.h>
 #include <sys/proc.h>
 
 static uint64_t width;
@@ -89,7 +89,7 @@ void screen_init(void)
 void screen_deinit(void)
 {
     free(backbuffer);
-    munmap(frontbuffer, height * pitch);
+    iounmap(frontbuffer, height * pitch);
 }
 
 void screen_transfer(surface_t* surface, const rect_t* rect)

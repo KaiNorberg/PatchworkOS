@@ -12,7 +12,7 @@
 #include <kernel/proc/process.h>
 #include <kernel/sched/clock.h>
 
-#include <sys/ioring.h>
+#include <sys/io.h>
 #include <sys/list.h>
 #include <time.h>
 

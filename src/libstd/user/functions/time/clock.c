@@ -1,8 +1,9 @@
 #include <time.h>
-
-#include "user/common/clock.h"
+#include <sys/syscall.h>
 
 clock_t clock(void)
 {
-    return _clock_get();
+    clock_t time;
+    syscall0(SYS_CLOCK, &time);
+    return time;
 }

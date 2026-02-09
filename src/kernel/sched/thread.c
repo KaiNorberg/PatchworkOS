@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/list.h>
+#include <sys/arch.h>
 #include <sys/math.h>
 
 static void thread_ctor(void* ptr)
@@ -42,7 +43,7 @@ static void thread_ctor(void* ptr)
 
 static cache_t cache = CACHE_CREATE(cache, "thread", sizeof(thread_t), CACHE_LINE, NULL, NULL);
 
-static uintptr_t thread_id_to_offset(tid_t tid, uint64_t maxPages)
+static uintptr_t thread_id_to_offset(thrd_t tid, uint64_t maxPages)
 {
     return tid * ((maxPages + STACK_POINTER_GUARD_PAGES) * PAGE_SIZE);
 }
@@ -114,7 +115,7 @@ void thread_free(thread_t* thread)
     rcu_call(&thread->rcu, rcu_call_cache_free, thread);
 }
 
-status_t thread_kernel_create(thread_kernel_entry_t entry, void* arg, tid_t* out)
+status_t thread_kernel_create(thread_kernel_entry_t entry, void* arg, thrd_t* out)
 {
     if (entry == NULL)
     {
@@ -184,7 +185,7 @@ status_t thread_send_note(thread_t* thread, const char* string)
     return OK;
 }
 
-SYSCALL_DEFINE(SYS_GETTID)
+SYSCALL_DEFINE(SYS_THRD_CURRENT)
 {
     *_result = thread_current()->id;
     return OK;
@@ -380,7 +381,7 @@ status_t thread_load_atomic_from_user(thread_t* thread, atomic_uint64_t* userObj
     return OK;
 }
 
-SYSCALL_DEFINE(SYS_ARCH_PRCTL, arch_prctl_t op, uintptr_t addr)
+SYSCALL_DEFINE(SYS_ARCH_CTL, arch_op_t op, uintptr_t addr)
 {
     thread_t* thread = thread_current();
 

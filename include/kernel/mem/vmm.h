@@ -8,6 +8,7 @@
 
 #include <sys/list.h>
 #include <sys/proc.h>
+#include <sys/io.h>
 
 /**
  * @brief Virtual Memory Manager (VMM).
@@ -142,12 +143,12 @@ void vmm_kernel_space_load(void);
 space_t* vmm_kernel_space_get(void);
 
 /**
- * @brief Converts the user space memory protection flags to page table entry flags.
+ * @brief Converts the user space memory I/O flags to page table entry flags.
  *
- * @param prot The memory protection flags.
+ * @param mem The user space I/O memory flags.
  * @return The corresponding page table entry flags.
  */
-pml_flags_t vmm_prot_to_flags(prot_t prot);
+pml_flags_t vmm_iomem_to_flags(iomem_t mem);
 
 /**
  * @brief Allocates and maps virtual memory in a given address space.

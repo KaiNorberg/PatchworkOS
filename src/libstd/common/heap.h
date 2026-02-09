@@ -205,7 +205,7 @@ void* _heap_map_memory(uint64_t size);
 /**
  * @brief Unmaps previously mapped memory.
  *
- * In the kernel this function uses the VMM to unmap memory, in user space it uses the `munmap()` function.
+ * In the kernel this function uses the VMM to unmap memory, in user space it uses the `iounmap()` function.
  *
  * @param addr The address of the memory to unmap.
  * @param size The size of memory to unmap, in bytes.

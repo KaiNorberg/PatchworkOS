@@ -22,24 +22,9 @@ extern "C"
 #include "_libstd/fd_t.h"
 #include "_libstd/ssize_t.h"
 
-#define _IO_B(x, n) (((uint64_t)(x)) << (8 * n))
-
-#define _IOCMD_1(a) (_IO_B(a, 0))
-#define _IOCMD_2(a, b) (_IO_B(a, 0) | _IO_B(b, 1))
-#define _IOCMD_3(a, b, c) (_IO_B(a, 0) | _IO_B(b, 1) | _IO_B(c, 2))
-#define _IOCMD_4(a, b, c, d) (_IO_B(a, 0) | _IO_B(b, 1) | _IO_B(c, 2) | _IO_B(d, 3))
-#define _IOCMD_5(a, b, c, d, e) (_IO_B(a, 0) | _IO_B(b, 1) | _IO_B(c, 2) | _IO_B(d, 3) | _IO_B(e, 4))
-#define _IOCMD_6(a, b, c, d, e, f) (_IO_B(a, 0) | _IO_B(b, 1) | _IO_B(c, 2) | _IO_B(d, 3) | _IO_B(e, 4) | _IO_B(f, 5))
-#define _IOCMD_7(a, b, c, d, e, f, g) \
-    (_IO_B(a, 0) | _IO_B(b, 1) | _IO_B(c, 2) | _IO_B(d, 3) | _IO_B(e, 4) | _IO_B(f, 5) | _IO_B(g, 6))
-#define _IOCMD_8(a, b, c, d, e, f, g, h) \
-    (_IO_B(a, 0) | _IO_B(b, 1) | _IO_B(c, 2) | _IO_B(d, 3) | _IO_B(e, 4) | _IO_B(f, 5) | _IO_B(g, 6) | _IO_B(h, 7))
-
-#define _IOCMD_ANY(_1, _2, _3, _4, _5, _6, _7, _8, NAME, ...) NAME
-
 /**
  * @brief Scriptable submission/completion interface.
- * @defgroup libstd_sys_ioring I/O Ring ABI
+ * @defgroup libstd_sys_io I/O Ring ABI
  * @ingroup libstd
  *
  * The ring interface acts as the interface for all asynchronous operations in the kernel.
@@ -50,6 +35,97 @@ extern "C"
  *
  * @{
  */
+
+typedef uint32_t ioop_t; ///< I/O operation code type.
+/**
+ * @brief No-op operation.
+ *
+ * @param Unused
+ * @param Unused
+ * @param Unused
+ * @param Unused
+ * @param Unused
+ * @result Always `0`.
+ */
+#define IOOP_NOP 0
+/**
+ * @brief Cancel operation.
+ *
+ * @param target The user data of the operation(s) to cancel.
+ * @param flags Cancellation flags.
+ * @param Unused
+ * @param Unused
+ * @param Unused
+ * @result The number of operations cancelled.
+ */
+#define IOOP_CANCEL 1
+/**
+ * @brief Read operation.
+ *
+ * @param fd The file descriptor to read from.
+ * @param buffer The buffer to read into.
+ * @param count The number of bytes to read.
+ * @param offset The offset to read from, or `IOOFF_CUR`.
+ * @param Unused
+ * @result The number of bytes read.
+ */
+#define IOOP_READ 2
+/**
+ * @brief Write operation.
+ *
+ * @param fd The file descriptor to write to.
+ * @param buffer The buffer to write from.
+ * @param count The number of bytes to write.
+ * @param offset The offset to write to, or `IOOFF_CUR`.
+ * @param Unused
+ * @result The number of bytes written.
+ */
+#define IOOP_WRITE 3
+/**
+ * @brief Poll operation.
+ *
+ * @param fd The file descriptor to poll.
+ * @param events The events to wait for.
+ * @param Unused
+ * @param Unused
+ * @param Unused
+ * @result The events that occurred stored as a `ioevents_t` value.
+ */
+#define IOOP_POLL 4
+/**
+ * @brief Seek operation.
+ *
+ * @param fd The file descriptor to seek.
+ * @param Unused
+ * @param origin The origin of the seek operation (e.g., `IOSEEK_SET`, `IOSEEK_CUR`, `IOSEEK_END`).
+ * @param offset The offset to seek to.
+ * @param Unused
+ * @result The new file position.
+ */
+#define IOOP_SEEK 5
+/**
+ * @brief Memory map operation.
+ *
+ * @param fd The file descriptor to map.
+ * @param address The virtual address to map the file into, or `NULL` for any address.
+ * @param count The number of bytes to map.
+ * @param offset The offset within the file to start mapping from.
+ * @param mem Memory mapping flags.
+ * @result The virtual address where the file was mapped.
+ */
+#define IOOP_MMAP 6
+/**
+ * @brief Control operation.
+ *
+ * @param fd The file descriptor to perform the command on.
+ * @param command The command to perform.
+ * @param args The arguments for the command.
+ * @param Unused
+ * @param Unused
+ * @result The result of the command.
+ */
+#define IOOP_CONTROL 7
+#define IOOP_MAX 8 ///< The maximum number of operation.
 
 #define IOOFF_CUR (((ssize_t) - 1)) ///< Use the current file offset.
 
@@ -65,106 +141,6 @@ typedef uint64_t ioevents_t;  ///< Poll events type.
 #define IOPOLL_HUP (1 << 3)   ///< File descriptor is closed.
 #define IOPOLL_NVAL (1 << 4)  ///< Invalid file descriptor.
 
-typedef uint32_t ioop_t; ///< I/O operation code type.
-
-/**
- * @brief No-op operation.
- *
- * @param Unused
- * @param Unused
- * @param Unused
- * @param Unused
- * @param Unused
- * @result Always `0`.
- */
-#define IOOP_NOP 0
-
-/**
- * @brief Cancel operation.
- *
- * @param target The user data of the operation(s) to cancel.
- * @param flags Cancellation flags.
- * @param Unused
- * @param Unused
- * @param Unused
- * @result The number of operations cancelled.
- */
-#define IOOP_CANCEL 1
-
-/**
- * @brief Read operation.
- *
- * @param fd The file descriptor to read from.
- * @param buffer The buffer to read into.
- * @param count The number of bytes to read.
- * @param offset The offset to read from, or `IOOFF_CUR`.
- * @param Unused
- * @result The number of bytes read.
- */
-#define IOOP_READ 2
-
-/**
- * @brief Write operation.
- *
- * @param fd The file descriptor to write to.
- * @param buffer The buffer to write from.
- * @param count The number of bytes to write.
- * @param offset The offset to write to, or `IOOFF_CUR`.
- * @param Unused
- * @result The number of bytes written.
- */
-#define IOOP_WRITE 3
-
-/**
- * @brief Poll operation.
- *
- * @param fd The file descriptor to poll.
- * @param events The events to wait for.
- * @param Unused
- * @param Unused
- * @param Unused
- * @result The events that occurred stored as a `ioevents_t` value.
- */
-#define IOOP_POLL 4
-
-/**
- * @brief Seek operation.
- *
- * @param fd The file descriptor to seek.
- * @param Unused
- * @param origin The origin of the seek operation (e.g., `IOSEEK_SET`, `IOSEEK_CUR`, `IOSEEK_END`).
- * @param offset The offset to seek to.
- * @param Unused
- * @result The new file position.
- */
-#define IOOP_SEEK 5
-
-/**
- * @brief Memory map operation.
- *
- * @param fd The file descriptor to map.
- * @param address The virtual address to map the file into, or `NULL` for any address.
- * @param count The number of bytes to map.
- * @param offset The offset within the file to start mapping from.
- * @param mmap Memory mapping flags.
- * @result The virtual address where the file was mapped.
- */
-#define IOOP_MMAP 6
-
-/**
- * @brief Control operation.
- *
- * @param fd The file descriptor to perform the command on.
- * @param command The command to perform.
- * @param args The arguments for the command.
- * @param Unused
- * @param Unused
- * @result The result of the command.
- */
-#define IOOP_CONTROL 7
-
-#define IOOP_MAX 8 ///< The maximum number of operation.
-
 /**
  * @brief I/O command identifier type.
  *
@@ -175,7 +151,6 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
  *
  */
 typedef uint64_t iocmd_t;
-
 /**
  * @brief Creates a command value from its text representation.
  *
@@ -186,7 +161,8 @@ typedef uint64_t iocmd_t;
 #define IOCMD(...) \
     _IOCMD_ANY(__VA_ARGS__, _IOCMD_8, _IOCMD_7, _IOCMD_6, _IOCMD_5, _IOCMD_4, _IOCMD_3, _IOCMD_2, _IOCMD_1)(__VA_ARGS__)
 
-typedef uint64_t iomap_t;    ///< I/O memory map flags.
+typedef uint64_t iomem_t;    ///< I/O memory map flags.
+#define IOMAP_NONE (0)       ///< No flags.
 #define IOMAP_READ (1 << 0)  ///< Map for reading.
 #define IOMAP_WRITE (1 << 1) ///< Map for writing.
 #define IOMAP_EXEC (1 << 2)  ///< Map for execution.
@@ -276,7 +252,7 @@ typedef struct iosqe
     };
     union {
         uint64_t arg4;
-        iomap_t mmap;
+        iomem_t mem;
     };
 } iosqe_t;
 
@@ -546,14 +522,14 @@ static inline void ioprep_seek(iosqe_t* iosqe, iosqe_flags_t flags, clock_t time
  * @see `IOOP_MMAP`
  */
 static inline void ioprep_mmap(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
-    void* address, size_t count, ssize_t offset, iomap_t mmap)
+    void* address, size_t count, ssize_t offset, iomem_t mem)
 {
     *iosqe = IOSQE_CREATE(IOOP_MMAP, flags, timeout, data);
     iosqe->fd = fd;
     iosqe->address = address;
     iosqe->count = count;
     iosqe->offset = offset;
-    iosqe->mmap = mmap;
+    iosqe->mem = mem;
 }
 
 /**
@@ -705,6 +681,22 @@ static inline status_t ioseek(fd_t fd, iowhence_t origin, ssize_t offset, size_t
 }
 
 /**
+ * @brief Convert a size in bytes to pages.
+ *
+ * @param amount The amount of bytes.
+ * @return The amount of pages.
+ */
+#define BYTES_TO_PAGES(amount) (((amount) + PAGE_SIZE - 1) / PAGE_SIZE)
+
+/**
+ * @brief Size of an object in pages.
+ *
+ * @param object The object to calculate the page size of.
+ * @return The amount of pages.
+ */
+#define PAGE_SIZE_OF(object) BYTES_TO_PAGES(sizeof(object))
+
+/**
  * @brief Synchronous wrapper for a memory map operation.
  *
  * @param fd The file descriptor to map.
@@ -715,7 +707,7 @@ static inline status_t ioseek(fd_t fd, iowhence_t origin, ssize_t offset, size_t
  * @param mmap Memory mapping flags.
  * @return An appropriate status value.
  */
-static inline status_t iomap(fd_t fd, void** address, size_t count, ssize_t offset, iomap_t mmap)
+static inline status_t iomap(fd_t fd, void** address, size_t count, ssize_t offset, iomem_t mmap)
 {
     if ((void*)address == NULL)
     {
@@ -730,7 +722,50 @@ static inline status_t iomap(fd_t fd, void** address, size_t count, ssize_t offs
     return cqe.status;
 }
 
+/**
+ * @brief System call to unmap mapped memory.
+ *
+ * The `iounmap()` function unmaps memory from the currently running processes address space.
+ *
+ * @param address The starting virtual address of the memory area to be unmapped.
+ * @param length The length of the memory area to be unmapped.
+ * @return An appropriate status value.
+ */
+static inline status_t iounmap(void* address, size_t length)
+{
+    return syscall2(SYS_IO_UNMAP, NULL, (uintptr_t)address, length);
+}
+
+/**
+ * @brief System call to change the protection flags of memory.
+ *
+ * @param address  The starting virtual address of the memory area to be modified.
+ * @param length The length of the memory area to be modifed.
+ * @param map The new protection flags of the memory area, if equal to `IOMAP_NONE` the memory area will be
+ * unmapped.
+ * @return An appropriate status value.
+ */
+static inline status_t ioprotect(void* address, size_t length, iomem_t map)
+{
+    return syscall3(SYS_IO_PROTECT, NULL, (uintptr_t)address, length, map);
+}
+
 /** @} */
+
+#define _IO_B(x, n) (((uint64_t)(x)) << (8 * n))
+
+#define _IOCMD_1(a) (_IO_B(a, 0))
+#define _IOCMD_2(a, b) (_IO_B(a, 0) | _IO_B(b, 1))
+#define _IOCMD_3(a, b, c) (_IO_B(a, 0) | _IO_B(b, 1) | _IO_B(c, 2))
+#define _IOCMD_4(a, b, c, d) (_IO_B(a, 0) | _IO_B(b, 1) | _IO_B(c, 2) | _IO_B(d, 3))
+#define _IOCMD_5(a, b, c, d, e) (_IO_B(a, 0) | _IO_B(b, 1) | _IO_B(c, 2) | _IO_B(d, 3) | _IO_B(e, 4))
+#define _IOCMD_6(a, b, c, d, e, f) (_IO_B(a, 0) | _IO_B(b, 1) | _IO_B(c, 2) | _IO_B(d, 3) | _IO_B(e, 4) | _IO_B(f, 5))
+#define _IOCMD_7(a, b, c, d, e, f, g) \
+    (_IO_B(a, 0) | _IO_B(b, 1) | _IO_B(c, 2) | _IO_B(d, 3) | _IO_B(e, 4) | _IO_B(f, 5) | _IO_B(g, 6))
+#define _IOCMD_8(a, b, c, d, e, f, g, h) \
+    (_IO_B(a, 0) | _IO_B(b, 1) | _IO_B(c, 2) | _IO_B(d, 3) | _IO_B(e, 4) | _IO_B(f, 5) | _IO_B(g, 6) | _IO_B(h, 7))
+
+#define _IOCMD_ANY(_1, _2, _3, _4, _5, _6, _7, _8, NAME, ...) NAME
 
 #if defined(__cplusplus)
 }

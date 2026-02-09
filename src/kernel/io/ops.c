@@ -4,7 +4,7 @@
 #include <kernel/mem/paging_types.h>
 #include <kernel/proc/process.h>
 
-#include <sys/ioring.h>
+#include <sys/io.h>
 
 static status_t nop_cancel(irp_t* irp)
 {
@@ -146,20 +146,7 @@ static status_t io_op_mmap(irp_t* irp)
         return ERR(IO, BADFD);
     }
 
-    pml_flags_t pml = 0;
-    if (irp->sqe.mmap & IOMAP_READ)
-    {
-        pml |= PML_PRESENT | PML_USER;
-    }
-    if (irp->sqe.mmap & IOMAP_WRITE)
-    {
-        pml |= PML_WRITE;
-    }
-    if (!(irp->sqe.mmap & IOMAP_EXEC))
-    {
-        pml |= PML_NO_EXECUTE;
-    }
-
+    pml_flags_t pml = vmm_iomem_to_flags(irp->sqe.mem);
     irp_prep_mmap(irp, irp->sqe.address, irp->sqe.count, irp->sqe.offset, pml);
     return file_call(file, irp);
 }

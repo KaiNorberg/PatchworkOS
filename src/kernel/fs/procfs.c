@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/fs.h>
-#include <sys/ioring.h>
+#include <sys/io.h>
 #include <sys/list.h>
 #include <sys/status.h>
 
@@ -50,7 +50,7 @@ static status_t procfs_prio_read(irp_t* irp)
     irp_frame_t* frame = irp_current(irp);
     process_t* process = frame->vnode->data;
 
-    priority_t priority = atomic_load(&process->priority);
+    proc_prio_t priority = atomic_load(&process->priority);
 
     char prioStr[MAX_NAME];
     uint32_t length = snprintf(prioStr, MAX_NAME, "%llu", priority);
@@ -76,7 +76,7 @@ static status_t procfs_prio_write(irp_t* irp)
     {
         return ERR(FS, INVAL);
     }
-    if (prio > PRIORITY_MAX_USER)
+    if (prio > PROC_PRIO_MAX_USER)
     {
         return ERR(FS, ACCESS);
     }
@@ -1046,7 +1046,7 @@ static status_t procfs_lookup(vnode_t* dir, dentry_t* target)
         return OK;
     }
 
-    pid_t pid;
+    proc_t pid;
     if (sscanf(target->name, "%llu", &pid) != 1)
     {
         return INFO(FS, NEGATIVE);

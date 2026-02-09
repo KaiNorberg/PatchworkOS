@@ -1,7 +1,7 @@
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <sys/proc.h>
+#include <sys/sync.h>
 #include <threads.h>
 #include <time.h>
 
@@ -9,7 +9,7 @@
 
 int thrd_join(thrd_t thr, int* res)
 {
-    _thread_t* thread = _thread_get(thr.id);
+    _thread_t* thread = _thread_get(thr);
     if (thread == NULL)
     {
         return thrd_error;
@@ -32,7 +32,7 @@ int thrd_join(thrd_t thr, int* res)
             break;
         }
 
-        futex(&thread->state, state, FUTEX_WAIT, CLOCKS_NEVER, NULL);
+        sync_ctl(&thread->state, state, SYNC_WAIT, CLOCKS_NEVER, NULL);
     }
 
     if (res != NULL)

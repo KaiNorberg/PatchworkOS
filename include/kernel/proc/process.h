@@ -13,8 +13,8 @@
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/wait.h>
-#include <kernel/sync/futex.h>
 #include <kernel/sync/rcu.h>
+#include <kernel/sync/sync_ctl.h>
 #include <kernel/utils/ref.h>
 
 #include <stdatomic.h>
@@ -48,7 +48,7 @@ typedef enum
  */
 typedef struct
 {
-    _Atomic(tid_t) newTid;
+    _Atomic(thrd_t) newTid;
     list_t list; ///< Reads are RCU protected, writes require the lock.
     uint64_t count;
     lock_t lock;
@@ -81,15 +81,15 @@ typedef struct process
     list_entry_t entry;
     map_entry_t mapEntry;
     list_entry_t zombieEntry;
-    pid_t id;
-    _Atomic(priority_t) priority;
+    proc_t id;
+    _Atomic(proc_prio_t) priority;
     process_result_t result;
     space_t space;
     namespace_t* nspace;
     lock_t nspaceLock;
     cwd_t cwd;
     file_table_t files;
-    futex_ctx_t futexCtx;
+    sync_ctl_t sync;
     perf_process_ctx_t perf;
     ioring_ctx_t rings[CONFIG_MAX_RINGS];
     note_handler_t noteHandler;
@@ -99,6 +99,7 @@ typedef struct process
     _Atomic(process_flags_t) flags;
     process_threads_t threads;
     env_t env;
+    clock_t start;
     char** argv;
     uint64_t argc;
     group_member_t group;
@@ -123,7 +124,7 @@ extern list_t _processes;
  * @param ns The namespace to use for the new process.
  * @return An appropriate status value.
  */
-status_t process_new(process_t** out, priority_t priority, group_member_t* group, namespace_t* ns);
+status_t process_new(process_t** out, proc_prio_t priority, group_member_t* group, namespace_t* ns);
 
 /**
  * @brief Retrieves the process of the currently running thread.
@@ -160,7 +161,7 @@ static inline process_t* process_current_unsafe(void)
  * @param id The ID of the process to get.
  * @return A reference to the process with the specified ID or `NULL` if no such process exists.
  */
-process_t* process_get(pid_t id);
+process_t* process_get(proc_t id);
 
 /**
  * @brief Gets the namespace of a process.
@@ -263,7 +264,7 @@ status_t process_set_cmdline(process_t* process, char** argv, uint64_t argc);
  * @param tid The thread ID to look for.
  * @return `true` if the process has a thread with the specified ID, `false` otherwise.
  */
-bool process_has_thread(process_t* process, tid_t tid);
+bool process_has_thread(process_t* process, thrd_t tid);
 
 /**
  * @brief Gets the kernel process.

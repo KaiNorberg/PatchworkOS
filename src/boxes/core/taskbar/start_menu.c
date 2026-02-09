@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <sys/defs.h>
 #include <sys/fs.h>
 #include <sys/proc.h>
@@ -44,7 +45,7 @@ static uint64_t startmenu_procedure(window_t* win, element_t* elem, const event_
         }
         menu->win = win;
         menu->taskbar = element_get_private(elem);
-        menu->animationStartTime = uptime();
+        menu->animationStartTime = clock();
         menu->state = START_MENU_CLOSED;
 
         rect_t rect = element_get_content_rect(elem);
@@ -88,7 +89,7 @@ static uint64_t startmenu_procedure(window_t* win, element_t* elem, const event_
             start_menu_close(win);
 
             const char* argv[] = {entries[event->libAction.source].path, NULL};
-            if (IS_ERR(spawn(argv, SPAWN_STDIO_FDS | SPAWN_EMPTY_GROUP | SPAWN_COPY_NS, NULL)))
+            if (IS_ERR(proc_create(argv, PROC_STDIO_FDS | PROC_EMPTY_GROUP | PROC_COPY_NS, NULL)))
             {
                 char buffer[MAX_PATH];
                 sprintf(buffer, "Failed to spawn (%s)!", entries[event->libAction.source].path);
@@ -107,7 +108,7 @@ static uint64_t startmenu_procedure(window_t* win, element_t* elem, const event_
         int32_t startY = START_MENU_YPOS_START(&screenRect, theme->panelSize, theme->frameSize);
         int32_t endY = START_MENU_YPOS_END(&screenRect, theme->panelSize, theme->frameSize);
 
-        clock_t timeElapsed = uptime() - menu->animationStartTime;
+        clock_t timeElapsed = clock() - menu->animationStartTime;
 
         double fraction;
         int64_t currentY = 0;
@@ -298,7 +299,7 @@ void start_menu_open(window_t* startMenu)
     rect.bottom = startY + height;
     window_move(startMenu, &rect);
 
-    menu->animationStartTime = uptime();
+    menu->animationStartTime = clock();
     menu->state = START_MENU_OPENING;
     window_set_timer(startMenu, TIMER_REPEAT, CLOCKS_PER_SEC / 60);
 
@@ -314,7 +315,7 @@ void start_menu_close(window_t* startMenu)
         return;
     }
 
-    menu->animationStartTime = uptime();
+    menu->animationStartTime = clock();
     menu->state = START_MENU_CLOSING;
     window_set_timer(startMenu, TIMER_REPEAT, CLOCKS_PER_SEC / 60);
 

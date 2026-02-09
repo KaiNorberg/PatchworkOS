@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static _Atomic(atnotify_func_t) noteHandlers[_NOTE_MAX_HANDLERS] = {ATOMIC_VAR_INIT(NULL)};
+static _Atomic(note_func_t) noteHandlers[_NOTE_MAX_HANDLERS] = {ATOMIC_VAR_INIT(NULL)};
 static _Atomic(sighandler_t) signalHandlers[SIGMAX] = {ATOMIC_VAR_INIT(SIG_DFL)};
 
 static void _signal_invoke(int sig, const char* note)
@@ -20,7 +20,7 @@ static void _signal_invoke(int sig, const char* note)
 
     if (handler == SIG_DFL)
     {
-        exits(note);
+        proc_exit(note);
     }
 
     handler(sig);
@@ -30,7 +30,7 @@ _NORETURN static void _note_kernel_handler(char* note)
 {
     for (uint64_t i = 0; i < _NOTE_MAX_HANDLERS; i++)
     {
-        atnotify_func_t func = atomic_load(&noteHandlers[i]);
+        note_func_t func = atomic_load(&noteHandlers[i]);
         if (func != NULL)
         {
             func(note);
@@ -58,23 +58,23 @@ _NORETURN static void _note_kernel_handler(char* note)
         _signal_invoke(SIGTERM, note);
     }
 
-    noted();
+    note_done();
 }
 
 void _note_init(void)
 {
-    status_t status = notify(_note_kernel_handler);
+    status_t status = note_set(_note_kernel_handler);
     if (IS_ERR(status))
     {
-        exits(F("notify failed %Y", status));
+        proc_exit(F("notify failed %Y", status));
     }
 }
 
-bool _note_handler_add(atnotify_func_t func)
+bool _note_handler_add(note_func_t func)
 {
     for (uint64_t i = 0; i < _NOTE_MAX_HANDLERS; i++)
     {
-        atnotify_func_t expected = NULL;
+        note_func_t expected = NULL;
         if (atomic_compare_exchange_strong(&noteHandlers[i], &expected, func))
         {
             return true;
@@ -84,11 +84,11 @@ bool _note_handler_add(atnotify_func_t func)
     return false;
 }
 
-void _note_handler_remove(atnotify_func_t func)
+void _note_handler_remove(note_func_t func)
 {
     for (uint64_t i = 0; i < _NOTE_MAX_HANDLERS; i++)
     {
-        atnotify_func_t expected = func;
+        note_func_t expected = func;
         if (atomic_compare_exchange_strong(&noteHandlers[i], &expected, NULL))
         {
             return;

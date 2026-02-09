@@ -15,6 +15,7 @@
 #include <string.h>
 #include <sys/math.h>
 #include <sys/proc.h>
+#include <sys/io.h>
 
 static const char* efiMemTypeToString[] = {
     "reserved",

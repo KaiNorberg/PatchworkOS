@@ -9,7 +9,7 @@
 #include <kernel/sync/lock.h>
 
 #include <string.h>
-#include <sys/ioring.h>
+#include <sys/io.h>
 
 /**
  * @brief Kernel-side I/O ring interface.
@@ -26,7 +26,7 @@
  *
  * Synchronous operations are implemented on top of this API in userspace.
  *
- * @see libstd_sys_ioring for the list of operations and their arguments.
+ * @see libstd_sys_io for the list of operations and their arguments.
  * @see [Wikipedia](https://en.wikipedia.org/wiki/Io_uring) for information about `io_uring`, the inspiration for this
  * system.
  * @see [Manpages](https://man7.org/linux/man-pages/man7/io_uring.7.html) for more information about `io_uring`.

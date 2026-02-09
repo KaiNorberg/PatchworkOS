@@ -4,7 +4,7 @@
 
 #include <errno.h>
 
-status_t atnotify(atnotify_func_t func, atnotify_t action)
+status_t note_at(note_func_t func, note_act_t action)
 {
     if (func == NULL)
     {
@@ -13,7 +13,7 @@ status_t atnotify(atnotify_func_t func, atnotify_t action)
 
     switch (action)
     {
-    case ATNOTIFY_ADD:
+    case NOTE_ADD:
     {
         if (!_note_handler_add(func))
         {
@@ -21,7 +21,7 @@ status_t atnotify(atnotify_func_t func, atnotify_t action)
         }
     }
     break;
-    case ATNOTIFY_REMOVE:
+    case NOTE_REMOVE:
         _note_handler_remove(func);
         break;
     default:

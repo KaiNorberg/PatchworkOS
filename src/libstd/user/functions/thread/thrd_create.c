@@ -15,6 +15,6 @@ int thrd_create(thrd_t* thr, thrd_start_t func, void* arg)
         return thrd_error;
     }
 
-    thr->id = thread->id;
+    *thr = thread->id;
     return thrd_success;
 }

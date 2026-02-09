@@ -10,7 +10,7 @@
 
 #include <stdint.h>
 #include <string.h>
-#include <sys/ioring.h>
+#include <sys/io.h>
 #include <sys/status.h>
 
 /**
@@ -83,8 +83,7 @@ static status_t const_zero_mmap(irp_t* irp)
     size_t length = frame->mmap.length;
     pml_flags_t flags = frame->mmap.flags;
 
-    status_t status = vmm_alloc(&process_current()->space, &addr, length, PAGE_SIZE, flags,
-        VMM_ALLOC_ZERO);
+    status_t status = vmm_alloc(&process_current()->space, &addr, length, PAGE_SIZE, flags, VMM_ALLOC_ZERO);
     if (IS_ERR(status))
     {
         return status;
