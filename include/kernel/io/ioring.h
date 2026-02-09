@@ -16,9 +16,6 @@
  * @defgroup kernel_io_ioring Kernel-side I/O Ring Interface
  * @ingroup kernel_io
  *
- * @todo The I/O ring system is primarily a design document for now as it remains very work in progress and subject to
- * change, currently being mostly unimplemented.
- *
  * The I/O ring provides the core of all interfaces in PatchworkOS, where user-space submits Submission Queue Entries
  * (SQEs) and receives Completion Queue Entries (CQEs) from it, all within shared memory. Allowing for highly efficient
  * and asynchronous I/O operations, especially since PatchworkOS is designed to be natively asynchronous with its I/O
@@ -120,16 +117,5 @@ void ioring_ctx_init(ioring_ctx_t* ctx);
  * @param ctx Pointer to the context to deinitialize.
  */
 void ioring_ctx_deinit(ioring_ctx_t* ctx);
-
-/**
- * @brief Notify the context of new SQEs.
- *
- * @param ctx Pointer to the context.
- * @param amount The number of SQEs to process.
- * @param wait The minimum number of CQEs to wait for.
- * @param processed Output pointer for the number of SQEs processed, can be `NULL`.
- * @return An appropriate status code.
- */
-status_t ioring_ctx_notify(ioring_ctx_t* ctx, size_t amount, size_t wait, size_t* processed);
 
 /** @} */

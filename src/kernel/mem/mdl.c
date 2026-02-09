@@ -18,15 +18,15 @@ void mdl_deinit(mdl_t* mdl)
 
     for (size_t i = 0; i < mdl->amount; i++)
     {
-        pmm_ref_dec(mdl->descs[i].pfn, BYTES_TO_PAGES(mdl->descs[i].offset + mdl->descs[i].size));
+        pmm_ref_dec(mdl->entries[i].pfn, BYTES_TO_PAGES(mdl->entries[i].offset + mdl->entries[i].size));
     }
     mdl->amount = 0;
 
-    if (mdl->descs != mdl->small)
+    if (mdl->entries != mdl->small)
     {
-        free(mdl->descs);
+        free(mdl->entries);
     }
-    mdl->descs = NULL;
+    mdl->entries = NULL;
     mdl->capacity = 0;
     mdl->size = 0;
 }
@@ -78,31 +78,31 @@ static status_t mdl_push(mdl_t* mdl, phys_addr_t phys, size_t size)
     if (mdl->amount == mdl->capacity)
     {
         uint32_t newCapacity = mdl->capacity + 4;
-        mdl_desc_t* newDescs;
+        mdl_entry_t* newEntries;
 
-        if (mdl->descs == mdl->small)
+        if (mdl->entries == mdl->small)
         {
-            newDescs = malloc(newCapacity * sizeof(mdl_desc_t));
-            if (newDescs != NULL)
+            newEntries = malloc(newCapacity * sizeof(mdl_entry_t));
+            if (newEntries != NULL)
             {
-                memcpy(newDescs, mdl->small, sizeof(mdl->small));
+                memcpy(newEntries, mdl->small, sizeof(mdl->small));
             }
         }
         else
         {
-            newDescs = realloc(mdl->descs, newCapacity * sizeof(mdl_desc_t));
+            newEntries = realloc(mdl->entries, newCapacity * sizeof(mdl_entry_t));
         }
 
-        if (newDescs == NULL)
+        if (newEntries == NULL)
         {
             return ERR(MMU, NOMEM);
         }
 
-        mdl->descs = newDescs;
+        mdl->entries = newEntries;
         mdl->capacity = newCapacity;
     }
 
-    mdl_desc_t* seg = &mdl->descs[mdl->amount];
+    mdl_entry_t* entry = &mdl->entries[mdl->amount];
     pfn_t pfn = PHYS_TO_PFN(phys);
     uint32_t offset = phys % PAGE_SIZE;
     if (pmm_ref_inc(pfn, BYTES_TO_PAGES(offset + size)) == 0)
@@ -110,9 +110,9 @@ static status_t mdl_push(mdl_t* mdl, phys_addr_t phys, size_t size)
         return ERR(MMU, FAULT);
     }
 
-    seg->pfn = pfn;
-    seg->size = size;
-    seg->offset = offset;
+    entry->pfn = pfn;
+    entry->size = size;
+    entry->offset = offset;
 
     mdl->amount++;
     mdl->size += size;
@@ -176,34 +176,35 @@ status_t mdl_copy_in(mdl_t* mdl, size_t count, size_t offset, size_t* copied, co
     size_t i = 0;
     for (; i < mdl->amount; i++)
     {
-        mdl_desc_t* seg = &mdl->descs[i];
-        if (start + seg->size > currentOffset)
+        mdl_entry_t* entry = &mdl->entries[i];
+        if (start + entry->size > currentOffset)
         {
             break;
         }
-        start += seg->size;
+        start += entry->size;
     }
 
     const uint8_t* ptr = source;
-    size_t remaining = MIN(sourceLength, count);
+    size_t copySize = MIN(sourceLength, count);
+    size_t remaining = copySize;
 
-    size_t segOffset = currentOffset - start;
+    size_t entryOffset = currentOffset - start;
     while (remaining > 0 && i < mdl->amount)
     {
-        mdl_desc_t* seg = &mdl->descs[i];
-        size_t toWrite = MIN(remaining, seg->size - segOffset);
-        void* addr = PFN_TO_VIRT(seg->pfn) + seg->offset + segOffset;
+        mdl_entry_t* entry = &mdl->entries[i];
+        size_t toWrite = MIN(remaining, entry->size - entryOffset);
+        void* addr = PFN_TO_VIRT(entry->pfn) + entry->offset + entryOffset;
         memcpy(addr, ptr, toWrite);
 
         ptr += toWrite;
         remaining -= toWrite;
-        segOffset = 0;
+        entryOffset = 0;
         i++;
     }
 
     if (copied != NULL)
     {
-        *copied = count - remaining;
+        *copied = copySize - remaining;
     }
 
     if (remaining > 0)
@@ -241,34 +242,35 @@ status_t mdl_copy_out(mdl_t* mdl, size_t count, size_t offset, size_t* copied, v
     size_t i = 0;
     for (; i < mdl->amount; i++)
     {
-        mdl_desc_t* seg = &mdl->descs[i];
-        if (start + seg->size > currentOffset)
+        mdl_entry_t* entry = &mdl->entries[i];
+        if (start + entry->size > currentOffset)
         {
             break;
         }
-        start += seg->size;
+        start += entry->size;
     }
 
     uint8_t* ptr = dest;
-    size_t remaining = MIN(destLength, count);
+    size_t copySize = MIN(destLength, count);
+    size_t remaining = copySize;
 
-    size_t segOffset = currentOffset - start;
+    size_t entryOffset = currentOffset - start;
     while (remaining > 0 && i < mdl->amount)
     {
-        mdl_desc_t* seg = &mdl->descs[i];
-        size_t toRead = MIN(remaining, seg->size - segOffset);
-        void* addr = PFN_TO_VIRT(seg->pfn) + seg->offset + segOffset;
+        mdl_entry_t* entry = &mdl->entries[i];
+        size_t toRead = MIN(remaining, entry->size - entryOffset);
+        void* addr = PFN_TO_VIRT(entry->pfn) + entry->offset + entryOffset;
         memcpy(ptr, addr, toRead);
 
         ptr += toRead;
         remaining -= toRead;
-        segOffset = 0;
+        entryOffset = 0;
         i++;
     }
 
     if (copied != NULL)
     {
-        *copied = count - remaining;
+        *copied = copySize - remaining;
     }
 
     return OK;
@@ -292,26 +294,26 @@ status_t mdl_fill(mdl_t* mdl, size_t count, size_t offset, size_t* filled, uint8
     size_t i = 0;
     for (; i < mdl->amount; i++)
     {
-        mdl_desc_t* seg = &mdl->descs[i];
-        if (start + seg->size > currentOffset)
+        mdl_entry_t* entry = &mdl->entries[i];
+        if (start + entry->size > currentOffset)
         {
             break;
         }
-        start += seg->size;
+        start += entry->size;
     }
 
     size_t remaining = count;
-    size_t segOffset = currentOffset - start;
+    size_t entryOffset = currentOffset - start;
 
     while (remaining > 0 && i < mdl->amount)
     {
-        mdl_desc_t* seg = &mdl->descs[i];
-        size_t toFill = MIN(remaining, seg->size - segOffset);
-        void* addr = PFN_TO_VIRT(seg->pfn) + seg->offset + segOffset;
+        mdl_entry_t* entry = &mdl->entries[i];
+        size_t toFill = MIN(remaining, entry->size - entryOffset);
+        void* addr = PFN_TO_VIRT(entry->pfn) + entry->offset + entryOffset;
         memset(addr, value, toFill);
 
         remaining -= toFill;
-        segOffset = 0;
+        entryOffset = 0;
         i++;
     }
 

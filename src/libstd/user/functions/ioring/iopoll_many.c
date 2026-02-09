@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <sys/ioring.h>
 #include <sys/status.h>
+#include "user/common/io.h"
 
 status_t iopoll_many(iopoll_t* fds, size_t nfds, clock_t timeout, size_t* count)
 {
@@ -80,7 +81,24 @@ status_t iopoll_many(iopoll_t* fds, size_t nfds, clock_t timeout, size_t* count)
 
     if (cancels > 0)
     {
-        iosync_many(sqes, cqes, cancels, cancels, NULL);
+        iosync_many(sqes, NULL, cancels, cancels, NULL);
+
+        mtx_lock(&_stdIoringMtx);
+        size_t drained = 0;
+        while (drained < cancels)
+        {
+            iocqe_t* cqe = iocqe_get(&_stdIoring);
+            if (cqe != NULL)
+            {
+                iocqe_put(&_stdIoring);
+                drained++;
+            }
+            else
+            {
+                ioring_enter(&_stdIoring, 0, cancels - drained, NULL);
+            }
+        }
+        mtx_unlock(&_stdIoringMtx);
     }
 
     free(sqes);

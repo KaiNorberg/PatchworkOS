@@ -11,6 +11,7 @@
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sync/lock.h>
+#include <kernel/proc/process.h>
 
 #include <assert.h>
 #include <stdatomic.h>

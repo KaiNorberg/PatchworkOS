@@ -11,6 +11,7 @@
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
+#include <kernel/proc/process.h>
 
 #include <boot/boot_info.h>
 #include <kernel/version.h>
@@ -59,7 +60,7 @@ static status_t klog_write(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
 
-    LOCK_SCOPE(&lock);
+    lock_acquire(&lock);
 
     size_t bytesWritten = 0;
     uint8_t* c;
@@ -68,6 +69,8 @@ static status_t klog_write(irp_t* irp)
         log_handle_char(LOG_LEVEL_INFO, (char)*c);
         bytesWritten++;
     }
+
+    lock_release(&lock);
 
     irp->result = bytesWritten;
     return OK;

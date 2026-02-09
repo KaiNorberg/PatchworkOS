@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/fs.h>
 #include <sys/ioring.h>
 
@@ -167,15 +168,30 @@ int _file_flush_buffer(FILE* stream)
         /// @todo Text stream conversion here
     }
 
-    size_t count;
-    status_t status = iowrite(stream->fd, stream->buf, stream->bufIndex, IOOFF_CUR, &count);
-    if (IS_ERR(status))
+    uint8_t* ptr = stream->buf;
+    size_t remaining = stream->bufIndex;
+
+    while (remaining > 0)
     {
-        stream->flags |= _FILE_ERROR;
-        return EOF;
+        size_t count;
+        status_t status = iowrite(stream->fd, ptr, remaining, stream->pos.offset, &count);
+        if (IS_ERR(status))
+        {
+            stream->flags |= _FILE_ERROR;
+            size_t written = stream->bufIndex - remaining;
+            if (written > 0)
+            {
+                memmove(stream->buf, stream->buf + written, remaining);
+                stream->bufIndex = remaining;
+            }
+            return EOF;
+        }
+
+        stream->pos.offset += count;
+        ptr += count;
+        remaining -= count;
     }
 
-    stream->pos.offset += count;
     stream->bufIndex = 0;
     return 0;
 }
@@ -183,7 +199,7 @@ int _file_flush_buffer(FILE* stream)
 int _file_fill_buffer(FILE* stream)
 {
     uint64_t count;
-    status_t status = ioread(stream->fd, stream->buf, stream->bufSize, IOOFF_CUR, &count);
+    status_t status = ioread(stream->fd, stream->buf, stream->bufSize, stream->pos.offset, &count);
     if (IS_ERR(status))
     {
         stream->flags |= _FILE_ERROR;

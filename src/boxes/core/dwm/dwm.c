@@ -18,7 +18,7 @@
 #include <sys/proc.h>
 #include <threads.h>
 
-static char* id;
+static char* id = NULL;
 static fd_t data;
 
 static fd_t kbd;
@@ -99,9 +99,10 @@ void dwm_init(void)
         exits(F("dwm: failed to dup klog %Y", status));
     }
 
-    if (IS_ERR(open(&kbd, "/dev/kbd/0/events")))
+    status = open(&kbd, "/dev/kbd/0/events");
+    if (IS_ERR(status))
     {
-        printf("dwm: failed to open keyboard\n");
+        printf(F("dwm: failed to open keyboard %Y\n", status));
         abort();
     }
 
@@ -112,9 +113,10 @@ void dwm_init(void)
         free(name);
     }
 
-    if (IS_ERR(open(&mouse, "/dev/mouse/0/events")))
+    status = open(&mouse, "/dev/mouse/0/events");
+    if (IS_ERR(status))
     {
-        printf("dwm: failed to open mouse\n");
+        printf(F("dwm: failed to open mouse %Y\n", status));
         abort();
     }
 
@@ -124,21 +126,24 @@ void dwm_init(void)
         free(name);
     }
 
-    if (IS_ERR(readfiles(&id, "/net/local/seqpacket")))
+    status = readfiles(&id, "/net/local/seqpacket");
+    if (IS_ERR(status))
     {
-        printf("dwm: failed to ioread seqpacket id\n");
+        printf(F("dwm: failed to ioread seqpacket id %Y\n", status));
         abort();
     }
 
-    if (IS_ERR(writefiles(F("/net/local/%s/ctl", id), "bind dwm && listen")))
+    status = writefiles(F("/net/local/%s/ctl", id), "bind dwm && listen");
+    if (IS_ERR(status))
     {
-        printf("dwm: failed to bind socket\n");
+        printf(F("dwm: failed to bind socket %Y\n", status));
         abort();
     }
 
-    if (IS_ERR(open(&data, F("/net/local/%s/data", id))))
+    status = open(&data, F("/net/local/%s/data", id));
+    if (IS_ERR(status))
     {
-        printf("dwm: failed to open data file\n");
+        printf(F("dwm: failed to open data file %Y\n", status));
         abort();
     }
 
@@ -760,20 +765,25 @@ static void dwm_poll(void)
 static void dwm_update(void)
 {
     dwm_poll();
-
+    printf("dwm: updating pid=%d\n", getpid());
     if (pollCtx->data.revents & IOPOLL_READ)
     {
+        printf("dwm: accepting new client\n");
         dwm_client_accept();
         return; // The clients array is now invalid, so we have to update it.
     }
     if (pollCtx->kbd.revents & IOPOLL_READ)
     {
+        printf("dwm: reading keyboard input\n");
         dwm_kbd_read();
     }
     if (pollCtx->mouse.revents & IOPOLL_READ)
     {
+        printf("dwm: reading mouse input\n");
         dwm_mouse_read();
     }
+
+    printf("dwm: checking clients\n");
 
     uint64_t i = 0;
     client_t* client;
@@ -781,6 +791,7 @@ static void dwm_update(void)
     LIST_FOR_EACH_SAFE(client, temp, &clients, entry)
     {
         iopoll_t* fd = &pollCtx->clients[i++];
+        printf("dwm: checking client %d\n", client->fd);
         if (fd->revents & IOPOLL_HUP)
         {
             printf("dwm: client %d hung up\n", client->fd);
@@ -801,6 +812,8 @@ static void dwm_update(void)
         }
     }
 
+    printf("dwm: setup compositor\n");
+
     compositor_ctx_t ctx = {
         .windows = &windows,
         .panels = &panels,
@@ -808,6 +821,9 @@ static void dwm_update(void)
         .cursor = cursor,
         .fullscreen = fullscreen,
     };
+    
+    printf("dwm: drawing\n");
+
     compositor_draw(&ctx);
 }
 

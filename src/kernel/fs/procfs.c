@@ -620,14 +620,8 @@ static status_t procfs_ctl_control(irp_t* irp)
     }
     case IOCMD('u', 'n', 'm', 'o', 'u', 'n', 't'):
     {
-        char pathStr[MAX_PATH];
-        if (sscanf(args, "%s", pathStr) != 1)
-        {
-            return ERR(FS, INVAL);
-        }
-
         pathname_t pathname;
-        status_t status = pathname_init(&pathname, pathStr);
+        status_t status = pathname_init(&pathname, args);
         if (IS_ERR(status))
         {
             return status;
@@ -650,15 +644,12 @@ static status_t procfs_ctl_control(irp_t* irp)
     }
     case IOCMD('k', 'i', 'l', 'l'):
     {
-        char resultStr[MAX_NAME];
-        if (sscanf(args, "%s", resultStr) == 1)
-        {
-            process_kill(process, resultStr);
-        }
-        else
+        if (args[0] == '\0')
         {
             process_kill(process, "killed");
+            return OK;
         }
+        process_kill(process, args);
         return OK;
     }
     case IOCMD('s', 'e', 't', 'n', 's'):
@@ -719,8 +710,26 @@ static status_t procfs_ctl_control(irp_t* irp)
         group_add(target, &process->group);
         return OK;
     }
+    case IOCMD('t', 'o', 'u', 'c', 'h'):
+    {
+        pathname_t pathname;
+        status_t status = pathname_init(&pathname, args);
+        if (IS_ERR(status))
+        {
+            return status;
+        }
+
+        file_t* touch;
+        status = vfs_open(&touch, &pathname, process);
+        if (IS_ERR(status))
+        {
+            return status;
+        }
+        UNREF(touch);
+        return OK;
+    }
     default:
-        return ERR(FS, INVAL);
+        return ERR(FS, INVAL_CTL);
     }
 }
 

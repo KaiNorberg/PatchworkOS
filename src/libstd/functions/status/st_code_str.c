@@ -112,6 +112,8 @@ const char* st_code_str(st_code_t code)
         return "address already in use";
     case ST_CODE_EXPECT_FILE:
         return "operation expected to be provided a file";
+    case ST_CODE_INVAL_CTL:
+        return "invalid i/o control command";
 
     // Access
     case ST_CODE_ACCESS:

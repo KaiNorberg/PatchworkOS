@@ -184,6 +184,7 @@ typedef enum
     ST_CODE_SPIPE,                               ///< Invalid seek.
     ST_CODE_ADDRINUSE,                           ///< Address already in use.
     ST_CODE_EXPECT_FILE,                         ///< Operation expected to be provided a file.
+    ST_CODE_INVAL_CTL,                           ///< Invalid I/O control command.
 
     ST_CODE_ACCESS = (ST_KIND_ACCESS << 8) | 1, ///< Permission denied.
     ST_CODE_PERM,                               ///< Operation not permitted.

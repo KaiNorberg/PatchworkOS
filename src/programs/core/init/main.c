@@ -52,7 +52,7 @@ static status_t init_socket_addr_wait(const char* family, const char* addr)
     status_t status = open(&addrs, F("/net/%s/addrs", family));
     if (IS_ERR(status))
     {
-        return status;
+        return init_socket_addr_wait(family, addr);
     }
 
     clock_t start = uptime();
@@ -64,8 +64,7 @@ static status_t init_socket_addr_wait(const char* family, const char* addr)
         status = readfiles(&data, F("/net/%s/addrs", family));
         if (IS_ERR(status))
         {
-            close(addrs);
-            return status;
+            continue;
         }
 
         if (strstr(data, addr) != NULL)

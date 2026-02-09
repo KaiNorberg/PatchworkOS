@@ -46,7 +46,7 @@ size_t fwrite(const void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTR
         if (_file_flush_buffer(stream) == EOF)
         {
             mtx_unlock(&stream->mtx);
-            return n - 1;
+            return (n > 0) ? n - 1 : 0;
         }
     }
     else if (stream->flags & _FILE_LINE_BUFFERED)
@@ -58,10 +58,9 @@ size_t fwrite(const void* _RESTRICT ptr, size_t size, size_t nmemb, FILE* _RESTR
 
             if (_file_flush_buffer(stream) == EOF)
             {
-                /* See comment above. */
                 stream->bufIndex = bufIndex;
                 mtx_unlock(&stream->mtx);
-                return n - 1;
+                return (n > 0) ? n - 1 : 0;
             }
 
             stream->bufIndex = bufIndex - newLineOffset;

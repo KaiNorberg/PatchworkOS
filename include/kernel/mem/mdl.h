@@ -51,18 +51,18 @@ typedef struct process process_t;
 #define MDL_SMALL_MAX 2
 
 /**
- * @brief Memory Descriptor List Descriptor structure.
- * @struct mdl_desc_t
+ * @brief Memory Descriptor List entry structure.
+ * @struct mdl_entry_t
  *
- * Each descriptor only describes a single physical memory page, if a buffer crosses a page boundary an additional
+ * Each entry only describes a single physical memory page, if a buffer crosses a page boundary an additional
  * descriptor will be needed.
  */
-typedef struct mdl_desc
+typedef struct mdl_entry
 {
     pfn_t pfn;       ///< Page frame number.
     uint32_t size;   ///< Size of the region within the page.
     uint32_t offset; ///< Offset in bytes within the page.
-} mdl_desc_t;
+} mdl_entry_t;
 
 /**
  * @brief Memory Descriptor List structure.
@@ -71,9 +71,9 @@ typedef struct mdl_desc
 typedef struct mdl
 {
     struct mdl* next;                ///< Pointer to the next MDL.
-    mdl_desc_t small[MDL_SMALL_MAX]; ///< Statically allocated descriptors for simple regions.
-    mdl_desc_t* descs;               ///< Pointer to descriptors array.
-    uint32_t amount;                 ///< Number of memory descriptors.
+    mdl_entry_t small[MDL_SMALL_MAX]; ///< Statically allocated entry for simple regions.
+    mdl_entry_t* entries;               ///< Pointer to entries array.
+    uint32_t amount;                 ///< Number of entries.
     uint32_t capacity;               ///< Capacity of the `large` array.
     size_t size;                     ///< Total size of the memory region described by the MDL.
 } mdl_t;
@@ -91,7 +91,7 @@ static inline void mdl_init(mdl_t* next, mdl_t* prev)
         prev->next = next;
     }
     next->next = NULL;
-    next->descs = next->small;
+    next->entries = next->small;
     next->amount = 0;
     next->capacity = MDL_SMALL_MAX;
     next->size = 0;
@@ -193,8 +193,8 @@ status_t mdl_fill(mdl_t* mdl, size_t count, size_t offset, size_t* filled, uint8
 typedef struct
 {
     mdl_t* mdl;
-    size_t descIndex;
-    size_t descOffset;
+    size_t entryIndex;
+    size_t entryOffset;
 } mdl_iter_t;
 
 /**
@@ -206,8 +206,8 @@ typedef struct
 #define MDL_ITER_CREATE(_mdl) \
     { \
         .mdl = (_mdl), \
-        .descIndex = 0, \
-        .descOffset = 0, \
+        .entryIndex = 0, \
+        .entryOffset = 0, \
     }
 
 /**
@@ -219,20 +219,20 @@ typedef struct
  */
 static inline bool mdl_iter_next(mdl_iter_t* iter, void** ptr)
 {
-    if (iter->descIndex >= iter->mdl->amount)
+    if (iter->entryIndex >= iter->mdl->amount)
     {
         return false;
     }
 
-    mdl_desc_t* desc = &iter->mdl->descs[iter->descIndex];
-    uint8_t* addr = PFN_TO_VIRT(desc->pfn) + desc->offset + iter->descOffset;
+    mdl_entry_t* entry = &iter->mdl->entries[iter->entryIndex];
+    uint8_t* addr = PFN_TO_VIRT(entry->pfn) + entry->offset + iter->entryOffset;
     *ptr = addr;
 
-    iter->descOffset++;
-    if (iter->descOffset >= desc->size)
+    iter->entryOffset++;
+    if (iter->entryOffset >= entry->size)
     {
-        iter->descIndex++;
-        iter->descOffset = 0;
+        iter->entryIndex++;
+        iter->entryOffset = 0;
     }
 
     return true;

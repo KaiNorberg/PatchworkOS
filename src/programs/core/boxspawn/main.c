@@ -129,8 +129,6 @@ int main(int argc, char** argv)
     }
     close(data);
 
-    printf("boxspawn: received response '%s'\n", buffer);
-
     if (wordcmp(buffer, "error") == 0)
     {
         exits(F("boxspawn: %s", buffer));

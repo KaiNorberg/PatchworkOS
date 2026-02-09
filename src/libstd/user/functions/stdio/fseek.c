@@ -25,7 +25,7 @@ int fseek(FILE* stream, long offset, int whence)
 
     if (whence == SEEK_CUR)
     {
-        offset -= (((int)stream->bufEnd - (int)stream->bufIndex) + stream->ungetIndex);
+        offset -= (((long)stream->bufEnd - (long)stream->bufIndex) + stream->ungetIndex);
     }
 
     uint64_t result = (_file_seek(stream, offset, whence) != EOF) ? 0 : EOF;
