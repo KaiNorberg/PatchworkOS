@@ -130,6 +130,7 @@ static status_t shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t page
         vmm_map_pages(space, address, shmem->pages, shmem->pageAmount, flags, shmem_vmm_callback, REF(shmem));
     if (IS_ERR(status))
     {
+        UNREF(shmem);
         for (uint64_t i = 0; i < shmem->pageAmount; i++)
         {
             pmm_free(shmem->pages[i]);
@@ -172,7 +173,7 @@ static status_t shmem_mmap(irp_t* irp)
     irp_frame_t* frame = irp_current(irp);
 
     file_t* file = frame->file;
-    void** address = &frame->mmap.address;
+    void* address = frame->mmap.address;
     size_t length = frame->mmap.length;
     pml_flags_t flags = frame->mmap.flags;
     size_t offset = frame->mmap.offset;
@@ -185,7 +186,7 @@ static status_t shmem_mmap(irp_t* irp)
 
     LOCK_SCOPE(&shmem->lock);
 
-    process_t* process = process_current_unsafe();
+    process_t* process = irp_get_process(irp);
     space_t* space = &process->space;
 
     uint64_t pageAmount = BYTES_TO_PAGES(length);
@@ -202,7 +203,14 @@ static status_t shmem_mmap(irp_t* irp)
         }
 
         assert(shmem->pages == NULL);
-        return shmem_object_allocate_pages(shmem, pageAmount, space, address, flags);
+        status_t status = shmem_object_allocate_pages(shmem, pageAmount, space, &address, flags);
+        if (IS_ERR(status))
+        {
+            return status;
+        }
+        
+        irp->result = (uint64_t)address;
+        return OK;
     }
 
     assert(shmem->pages != NULL);
@@ -219,8 +227,16 @@ static status_t shmem_mmap(irp_t* irp)
 
     uint64_t pageOffset = offset / PAGE_SIZE;
     uint64_t availablePages = shmem->pageAmount - pageOffset;
-    return vmm_map_pages(space, address, &shmem->pages[pageOffset], MIN(pageAmount, availablePages), flags,
+    status_t status = vmm_map_pages(space, &address, &shmem->pages[pageOffset], MIN(pageAmount, availablePages), flags,
         shmem_vmm_callback, REF(shmem));
+    if (IS_ERR(status))
+    {
+        UNREF(shmem);
+        return status;
+    }
+
+    irp->result = (uint64_t)address;
+    return OK;
 }
 
 static vnode_class_t fileClass = {

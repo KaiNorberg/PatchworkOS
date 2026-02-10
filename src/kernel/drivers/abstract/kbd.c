@@ -278,11 +278,11 @@ static void kbd_broadcast(kbd_t* kbd, const char* string, size_t length)
         irp_frame_t* frame = irp_current(irp);
         if (frame->major == IRP_MJ_READ)
         {
-            kbd_events_read(irp);
+            irp_complete(irp, kbd_events_read(irp)); 
         }
         else if (frame->major == IRP_MJ_POLL)
         {
-            kbd_events_poll(irp);
+            irp_complete(irp, kbd_events_poll(irp));
         }
         else
         {

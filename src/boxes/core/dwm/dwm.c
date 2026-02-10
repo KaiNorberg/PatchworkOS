@@ -766,25 +766,23 @@ static void dwm_poll(void)
 static void dwm_update(void)
 {
     dwm_poll();
-    printf("dwm: updating pid=%d\n", proc_current());
+    //printf("dwm: updating pid=%d\n", proc_current());
     if (pollCtx->data.revents & IOPOLL_READ)
     {
-        printf("dwm: accepting new client\n");
+        //printf("dwm: accepting new client\n");
         dwm_client_accept();
         return; // The clients array is now invalid, so we have to update it.
     }
     if (pollCtx->kbd.revents & IOPOLL_READ)
     {
-        printf("dwm: reading keyboard input\n");
+        //printf("dwm: reading keyboard input\n");
         dwm_kbd_read();
     }
     if (pollCtx->mouse.revents & IOPOLL_READ)
     {
-        printf("dwm: reading mouse input\n");
+        //printf("dwm: reading mouse input\n");
         dwm_mouse_read();
     }
-
-    printf("dwm: checking clients\n");
 
     uint64_t i = 0;
     client_t* client;
@@ -792,28 +790,25 @@ static void dwm_update(void)
     LIST_FOR_EACH_SAFE(client, temp, &clients, entry)
     {
         iopoll_t* fd = &pollCtx->clients[i++];
-        printf("dwm: checking client %d\n", client->fd);
         if (fd->revents & IOPOLL_HUP)
         {
-            printf("dwm: client %d hung up\n", client->fd);
+            //printf("dwm: client %d hung up\n", client->fd);
             dwm_client_disconnect(client);
         }
         else if (fd->revents & IOPOLL_ERROR)
         {
-            printf("dwm: client %d error\n", client->fd);
+            //printf("dwm: client %d error\n", client->fd);
             dwm_client_disconnect(client);
         }
         else if (fd->revents & IOPOLL_READ)
         {
             if (IS_ERR(client_receive_cmds(client)))
             {
-                printf("dwm: client %d receive commands failed\n", client->fd);
+                //printf("dwm: client %d receive commands failed\n", client->fd);
                 dwm_client_disconnect(client);
             }
         }
     }
-
-    printf("dwm: setup compositor\n");
 
     compositor_ctx_t ctx = {
         .windows = &windows,
@@ -822,8 +817,6 @@ static void dwm_update(void)
         .cursor = cursor,
         .fullscreen = fullscreen,
     };
-
-    printf("dwm: drawing\n");
 
     compositor_draw(&ctx);
 }

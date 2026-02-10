@@ -197,7 +197,7 @@ static void ioring_commit_sqe(ioring_ctx_t* ctx, iosqe_t* sqe, status_t status, 
 
     if ((tail - head) >= ring->centries)
     {
-        LOG_ERR("async completion queue overflow");
+        LOG_ERR("async completion queue overflow pid=%llu\n", process_current()->id);
         return;
     }
 

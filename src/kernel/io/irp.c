@@ -347,6 +347,11 @@ status_t irp_call(irp_t* irp, irp_handler_t func)
 
 void irp_complete(irp_t* irp, status_t status)
 {
+    if (IS_INFO(status) && (IS_CODE(status, PENDING) || IS_CODE(status, COMPLETE)))
+    {
+        return;
+    }
+
     if (irp_set_cancel(irp, NULL) == IRP_CANCELLED)
     {
         return;

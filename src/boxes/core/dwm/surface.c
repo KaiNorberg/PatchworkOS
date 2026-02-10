@@ -34,12 +34,13 @@ surface_t* surface_new(client_t* client, const char* name, const point_t* point,
         return NULL;
     }
     surface->buffer = NULL;
-    if (IS_ERR(iomap(surface->shmem, (void**)&surface->buffer, width * height * sizeof(pixel_t), IOOFF_CUR,
-            IOMAP_READ | IOMAP_WRITE)))
+    status_t status = iomap(surface->shmem, (void**)&surface->buffer, width * height * sizeof(pixel_t), 0,
+            IOMAP_READ | IOMAP_WRITE);
+    if (IS_ERR(status))
     {
         close(surface->shmem);
         free(surface);
-        printf("dwm surface error: failed to allocate gfx buffer\n");
+        printf("dwm surface error: failed to allocate gfx buffer %Y\n", status);
         return NULL;
     }
     memset(surface->buffer, 0, width * height * sizeof(pixel_t));

@@ -354,7 +354,7 @@ status_t vmm_map(space_t* space, void** addr, phys_addr_t phys, size_t length, p
     if (*addr == NULL)
     {
         pageAmount = BYTES_TO_PAGES(length);
-        *addr = vmm_find_free_region(space, pageAmount, 1);
+        *addr = vmm_find_free_region(space, pageAmount, PAGE_SIZE);
         if (*addr == NULL)
         {
             return ERR(MMU, NOSPACE);
@@ -428,7 +428,7 @@ status_t vmm_map_pages(space_t* space, void** addr, pfn_t* pfns, size_t amount, 
 
     if (*addr == NULL)
     {
-        *addr = vmm_find_free_region(space, amount, 1);
+        *addr = vmm_find_free_region(space, amount, PAGE_SIZE);
         if (*addr == NULL)
         {
             return ERR(MMU, NOSPACE);

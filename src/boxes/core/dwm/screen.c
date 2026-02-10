@@ -51,7 +51,7 @@ static void frontbuffer_init(void)
     }
 
     frontbuffer = NULL;
-    if (IS_ERR(iomap(data, &frontbuffer, height * pitch, IOOFF_CUR, IOMAP_READ | IOMAP_WRITE)))
+    if (IS_ERR(iomap(data, &frontbuffer, height * pitch, 0, IOMAP_READ | IOMAP_WRITE)))
     {
         printf("dwm: failed to map framebuffer memory (%s)\n", strerror(errno));
         abort();

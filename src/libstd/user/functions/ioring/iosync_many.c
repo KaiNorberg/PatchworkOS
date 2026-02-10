@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <sys/io.h>
-#include <user/common/io.h>
+#include "user/common/io.h"
 
 void iosync_many(iosqe_t* sqes, iocqe_t* cqes, size_t count, size_t wait, size_t* completed)
 {
@@ -16,6 +16,10 @@ void iosync_many(iosqe_t* sqes, iocqe_t* cqes, size_t count, size_t wait, size_t
             {
                 ioring_enter(&_stdIoring, submitted, 0, NULL);
                 submitted = 0;
+            }
+            else
+            {
+                ioring_enter(&_stdIoring, 0, 0, NULL);
             }
         }
         *sqe = sqes[i];

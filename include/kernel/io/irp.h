@@ -546,7 +546,7 @@ status_t irp_call(irp_t* irp, irp_handler_t func);
  * for the IRP to be returned to its pool.
  *
  * @param irp The IRP to complete.
- * @param status The status of the completed operation, if `OK` then the previous status is kept.
+ * @param status The status of the completed operation, if an informational `ST_CODE_PENDING` or `ST_CODE_COMPLETE` than this becomes a no-op.
  */
 void irp_complete(irp_t* irp, status_t status);
 

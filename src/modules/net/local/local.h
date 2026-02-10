@@ -14,8 +14,6 @@ typedef struct local_conn local_conn_t;
  * @defgroup module_net_local Local Protocol
  * @ingroup module_net
  *
- * @deprecated The local networking protocol should be removed in favor of of 9P once its implemented.
- *
  * @{
  */
 
@@ -27,7 +25,7 @@ typedef struct local_conn local_conn_t;
 /**
  * @brief The maximum size of a packet allowed to be sent/received via local sockets.
  */
-#define LOCAL_MAX_PACKET_SIZE ((size_t)LOCAL_BUFFER_SIZE - sizeof(local_packet_header_t))
+#define LOCAL_MAX_PACKET_SIZE (LOCAL_BUFFER_SIZE - sizeof(local_packet_header_t))
 
 /**
  * @brief The maximum backlog of connections for a local listener.

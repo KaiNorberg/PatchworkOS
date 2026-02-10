@@ -39,7 +39,7 @@ image_t* image_new(display_t* disp, const char* path)
         uint32_t width;
         uint32_t height;
     } header;
-    status = ioread(file, &header, sizeof(header), IOOFF_CUR, NULL);
+    status = ioread(file, &header, sizeof(header), 0, NULL);
     if (IS_ERR(status))
     {
         close(file);
@@ -48,7 +48,6 @@ image_t* image_new(display_t* disp, const char* path)
 
     uint64_t fileSize;
     ioseek(file, IOSEEK_END, 0, &fileSize);
-    ioseek(file, IOSEEK_SET, sizeof(header), NULL);
 
     if (fileSize != header.width * header.height * sizeof(pixel_t) + sizeof(header) || header.magic != FBMP_MAGIC)
     {
@@ -63,7 +62,7 @@ image_t* image_new(display_t* disp, const char* path)
         return NULL;
     }
 
-    status = ioread(file, image->draw.buffer, header.width * header.height * sizeof(pixel_t), IOOFF_CUR, NULL);
+    status = ioread(file, image->draw.buffer, header.width * header.height * sizeof(pixel_t), sizeof(header), NULL);
     if (IS_ERR(status))
     {
         image_free(image);

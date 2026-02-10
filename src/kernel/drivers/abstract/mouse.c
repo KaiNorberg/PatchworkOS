@@ -279,11 +279,21 @@ static void mouse_broadcast(mouse_t* mouse, const char* string, size_t length)
         irp_frame_t* frame = irp_current(irp);
         if (frame->major == IRP_MJ_READ)
         {
-            mouse_events_read(irp);
+            status_t status = mouse_events_read(irp);
+            if (IS_INFO(status) && IS_CODE(status, PENDING))
+            {
+                continue;
+            }
+            irp_complete(irp, status);
         }
         else if (frame->major == IRP_MJ_POLL)
         {
-            mouse_events_poll(irp);
+            status_t status = mouse_events_poll(irp);
+            if (IS_INFO(status) && IS_CODE(status, PENDING))
+            {
+                continue;
+            }
+            irp_complete(irp, status);
         }
         else
         {
@@ -336,7 +346,7 @@ void mouse_move_x(mouse_t* mouse, int8_t delta)
     }
 
     char event[MAX_NAME];
-    int length = snprintf(event, sizeof(event), "%+03lldx", delta);
+    int length = snprintf(event, sizeof(event), "%+03hhdx", delta);
     if (length < 0)
     {
         LOG_ERR("failed to format mouse move X event\n");
@@ -354,7 +364,7 @@ void mouse_move_y(mouse_t* mouse, int8_t delta)
     }
 
     char event[MAX_NAME];
-    int length = snprintf(event, sizeof(event), "%+03lldy", delta);
+    int length = snprintf(event, sizeof(event), "%+03hhdy", delta);
     if (length < 0)
     {
         LOG_ERR("failed to format mouse move Y event\n");
@@ -372,7 +382,7 @@ void mouse_scroll(mouse_t* mouse, int8_t delta)
     }
 
     char event[MAX_NAME];
-    int length = snprintf(event, sizeof(event), "%+03lldz", delta);
+    int length = snprintf(event, sizeof(event), "%+03hhdz", delta);
     if (length < 0)
     {
         LOG_ERR("failed to format mouse scroll event\n");

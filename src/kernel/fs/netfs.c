@@ -1,3 +1,4 @@
+#include <_libstd/clock_t.h>
 #include <kernel/fs/ctl.h>
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/devfs.h>
@@ -7,15 +8,20 @@
 #include <kernel/fs/path.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/fs/vnode.h>
+#include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
+#include <kernel/mem/mdl.h>
 #include <kernel/module/module.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
+#include <kernel/sched/thread.h>
+#include <kernel/sched/wait.h>
 #include <kernel/sync/rwmutex.h>
 
 #include <sys/fs.h>
 #include <sys/list.h>
+#include <sys/status.h>
 
 static list_t families = LIST_CREATE(families);
 static rwmutex_t familiesMutex = RWMUTEX_CREATE(familiesMutex);
@@ -55,6 +61,7 @@ static status_t socket_new(socket_t** out, netfs_family_t* family, socket_type_t
     weak_ptr_set(&socket->ownerNs, NULL, NULL, NULL);
     socket->data = NULL;
     mutex_init(&socket->mutex);
+    list_init(&socket->pollIrps);
 
     status_t status = socket->family->init(socket);
     if (IS_ERR(status))
@@ -119,7 +126,23 @@ static status_t netfs_data_read(irp_t* irp)
         return ERR(FS, BADFD);
     }
 
-    return sock->family->recv(irp);
+    size_t size = mdl_size(frame->read.buffer);
+    void* buffer = malloc(size);
+    if (buffer == NULL)
+    {
+        return ERR(FS, NOMEM);
+    }
+
+    status_t status = sock->family->recv(sock, buffer, size, frame->read.offset, &irp->result, frame->file->mode);
+    if (IS_ERR(status))
+    {
+        free(buffer);
+        return status;
+    }
+
+    mdl_copy_in(frame->read.buffer, size, 0, NULL, buffer, irp->result);
+    free(buffer);
+    return status;
 }
 
 static status_t netfs_data_write(irp_t* irp)
@@ -147,7 +170,125 @@ static status_t netfs_data_write(irp_t* irp)
         return ERR(FS, BADFD);
     }
 
-    return sock->family->send(irp);
+    size_t size = mdl_size(frame->write.buffer);
+    void* buffer = malloc(size);
+    if (buffer == NULL)
+    {
+        return ERR(FS, NOMEM);
+    }
+
+    mdl_copy_out(frame->write.buffer, size, 0, NULL, buffer, size);
+    status_t status = sock->family->send(sock, buffer, size, frame->write.offset, &irp->result, frame->file->mode);
+    free(buffer);
+
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+
+    return OK;
+}
+
+typedef struct
+{
+    irp_t* irp;
+    socket_t* sock;
+} netfs_data_poll_ctx_t;
+
+static status_t netfs_poll_cancel(irp_t* irp)
+{
+    netfs_data_poll_ctx_t* ctx = irp_current(irp)->ctx;
+    socket_t* sock = ctx->sock;
+
+    mutex_acquire(&sock->mutex);
+    list_remove(&irp->entry);
+    ctx->irp = NULL;
+    mutex_release(&sock->mutex);
+
+    return OK;
+}
+
+static void netfs_data_poll_thread(void* arg)
+{
+    netfs_data_poll_ctx_t* ctx = arg;
+    irp_t* irp = ctx->irp;
+    socket_t* sock = ctx->sock;
+
+    while (true)
+    {
+        mutex_acquire(&sock->mutex);
+        if (ctx->irp == NULL)
+        {
+            // Cancelled
+            mutex_release(&sock->mutex);
+            UNREF(sock);
+            free(ctx);
+            sched_thread_exit();
+        }
+
+        ioevents_t revents = 0;
+        wait_queue_t* queue = NULL;
+        status_t status = sock->family->poll(sock, &revents, &queue);
+        if (IS_ERR(status))
+        {
+            if (irp_claim(irp))
+            {
+                list_remove(&irp->entry);
+                mutex_release(&sock->mutex);
+                irp_complete(irp, status);
+                UNREF(sock);
+                free(ctx);
+                sched_thread_exit();
+            }
+        }
+
+        status = wait_block_prepare(&queue, 1, CLOCKS_NEVER);
+        if (IS_ERR(status))
+        {
+            if (irp_claim(irp))
+            {
+                list_remove(&irp->entry);
+                mutex_release(&sock->mutex);
+                irp_complete(irp, status);
+                UNREF(sock);
+                free(ctx);
+                sched_thread_exit();
+            }
+        }
+
+        status = sock->family->poll(sock, &revents, &queue);
+        if (IS_ERR(status))
+        {
+            if (irp_claim(irp))
+            {
+                wait_block_cancel();
+                list_remove(&irp->entry);
+                mutex_release(&sock->mutex);
+                irp_complete(irp, status);
+                UNREF(sock);
+                free(ctx);
+                sched_thread_exit();
+            }
+        }
+
+        if ((revents & irp_current(irp)->poll.events) != 0)
+        {
+            if (irp_claim(irp))
+            {
+                wait_block_cancel();
+                list_remove(&irp->entry);
+                mutex_release(&sock->mutex);
+                irp->result = revents;
+                irp_complete(irp, OK);
+                UNREF(sock);
+                free(ctx);
+                sched_thread_exit();
+            }
+        }
+
+        mutex_release(&sock->mutex);
+        wait_block_commit();
+    }
 }
 
 static status_t netfs_data_poll(irp_t* irp)
@@ -161,15 +302,49 @@ static status_t netfs_data_poll(irp_t* irp)
     }
 
     socket_t* sock = file->data;
-    assert(sock != NULL);
+    if (sock == NULL)
+    {
+        return ERR(FS, EXPECT_FILE);
+    }
 
     if (sock->family->poll == NULL)
     {
         return ERR(FS, IMPL);
     }
 
-    MUTEX_SCOPE(&sock->mutex);
-    return sock->family->poll(irp);
+    netfs_data_poll_ctx_t* ctx = malloc(sizeof(netfs_data_poll_ctx_t));
+    if (ctx == NULL)
+    {
+        return ERR(FS, NOMEM);
+    }
+
+    ctx->irp = irp;
+    ctx->sock = REF(sock);
+    irp_current(irp)->ctx = ctx;
+
+    mutex_acquire(&sock->mutex);
+    list_push_back(&sock->pollIrps, &irp->entry);
+    irp_set_cancel(irp, netfs_poll_cancel);
+    mutex_release(&sock->mutex);
+
+    thrd_t tid;
+    status_t status = thread_kernel_create(netfs_data_poll_thread, ctx, &tid);
+    if (IS_ERR(status))
+    {
+        if (irp_claim(irp))
+        {
+            mutex_acquire(&sock->mutex);
+            list_remove(&irp->entry);
+            mutex_release(&sock->mutex);
+            UNREF(sock);
+            free(ctx);
+            return status;
+        }
+        UNREF(sock);
+        free(ctx);
+    }
+
+    return INFO(IO, PENDING);
 }
 
 static vnode_class_t dataClass = {.name = "netfs data",
@@ -180,7 +355,7 @@ static vnode_class_t dataClass = {.name = "netfs data",
         [IRP_MJ_READ] = netfs_data_read,
         [IRP_MJ_WRITE] = netfs_data_write,
         [IRP_MJ_POLL] = netfs_data_poll,
-    }};
+    },};
 
 static status_t netfs_accept_file_ctor(file_t* file)
 {
@@ -244,37 +419,55 @@ static status_t netfs_control(irp_t* irp)
     socket_t* sock = file->data;
     assert(sock != NULL);
 
-    if (sock->family->control == NULL)
-    {
-        return ERR(FS, IMPL);
-    }
-
     MUTEX_SCOPE(&sock->mutex);
-
-    status_t status = sock->family->control(irp);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
 
     switch (frame->control.command)
     {
     case IOCMD('b', 'i', 'n', 'd'):
+    {
         strncpy(sock->address, frame->control.args, sizeof(sock->address));
         sock->address[sizeof(sock->address) - 1] = '\0';
+        status_t status = sock->family->bind(sock);
+        if (IS_ERR(status))
+        {
+            return status;
+        }
         sock->state = SOCKET_BOUND;
-        break;
+    }
+    break;
     case IOCMD('l', 'i', 's', 't', 'e', 'n'):
+    {
+        uint32_t backlog;
+        if (sscanf(frame->control.args, "%u", &backlog) != 1)
+        {
+            backlog = 64;
+        }
+        status_t status = sock->family->listen(sock, backlog);
+        if (IS_ERR(status))
+        {
+            return status;
+        }
+
         sock->state = SOCKET_LISTENING;
-        break;
+    }
+    break;
     case IOCMD('c', 'o', 'n', 'n', 'e', 'c', 't'):
+    {
+        strncpy(sock->address, frame->control.args, sizeof(sock->address));
+        sock->address[sizeof(sock->address) - 1] = '\0';
+        status_t status = sock->family->connect(sock);
+        if (IS_ERR(status))
+        {
+            return status;
+        }
         sock->state = SOCKET_CONNECTED;
-        break;
+    }
+    break;
     default:
         break;
     }
 
-    return status;
+    return OK;
 }
 
 static vnode_class_t ctlClass = {.name = "netfs ctl",
