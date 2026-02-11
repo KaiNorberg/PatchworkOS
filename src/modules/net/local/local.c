@@ -161,7 +161,7 @@ static status_t local_socket_connect(socket_t* sock)
     }
     UNREF_DEFER(listen);
 
-    local_conn_t* conn = local_conn_new(listen);
+    local_conn_t* conn = local_conn_new();
     if (conn == NULL)
     {
         return ERR(PROTO, NOMEM);
@@ -182,6 +182,7 @@ static status_t local_socket_connect(socket_t* sock)
 
     listen->pendingAmount++;
     list_push_back(&listen->backlog, &conn->entry);
+    REF(conn);
 
     wait_unblock(&listen->waitQueue, WAIT_ALL, OK);
 
@@ -221,7 +222,7 @@ static status_t local_socket_accept(socket_t* sock, socket_t* newSock, mode_t mo
         {
             list_entry_t* entry = list_pop_front(&listen->backlog);
             local_conn_t* container = CONTAINER_OF(entry, local_conn_t, entry);
-            conn = REF(container);
+            conn = container;
             listen->pendingAmount--;
             break;
         }

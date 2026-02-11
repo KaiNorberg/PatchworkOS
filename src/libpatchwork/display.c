@@ -216,7 +216,6 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
 {
     if (disp == NULL || event == NULL)
     {
-        printf("display_next: invalid arguments\n");
         errno = EINVAL;
         return PFAIL;
     }
@@ -224,7 +223,6 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
     mtx_lock(&disp->mutex);
     if (!disp->isConnected)
     {
-        printf("display_next: not connected\n");
         mtx_unlock(&disp->mutex);
         errno = ENOTCONN;
         return PFAIL;
@@ -238,22 +236,19 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
 
     if (readBytes == PFAIL)
     {
-        printf("display_next: failed to read event\n");
         return PFAIL;
     }
 
-    ioevents_t revents;
+    ioevents_t revents = 0;
     status_t status = iopoll(disp->data, timeout, IOPOLL_READ, &revents);
-    if (IS_ERR(status))
+    if (IS_ERR(status) && !IS_CODE(status, TIMEOUT))
     {
-        printf("display_next: failed to poll events\n");
         display_disconnect(disp);
         return PFAIL;
     }
 
     if (!(revents & IOPOLL_READ))
     {
-        printf("display_next: no events available\n");
         errno = ETIMEDOUT;
         return PFAIL;
     }
@@ -261,7 +256,6 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
     mtx_lock(&disp->mutex);
     if (!disp->isConnected)
     {
-        printf("display_next: not connected\n");
         mtx_unlock(&disp->mutex);
         errno = ENOTCONN;
         return PFAIL;
@@ -270,7 +264,6 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
     status = ioread(disp->data, event, sizeof(event_t), IOOFF_CUR, &bytesRead);
     if (IS_ERR(status) || bytesRead != sizeof(event_t))
     {
-        printf("display_next: failed to read event %Y\n", status);
         disp->isConnected = false;
         mtx_unlock(&disp->mutex);
         return PFAIL;

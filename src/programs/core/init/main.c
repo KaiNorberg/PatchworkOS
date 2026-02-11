@@ -47,49 +47,6 @@
  *
  */
 
-static status_t init_socket_addr_wait(const char* family, const char* addr)
-{
-    fd_t addrs;
-    status_t status = open(&addrs, F("/net/%s/addrs", family));
-    if (IS_ERR(status))
-    {
-        return init_socket_addr_wait(family, addr);
-    }
-
-    clock_t start = clock();
-    while (true)
-    {
-        struct timespec ts;
-        ts.tv_sec = 0;
-        ts.tv_nsec = CLOCKS_PER_MS;
-        thrd_sleep(&ts, NULL);
-
-        char* data;
-        status = readfiles(&data, F("/net/%s/addrs", family));
-        if (IS_ERR(status))
-        {
-            continue;
-        }
-
-        if (strstr(data, addr) != NULL)
-        {
-            free(data);
-            break;
-        }
-
-        free(data);
-
-        if (clock() - start >= CLOCKS_PER_SEC * 10)
-        {
-            close(addrs);
-            return ERR(USER, TIMEOUT);
-        }
-    }
-
-    close(addrs);
-    return OK;
-}
-
 static void init_root_ns(void)
 {
     status_t status = mount("/dev:rwL", "/sys/fs/devfs", NULL);
@@ -126,11 +83,8 @@ static void init_spawn_boxd(void)
         proc_exit(F("init: failed to spawn boxd %Y", status));
     }
 
-    status = init_socket_addr_wait("local", "boxspawn");
-    if (IS_ERR(status))
-    {
-        proc_exit(F("init: timeout waiting for boxd to create boxspawn socket %Y", status));
-    }
+    struct timespec ts = {.tv_sec = 0, .tv_nsec = CLOCKS_PER_MS * 10};
+    thrd_sleep(&ts, NULL);
 }
 
 static void init_create_pkg_links(void)
@@ -201,11 +155,8 @@ static void init_config_load(void)
     config_array_t* sockets = config_get_array(config, "startup", "sockets");
     for (uint64_t i = 0; i < sockets->length; i++)
     {
-        status = init_socket_addr_wait("local", sockets->items[i]);
-        if (IS_ERR(status))
-        {
-            printf("init: timeout waiting for socket '%s' %Y\n", sockets->items[i], status);
-        }
+        struct timespec ts = {.tv_sec = 0, .tv_nsec = CLOCKS_PER_MS * 10};
+        thrd_sleep(&ts, NULL);
     }
 
     config_array_t* programs = config_get_array(config, "startup", "programs");

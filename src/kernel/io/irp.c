@@ -61,6 +61,7 @@ status_t irp_pool_new(irp_pool_t** out, size_t size, process_t* process, void* c
 
 void irp_pool_free(irp_pool_t* pool)
 {
+    assert(pool != NULL);
     assert(atomic_load(&pool->active) == 0);
     free(pool);
 }
@@ -78,7 +79,7 @@ void irp_pool_cancel_all(irp_pool_t* pool)
     }
 }
 
-static void irp_perform_completion(irp_t* irp)
+static void irp_unwind_stack(irp_t* irp)
 {
     while (irp->loc < IRP_FRAME_MAX)
     {
@@ -144,11 +145,17 @@ static irp_cancel_t irp_claim_cancellable(irp_t* irp)
     return handler;
 }
 
-void irp_timeout_add(irp_t* irp)
+status_t irp_timeout_add(irp_t* irp, irp_cancel_t cancel)
 {
+    assert(irp != NULL);
+
     if (irp->timeout == CLOCKS_NEVER)
     {
-        return;
+        if (cancel != NULL && irp_set_cancel(irp, cancel) == IRP_CANCELLED)
+        {
+            return ERR(IO, CANCELLED);
+        }
+        return OK;
     }
 
     CLI_SCOPE();
@@ -162,6 +169,7 @@ void irp_timeout_add(irp_t* irp)
     clock_t now = clock_uptime();
     irp->deadline = CLOCKS_DEADLINE(irp->timeout, now);
 
+    bool added = false;
     irp_t* entry;
     LIST_FOR_EACH(entry, &ctx->timeouts, timeoutEntry)
     {
@@ -169,16 +177,31 @@ void irp_timeout_add(irp_t* irp)
         {
             list_prepend(&entry->timeoutEntry, &irp->timeoutEntry);
             timer_set(now, irp->deadline);
-            return;
+            added = true;
+            break;
         }
     }
 
-    list_push_back(&ctx->timeouts, &irp->timeoutEntry);
-    timer_set(now, irp->deadline);
+    if (!added)
+    {
+        list_push_back(&ctx->timeouts, &irp->timeoutEntry);
+        timer_set(now, irp->deadline);
+    }
+
+    if (cancel != NULL && irp_set_cancel(irp, cancel) == IRP_CANCELLED)
+    {
+        list_remove(&irp->timeoutEntry);
+        irp->cpu = CPU_ID_INVALID;
+        return ERR(IO, CANCELLED);
+    }
+
+    return OK;
 }
 
 void irp_timeout_remove(irp_t* irp)
 {
+    assert(irp != NULL);
+
     cpu_id_t cpu = irp->cpu;
     if (cpu == CPU_ID_INVALID)
     {
@@ -233,7 +256,7 @@ void irp_timeouts_check(void)
         {
             irp->status = ERR(IO, TIMEOUT);
             handler(irp);
-            irp_perform_completion(irp);
+            irp_unwind_stack(irp);
         }
 
         lock_acquire(&ctx->lock);
@@ -244,6 +267,8 @@ void irp_timeouts_check(void)
 
 status_t irp_get(irp_pool_t* pool, irp_t** out)
 {
+    assert(pool != NULL);
+
     pool_idx_t idx = pool_alloc(&pool->pool);
     if (idx == POOL_IDX_MAX)
     {
@@ -336,17 +361,14 @@ status_t irp_call(irp_t* irp, irp_handler_t func)
         status = ERR(IO, INVAL);
     }
 
-    if (IS_INFO(status) && (IS_CODE(status, PENDING) || IS_CODE(status, COMPLETE)))
-    {
-        return status;
-    }
-
     irp_complete(irp, status);
     return INFO(IO, COMPLETE);
 }
 
 void irp_complete(irp_t* irp, status_t status)
 {
+    assert(irp != NULL);
+
     if (IS_INFO(status) && (IS_CODE(status, PENDING) || IS_CODE(status, COMPLETE)))
     {
         return;
@@ -360,11 +382,13 @@ void irp_complete(irp_t* irp, status_t status)
     {
         irp->status = status;
     }
-    irp_perform_completion(irp);
+    irp_unwind_stack(irp);
 }
 
 status_t irp_cancel(irp_t* irp)
 {
+    assert(irp != NULL);
+
     irp_cancel_t handler = irp_claim_cancellable(irp);
     if (handler == IRP_CANCELLED)
     {
@@ -378,14 +402,15 @@ status_t irp_cancel(irp_t* irp)
 
     irp_timeout_remove(irp);
 
-    irp->status = ERR(IO, CANCELLED);
+    irp->status = ERR(IO, CANCELLED);    
     status_t status = handler(irp);
-    irp_perform_completion(irp);
+    irp_unwind_stack(irp);
     return status;
 }
 
 status_t irp_read_helper(irp_t* irp, const void* buffer, size_t size)
 {
+    assert(irp != NULL);
     assert(buffer != NULL || size == 0);
 
     irp_frame_t* frame = irp_current(irp);
@@ -411,6 +436,7 @@ status_t irp_read_helper(irp_t* irp, const void* buffer, size_t size)
 
 status_t irp_write_helper(irp_t* irp, void* buffer, size_t size)
 {
+    assert(irp != NULL);
     assert(buffer != NULL || size == 0);
 
     irp_frame_t* frame = irp_current(irp);

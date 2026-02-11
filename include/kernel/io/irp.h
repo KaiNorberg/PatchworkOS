@@ -410,8 +410,10 @@ void irp_pool_cancel_all(irp_pool_t* pool);
  * The timeout of the IRP is specified in `irp->timeout`.
  *
  * @param irp The IRP to add.
+ * @param cancel The cancellation callback to set.
+ * @return An appropriate status value.
  */
-void irp_timeout_add(irp_t* irp);
+status_t irp_timeout_add(irp_t* irp, irp_cancel_t cancel);
 
 /**
  * @brief Remove an IRP from its per-CPU timeout queue.
@@ -561,6 +563,8 @@ status_t irp_cancel(irp_t* irp);
 /**
  * @brief Set the cancellation callback for an IRP.
  *
+ * @note It is generally preferred to use `irp_timeout_add()` over this function, `irp_set_cancel()` should only be used when timeouts are not desired.
+ * 
  * @param irp The IRP.
  * @param cancel The cancellation callback.
  * @return The previous cancellation callback.
@@ -639,13 +643,13 @@ static inline status_t irp_delay(irp_t* irp, list_t* list, irp_cancel_t cancel)
     }
 
     list_push_back(list, &irp->entry);
-    if (irp_set_cancel(irp, cancel) == IRP_CANCELLED)
+    status_t status = irp_timeout_add(irp, cancel);
+    if (IS_ERR(status))
     {
         list_remove(&irp->entry);
-        return ERR(IO, CANCELLED);
+        return status;
     }
 
-    irp_timeout_add(irp);
     return INFO(IO, PENDING);
 }
 

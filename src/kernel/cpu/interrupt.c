@@ -231,5 +231,8 @@ void interrupt_handler(interrupt_frame_t* frame)
     SELF->inInterrupt = false;
 
     // Sanity check to make sure blocking and scheduling is functioning correctly.
-    assert(frame->rflags & RFLAGS_INTERRUPT_ENABLE);
+    if(!(frame->rflags & RFLAGS_INTERRUPT_ENABLE))
+    {
+        panic(frame, "Interrupt returning to interrupt disabled context");
+    }    
 }

@@ -83,7 +83,14 @@ static void pipe_file_dtor(file_t* file)
 static status_t pipe_cancel(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
-    pipe_t* data = frame->vnode->data;
+    file_t* file = frame->file;
+    if (file == NULL)
+    {
+        return ERR(DRIVER, EXPECT_FILE);
+    }
+
+    pipe_t* data = file->data;
+    assert(data != NULL);
 
     lock_acquire(&data->lock);
 
@@ -281,7 +288,7 @@ static status_t pipe_poll(irp_t* irp)
     {
         return OK;
     }
-
+    
     return irp_delay(irp, &data->polls, pipe_cancel);
 }
 

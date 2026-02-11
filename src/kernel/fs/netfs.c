@@ -195,8 +195,14 @@ typedef struct
     socket_t* sock;
 } netfs_data_poll_ctx_t;
 
-static status_t netfs_poll_cancel(irp_t* irp)
+static void netfs_data_poll_ctx_free(netfs_data_poll_ctx_t* ctx)
 {
+    UNREF(ctx->sock);
+    free(ctx);
+}
+
+static status_t netfs_poll_cancel(irp_t* irp)
+{    
     netfs_data_poll_ctx_t* ctx = irp_current(irp)->ctx;
     socket_t* sock = ctx->sock;
 
@@ -211,84 +217,45 @@ static status_t netfs_poll_cancel(irp_t* irp)
 static void netfs_data_poll_thread(void* arg)
 {
     netfs_data_poll_ctx_t* ctx = arg;
-    irp_t* irp = ctx->irp;
     socket_t* sock = ctx->sock;
 
     while (true)
     {
         mutex_acquire(&sock->mutex);
-        if (ctx->irp == NULL)
+        irp_t* irp = ctx->irp;
+        if (irp == NULL) 
         {
-            // Cancelled
             mutex_release(&sock->mutex);
-            UNREF(sock);
-            free(ctx);
-            sched_thread_exit();
+            break;
         }
+        irp_frame_t* frame = irp_current(irp);
 
         ioevents_t revents = 0;
         wait_queue_t* queue = NULL;
         status_t status = sock->family->poll(sock, &revents, &queue);
-        if (IS_ERR(status))
-        {
-            if (irp_claim(irp))
-            {
-                list_remove(&irp->entry);
-                mutex_release(&sock->mutex);
-                irp_complete(irp, status);
-                UNREF(sock);
-                free(ctx);
-                sched_thread_exit();
-            }
-        }
+        assert(IS_INFO(status));
 
-        status = wait_block_prepare(&queue, 1, CLOCKS_NEVER);
-        if (IS_ERR(status))
+        if (revents & frame->poll.events)
         {
-            if (irp_claim(irp))
+            if (!irp_claim(irp))
             {
-                list_remove(&irp->entry);
                 mutex_release(&sock->mutex);
-                irp_complete(irp, status);
-                UNREF(sock);
-                free(ctx);
-                sched_thread_exit();
+                break;
             }
-        }
+            list_remove(&irp->entry);
+            mutex_release(&sock->mutex);
 
-        status = sock->family->poll(sock, &revents, &queue);
-        if (IS_ERR(status))
-        {
-            if (irp_claim(irp))
-            {
-                wait_block_cancel();
-                list_remove(&irp->entry);
-                mutex_release(&sock->mutex);
-                irp_complete(irp, status);
-                UNREF(sock);
-                free(ctx);
-                sched_thread_exit();
-            }
-        }
-
-        if ((revents & irp_current(irp)->poll.events) != 0)
-        {
-            if (irp_claim(irp))
-            {
-                wait_block_cancel();
-                list_remove(&irp->entry);
-                mutex_release(&sock->mutex);
-                irp->result = revents;
-                irp_complete(irp, OK);
-                UNREF(sock);
-                free(ctx);
-                sched_thread_exit();
-            }
+            irp->result = revents;
+            irp_complete(irp, OK);
+            break;
         }
 
         mutex_release(&sock->mutex);
-        wait_block_commit();
+        sched_nanosleep(CLOCKS_PER_MS * 10);
     }
+
+    netfs_data_poll_ctx_free(ctx);
+    sched_thread_exit();
 }
 
 static status_t netfs_data_poll(irp_t* irp)
@@ -312,6 +279,24 @@ static status_t netfs_data_poll(irp_t* irp)
         return ERR(FS, IMPL);
     }
 
+    mutex_acquire(&sock->mutex);
+    ioevents_t revents = 0;
+    wait_queue_t* queue = NULL;
+    status_t status = sock->family->poll(sock, &revents, &queue);
+    if (IS_ERR(status))
+    {
+        mutex_release(&sock->mutex);
+        return status;
+    }
+
+    if (revents & frame->poll.events)
+    {
+        mutex_release(&sock->mutex);
+        irp->result = revents;
+        return OK;
+    }
+    mutex_release(&sock->mutex);
+
     netfs_data_poll_ctx_t* ctx = malloc(sizeof(netfs_data_poll_ctx_t));
     if (ctx == NULL)
     {
@@ -323,27 +308,28 @@ static status_t netfs_data_poll(irp_t* irp)
     irp_current(irp)->ctx = ctx;
 
     mutex_acquire(&sock->mutex);
-    list_push_back(&sock->pollIrps, &irp->entry);
-    irp_set_cancel(irp, netfs_poll_cancel);
+    status = irp_delay(irp, &sock->pollIrps, netfs_poll_cancel);
     mutex_release(&sock->mutex);
 
-    thrd_t tid;
-    status_t status = thread_kernel_create(netfs_data_poll_thread, ctx, &tid);
     if (IS_ERR(status))
     {
-        if (irp_claim(irp))
-        {
-            mutex_acquire(&sock->mutex);
-            list_remove(&irp->entry);
-            mutex_release(&sock->mutex);
-            UNREF(sock);
-            free(ctx);
-            return status;
-        }
-        UNREF(sock);
-        free(ctx);
+        netfs_data_poll_ctx_free(ctx);
+        return status;
     }
 
+    thrd_t tid;
+    status = thread_kernel_create(netfs_data_poll_thread, ctx, &tid);
+    if (IS_ERR(status))
+    {
+        mutex_acquire(&sock->mutex);
+        if (irp_claim(irp))
+        {
+            list_remove(&irp->entry);
+        }
+        mutex_release(&sock->mutex);
+        netfs_data_poll_ctx_free(ctx);
+        return status;
+    }
     return INFO(IO, PENDING);
 }
 

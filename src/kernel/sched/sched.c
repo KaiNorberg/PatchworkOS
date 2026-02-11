@@ -33,13 +33,15 @@ static _Atomic(clock_t) lastLoadBalance = ATOMIC_VAR_INIT(0);
 
 static inline int64_t sched_fixed_cmp(int128_t a, int128_t b)
 {
-    int128_t diff = SCHED_FIXED_FROM(a - b);
-    if (diff > SCHED_EPSILON)
+    int128_t diff = a - b;
+    int128_t epsilon = SCHED_FIXED_TO(SCHED_EPSILON);
+
+    if (diff > epsilon)
     {
         return 1;
     }
 
-    if (diff < -(SCHED_EPSILON + 1))
+    if (diff < -epsilon)
     {
         return -1;
     }

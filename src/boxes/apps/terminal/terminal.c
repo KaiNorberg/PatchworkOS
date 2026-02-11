@@ -780,7 +780,7 @@ void terminal_loop(window_t* win)
         }
 
         if (fds[0].revents & IOPOLL_READ)
-        {
+        {        
             size_t readCount;
             status_t status =
                 ioread(terminal->stdout, &buffer[length], TERMINAL_MAX_DATA - length, IOOFF_CUR, &readCount);

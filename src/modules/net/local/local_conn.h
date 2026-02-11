@@ -33,7 +33,6 @@ typedef struct local_conn
     void* clientToServerBuffer;
     fifo_t serverToClient;
     void* serverToClientBuffer;
-    local_listen_t* listen;
     bool isClosed;
     lock_t lock;
     wait_queue_t waitQueue;
@@ -42,10 +41,9 @@ typedef struct local_conn
 /**
  * @brief Allocate and initialize a new local connection.
  *
- * @param listen Pointer to the local listener this connection is associated with.
  * @return On success, a pointer to the new local connection. On failure, `NULL`.
  */
-local_conn_t* local_conn_new(local_listen_t* listen);
+local_conn_t* local_conn_new(void);
 
 /**
  * @brief Free and deinitialize a local connection.

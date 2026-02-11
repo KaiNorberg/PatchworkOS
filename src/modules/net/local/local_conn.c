@@ -9,13 +9,8 @@
 #include <stdlib.h>
 #include <sys/list.h>
 
-local_conn_t* local_conn_new(local_listen_t* listen)
+local_conn_t* local_conn_new(void)
 {
-    if (listen == NULL)
-    {
-        return NULL;
-    }
-
     local_conn_t* conn = malloc(sizeof(local_conn_t));
     if (conn == NULL)
     {
@@ -41,7 +36,6 @@ local_conn_t* local_conn_new(local_listen_t* listen)
     list_entry_init(&conn->entry);
     fifo_init(&conn->serverToClient, conn->serverToClientBuffer, LOCAL_BUFFER_SIZE);
     fifo_init(&conn->clientToServer, conn->clientToServerBuffer, LOCAL_BUFFER_SIZE);
-    conn->listen = REF(listen);
     conn->isClosed = false;
     lock_init(&conn->lock);
     wait_queue_init(&conn->waitQueue);
@@ -53,11 +47,6 @@ void local_conn_free(local_conn_t* conn)
     if (conn == NULL)
     {
         return;
-    }
-
-    if (conn->listen != NULL)
-    {
-        UNREF(conn->listen);
     }
 
     free(conn->clientToServerBuffer);

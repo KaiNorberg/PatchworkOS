@@ -15,9 +15,12 @@ static status_t nop_cancel(irp_t* irp)
 
 static status_t io_op_nop(irp_t* irp)
 {
-    irp_set_cancel(irp, nop_cancel);
-    irp_timeout_add(irp);
-    return OK;
+    status_t status = irp_timeout_add(irp, nop_cancel);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+    return INFO(IO, PENDING);
 }
 
 static status_t io_op_cancel(irp_t* irp)
@@ -40,11 +43,10 @@ static status_t io_op_cancel(irp_t* irp)
         if (irp_cancel(target) == EOK)
         {
             count++;
-        }
-
-        if (!(irp->sqe.cancel & IOCANCEL_ALL))
-        {
-            break;
+            if (!(irp->sqe.cancel & IOCANCEL_ALL))
+            {
+                break;
+            }
         }
     }
 
