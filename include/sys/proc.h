@@ -81,12 +81,12 @@ typedef enum
  *
  * @param argv A NULL-terminated array of strings, where `argv[0]` is the filepath to the desired executable.
  * @param flags Creation behaviour flags.
- * @param pid Optional ouput pointer for the childs pid.
+ * @param proc Optional ouput pointer for the childs identifier.
  * @return
  */
-static inline status_t proc_create(const char** argv, proc_flags_t flags, proc_t* pid)
+static inline status_t proc_create(const char** argv, proc_flags_t flags, proc_t* proc)
 {
-    return syscall2(SYS_PROC_CREATE, pid, (uint64_t)argv, flags);
+    return syscall2(SYS_PROC_CREATE, proc, (uint64_t)argv, flags);
 }
 
 /**
