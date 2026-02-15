@@ -2,7 +2,7 @@
 #include <sys/io.h>
 #include "user/common/io.h"
 
-void iosync_many(iosqe_t* sqes, iocqe_t* cqes, size_t count, size_t wait, size_t* completed)
+void iosyncn(iosqe_t* sqes, iocqe_t* cqes, size_t count, size_t wait, size_t* completed)
 {
     mtx_lock(&_stdIoringMtx);
 

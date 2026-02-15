@@ -641,7 +641,7 @@ static void dwm_mouse_read(void)
     while (true)
     {
         ioevents_t revents;
-        iopoll(mouse, 0, IOPOLL_READ, &revents);
+        iopoll(mouse, IOPOLL_READ, CLOCKS_NOW, &revents);
         if (!(revents & IOPOLL_READ))
         {
             break;
@@ -741,10 +741,10 @@ static void dwm_poll(void)
 
     uint64_t count;
     status_t status =
-        iopoll_many((iopoll_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(iopoll_t) + clientAmount, timeout, &count);
+        iopolln((iopoll_t*)pollCtx, sizeof(poll_ctx_t) / sizeof(iopoll_t) + clientAmount, timeout, &count);
     if (IS_ERR(status))
     {
-        printf("dwm: iopoll_many failed\n");
+        printf("dwm: iopolln failed\n");
         abort();
     }
 

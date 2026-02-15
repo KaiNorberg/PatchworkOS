@@ -22,7 +22,7 @@ int system(const char* command)
     }
 
     char buf[MAX_PATH];
-    status = ioread(wait, buf, MAX_PATH, IOOFF_CUR, NULL);
+    status = ioread(wait, buf, MAX_PATH, IOCUR, NULL);
     if (IS_ERR(status))
     {
         close(wait);

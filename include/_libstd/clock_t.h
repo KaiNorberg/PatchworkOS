@@ -16,6 +16,7 @@ typedef __UINT64_TYPE__ clock_t;
 #define CLOCKS_PER_MS ((clock_t)1000000ULL)
 #define CLOCKS_PER_US ((clock_t)1000ULL)
 #define CLOCKS_NEVER ((clock_t)__UINT64_MAX__)
+#define CLOCKS_NOW ((clock_t)0)
 
 /**
  * @brief Safely calculate remaining time until deadline.
@@ -25,7 +26,7 @@ typedef __UINT64_TYPE__ clock_t;
  *
  * @param deadline The deadline timestamp.
  * @param uptime The current uptime.
- * @return The remaining time, `0` if deadline passed, or `CLOCKS_NEVER` if deadline is `CLOCKS_NEVER`.
+ * @return The remaining time, `CLOCKS_NOW` if deadline passed, or `CLOCKS_NEVER` if deadline is `CLOCKS_NEVER`.
  */
 #define CLOCKS_REMAINING(deadline, uptime) \
     ({ \

@@ -19,7 +19,7 @@ static uint64_t terminal_columns_get(void)
     char buffer[MAX_NAME] = {0};
     for (uint32_t i = 0; i < sizeof(buffer) - 1; i++)
     {
-        ioread(STDIN_FILENO, &buffer[i], 1, IOOFF_CUR, NULL);
+        ioread(STDIN_FILENO, &buffer[i], 1, IOCUR, NULL);
         if (buffer[i] == 'R')
         {
             break;

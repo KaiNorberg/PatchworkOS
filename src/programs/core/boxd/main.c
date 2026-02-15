@@ -446,7 +446,7 @@ int main(void)
         }
 
         box_spawn_t ctx = {0};
-        status = ioread(client, ctx.input, sizeof(ctx.input) - 1, IOOFF_CUR, NULL);
+        status = ioread(client, ctx.input, sizeof(ctx.input) - 1, IOCUR, NULL);
         if (IS_ERR(status))
         {
             printf("boxd: failed to ioread request %Y\n", status);

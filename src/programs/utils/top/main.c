@@ -38,7 +38,7 @@ static void terminal_size_get(void)
     char buffer[MAX_NAME] = {0};
     for (uint32_t i = 0; i < sizeof(buffer) - 1; i++)
     {
-        ioread(STDIN_FILENO, &buffer[i], 1, IOOFF_CUR, NULL);
+        ioread(STDIN_FILENO, &buffer[i], 1, IOCUR, NULL);
         if (buffer[i] == 'R')
         {
             break;
@@ -353,7 +353,7 @@ static void perfs_update(perfs_t* perfs)
         clock_t remaining = SAMPLE_INTERVAL - (currentTime - lastSampleTime);
         // if (!(iopoll(STDIN_FILENO, IOPOLL_READ, remaining) & IOPOLL_READ))
         ioevents_t revents;
-        iopoll(STDIN_FILENO, remaining, IOPOLL_READ, &revents);
+        iopoll(STDIN_FILENO, IOPOLL_READ, remaining, &revents);
         if (!(revents & IOPOLL_READ))
         {
             break;
@@ -364,7 +364,7 @@ static void perfs_update(perfs_t* perfs)
         uint64_t previousScrollOffset = processScrollOffset;
 
         char c;
-        ioread(STDIN_FILENO, &c, 1, IOOFF_CUR, NULL);
+        ioread(STDIN_FILENO, &c, 1, IOCUR, NULL);
         switch (c)
         {
         case 'p':

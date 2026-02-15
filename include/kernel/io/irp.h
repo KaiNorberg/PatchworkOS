@@ -20,6 +20,8 @@
 typedef struct file file_t;
 typedef struct process process_t;
 typedef struct vnode vnode_t;
+typedef struct dentry dentry_t;
+typedef struct dir_ctx dir_ctx_t;
 
 typedef struct irp irp_t;
 
@@ -185,40 +187,40 @@ typedef struct irp irp_t;
  */
 
 typedef uint16_t irp_major_t; ///< IRP major function number type.
+
 /**
  * @brief Read operation.
- *
  * @param buffer The MDL describing the buffer to read into.
  * @param offset The offset within the file to read from.
  * @return The number of bytes read.
  */
 #define IRP_MJ_READ 0
+
 /**
  * @brief Write operation.
- *
  * @param buffer The MDL describing the buffer to write from.
  * @param offset The offset within the file to write to.
  * @return The number of bytes written.
  */
 #define IRP_MJ_WRITE 1
+
 /**
  * @brief Poll operation.
-
  * @param events The events to poll for.
  * @result The events that occurred stored as a `ioevents_t` value.
  */
 #define IRP_MJ_POLL 2
+
 /**
  * @brief Seek operation.
- *
  * @param offset The offset to seek to.
  * @param origin The origin of the seek operation.
  * @return The new file position.
  */
 #define IRP_MJ_SEEK 3
+
 /**
  * @brief Memory map operation.
- *
  * @param address The virtual address to map the file into, or `NULL` for any address.
  * @param offset The offset within the file to start mapping from.
  * @param length The number of bytes to map.
@@ -226,15 +228,29 @@ typedef uint16_t irp_major_t; ///< IRP major function number type.
  * @return The virtual address where the file was mapped.
  */
 #define IRP_MJ_MMAP 4
+
 /**
  * @brief Control operation.
- *
  * @param command The command to perform.
  * @param args The arguments for the command.
  * @return The result of the command.
  */
 #define IRP_MJ_CONTROL 5
-#define IRP_MJ_MAX 6 ///< The maximum number of major function numbers.
+
+/**
+ * @brief Lookup a dentry in a directory.
+ * @param dentry The negative dentry to fill.
+ */
+#define IRP_MJ_LOOKUP 6
+
+/**
+ * @brief Create a file or directory.
+ * @param dentry The dentry to create.
+ * @param mode The mode to create with.
+ */
+#define IRP_MJ_CREATE 7
+
+#define IRP_MJ_MAX 15 ///< The maximum number of major function numbers.
 
 typedef uint16_t irp_minor_t; ///< IRP minor function number type.
 #define IRP_MN_NORMAL 0       ///< No special behaviour.
@@ -328,6 +344,10 @@ typedef struct irp_frame
             iocmd_t command;
             const char* args;
         } control;
+        struct
+        {
+            dentry_t* target;
+        } lookup;
         uint64_t args[IRP_ARGS_MAX]; ///< Generic arguments.
     };
 } irp_frame_t;
@@ -703,7 +723,7 @@ static inline void irp_prep_read(irp_t* irp, mdl_t* buffer, ssize_t offset)
     next->read.buffer = buffer;
     next->read.dummyOffset = offset;
     next->read.offset = &next->read.dummyOffset;
-    if (offset == IOOFF_CUR)
+    if (offset == IOCUR)
     {
         next->flags |= IRP_FLAG_USE_FILE_POS;
     }
@@ -725,7 +745,7 @@ static inline void irp_prep_write(irp_t* irp, mdl_t* buffer, ssize_t offset)
     next->write.buffer = buffer;
     next->write.dummyOffset = offset;
     next->write.offset = &next->write.dummyOffset;
-    if (offset == IOOFF_CUR)
+    if (offset == IOCUR)
     {
         next->flags |= IRP_FLAG_USE_FILE_POS;
     }

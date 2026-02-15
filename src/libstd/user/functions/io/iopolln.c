@@ -3,7 +3,7 @@
 #include <sys/io.h>
 #include <sys/status.h>
 
-status_t iopoll_many(iopoll_t* fds, size_t nfds, clock_t timeout, size_t* count)
+status_t iopolln(iopoll_t* fds, size_t nfds, clock_t timeout, size_t* count)
 {
     if (nfds == 0)
     {
@@ -35,7 +35,7 @@ status_t iopoll_many(iopoll_t* fds, size_t nfds, clock_t timeout, size_t* count)
 
     size_t completed;
     size_t wait = (timeout == 0) ? 0 : 1;
-    iosync_many(sqes, cqes, nfds, wait, &completed);
+    iosyncn(sqes, cqes, nfds, wait, &completed);
 
     size_t events = 0;
     for (size_t i = 0; i < completed; i++)
@@ -81,7 +81,7 @@ status_t iopoll_many(iopoll_t* fds, size_t nfds, clock_t timeout, size_t* count)
 
     if (cancels > 0)
     {
-        iosync_many(sqes, NULL, cancels, cancels, NULL);
+        iosyncn(sqes, NULL, cancels, cancels, NULL);
 
         mtx_lock(&_stdIoringMtx);
         size_t drained = 0;

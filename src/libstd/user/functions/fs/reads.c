@@ -28,7 +28,7 @@ status_t reads(char** out, fd_t fd)
         }
 
         uint64_t bytesRead;
-        status_t status = ioread(fd, buffer + totalRead, size - totalRead, IOOFF_CUR, &bytesRead);
+        status_t status = ioread(fd, buffer + totalRead, size - totalRead, IOCUR, &bytesRead);
         if (IS_ERR(status))
         {
             free(buffer);

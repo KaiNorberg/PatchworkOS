@@ -57,6 +57,7 @@ extern "C"
         _buffer; \
     })
 
+
 /**
  * @brief System call for opening files.
  *
@@ -235,7 +236,7 @@ typedef enum
 } vnode_type_t;
 
 /**
- * @brief A suberblock identifier that uniquely identifies a volume within the system.
+ * @brief A volume identifier that uniquely identifies a volume within the system.
  *
  * When combined with a vnode number, this can uniquely identify an vnode within the entire system.
  */

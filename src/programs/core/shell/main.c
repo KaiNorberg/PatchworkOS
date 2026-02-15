@@ -17,7 +17,7 @@ static uint64_t cmdline_read(char* buffer, uint64_t size)
     while (1)
     {
         char chr;
-        if (IS_ERR(ioread(STDIN_FILENO, &chr, 1, IOOFF_CUR, NULL)))
+        if (IS_ERR(ioread(STDIN_FILENO, &chr, 1, IOCUR, NULL)))
         {
             return PFAIL;
         }

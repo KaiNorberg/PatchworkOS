@@ -223,7 +223,7 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t*
 
     if (ansi.length > 0)
     {
-        iowrite(term->stdin, ansi.buffer, ansi.length, IOOFF_CUR, NULL);
+        iowrite(term->stdin, ansi.buffer, ansi.length, IOCUR, NULL);
     }
 
     if (ansi.length == 1 && ansi.buffer[0] == '\003')
@@ -321,7 +321,7 @@ static void terminal_execute_ansi(terminal_t* term, element_t* elem, drawable_t*
         uint16_t cursorCol = term->cursor->col + 1;
         char response[MAX_NAME];
         int responseLen = snprintf(response, sizeof(response), "\033[%d;%dR", cursorRow, cursorCol);
-        iowrite(term->stdin, response, responseLen, IOOFF_CUR, NULL);
+        iowrite(term->stdin, response, responseLen, IOCUR, NULL);
     }
     break;
     case 's': // Save Cursor Position
@@ -783,7 +783,7 @@ void terminal_loop(window_t* win)
         {        
             size_t readCount;
             status_t status =
-                ioread(terminal->stdout, &buffer[length], TERMINAL_MAX_DATA - length, IOOFF_CUR, &readCount);
+                ioread(terminal->stdout, IOBUF(&buffer[length], TERMINAL_MAX_DATA - length), IOCUR, CLOCKS_NEVER, &readCount);
             if (IS_ERR(status) || readCount == 0)
             {
                 break;
