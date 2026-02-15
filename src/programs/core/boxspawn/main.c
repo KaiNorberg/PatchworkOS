@@ -122,7 +122,7 @@ int main(int argc, char** argv)
 
     memset(buffer, 0, sizeof(buffer));
 
-    status = ioread(data, buffer, sizeof(buffer) - 1, IOOFF_CUR, NULL);
+    status = ioread(data, buffer, sizeof(buffer) - 1, IOCUR, NULL);
     if (IS_ERR(status))
     {
         proc_exit(F("boxspawn: failed to ioread response %Y", status));
@@ -154,7 +154,7 @@ int main(int argc, char** argv)
     }
 
     char string[NOTE_MAX];
-    status = RETRY_ON_CODE(ioread(wait, string, sizeof(string) - 1, IOOFF_CUR, NULL), INTR);
+    status = RETRY_ON_CODE(ioread(wait, string, sizeof(string) - 1, IOCUR, NULL), INTR);
     if (IS_ERR(status))
     {
         proc_exit(F("boxspawn: failed to ioread status %Y", status));

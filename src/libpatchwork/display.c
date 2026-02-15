@@ -201,7 +201,7 @@ void display_cmds_flush(display_t* disp)
     if (disp->isConnected && disp->cmds.amount != 0)
     {
         size_t count;
-        status_t status = iowrite(disp->data, &disp->cmds, disp->cmds.size, IOOFF_CUR, &count);
+        status_t status = iowrite(disp->data, &disp->cmds, disp->cmds.size, IOCUR, &count);
         if (IS_ERR(status) || count != disp->cmds.size)
         {
             disp->isConnected = false;
@@ -240,7 +240,7 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
     }
 
     ioevents_t revents = 0;
-    status_t status = iopoll(disp->data, timeout, IOPOLL_READ, &revents);
+    status_t status = iopoll(disp->data, IOPOLL_READ, timeout, &revents);
     if (IS_ERR(status) && !IS_CODE(status, TIMEOUT))
     {
         display_disconnect(disp);
@@ -261,7 +261,7 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
         return PFAIL;
     }
     size_t bytesRead;
-    status = ioread(disp->data, event, sizeof(event_t), IOOFF_CUR, &bytesRead);
+    status = ioread(disp->data, event, sizeof(event_t), IOCUR, &bytesRead);
     if (IS_ERR(status) || bytesRead != sizeof(event_t))
     {
         disp->isConnected = false;
@@ -301,7 +301,7 @@ uint64_t display_poll(display_t* disp, iopoll_t* fds, uint64_t nfds, clock_t tim
     }
 
     size_t ready;
-    status_t status = iopoll_many(allFds, nfds + 1, timeout, &ready);
+    status_t status = iopolln(allFds, nfds + 1, timeout, &ready);
     if (IS_ERR(status))
     {
         free(allFds);
@@ -378,7 +378,7 @@ uint64_t display_wait(display_t* disp, event_t* event, event_type_t expected)
     while (true)
     {
         size_t bytesRead;
-        status_t status = ioread(disp->data, event, sizeof(event_t), IOOFF_CUR, &bytesRead);
+        status_t status = ioread(disp->data, event, sizeof(event_t), IOCUR, &bytesRead);
         if (IS_ERR(status) || bytesRead != sizeof(event_t))
         {
             disp->isConnected = false;

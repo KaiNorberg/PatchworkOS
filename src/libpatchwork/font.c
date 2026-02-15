@@ -47,7 +47,7 @@ font_t* font_new(display_t* disp, const char* family, const char* weight, uint64
     }
 
     grf_t grf;
-    status = ioread(file, &font->grf, fileSize, IOOFF_CUR, NULL);
+    status = ioread(file, &font->grf, fileSize, IOCUR, NULL);
     if (IS_ERR(status))
     {
         free(font);

@@ -75,84 +75,6 @@ typedef struct vnode_class
     status_t (*file_ctor)(file_t* file); ///< File constructor.
     void (*file_dtor)(file_t* file);     ///< File destructor.
     irp_handler_t handlers[IRP_MJ_MAX];  ///< IRP handlers indexed by major function number.
-
-    /**
-     * @brief Look up a dentry in a directory vnode.
-     *
-     * Should set the target dentry to be positive (give it an vnode), if the entry does not exist the operation
-     * should still return success but leave the dentry negative.
-     *
-     * @param dir The directory vnode to look in.
-     * @param target The dentry to look up.
-     * @return An appropriate status value.
-     *
-     * @deprecated Should be replaced as part of the async refactor.
-     */
-    status_t (*lookup)(vnode_t* dir, dentry_t* target);
-    /**
-     * @brief Handles both directories and files depending on mode.
-     *
-     * Takes in a negative dentry and creates the corresponding vnode to make the dentry positive.
-     *
-     * @param dir The directory vnode to create the entry in.
-     * @param target The negative dentry to create.
-     * @param mode The mode to create the entry with.
-     * @return An appropriate status value.
-     *
-     * @deprecated Should be replaced as part of the async refactor.
-     */
-    status_t (*create)(vnode_t* dir, dentry_t* target, mode_t mode);
-    /**
-     * @brief Set the vnode size to zero.
-     *
-     * @param target The vnode to truncate.
-     *
-     * @deprecated Should be replaced as part of the async refactor.
-     */
-    void (*truncate)(vnode_t* target);
-    /**
-     * @brief Make the same file vnode appear twice in the filesystem.
-     *
-     * @param dir The directory vnode to create the link in.
-     * @param old The existing dentry containing the vnode to link to.
-     * @param new The negative dentry to store the same vnode as old.
-     * @return An appropriate status value.
-     *
-     * @deprecated Should be replaced as part of the async refactor.
-     */
-    status_t (*link)(vnode_t* dir, dentry_t* old, dentry_t* new);
-    /**
-     * @brief Retrieve the path of the symbolic link.
-     *
-     * @param vnode The symbolic link vnode.
-     * @param buffer The buffer to store the path in.
-     * @param size The size of the buffer.
-     * @return An appropriate status value.
-     *
-     * @deprecated Should be replaced as part of the async refactor.
-     */
-    status_t (*readlink)(vnode_t* vnode, char* buffer, size_t size, size_t* bytesRead);
-    /**
-     * @brief Create a symbolic link.
-     *
-     * @param dir The directory vnode to create the symbolic link in.
-     * @param target The negative dentry to create.
-     * @param dest The path to which the symbolic link will point.
-     * @return An appropriate status value.
-     *
-     * @deprecated Should be replaced as part of the async refactor.
-     */
-    status_t (*symlink)(vnode_t* dir, dentry_t* target, const char* dest);
-    /**
-     * @brief Remove a file or directory.
-     *
-     * @param dir The directory vnode containing the target.
-     * @param target The dentry to remove.
-     * @return An appropriate status value.
-     *
-     * @deprecated Should be replaced as part of the async refactor.
-     */
-    status_t (*remove)(vnode_t* dir, dentry_t* target);
     /**
      * @brief Cleanup function called when the vnode is being freed.
      *
@@ -171,16 +93,6 @@ typedef struct vnode_class
      * @deprecated Should be replaced as part of the async refactor.
      */
     bool (*revalidate)(dentry_t* dentry);
-    /**
-     * @brief Iterate over the entries in a directory dentry.
-     *
-     * @param dentry The directory dentry to iterate over.
-     * @param ctx The directory context to use for iteration.
-     * @return An appropriate status value.
-     *
-     * @deprecated Should be replaced as part of the async refactor.
-     */
-    status_t (*iterate)(dentry_t* dentry, dir_ctx_t* ctx);
 } vnode_class_t;
 
 /**
@@ -225,15 +137,5 @@ vnode_t* vnode_new(volume_t* volume, const vnode_class_t* cls);
  * @return An appropriate status value.
  */
 status_t vnode_call(vnode_t* vnode, irp_t* irp);
-
-/**
- * @brief Truncate the vnode.
- *
- * The filesystem should implement the actual truncation in the vnode ops truncate function, this is just a helper to
- * call it.
- *
- * @param vnode The vnode to truncate.
- */
-void vnode_truncate(vnode_t* vnode);
 
 /** @} */

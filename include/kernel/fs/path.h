@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <sys/fs.h>
 #include <sys/status.h>
+#include <kernel/io/irp.h>
 
 typedef struct path path_t;
 typedef struct mount mount_t;
@@ -31,7 +32,7 @@ typedef struct file file_t;
  * Paths can have flags appended at the end, these flags are parsed to determine the mode of the related operation.
  *
  * Each flag starts with `:` and multiple instances of the same flag are allowed, for example
- * `/path/to/file:append:append:nonblock`.
+ * `/path/to/file:append:append:execute`.
  *
  * Included is a list of all available flags:
  *
@@ -41,19 +42,21 @@ typedef struct file file_t;
  * | `write` | `w` | Open with write permissions. |
  * | `execute` | `x` | Open with execute permissions. |
  * | `append` | `a` | Any data written to the file will be appended to the end. |
- * | `create` | `c` | Create the file or directory if it does not exist. |
- * | `exclusive` | `e` | Will cause the open to fail if the file or directory already exists and `:create` is specified. |
+ * | `file` | `f` | Create a regular file, or fail if the file already exists but is not a regular file. |
+ * | `directory` | `d` | Create a directory, or fail if the file already exists but is not a directory. |
+ * | `symlink` | `s` | Create a symlink, or fail if the file already exists but is not a symlink. |
+ * | `hardlink` | `h` | Create a hardlink, or fail if the file already exists. |
+ * | `exclusive` | `e` | Will cause the open to fail if the file already exists. |
+ * | `existing` | `E` | Force failure if the file does not exist, even if any creation flags are specified, useful if you want to, for example, ensure you are opening a directory. |
  * | `truncate` | `t` | Truncate the file to zero length if it already exists. |
- * | `directory` | `d` | Create or remove directories. All other operations will ignore this flag. |
- * | `recursive` | `R` | If removing a directory, remove all its contents recursively. If using `getdents()`, list contents recursively. | 
- * | `nofollow`  | `l` | Do not follow symbolic links. | 
+ * | `nofollow`  | `l` | Do not follow symlinks. | 
  * | `private`   | `p` | Any files with this flag will be closed before a process starts executing. Any mounts with this flag will not be copied to a child namespace. | 
  * | `propagate`  | `g` | Propagate mounts and unmounts to child namespaces. | 
  * | `locked`    | `L` | Forbid unmounting this mount, useful for hiding directories or files. |
  *
  * For convenience, a single letter short form is also available as shown above, these single letter forms do not need
- * to be separated by colons, for example `/path/to/file:rwcte` is equivalent to
- * `/path/to/file:read:write:create:truncate:exclusive`.
+ * to be separated by colons, for example `/path/to/file:rwfte` is equivalent to
+ * `/path/to/file:read:write:file:truncate:exclusive`.
  *
  * The parsed mode is the primary way to handle both the behaviour of vfs operations and permissions in the
  * kernel. For example, a file opened from within a directory which was bound with only read permissions will also have
@@ -82,8 +85,7 @@ typedef enum mode
     MODE_CREATE = 1 << 5,
     MODE_EXCLUSIVE = 1 << 6,
     MODE_TRUNCATE = 1 << 7,
-    MODE_DIRECTORY = 1 << 8,
-    MODE_RECURSIVE = 1 << 9,
+    MODE_EXISTING = 1 << 8,
     MODE_NOFOLLOW = 1 << 10,
     MODE_PRIVATE = 1 << 11,
     MODE_PROPAGATE = 1 << 12,
@@ -266,7 +268,7 @@ status_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLas
  */
 status_t path_walk_parent_and_child(const path_t* from, path_t* outParent, path_t* outChild, const pathname_t* pathname,
     namespace_t* ns);
-
+    
 /**
  * @brief Convert a path to a pathname.
  *

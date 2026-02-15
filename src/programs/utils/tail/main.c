@@ -51,15 +51,15 @@ int main(int argc, char* argv[])
     while (true)
     {
         ioevents_t revents;
-        iopoll(file, follow ? CLOCKS_NEVER : 0, IOPOLL_READ, &revents);
+        iopoll(file, IOPOLL_READ, follow ? CLOCKS_NEVER : CLOCKS_NOW, &revents);
         if (revents & IOPOLL_READ)
         {
             char buffer[1024];
             uint64_t bytesRead;
-            status_t status = ioread(file, buffer, sizeof(buffer), IOOFF_CUR, &bytesRead);
+            status_t status = ioread(file, buffer, sizeof(buffer), IOCUR, &bytesRead);
             if (bytesRead > 0)
             {
-                iowrite(STDOUT_FILENO, buffer, bytesRead, IOOFF_CUR, NULL);
+                iowrite(STDOUT_FILENO, buffer, bytesRead, IOCUR, NULL);
             }
         }
         else if (!follow)

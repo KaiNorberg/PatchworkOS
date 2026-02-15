@@ -6,23 +6,6 @@
 
 #include <sys/io.h>
 
-static status_t nop_cancel(irp_t* irp)
-{
-    UNUSED(irp);
-
-    return OK;
-}
-
-static status_t io_op_nop(irp_t* irp)
-{
-    status_t status = irp_timeout_add(irp, nop_cancel);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-    return INFO(IO, PENDING);
-}
-
 static status_t io_op_cancel(irp_t* irp)
 {
     ioring_ctx_t* ctx = irp_get_ctx(irp);
@@ -164,14 +147,13 @@ static status_t io_op_control(irp_t* irp)
 typedef status_t (*io_op_func_t)(irp_t*);
 
 static const io_op_func_t ops[IOOP_MAX] = {
-    [IOOP_NOP] = io_op_nop,
     [IOOP_CANCEL] = io_op_cancel,
     [IOOP_READ] = io_op_read,
     [IOOP_WRITE] = io_op_write,
     [IOOP_POLL] = io_op_poll,
     [IOOP_SEEK] = io_op_seek,
-    [IOOP_MMAP] = io_op_mmap,
-    [IOOP_CONTROL] = io_op_control,
+    [IOOP_MAP] = io_op_mmap,
+    
 };
 
 status_t io_op_dispatch(irp_t* irp)

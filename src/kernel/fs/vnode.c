@@ -83,18 +83,3 @@ status_t vnode_call(vnode_t* vnode, irp_t* irp)
 
     return irp_call(irp, handler);
 }
-
-void vnode_truncate(vnode_t* vnode)
-{
-    if (vnode == NULL)
-    {
-        return;
-    }
-
-    if (vnode->cls->truncate != NULL)
-    {
-        MUTEX_SCOPE(&vnode->mutex);
-        assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-        vnode->cls->truncate(vnode);
-    }
-}

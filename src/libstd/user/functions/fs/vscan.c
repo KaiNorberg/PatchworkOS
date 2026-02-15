@@ -10,7 +10,7 @@
         int res = EOF; \
         char c; \
         size_t count; \
-        status_t status = ioread(fd, &c, 1, IOOFF_CUR, &count); \
+        status_t status = ioread(fd, &c, 1, IOCUR, &count); \
         if (IS_INFO(status) && count == 1) \
         { \
             res = c; \

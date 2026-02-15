@@ -3,7 +3,6 @@
 #include <kernel/mem/paging_types.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/pool.h>
-#include <kernel/mem/space.h>
 
 #include <errno.h>
 #include <stdlib.h>
@@ -11,6 +10,7 @@
 #include <sys/status.h>
 
 typedef struct process process_t;
+typedef struct space space_t;
 
 /**
  * @brief Memory Descriptor List.

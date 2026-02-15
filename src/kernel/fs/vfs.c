@@ -245,7 +245,7 @@ status_t vfs_read(file_t* file, void* buffer, size_t count, size_t* out)
         return status;
     }
 
-    irp_prep_read(irp, mdl, IOOFF_CUR);
+    irp_prep_read(irp, mdl, IOCUR);
     uint64_t result = 0;
     status = vfs_run_sync(irp, file, &result);
     if (out != NULL)
@@ -291,7 +291,7 @@ status_t vfs_write(file_t* file, const void* buffer, size_t count, size_t* out)
         return status;
     }
 
-    irp_prep_write(irp, mdl, IOOFF_CUR);
+    irp_prep_write(irp, mdl, IOCUR);
     uint64_t result = 0;
     status = vfs_run_sync(irp, file, &result);
     if (out != NULL)
