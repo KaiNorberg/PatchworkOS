@@ -7,5 +7,5 @@
 
 void exit(int status)
 {
-    proc_exit(F("%d", status));
+    proc_exit(IOFMT("%d", status));
 }

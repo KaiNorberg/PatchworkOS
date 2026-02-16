@@ -463,11 +463,9 @@ status_t irp_get(irp_pool_t* pool, irp_t** out);
  *
  * @param irp The IRP to associate the MDL with.
  * @param out Output pointer for the MDL.
- * @param addr The virtual address of the memory region to add to the MDL, or `NULL` for a blank MDL.
- * @param size The size of the memory region.
  * @return An appropriate status value.
  */
-status_t irp_get_mdl(irp_t* irp, mdl_t** out, const void* addr, size_t size);
+status_t irp_get_mdl(irp_t* irp, mdl_t** out);
 
 /**
  * @brief Retrieve the IRP pool that an IRP was allocated from.

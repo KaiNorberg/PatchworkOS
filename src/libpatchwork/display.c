@@ -60,7 +60,7 @@ display_t* display_new(void)
         return NULL;
     }
 
-    status = open(&disp->ctl, F("/net/local/%s/ctl", disp->id));
+    status = open(&disp->ctl, IOFMT("/net/local/%s/ctl", disp->id));
     if (IS_ERR(status))
     {
         free(disp->id);
@@ -76,7 +76,7 @@ display_t* display_new(void)
         return NULL;
     }
 
-    status = open(&disp->data, F("/net/local/%s/data", disp->id));
+    status = open(&disp->data, IOFMT("/net/local/%s/data", disp->id));
     if (IS_ERR(status))
     {
         close(disp->ctl);

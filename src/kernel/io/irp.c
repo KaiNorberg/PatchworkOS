@@ -299,14 +299,9 @@ status_t irp_get(irp_pool_t* pool, irp_t** out)
     return OK;
 }
 
-status_t irp_get_mdl(irp_t* irp, mdl_t** out, const void* addr, size_t size)
+status_t irp_get_mdl(irp_t* irp, mdl_t** out)
 {
     if (irp == NULL || out == NULL)
-    {
-        return ERR(IO, INVAL);
-    }
-
-    if (size > 0 && addr == NULL)
     {
         return ERR(IO, INVAL);
     }
@@ -330,12 +325,6 @@ status_t irp_get_mdl(irp_t* irp, mdl_t** out, const void* addr, size_t size)
         }
         mdl_init(next, current);
         current = next;
-    }
-
-    status_t status = mdl_from_region(current, NULL, &process->space, addr, size);
-    if (IS_ERR(status))
-    {
-        return status;
     }
 
     *out = current;

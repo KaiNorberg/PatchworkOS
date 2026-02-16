@@ -13,7 +13,7 @@ void _io_init(void)
     status_t status = ioring_setup(&_stdIoring, NULL, 64, 64);
     if (IS_ERR(status))
     {
-        proc_exit(F("libstd: failed to setup ioring %Y", status));
+        proc_exit(IOFMT("libstd: failed to setup ioring %Y", status));
     }
 
     mtx_init(&_stdIoringMtx, mtx_recursive);

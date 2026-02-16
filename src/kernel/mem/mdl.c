@@ -45,24 +45,6 @@ void mdl_free_chain(mdl_t* mdl, void (*free)(void*))
     }
 }
 
-status_t mdl_from_region(mdl_t* mdl, mdl_t* prev, space_t* space, const void* addr, size_t size)
-{
-    if (mdl == NULL)
-    {
-        return ERR(MMU, INVAL);
-    }
-    mdl_init(mdl, prev);
-
-    status_t status = mdl_add(mdl, space, addr, size);
-    if (IS_ERR(status))
-    {
-        mdl_deinit(mdl);
-        return status;
-    }
-
-    return OK;
-}
-
 static status_t mdl_push(mdl_t* mdl, phys_addr_t phys, size_t size)
 {
     if (size > UINT32_MAX)
@@ -77,7 +59,7 @@ static status_t mdl_push(mdl_t* mdl, phys_addr_t phys, size_t size)
 
     if (mdl->amount == mdl->capacity)
     {
-        uint32_t newCapacity = mdl->capacity + 4;
+        uint32_t newCapacity = mdl->capacity * 2;
         mdl_entry_t* newEntries;
 
         if (mdl->entries == mdl->small)
@@ -144,6 +126,60 @@ status_t mdl_add(mdl_t* mdl, space_t* space, const void* addr, size_t size)
 
         ptr += len;
         remaining -= len;
+    }
+
+    return OK;
+}
+
+status_t mdl_add_vector(mdl_t* mdl, space_t* space, const iovec_t* vector, size_t count)
+{
+    if (mdl == NULL)
+    {
+        return ERR(MMU, INVAL);
+    }
+
+    if (count == 0)
+    {
+        return OK;
+    }
+
+    if (vector == NULL)
+    {
+        return ERR(MMU, INVAL);
+    }
+
+    for (size_t i = 0; i < count; i++)
+    {
+        iovec_t vec;
+        const uint8_t* src = (const uint8_t*)&vector[i];
+        uint8_t* dst = (uint8_t*)&vec;
+        size_t len = sizeof(iovec_t);
+
+        while (len > 0)
+        {
+            phys_addr_t phys;
+            status_t status = space_virt_to_phys(&phys, space, src);
+            if (IS_ERR(status))
+            {
+                return status;
+            }
+
+            size_t offset = phys % PAGE_SIZE;
+            size_t avail = MIN(len, PAGE_SIZE - offset);
+
+            void* kaddr = PFN_TO_VIRT(PHYS_TO_PFN(phys)) + offset;
+            memcpy(dst, kaddr, avail);
+
+            dst += avail;
+            src += avail;
+            len -= avail;
+        }
+
+        status_t status = mdl_add(mdl, space, vec.base, vec.length);
+        if (IS_ERR(status))
+        {
+            return status;
+        }
     }
 
     return OK;

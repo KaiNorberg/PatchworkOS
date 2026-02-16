@@ -54,7 +54,14 @@ static status_t io_op_read(irp_t* irp)
     }
 
     mdl_t* mdl;
-    status_t status = irp_get_mdl(irp, &mdl, irp->sqe.buffer, irp->sqe.count);
+    status_t status = irp_get_mdl(irp, &mdl);
+    if (IS_ERR(status))
+    {
+        UNREF(file);
+        return status;
+    }
+
+    status = mdl_add_vector(mdl, &process->space, irp->sqe.vector, irp->sqe.count);
     if (IS_ERR(status))
     {
         UNREF(file);
@@ -82,7 +89,14 @@ static status_t io_op_write(irp_t* irp)
     }
 
     mdl_t* mdl;
-    status_t status = irp_get_mdl(irp, &mdl, irp->sqe.buffer, irp->sqe.count);
+    status_t status = irp_get_mdl(irp, &mdl);
+    if (IS_ERR(status))
+    {
+        UNREF(file);
+        return status;
+    }
+
+    status = mdl_add_vector(mdl, &process->space, irp->sqe.vector, irp->sqe.count);
     if (IS_ERR(status))
     {
         UNREF(file);

@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <sys/list.h>
 #include <sys/status.h>
+#include <sys/io.h>
 
 typedef struct process process_t;
 typedef struct space space_t;
@@ -126,18 +127,6 @@ static inline size_t mdl_size(mdl_t* mdl)
 void mdl_free_chain(mdl_t* mdl, void (*free)(void*));
 
 /**
- * @brief Initialize a Memory Descriptor List from a memory region.
- *
- * @param mdl Pointer to the MDL.
- * @param prev Pointer to the previous MDL in the chain, or `NULL` if none.
- * @param space The address space of the region.
- * @param addr The virtual address of the memory region.
- * @param size The size of the memory region in bytes.
- * @return An appropriate status value.
- */
-status_t mdl_from_region(mdl_t* mdl, mdl_t* prev, space_t* space, const void* addr, size_t size);
-
-/**
  * @brief Add a memory region to the Memory Descriptor List.
  *
  * @param mdl Pointer to the MDL.
@@ -147,6 +136,19 @@ status_t mdl_from_region(mdl_t* mdl, mdl_t* prev, space_t* space, const void* ad
  * @return An appropriate status value.
  */
 status_t mdl_add(mdl_t* mdl, space_t* space, const void* addr, size_t size);
+
+/**
+ * @brief Add an array of I/O vectors to the Memory Descriptor List.
+ *
+ * @note This function will function safely even if the vectors are in user-memory or not in the currently loaded address space.
+ * 
+ * @param mdl Pointer to the MDL.
+ * @param space The address space of the user process.
+ * @param vector Pointer to the array of I/O vectors, can be `NULL` if `count == 0`.
+ * @param count The number of vectors in the array.
+ * @return An appropriate status value.
+ */
+status_t mdl_add_vector(mdl_t* mdl, space_t* space, const iovec_t* vector, size_t count);
 
 /**
  * @brief Copy from a buffer into a Memory Descriptor List.

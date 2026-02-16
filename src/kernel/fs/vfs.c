@@ -1027,7 +1027,7 @@ SYSCALL_DEFINE(SYS_OPENAT, fd_t from, const char* pathString)
     process_t* process = thread->process;
 
     path_t fromPath = PATH_EMPTY;
-    if (from != FD_NONE)
+    if (from != FDNONE)
     {
         file_t* fromFile = file_table_get(&process->files, from);
         if (fromFile == NULL)
@@ -1047,7 +1047,7 @@ SYSCALL_DEFINE(SYS_OPENAT, fd_t from, const char* pathString)
     }
 
     file_t* file = NULL;
-    status = vfs_openat(&file, from != FD_NONE ? &fromPath : NULL, &pathname, process);
+    status = vfs_openat(&file, from != FDNONE ? &fromPath : NULL, &pathname, process);
     if (IS_ERR(status))
     {
         return status;

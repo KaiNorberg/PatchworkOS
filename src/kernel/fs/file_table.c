@@ -51,7 +51,7 @@ fd_t file_table_open(file_table_t* table, file_t* file)
 {
     if (table == NULL || file == NULL)
     {
-        return FD_NONE;
+        return FDNONE;
     }
 
     LOCK_SCOPE(&table->lock);
@@ -59,7 +59,7 @@ fd_t file_table_open(file_table_t* table, file_t* file)
     uint64_t index = bitmap_find_first_clear(&table->bitmap, 0, CONFIG_MAX_FD);
     if (index >= CONFIG_MAX_FD)
     {
-        return FD_NONE;
+        return FDNONE;
     }
 
     table->files[index] = REF(file);
@@ -196,7 +196,7 @@ status_t file_table_dup(file_table_t* table, fd_t oldFd, fd_t* newFd)
         return OK;
     }
 
-    if (*newFd == FD_NONE)
+    if (*newFd == FDNONE)
     {
         uint64_t index = bitmap_find_first_clear(&table->bitmap, 0, CONFIG_MAX_FD);
         if (index >= CONFIG_MAX_FD)

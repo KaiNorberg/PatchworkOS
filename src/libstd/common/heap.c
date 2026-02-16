@@ -40,16 +40,16 @@ void _heap_unmap_memory(void* addr, uint64_t size)
 
 mtx_t _heapLock;
 
-static fd_t zeroDev = FD_NONE;
+static fd_t zeroDev = FDNONE;
 
 void* _heap_map_memory(uint64_t size)
 {
-    if (zeroDev == FD_NONE)
+    if (zeroDev == FDNONE)
     {
         status_t status = open(&zeroDev, "/dev/const/zero:rw");
         if (IS_ERR(status))
         {
-            proc_exit(F("libstd: failed to open /dev/const/zero %Y\n", status));
+            proc_exit(IOFMT("libstd: failed to open /dev/const/zero %Y\n", status));
         }
     }
 

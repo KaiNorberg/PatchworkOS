@@ -52,25 +52,25 @@ static void init_root_ns(void)
     status_t status = mount("/dev:rwL", "/sys/fs/devfs", NULL);
     if (IS_ERR(status))
     {
-        proc_exit(F("init: failed to mount devfs %Y", status));
+        proc_exit(IOFMT("init: failed to mount devfs %Y", status));
     }
 
     status = mount("/net:rwL", "/sys/fs/netfs", NULL);
     if (IS_ERR(status))
     {
-        proc_exit(F("init: failed to mount netfs %Y", status));
+        proc_exit(IOFMT("init: failed to mount netfs %Y", status));
     }
 
     status = mount("/proc:rwL", "/sys/fs/procfs", NULL);
     if (IS_ERR(status))
     {
-        proc_exit(F("init: failed to mount procfs %Y", status));
+        proc_exit(IOFMT("init: failed to mount procfs %Y", status));
     }
 
     status = mount("/tmp:rwL", "/sys/fs/tmpfs", NULL);
     if (IS_ERR(status))
     {
-        proc_exit(F("init: failed to mount tmpfs %Y", status));
+        proc_exit(IOFMT("init: failed to mount tmpfs %Y", status));
     }
 }
 
@@ -80,7 +80,7 @@ static void init_spawn_boxd(void)
     status_t status = proc_create(argv, PROC_DEFAULT, NULL);
     if (IS_ERR(status))
     {
-        proc_exit(F("init: failed to spawn boxd %Y", status));
+        proc_exit(IOFMT("init: failed to spawn boxd %Y", status));
     }
 
     struct timespec ts = {.tv_sec = 0, .tv_nsec = CLOCKS_PER_MS * 10};
@@ -95,7 +95,7 @@ static void init_create_pkg_links(void)
     status = open(&box, "/box");
     if (IS_ERR(status))
     {
-        proc_exit(F("init: failed to open /box %Y", status));
+        proc_exit(IOFMT("init: failed to open /box %Y", status));
     }
 
     dirent_t* dirents;
@@ -104,7 +104,7 @@ static void init_create_pkg_links(void)
     if (IS_ERR(status))
     {
         close(box);
-        proc_exit(F("init: failed to ioread /box %Y", status));
+        proc_exit(IOFMT("init: failed to ioread /box %Y", status));
     }
     close(box);
 
@@ -115,11 +115,11 @@ static void init_create_pkg_links(void)
             continue;
         }
 
-        status = symlink("boxspawn", F("/base/bin/%s", dirents[i].path));
+        status = symlink("boxspawn", IOFMT("/base/bin/%s", dirents[i].path));
         if (IS_ERR(status) && !IS_CODE(status, EXIST))
         {
             free(dirents);
-            proc_exit(F("init: failed to create launch symlink for box '%s' %Y\n", dirents[i].path, status));
+            proc_exit(IOFMT("init: failed to create launch symlink for box '%s' %Y\n", dirents[i].path, status));
         }
     }
 
@@ -185,14 +185,14 @@ int main(void)
     status_t status = open(&klog, "/dev/klog:rw");
     if (IS_ERR(status))
     {
-        proc_exit(F("init: failed to open klog %Y", status));
+        proc_exit(IOFMT("init: failed to open klog %Y", status));
     }
     fd_t stdoutFd = STDOUT_FILENO;
     fd_t stderrFd = STDERR_FILENO;
     if (IS_ERR(status = dup(klog, &stdoutFd)) || IS_ERR(status = dup(klog, &stderrFd)))
     {
         close(klog);
-        proc_exit(F("init: failed to dup klog %Y", status));
+        proc_exit(IOFMT("init: failed to dup klog %Y", status));
     }
     close(klog);
 

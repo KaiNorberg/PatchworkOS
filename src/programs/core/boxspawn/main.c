@@ -28,20 +28,20 @@ int main(int argc, char** argv)
     status_t status = note_set(note_handler);
     if (IS_ERR(status))
     {
-        proc_exit(F("boxspawn: failed to register note handler %Y", status));
+        proc_exit(IOFMT("boxspawn: failed to register note handler %Y", status));
     }
 
     char* id;
     status = readfiles(&id, "/net/local/seqpacket");
     if (IS_ERR(status))
     {
-        proc_exit(F("boxspawn: failed to open local seqpacket socket %Y", status));
+        proc_exit(IOFMT("boxspawn: failed to open local seqpacket socket %Y", status));
     }
 
-    status = writefiles(F("/net/local/%s/ctl", id), "connect boxspawn");
+    status = writefiles(IOFMT("/net/local/%s/ctl", id), "connect boxspawn");
     if (IS_ERR(status))
     {
-        proc_exit(F("boxspawn: failed to connect to boxspawn %Y", status));
+        proc_exit(IOFMT("boxspawn: failed to connect to boxspawn %Y", status));
     }
 
     char stdio[3][KEY_128BIT];
@@ -50,7 +50,7 @@ int main(int argc, char** argv)
         status = share(stdio[i], sizeof(stdio[i]), i, CLOCKS_PER_SEC);
         if (IS_ERR(status))
         {
-            proc_exit(F("boxspawn: failed to share stdio %d %Y", i, status));
+            proc_exit(IOFMT("boxspawn: failed to share stdio %d %Y", i, status));
         }
     }
 
@@ -61,7 +61,7 @@ int main(int argc, char** argv)
     {
         if (ST_CODE(status) != ST_CODE_NOENT)
         {
-            proc_exit(F("boxspawn: failed to share group %Y", status));
+            proc_exit(IOFMT("boxspawn: failed to share group %Y", status));
         }
 
         printf("boxspawn: `/proc` does not appear to be mounted, foreground boxes will not work correctly\n");
@@ -71,7 +71,7 @@ int main(int argc, char** argv)
         status = sharefile(namespace, sizeof(namespace), "/proc/self/ns", CLOCKS_PER_SEC);
         if (IS_ERR(status))
         {
-            proc_exit(F("boxspawn: failed to share namespace %Y", status));
+            proc_exit(IOFMT("boxspawn: failed to share namespace %Y", status));
         }
     }
 
@@ -108,16 +108,16 @@ int main(int argc, char** argv)
     }
 
     fd_t data;
-    status = open(&data, F("/net/local/%s/data", id));
+    status = open(&data, IOFMT("/net/local/%s/data", id));
     if (IS_ERR(status))
     {
-        proc_exit(F("boxspawn: failed to open data socket %Y", status));
+        proc_exit(IOFMT("boxspawn: failed to open data socket %Y", status));
     }
 
     status = writes(data, buffer, NULL);
     if (IS_ERR(status))
     {
-        proc_exit(F("boxspawn: failed to send request %Y", status));
+        proc_exit(IOFMT("boxspawn: failed to send request %Y", status));
     }
 
     memset(buffer, 0, sizeof(buffer));
@@ -125,13 +125,13 @@ int main(int argc, char** argv)
     status = ioread(data, buffer, sizeof(buffer) - 1, IOCUR, NULL);
     if (IS_ERR(status))
     {
-        proc_exit(F("boxspawn: failed to ioread response %Y", status));
+        proc_exit(IOFMT("boxspawn: failed to ioread response %Y", status));
     }
     close(data);
 
     if (wordcmp(buffer, "error") == 0)
     {
-        proc_exit(F("boxspawn: %s", buffer));
+        proc_exit(IOFMT("boxspawn: %s", buffer));
     }
 
     if (wordcmp(buffer, "background") == 0)
@@ -143,21 +143,21 @@ int main(int argc, char** argv)
     char waitkey[KEY_MAX];
     if (sscanf(buffer, "foreground %s", waitkey) != 1)
     {
-        proc_exit(F("boxspawn: failed to parse response (%s)", strerror(errno)));
+        proc_exit(IOFMT("boxspawn: failed to parse response (%s)", strerror(errno)));
     }
 
     fd_t wait;
     status = claim(&wait, waitkey);
     if (IS_ERR(status))
     {
-        proc_exit(F("boxspawn: failed to claim response %Y", status));
+        proc_exit(IOFMT("boxspawn: failed to claim response %Y", status));
     }
 
     char string[NOTE_MAX];
     status = RETRY_ON_CODE(ioread(wait, string, sizeof(string) - 1, IOCUR, NULL), INTR);
     if (IS_ERR(status))
     {
-        proc_exit(F("boxspawn: failed to ioread status %Y", status));
+        proc_exit(IOFMT("boxspawn: failed to ioread status %Y", status));
     }
     close(wait);
 

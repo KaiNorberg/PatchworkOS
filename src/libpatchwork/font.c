@@ -23,7 +23,7 @@ font_t* font_new(display_t* disp, const char* family, const char* weight, uint64
     }
 
     fd_t file;
-    status_t status = open(&file, F("%s/%s-%s%d.grf", theme->fontsDir, family, weight, size));
+    status_t status = open(&file, IOFMT("%s/%s-%s%d.grf", theme->fontsDir, family, weight, size));
     if (IS_ERR(status))
     {
         return NULL;

@@ -228,7 +228,7 @@ static void terminal_handle_input(terminal_t* term, element_t* elem, drawable_t*
 
     if (ansi.length == 1 && ansi.buffer[0] == '\003')
     {
-        writefiles(F("/proc/%llu/notegroup", term->shell), "interrupt due to ctrl+c");
+        writefiles(IOFMT("/proc/%llu/notegroup", term->shell), "interrupt due to ctrl+c");
     }
 }
 
@@ -604,10 +604,10 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
             return PFAIL;
         }
 
-        if (IS_ERR(writefiles(F("/proc/%d/ctl", term->shell),
-                F("dup %d 0 && dup %d 1 && dup %d 2 && close 3 -1 && start", term->stdin, term->stdout, term->stdout))))
+        if (IS_ERR(writefiles(IOFMT("/proc/%d/ctl", term->shell),
+                IOFMT("dup %d 0 && dup %d 1 && dup %d 2 && close 3 -1 && start", term->stdin, term->stdout, term->stdout))))
         {
-            writefiles(F("/proc/%d/ctl", term->shell), "kill");
+            writefiles(IOFMT("/proc/%d/ctl", term->shell), "kill");
             close(term->stdin);
             close(term->stdout);
             font_free(term->font);
@@ -630,7 +630,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         close(term->stdin);
         close(term->stdout);
 
-        writefiles(F("/proc/%d/notegroup", term->shell), "terminate due to terminal close");
+        writefiles(IOFMT("/proc/%d/notegroup", term->shell), "terminate due to terminal close");
     }
     break;
     case EVENT_LIB_QUIT:

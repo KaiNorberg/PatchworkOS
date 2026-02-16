@@ -223,7 +223,7 @@ SYSCALL_DEFINE(SYS_CLAIM, const char* key)
     UNREF_DEFER(file);
 
     fd_t fd = file_table_open(&process->files, file);
-    if (fd == FD_NONE)
+    if (fd == FDNONE)
     {
         return ERR(VFS, MFILE);
     }

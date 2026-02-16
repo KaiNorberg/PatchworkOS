@@ -107,7 +107,7 @@ static uint64_t box_args_parse(box_args_t* args, uint64_t argc, const char** arg
             status_t status = claim(&args->stdio[STDIN_FILENO], value);
             if (IS_ERR(status))
             {
-                snprintf(ctx->result, sizeof(ctx->result), F("error due to invalid stdin %Y", status));
+                snprintf(ctx->result, sizeof(ctx->result), IOFMT("error due to invalid stdin %Y", status));
                 return PFAIL;
             }
         }
@@ -116,7 +116,7 @@ static uint64_t box_args_parse(box_args_t* args, uint64_t argc, const char** arg
             status_t status = claim(&args->stdio[STDOUT_FILENO], value);
             if (IS_ERR(status))
             {
-                snprintf(ctx->result, sizeof(ctx->result), F("error due to invalid stdout %Y", status));
+                snprintf(ctx->result, sizeof(ctx->result), IOFMT("error due to invalid stdout %Y", status));
                 return PFAIL;
             }
         }
@@ -125,7 +125,7 @@ static uint64_t box_args_parse(box_args_t* args, uint64_t argc, const char** arg
             status_t status = claim(&args->stdio[STDERR_FILENO], value);
             if (IS_ERR(status))
             {
-                snprintf(ctx->result, sizeof(ctx->result), F("error due to invalid stderr %Y", status));
+                snprintf(ctx->result, sizeof(ctx->result), IOFMT("error due to invalid stderr %Y", status));
                 return PFAIL;
             }
         }
@@ -135,7 +135,7 @@ static uint64_t box_args_parse(box_args_t* args, uint64_t argc, const char** arg
             if (IS_ERR(status))
             {
                 printf("boxd: failed to claim group '%s' %Y\n", value, status);
-                snprintf(ctx->result, sizeof(ctx->result), F("error due to invalid group %Y", status));
+                snprintf(ctx->result, sizeof(ctx->result), IOFMT("error due to invalid group %Y", status));
                 return PFAIL;
             }
         }
@@ -144,7 +144,7 @@ static uint64_t box_args_parse(box_args_t* args, uint64_t argc, const char** arg
             status_t status = claim(&args->namespace, value);
             if (IS_ERR(status))
             {
-                snprintf(ctx->result, sizeof(ctx->result), F("error due to invalid namespace %Y", status));
+                snprintf(ctx->result, sizeof(ctx->result), IOFMT("error due to invalid namespace %Y", status));
                 return PFAIL;
             }
         }
@@ -166,8 +166,8 @@ static uint64_t box_args_parse(box_args_t* args, uint64_t argc, const char** arg
 
 static void box_spawn(box_spawn_t* ctx)
 {
-    box_args_t args = {.box = NULL, .stdio = {FD_NONE}, .group = FD_NONE, .namespace = FD_NONE};
-    fd_t ctl = FD_NONE;
+    box_args_t args = {.box = NULL, .stdio = {FDNONE}, .group = FDNONE, .namespace = FDNONE};
+    fd_t ctl = FDNONE;
     proc_t pid = PFAIL;
     status_t status;
 
@@ -186,14 +186,14 @@ static void box_spawn(box_spawn_t* ctx)
     }
 
     manifest_t manifest;
-    if (manifest_parse(&manifest, F("/box/%s/manifest", args.box)) == PFAIL)
+    if (manifest_parse(&manifest, IOFMT("/box/%s/manifest", args.box)) == PFAIL)
     {
         snprintf(ctx->result, sizeof(ctx->result), "error due to invalid manifest for box '%s'", args.box);
         goto error;
     }
 
     substitution_t substitutions[] = {
-        {"BOX", F("/box/%s/", args.box)},
+        {"BOX", IOFMT("/box/%s/", args.box)},
     };
     manifest_substitute(&manifest, substitutions, ARRAY_SIZE(substitutions));
 
@@ -247,7 +247,7 @@ static void box_spawn(box_spawn_t* ctx)
         goto error;
     }
 
-    status = writefiles(F("/proc/%llu/prio", pid), F("%llu", priority));
+    status = writefiles(IOFMT("/proc/%llu/prio", pid), IOFMT("%llu", priority));
     if (IS_ERR(status))
     {
         snprintf(ctx->result, sizeof(ctx->result), "error due to priority failure for '%s' %Y", args.box, status);
@@ -257,7 +257,7 @@ static void box_spawn(box_spawn_t* ctx)
     section_t* env = &manifest.sections[SECTION_ENV];
     for (uint64_t i = 0; i < env->amount; i++)
     {
-        status = writefiles(F("/proc/%llu/env/%s:cw", pid, env->entries[i].key), env->entries[i].value);
+        status = writefiles(IOFMT("/proc/%llu/env/%s:cw", pid, env->entries[i].key), env->entries[i].value);
         if (IS_ERR(status))
         {
             snprintf(ctx->result, sizeof(ctx->result), "error due to env var failure for '%s' %Y", args.box, status);
@@ -265,7 +265,7 @@ static void box_spawn(box_spawn_t* ctx)
         }
     }
 
-    status = open(&ctl, F("/proc/%llu/ctl", pid));
+    status = open(&ctl, IOFMT("/proc/%llu/ctl", pid));
     if (IS_ERR(status))
     {
         snprintf(ctx->result, sizeof(ctx->result), "error due to ctl open failure for '%s' %Y", args.box, status);
@@ -274,7 +274,7 @@ static void box_spawn(box_spawn_t* ctx)
 
     if (shouldInheritNamespace)
     {
-        status = writes(ctl, F("setns %llu", args.namespace), NULL);
+        status = writes(ctl, IOFMT("setns %llu", args.namespace), NULL);
         if (IS_ERR(status))
         {
             snprintf(ctx->result, sizeof(ctx->result), "error due to setns failure for '%s' %Y", args.box, status);
@@ -299,7 +299,7 @@ static void box_spawn(box_spawn_t* ctx)
 
         if (value[0] == '\0')
         {
-            status = writes(ctl, F("touch %s", key), NULL);
+            status = writes(ctl, IOFMT("touch %s", key), NULL);
             if (IS_ERR(status))
             {
                 printf("boxd: failed to touch '%s' %Y\n", key, status);
@@ -308,7 +308,7 @@ static void box_spawn(box_spawn_t* ctx)
             continue;
         }
 
-        status = writes(ctl, F("touch %s:rwcp && bind %s %s", key, key, value), NULL);
+        status = writes(ctl, IOFMT("touch %s:rwcp && bind %s %s", key, key, value), NULL);
         if (IS_ERR(status))
         {
             printf("boxd: failed to bind '%s' to '%s' %Y\n", key, value, status);
@@ -320,12 +320,12 @@ static void box_spawn(box_spawn_t* ctx)
     {
         for (uint8_t i = 0; i < 3; i++)
         {
-            if (args.stdio[i] == FD_NONE)
+            if (args.stdio[i] == FDNONE)
             {
                 continue;
             }
 
-            status = writes(ctl, F("dup %llu %llu", args.stdio[i], i), NULL);
+            status = writes(ctl, IOFMT("dup %llu %llu", args.stdio[i], i), NULL);
             if (IS_ERR(status))
             {
                 snprintf(ctx->result, sizeof(ctx->result), "error due to dup failure for '%s' %Y", args.box, status);
@@ -333,7 +333,7 @@ static void box_spawn(box_spawn_t* ctx)
             }
         }
 
-        status = writes(ctl, F("setgroup %llu", args.group), NULL);
+        status = writes(ctl, IOFMT("setgroup %llu", args.group), NULL);
         if (IS_ERR(status))
         {
             snprintf(ctx->result, sizeof(ctx->result), "error due to setns failure for '%s' %Y", args.box, status);
@@ -348,7 +348,7 @@ static void box_spawn(box_spawn_t* ctx)
         }
 
         fd_t wait;
-        status = open(&wait, F("/proc/%llu/wait", pid));
+        status = open(&wait, IOFMT("/proc/%llu/wait", pid));
         if (IS_ERR(status))
         {
             snprintf(ctx->result, sizeof(ctx->result), "error due to wait open failure for '%s' %Y", args.box, status);
@@ -395,20 +395,20 @@ error:
 cleanup:
     for (int i = 0; i < 3; i++)
     {
-        if (args.stdio[i] != FD_NONE)
+        if (args.stdio[i] != FDNONE)
         {
             close(args.stdio[i]);
         }
     }
-    if (args.group != FD_NONE)
+    if (args.group != FDNONE)
     {
         close(args.group);
     }
-    if (args.namespace != FD_NONE)
+    if (args.namespace != FDNONE)
     {
         close(args.namespace);
     }
-    if (ctl != FD_NONE)
+    if (ctl != FDNONE)
     {
         close(ctl);
     }
@@ -427,7 +427,7 @@ int main(void)
         abort();
     }
 
-    status = writefiles(F("/net/local/%s/ctl", id), "bind boxspawn && listen");
+    status = writefiles(IOFMT("/net/local/%s/ctl", id), "bind boxspawn && listen");
     if (IS_ERR(status))
     {
         printf("boxd: failed to bind to box %Y\n", status);
@@ -438,7 +438,7 @@ int main(void)
     while (1)
     {
         fd_t client;
-        status = open(&client, F("/net/local/%s/accept", id));
+        status = open(&client, IOFMT("/net/local/%s/accept", id));
         if (IS_ERR(status))
         {
             printf("boxd: failed to accept connection %Y\n", status);

@@ -57,7 +57,7 @@ file_t* file_table_get(file_table_t* table, fd_t fd);
  *
  * @param table The file table.
  * @param file The file to associate with the new file descriptor.
- * @return On success, the allocated file descriptor. On failure, `FD_NONE`.
+ * @return On success, the allocated file descriptor. On failure, `FDNONE`.
  */
 fd_t file_table_open(file_table_t* table, file_t* file);
 
@@ -117,7 +117,7 @@ bool file_table_set(file_table_t* table, fd_t fd, file_t* file);
  *
  * @param table The file table.
  * @param oldFd The file descriptor to duplicate.
- * @param newFd Output pointer for the new file descriptor, if `FD_NONE` any free file descriptor will be used,
+ * @param newFd Output pointer for the new file descriptor, if `FDNONE` any free file descriptor will be used,
  * otherwise the specified file descriptor will be used.
  * @return An appropriate status value.
  */

@@ -39,9 +39,7 @@
  * If an I/O ring needs multiple producers (needs to be accessed by multiple threads) it is the responsibility of
  * the caller to ensure proper synchronization.
  *
- * @note The reason for this limitation is optimization for the common case, as the syncronization logic for multiple
- * producers would add significant overhead. Additionally, it is rather straight forward for user-space to protect the
- * ring with a mutex should it need to.
+ * @todo This might be changed in the future to allow for multiple producers/consumers.
  *
  * Regarding the I/O ring structure itself, the structure can only be torndown as long as nothing is using it and there
  * are no pending operations.

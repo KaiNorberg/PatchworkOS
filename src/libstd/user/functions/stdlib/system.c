@@ -15,7 +15,7 @@ int system(const char* command)
     }
 
     fd_t wait;
-    status = open(&wait, F("/proc/%d/wait", shell));
+    status = open(&wait, IOFMT("/proc/%d/wait", shell));
     if (IS_ERR(status))
     {
         return -1;

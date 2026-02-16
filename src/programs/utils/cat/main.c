@@ -31,7 +31,7 @@ static int read_fd(fd_t fd, const char* name, bool hexOutput)
         {
             for (uint64_t i = 0; i < count; i++)
             {
-                writes(STDOUT_FILENO, F("%02x ", (unsigned char)buffer[i]), NULL);
+                writes(STDOUT_FILENO, IOFMT("%02x ", (unsigned char)buffer[i]), NULL);
             }
             continue;
         }

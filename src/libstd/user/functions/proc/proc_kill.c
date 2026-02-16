@@ -3,5 +3,5 @@
 
 status_t proc_kill(proc_t pid)
 {
-    return writefiles(F("/proc/%llu/ctl", pid), "kill");
+    return writefiles(IOFMT("/proc/%llu/ctl", pid), "kill");
 }

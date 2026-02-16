@@ -42,7 +42,7 @@ FILE* fopen(const char* _RESTRICT filename, const char* _RESTRICT mode)
     }
 
     fd_t fd;
-    status_t status = open(&fd, F("%s%s", filename, _flags_to_string(flags)));
+    status_t status = open(&fd, IOFMT("%s%s", filename, _flags_to_string(flags)));
     if (IS_ERR(status))
     {
         errno = ENOENT;

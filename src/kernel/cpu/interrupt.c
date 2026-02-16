@@ -108,7 +108,7 @@ static void exception_user_page_fault_handler(interrupt_frame_t* frame)
     if (frame->errorCode & PAGE_FAULT_PRESENT)
     {
         exception_handle_user(frame,
-            F("pagefault at 0x%llx when %s present page at 0x%llx", frame->rip,
+            IOFMT("pagefault at 0x%llx when %s present page at 0x%llx", frame->rip,
                 (frame->errorCode & PAGE_FAULT_WRITE) ? "writing to" : "reading from", faultAddr));
         return;
     }
@@ -116,14 +116,14 @@ static void exception_user_page_fault_handler(interrupt_frame_t* frame)
     uintptr_t alignedFaultAddr = ROUND_DOWN(faultAddr, PAGE_SIZE);
     if (stack_pointer_overlaps_guard(&thread->userStack, alignedFaultAddr, 1))
     {
-        exception_handle_user(frame, F("pagefault at 0x%llx due to stack overflow at 0x%llx", frame->rip, faultAddr));
+        exception_handle_user(frame, IOFMT("pagefault at 0x%llx due to stack overflow at 0x%llx", frame->rip, faultAddr));
         return;
     }
 
     status_t status = exception_grow_stack(thread, faultAddr, &thread->userStack, PML_USER | PML_WRITE | PML_PRESENT);
     if (IS_ERR(status))
     {
-        exception_handle_user(frame, F("pagefault at 0x%llx failed to grow stack at 0x%llx", frame->rip, faultAddr));
+        exception_handle_user(frame, IOFMT("pagefault at 0x%llx failed to grow stack at 0x%llx", frame->rip, faultAddr));
         return;
     }
 
@@ -133,7 +133,7 @@ static void exception_user_page_fault_handler(interrupt_frame_t* frame)
     }
 
     exception_handle_user(frame,
-        F("pagefault at 0x%llx when %s 0x%llx", frame->rip,
+        IOFMT("pagefault at 0x%llx when %s 0x%llx", frame->rip,
             (frame->errorCode & PAGE_FAULT_WRITE) ? "writing" : "reading", faultAddr));
 }
 
@@ -146,14 +146,14 @@ static void exception_handler(interrupt_frame_t* frame)
         {
             panic(frame, "divide by zero");
         }
-        exception_handle_user(frame, F("divbyzero at 0x%llx", frame->rip));
+        exception_handle_user(frame, IOFMT("divbyzero at 0x%llx", frame->rip));
         break;
     case VECTOR_INVALID_OPCODE:
         if (!INTERRUPT_FRAME_IN_USER_SPACE(frame))
         {
             panic(frame, "invalid opcode");
         }
-        exception_handle_user(frame, F("illegal instruction at 0x%llx", frame->rip));
+        exception_handle_user(frame, IOFMT("illegal instruction at 0x%llx", frame->rip));
         break;
     case VECTOR_DOUBLE_FAULT:
         panic(frame, "double fault");
@@ -165,7 +165,7 @@ static void exception_handler(interrupt_frame_t* frame)
         {
             panic(frame, "general protection fault");
         }
-        exception_handle_user(frame, F("segfault at 0x%llx", frame->rip));
+        exception_handle_user(frame, IOFMT("segfault at 0x%llx", frame->rip));
         break;
     case VECTOR_PAGE_FAULT:
         if (!INTERRUPT_FRAME_IN_USER_SPACE(frame))

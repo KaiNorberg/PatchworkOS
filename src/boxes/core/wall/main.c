@@ -49,14 +49,14 @@ int main(void)
     status_t status = open(&klog, "/dev/klog");
     if (IS_ERR(status))
     {
-        proc_exit(F("wall: failed to open klog %Y\n", status));
+        proc_exit(IOFMT("wall: failed to open klog %Y\n", status));
     }
     fd_t stdoutFd = STDOUT_FILENO;
     fd_t stderrFd = STDERR_FILENO;
     if (IS_ERR(status = dup(klog, &stdoutFd)) || IS_ERR(status = dup(klog, &stderrFd)))
     {
         close(klog);
-        proc_exit(F("wall: failed to redirect stdout/stderr to klog %Y\n", status));
+        proc_exit(IOFMT("wall: failed to redirect stdout/stderr to klog %Y\n", status));
     }
     close(klog);
 
@@ -65,7 +65,7 @@ int main(void)
     display_t* disp = display_new();
     if (disp == NULL)
     {
-        proc_exit(F("wall: failed to create display %Y\n", status));
+        proc_exit(IOFMT("wall: failed to create display %Y\n", status));
     }
 
     printf("wall: unsubscribing to events\n");
@@ -73,12 +73,12 @@ int main(void)
     if (display_unsubscribe(disp, EVENT_KBD) == PFAIL)
     {
         display_free(disp);
-        proc_exit(F("wall: failed to unsubscribe from keyboard events (%s)\n", strerror(errno)));
+        proc_exit(IOFMT("wall: failed to unsubscribe from keyboard events (%s)\n", strerror(errno)));
     }
     if (display_unsubscribe(disp, EVENT_MOUSE) == PFAIL)
     {
         display_free(disp);
-        proc_exit(F("wall: failed to unsubscribe from mouse events (%s)\n", strerror(errno)));
+        proc_exit(IOFMT("wall: failed to unsubscribe from mouse events (%s)\n", strerror(errno)));
     }
 
     printf("wall: getting screen rect\n");
@@ -93,7 +93,7 @@ int main(void)
     if (image == NULL)
     {
         display_free(disp);
-        proc_exit(F("wall: failed to load image '%s' (%s)\n", theme->wallpaper, strerror(errno)));
+        proc_exit(IOFMT("wall: failed to load image '%s' (%s)\n", theme->wallpaper, strerror(errno)));
     }
 
     printf("wall: creating window\n");
@@ -103,7 +103,7 @@ int main(void)
     {
         image_free(image);
         display_free(disp);
-        proc_exit(F("wall: failed to create window (%s)\n", strerror(errno)));
+        proc_exit(IOFMT("wall: failed to create window (%s)\n", strerror(errno)));
     }
 
     printf("wall: setting window visible\n");
@@ -113,7 +113,7 @@ int main(void)
         window_free(win);
         image_free(image);
         display_free(disp);
-        proc_exit(F("wall: failed to show window (%s)\n", strerror(errno)));
+        proc_exit(IOFMT("wall: failed to show window (%s)\n", strerror(errno)));
     }
 
     printf("wall: entering event loop\n");

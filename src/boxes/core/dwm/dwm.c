@@ -42,7 +42,7 @@ static poll_ctx_t* pollCtx;
 static client_t* dwm_client_accept(void)
 {
     fd_t fd;
-    if (IS_ERR(open(&fd, F("/net/local/%s/accept", id))))
+    if (IS_ERR(open(&fd, IOFMT("/net/local/%s/accept", id))))
     {
         printf("dwm: failed to open accept file\n");
         return NULL;
@@ -89,7 +89,7 @@ void dwm_init(void)
     status_t status = open(&klog, "/dev/klog");
     if (IS_ERR(status))
     {
-        proc_exit(F("dwm: failed to open klog %Y", status));
+        proc_exit(IOFMT("dwm: failed to open klog %Y", status));
     }
 
     fd_t stdoutFd = STDOUT_FILENO;
@@ -97,13 +97,13 @@ void dwm_init(void)
     close(klog);
     if (IS_ERR(status))
     {
-        proc_exit(F("dwm: failed to dup klog %Y", status));
+        proc_exit(IOFMT("dwm: failed to dup klog %Y", status));
     }
 
     status = open(&kbd, "/dev/kbd/0/events");
     if (IS_ERR(status))
     {
-        printf(F("dwm: failed to open keyboard %Y\n", status));
+        printf(IOFMT("dwm: failed to open keyboard %Y\n", status));
         abort();
     }
 
@@ -117,7 +117,7 @@ void dwm_init(void)
     status = open(&mouse, "/dev/mouse/0/events");
     if (IS_ERR(status))
     {
-        printf(F("dwm: failed to open mouse %Y\n", status));
+        printf(IOFMT("dwm: failed to open mouse %Y\n", status));
         abort();
     }
 
@@ -130,21 +130,21 @@ void dwm_init(void)
     status = readfiles(&id, "/net/local/seqpacket");
     if (IS_ERR(status))
     {
-        printf(F("dwm: failed to ioread seqpacket id %Y\n", status));
+        printf(IOFMT("dwm: failed to ioread seqpacket id %Y\n", status));
         abort();
     }
 
-    status = writefiles(F("/net/local/%s/ctl", id), "bind dwm && listen");
+    status = writefiles(IOFMT("/net/local/%s/ctl", id), "bind dwm && listen");
     if (IS_ERR(status))
     {
-        printf(F("dwm: failed to bind socket %Y\n", status));
+        printf(IOFMT("dwm: failed to bind socket %Y\n", status));
         abort();
     }
 
-    status = open(&data, F("/net/local/%s/data", id));
+    status = open(&data, IOFMT("/net/local/%s/data", id));
     if (IS_ERR(status))
     {
-        printf(F("dwm: failed to open data file %Y\n", status));
+        printf(IOFMT("dwm: failed to open data file %Y\n", status));
         abort();
     }
 

@@ -61,7 +61,7 @@ void execute_command(const char* cmdline)
     status_t status = pipeline_init(&pipeline, cmdline, STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO);
     if (IS_ERR(status))
     {
-        proc_exit(F("shell: failed to initialize pipeline (%llu)\n", status));
+        proc_exit(IOFMT("shell: failed to initialize pipeline (%llu)\n", status));
     }
 
     pipeline_execute(&pipeline);

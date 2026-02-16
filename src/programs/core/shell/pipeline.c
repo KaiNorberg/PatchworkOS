@@ -301,18 +301,18 @@ static proc_t pipeline_execute_cmd(cmd_t* cmd)
 {
     proc_t result = PFAIL;
 
-    fd_t originalStdin = FD_NONE;
+    fd_t originalStdin = FDNONE;
     if (IS_ERR(dup(STDIN_FILENO, &originalStdin)))
     {
         return PFAIL;
     }
-    fd_t originalStdout = FD_NONE;
+    fd_t originalStdout = FDNONE;
     if (IS_ERR(dup(STDOUT_FILENO, &originalStdout)))
     {
         close(originalStdin);
         return PFAIL;
     }
-    fd_t originalStderr = FD_NONE;
+    fd_t originalStderr = FDNONE;
     if (IS_ERR(dup(STDERR_FILENO, &originalStderr)))
     {
         close(originalStdin);
@@ -470,7 +470,7 @@ void pipeline_wait(pipeline_t* pipeline)
         }
 
         fd_t wait;
-        if (IS_ERR(open(&wait, F("/proc/%llu/wait", cmd->pid))))
+        if (IS_ERR(open(&wait, IOFMT("/proc/%llu/wait", cmd->pid))))
         {
             strcpy(pipeline->status, "-1");
             continue;

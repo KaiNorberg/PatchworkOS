@@ -66,7 +66,7 @@ void _note_init(void)
     status_t status = note_set(_note_kernel_handler);
     if (IS_ERR(status))
     {
-        proc_exit(F("notify failed %Y", status));
+        proc_exit(IOFMT("notify failed %Y", status));
     }
 }
 
@@ -103,7 +103,7 @@ int _signal_raise(int sig)
         return -1;
     }
 
-    _signal_invoke(sig, F("signal %d raised", sig));
+    _signal_invoke(sig, IOFMT("signal %d raised", sig));
     return 0;
 }
 
