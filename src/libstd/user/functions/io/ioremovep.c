@@ -10,7 +10,7 @@ status_t ioremovep(fd_t fd, const char* path)
     }
 
     iosqe_t* sqe = iosqe_get(&_stdIoring);
-    ioprep_open(sqe, (IOSQE_REG0 << IOSQE_SAVE) | IOSQE_LINK, CLOCKS_NEVER, 0, fd, path, strlen(path), NULL, 0);
+    ioprep_walk(sqe, (IOSQE_REG0 << IOSQE_SAVE) | IOSQE_LINK, CLOCKS_NEVER, 0, fd, path, strlen(path), NULL, 0);
     iosqe_put(&_stdIoring);
 
     sqe = iosqe_get(&_stdIoring);
@@ -18,7 +18,7 @@ status_t ioremovep(fd_t fd, const char* path)
     iosqe_put(&_stdIoring);
 
     sqe = iosqe_get(&_stdIoring);
-    ioprep_close(sqe, (IOSQE_REG0 << IOSQE_LOAD0) | IOSQE_LINK, CLOCKS_NEVER, 0, FDNONE);
+    ioprep_clunk(sqe, (IOSQE_REG0 << IOSQE_LOAD0) | IOSQE_LINK, CLOCKS_NEVER, 0, FDNONE);
     iosqe_put(&_stdIoring);
     
     ioring_enter(&_stdIoring, 3, 3, NULL);

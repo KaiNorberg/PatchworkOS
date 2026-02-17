@@ -80,7 +80,7 @@ typedef struct socket_file
     vnode_class_t* cls;
 } socket_file_t;
 
-static status_t netfs_data_file_ctor(file_t* file)
+static status_t netfs_data_open(file_t* file)
 {
     socket_t* sock = file->vnode->data;
     assert(sock != NULL);
@@ -89,7 +89,7 @@ static status_t netfs_data_file_ctor(file_t* file)
     return OK;
 }
 
-static void netfs_data_file_dtor(file_t* file)
+static void netfs_data_close(file_t* file)
 {
     socket_t* sock = file->data;
     if (sock == NULL)
@@ -335,15 +335,15 @@ static status_t netfs_data_poll(irp_t* irp)
 
 static vnode_class_t dataClass = {.name = "netfs data",
     .type = VNODE_REGULAR,
-    .file_ctor = netfs_data_file_ctor,
-    .file_dtor = netfs_data_file_dtor,
+    .open = netfs_data_open,
+    .close = netfs_data_close,
     .handlers = {
         [IRP_MJ_READ] = netfs_data_read,
         [IRP_MJ_WRITE] = netfs_data_write,
         [IRP_MJ_POLL] = netfs_data_poll,
     },};
 
-static status_t netfs_accept_file_ctor(file_t* file)
+static status_t netfs_accept_open(file_t* file)
 {
     socket_t* sock = file->vnode->data;
     assert(sock != NULL);
@@ -382,8 +382,8 @@ static status_t netfs_accept_file_ctor(file_t* file)
 static vnode_class_t acceptClass = {
     .name = "netfs accept",
     .type = VNODE_REGULAR,
-    .file_ctor = netfs_accept_file_ctor,
-    .file_dtor = netfs_data_file_dtor,
+    .open = netfs_accept_open,
+    .close = netfs_data_close,
     .handlers =
         {
             [IRP_MJ_READ] = netfs_data_read,
@@ -458,8 +458,8 @@ static status_t netfs_control(irp_t* irp)
 
 static vnode_class_t ctlClass = {.name = "netfs ctl",
     .type = VNODE_REGULAR,
-    .file_ctor = netfs_data_file_ctor,
-    .file_dtor = netfs_data_file_dtor,
+    .open = netfs_data_open,
+    .close = netfs_data_close,
     .handlers = {
         [IRP_MJ_WRITE] = ctl_generic_write,
         [IRP_MJ_CONTROL] = netfs_control,
@@ -556,7 +556,7 @@ static void socket_weak_ptr_callback(void* arg)
     UNREF(socket);
 }
 
-static status_t netfs_factory_file_ctor(file_t* file)
+static status_t netfs_factory_open(file_t* file)
 {
     netfs_family_file_ctx_t* ctx = file->vnode->data;
     assert(ctx != NULL);
@@ -586,7 +586,7 @@ static status_t netfs_factory_file_ctor(file_t* file)
     return OK;
 }
 
-static void netfs_factory_file_dtor(file_t* file)
+static void netfs_factory_close(file_t* file)
 {
     socket_t* socket = file->data;
     if (socket == NULL)
@@ -616,8 +616,8 @@ static status_t netfs_factory_read(irp_t* irp)
 static vnode_class_t factoryClass = {
     .name = "netfs factory",
     .type = VNODE_REGULAR,
-    .file_ctor = netfs_factory_file_ctor,
-    .file_dtor = netfs_factory_file_dtor,
+    .open = netfs_factory_open,
+    .close = netfs_factory_close,
     .handlers =
         {
             [IRP_MJ_READ] = netfs_factory_read,

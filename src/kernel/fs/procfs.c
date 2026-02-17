@@ -314,7 +314,7 @@ static vnode_class_t notegroupClass = {.name = "procfs notegroup",
         [IRP_MJ_WRITE] = procfs_notegroup_write,
     }};
 
-static status_t procfs_group_file_ctor(file_t* file)
+static status_t procfs_group_open(file_t* file)
 {
     process_t* process = file->vnode->data;
 
@@ -328,7 +328,7 @@ static status_t procfs_group_file_ctor(file_t* file)
     return OK;
 }
 
-static void procfs_group_file_dtor(file_t* file)
+static void procfs_group_close(file_t* file)
 {
     group_t* group = file->data;
     if (group == NULL)
@@ -344,8 +344,8 @@ static vnode_class_t groupClass = {
     .name = "procfs group",
     .type = VNODE_REGULAR,
     .revalidate = procfs_revalidate_hide,
-    .file_ctor = procfs_group_file_ctor,
-    .file_dtor = procfs_group_file_dtor,
+    .open = procfs_group_open,
+    .close = procfs_group_close,
 };
 
 static status_t procfs_pid_read(irp_t* irp)
@@ -454,7 +454,7 @@ static vnode_class_t perfClass = {
         },
 };
 
-static status_t procfs_ns_file_ctor(file_t* file)
+static status_t procfs_ns_open(file_t* file)
 {
     process_t* process = file->vnode->data;
 
@@ -468,7 +468,7 @@ static status_t procfs_ns_file_ctor(file_t* file)
     return OK;
 }
 
-static void procfs_ns_file_dtor(file_t* file)
+static void procfs_ns_close(file_t* file)
 {
     if (file->data == NULL)
     {
@@ -483,8 +483,8 @@ static vnode_class_t nsClass = {
     .name = "procfs ns",
     .type = VNODE_REGULAR,
     .revalidate = procfs_revalidate_hide,
-    .file_ctor = procfs_ns_file_ctor,
-    .file_dtor = procfs_ns_file_dtor,
+    .open = procfs_ns_open,
+    .close = procfs_ns_close,
 };
 
 static status_t procfs_ctl_control(irp_t* irp)

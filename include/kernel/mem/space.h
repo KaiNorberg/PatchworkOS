@@ -227,4 +227,26 @@ uint64_t space_user_page_count(space_t* space);
  */
 status_t space_virt_to_phys(phys_addr_t* out, space_t* space, const void* virtAddr);
 
+/**
+ * @brief Copy memory from an address space.
+ *
+ * @param space The address space to read from.
+ * @param dest The destination buffer.
+ * @param base The virtual address in the address space to read from.
+ * @param size The number of bytes to read.
+ * @return An appropriate status value.
+ */
+status_t space_copy_out(space_t* space, void* dest, const void* src, size_t size);
+
+/**
+ * @brief Copy memory to an address space.
+ *
+ * @param space The address space to write to.
+ * @param dest The virtual address in the address space to write to.
+ * @param src The source buffer.
+ * @param size The number of bytes to write.
+ * @return An appropriate status value.
+ */
+status_t space_copy_in(space_t* space, void* dest, const void* src, size_t size);
+
 /** @} */

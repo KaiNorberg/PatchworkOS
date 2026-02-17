@@ -51,7 +51,7 @@ typedef struct
 static dentry_t* pipeDir = NULL;
 static dentry_t* newFile = NULL;
 
-static status_t pipe_file_ctor(file_t* file)
+static status_t pipe_open(file_t* file)
 {
     pipe_t* data = malloc(sizeof(pipe_t));
     if (data == NULL)
@@ -68,7 +68,7 @@ static status_t pipe_file_ctor(file_t* file)
     return OK;
 }
 
-static void pipe_file_dtor(file_t* file)
+static void pipe_close(file_t* file)
 {
     pipe_t* data = file->data;
     if (data == NULL)
@@ -295,8 +295,8 @@ static status_t pipe_poll(irp_t* irp)
 static vnode_class_t pipeClass = {
     .name = "pipe",
     .type = VNODE_REGULAR,
-    .file_ctor = pipe_file_ctor,
-    .file_dtor = pipe_file_dtor,
+    .open = pipe_open,
+    .close = pipe_close,
     .handlers =
         {
             [IRP_MJ_READ] = pipe_read,

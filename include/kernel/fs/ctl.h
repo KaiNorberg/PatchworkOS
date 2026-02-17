@@ -3,6 +3,7 @@
 #include <kernel/fs/file.h>
 #include <kernel/fs/vnode.h>
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <sys/status.h>
 
@@ -18,8 +19,10 @@
  * Commands should be formatted as follows:
  *
  * ```
- * command1 [arguments] && command2 [arguments] && ...
+ * command1 [arguments] [&&|;|\n] command2 [arguments] ...
  * ```
+ *
+ * The `&&` operator will only execute the next command if the previous command was successful, while the `;` or `\n` operators will always execute the next command.
  *
  * The given command values will be converted from the provided text representation into their `iocmd_t` representation,
  * with the arguments being passed as a string.
@@ -27,7 +30,7 @@
  * @{
  */
 
-#define CTL_BUFFER_SIZE 1004 ///< The maximum size of the control buffer. */
+#define CTL_BUFFER_SIZE 1000 ///< The maximum size of the control buffer. */
 
 /**
  * @brief Control file state structure.
@@ -38,6 +41,7 @@ typedef struct ctl_state
     file_t* file;
     char* next;
     uint32_t depth;
+    bool runAlways;
     char buffer[CTL_BUFFER_SIZE];
 } ctl_state_t;
 

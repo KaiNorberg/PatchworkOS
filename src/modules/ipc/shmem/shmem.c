@@ -145,7 +145,7 @@ static status_t shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t page
     return OK;
 }
 
-static status_t shmem_file_ctor(file_t* file)
+static status_t shmem_open(file_t* file)
 {
     shmem_object_t* shmem = shmem_object_new();
     if (shmem == NULL)
@@ -157,7 +157,7 @@ static status_t shmem_file_ctor(file_t* file)
     return OK;
 }
 
-static void shmem_file_dtor(file_t* file)
+static void shmem_close(file_t* file)
 {
     shmem_object_t* shmem = file->data;
     if (shmem == NULL)
@@ -242,8 +242,8 @@ static status_t shmem_mmap(irp_t* irp)
 static vnode_class_t fileClass = {
     .name = "shmem file",
     .type = VNODE_REGULAR,
-    .file_ctor = shmem_file_ctor,
-    .file_dtor = shmem_file_dtor,
+    .open = shmem_open,
+    .close = shmem_close,
     .handlers =
         {
             [IRP_MJ_MMAP] = shmem_mmap,

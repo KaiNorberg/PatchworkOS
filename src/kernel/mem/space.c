@@ -509,3 +509,61 @@ status_t space_virt_to_phys(phys_addr_t* out, space_t* space, const void* virtAd
 
     return OK;
 }
+
+status_t space_copy_out(space_t* space, void* dest, const void* src, size_t size)
+{
+    const uint8_t* ptr = src;
+    uint8_t* dst = dest;
+    size_t remaining = size;
+
+    while (remaining > 0)
+    {
+        phys_addr_t phys;
+        status_t status = space_virt_to_phys(&phys, space, ptr);
+        if (IS_ERR(status))
+        {
+            return status;
+        }
+
+        size_t offset = phys % PAGE_SIZE;
+        size_t len = MIN(remaining, PAGE_SIZE - offset);
+
+        void* kaddr = PFN_TO_VIRT(PHYS_TO_PFN(phys)) + offset;
+        memcpy(dst, kaddr, len);
+
+        ptr += len;
+        dst += len;
+        remaining -= len;
+    }
+
+    return OK;
+}
+
+status_t space_copy_in(space_t* space, void* dest, const void* src, size_t size)
+{
+    uint8_t* ptr = dest;
+    const uint8_t* source = src;
+    size_t remaining = size;
+
+    while (remaining > 0)
+    {
+        phys_addr_t phys;
+        status_t status = space_virt_to_phys(&phys, space, ptr);
+        if (IS_ERR(status))
+        {
+            return status;
+        }
+
+        size_t offset = phys % PAGE_SIZE;
+        size_t len = MIN(remaining, PAGE_SIZE - offset);
+
+        void* kaddr = PFN_TO_VIRT(PHYS_TO_PFN(phys)) + offset;
+        memcpy(kaddr, source, len);
+
+        ptr += len;
+        source += len;
+        remaining -= len;
+    }
+
+    return OK;
+}

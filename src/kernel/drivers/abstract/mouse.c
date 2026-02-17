@@ -57,7 +57,7 @@ static vnode_class_t nameClass = {
         },
 };
 
-static status_t mouse_events_file_ctor(file_t* file)
+static status_t mouse_events_open(file_t* file)
 {
     mouse_t* mouse = file->vnode->data;
     assert(mouse != NULL);
@@ -78,7 +78,7 @@ static status_t mouse_events_file_ctor(file_t* file)
     return OK;
 }
 
-static void mouse_events_file_dtor(file_t* file)
+static void mouse_events_close(file_t* file)
 {
     mouse_t* mouse = file->vnode->data;
     assert(mouse != NULL);
@@ -148,8 +148,8 @@ static status_t mouse_events_poll(irp_t* irp)
 static vnode_class_t eventsClass = {
     .name = "mouse events",
     .type = VNODE_REGULAR,
-    .file_ctor = mouse_events_file_ctor,
-    .file_dtor = mouse_events_file_dtor,
+    .open = mouse_events_open,
+    .close = mouse_events_close,
     .handlers =
         {
             [IRP_MJ_READ] = mouse_events_read,

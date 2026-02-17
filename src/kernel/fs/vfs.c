@@ -162,10 +162,10 @@ status_t vfs_openat(file_t** out, const path_t* from, const pathname_t* pathname
         vnode_truncate(file->vnode);
     }
 
-    if (file->vnode->cls->file_ctor != NULL)
+    if (file->vnode->cls->open != NULL)
     {
         assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-        status = file->vnode->cls->file_ctor(file);
+        status = file->vnode->cls->open(file);
         if (IS_ERR(status))
         {
             UNREF(file);

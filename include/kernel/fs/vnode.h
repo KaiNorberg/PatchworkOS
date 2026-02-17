@@ -72,8 +72,8 @@ typedef struct vnode_class
 {
     const char* name;                    ///< The name of the class, used for debugging.
     iotype_t type;                   ///< The type of the vnode.
-    status_t (*file_ctor)(file_t* file); ///< File constructor.
-    void (*file_dtor)(file_t* file);     ///< File destructor.
+    status_t (*open)(file_t* file); ///< File constructor.
+    void (*close)(file_t* file);     ///< File destructor.
     irp_handler_t handlers[IRP_MJ_MAX];  ///< IRP handlers indexed by major function number.
     /**
      * @brief Cleanup function called when the vnode is being freed.

@@ -48,7 +48,7 @@ Will this project ever reach its goals? Probably not, but that’s not the point
 
 ## Philosophy
 
-There are three concepts that form the core of PatchworkOS, "everything is a file", asynchronous I/O and capability based security.
+There are a few concepts that form the core of PatchworkOS, "everything is a file", asynchronous I/O and capability based security.
 
 ### Everything is a File
 
@@ -56,55 +56,21 @@ The "everything is a file" philosophy means that almost all kernel resources are
 
 > The file concept is distinct from a "regular file", which is a specific type of file that is stored on a disk and is what most people think of when they hear the word "file".
 
-This can often result in unorthodox APIs that seem overcomplicated at first, but the goal is to provide a simple, consistent and most importantly composable interface for all kernel subsystems. The core argument is not that each individual API is better than its POSIX counterpart, but that they combine to form a system that is greater than the sum of its parts.
+This can often result in unorthodox APIs that seem overcomplicated at first, but the goal is to provide a simple, consistent and most importantly composable interface for all kernel subsystems. The core argument is not that each individual API is better than its POSIX counterpart, but that they combine to form a system that is greater than the sum of its parts, allowing for behaviour that was never explicitly designed for.
 
 Plus its fun.
 
-#### Process Creation
+### Modernised I/O
 
-Let's use the `proc_create()` system call as an example of how this philosophy is applied. The `proc_create()` function is used to create new processes. It takes in three arguments:
-
-- `const char** argv`: The argument vector, similar to POSIX systems except that the first argument is always the path to the executable.
-- `proc_flags_t flags`: Flags controlling the creation of the new process, primarily what to inherit from the parent process.
-- `proc_t* proc`: Output pointer for the child's identifier.
-
-> The system call will also return a `status_t` value, as will all other system calls. The status value is a bitpacked value that can represent both errors and informational messages. All status values store what subsystem created them, the "kind" of error or message and a code describing what happened. See `<sys/status.h>`.
-
-This system call is very minimal, but the flags allow enough control in most cases. For those other cases, the process can be created in a suspended state using the `PROC_SUSPENDED` flag and modified using its `/proc/<pid>/` directory.
-
-For example, one could create a suspended process and then modify its environment variables by creating, reading or writing to files in its `/proc/<pid>/env` directory. One could also send `dup` commands to its `/proc/<pid>/ctl` file to modify its file descriptors. Finally, one could send the `start` command to its `/proc/<pid>/ctl` file to start the process.
-
-Included below is a pseudocode example of how to use the `proc_create()` system call.
-
-```c
-const char* argv[] = {"/bin/sh", NULL};
-status_t status = proc_create(argv, PROC_SUSPENDED, NULL);
-if (IS_ERR(status))
-{
-    // Handle error
-}
-
-fd_t fd;
-status = open(&fd, "/proc/123/ctl");
-iowrite(fd, "dup 0 3", 7, 0, NULL); // Duplicate FD 3 to FD 0
-iowrite(fd, "start", 5, 0, NULL);   // Start the process
-```
-
-The advantages of this approach are numerous, we avoid COW issues with `fork()`, weirdness with `vfork()`, system call bloat with `CreateProcess()`, and we get a very flexible and powerful process creation system that can use any of the other file based APIs to modify the child process. In exchange, the only real price we pay is overhead from additional context switches, string parsing and path traversals, how much this matters in practice is debatable.
-
-#### Waiting for Processes
-
-Let's take another example, say we wanted to wait on multiple processes with a `waitpid()` syscall. Since that is not possible, we would need a new system call. Which is not just confusing, but also inefficient.
-
-Meanwhile, we just have a pollable `/proc/[pid]/wait` file that blocks until the process dies and returns the exit result, now any polling behavior that can be used on files can also be used while waiting on processes, including waiting on multiple processes at once, waiting on a keyboard and a process, waiting with a timeout, or any weird combination we can think of.
-
-### Asynchronous I/O
+The I/O system is designed from the ground up to take advantage of several modern I/O concepts. For example, all open operations use `openat()` semantics, all I/O is vectored (uses scatter-gather lists), asynchronous, dispatched via an I/O Ring and all operations support timeouts and cancellation. This is done with the goal of creating a powerful, flexible and efficient I/O system that can be used for a wide variety of purposes.
 
 There are two components to asynchronous I/O, the I/O Ring and I/O Request Packets.
 
-The I/O Ring acts as the user-kernel space boundary and is made up of two queues mapped into user space. The first queue is the submission queue, which is used by the user to submit I/O requests to the kernel. The second queue is the completion queue, which is used by the kernel to notify the user of the completion of I/O requests. This system also features a register system, allowing I/O Requests to store the result of their operation to a virtual register, which another I/O Request can read from into their arguments, allowing for very complex operations to be performed asynchronously.
+The I/O Ring acts as the user-kernel space boundary and is made up of two queues mapped into user space. The first queue is the submission queue, which is used by the user to submit I/O requests to the kernel. The second queue is the completion queue, which is used by the kernel to notify the user of the completion of I/O requests. This system also features a virtual register system, allowing I/O Requests to store the result of their operation to a virtual register, which another I/O Request can read from into their arguments, allowing for very complex operations to be performed asynchronously.
 
 The I/O Request Packet is a self-contained structure that contains the information needed to perform an I/O operation. When the kernel receives a submission queue entry, it will parse it and create an I/O Request Packet from it. The I/O Request Packet will then be sent to the appropriate vnode (file system, device, etc.) for processing, once the I/O Request is completed, the kernel will write the result of the operation into the completion queue.
+
+Built on top of this system are several layers of abstractions. For example, the `iowrite()` function is a simple synchronous wrapper around the I/O ring and of course `fwrite()` is a wrapper around `iowrite()` that works as expected. Many helper functions are also provided, for example `iowritep()` is a version of `iowrite()` that will use the virtual register system to perform a open, write and close using a single system call.
 
 The combination of this system and our "everything is a file" philosophy means that since files are interacted with via asynchronous I/O and everything is a file, practically all operations can be asynchronous and dispatched via a I/O Ring.
 
@@ -116,11 +82,102 @@ The namespace system allows for a composable, transparent and pseudo-capability 
 
 In most cases this is utilized by creating a process with an empty namespace, mounting a tmpfs instance as its root and then binding the necessary files and directories into the namespace.
 
+#### Dotdot
+
+Regarding the `..` operator, which you may know is rather dangerous in a capability based system, there is a `nodotdot` flag that can be set when opening a file to prevent the usage of `..` on paths opened relative to that file, the flag will be inherited by any file descriptors opened relative to that file.
+
+This is useful for security as you can pass this file descriptor to another process and be sure that it cannot use `..` to escape the intended directory. While still allowing us to utilize the `..` operator in other parts of the system where it is not a security concern, for example when navigating the filesystem in a terminal, without complex parsing or special cases.
+
 ### Standard Library
 
 The standard library (libstd) is a superset of the ANSI C standard library, meaning that headers such as `<stdio.h>` and `<stdlib.h>` are included while POSIX headers such as `<unistd.h>` are not. Instead, the `sys` directory provides a set of PatchworkOS-specific headers such as `<sys/io.h>` and `<sys/proc.h>`.
 
 Overall, an attempt is made to reuse and integrate our extensions cleanly without duplicating the ANSI sections of the standard library, for example the C11 `<threads.h>` header provides threading with `<sys/proc.h>` intentionally mirroring its API.
+
+## Practical Examples
+
+Included bellow are some practical examples of how to use the APIs provided by PatchworkOS, and how they differ from their POSIX counterparts. These examples are not meant to be comprehensive, but rather to give a taste of how the system works and how it can be used.
+
+### Basic File I/O
+
+For a basic example of file I/O, let's say we wanted to open a file, write "Hello, World!" to it and then close it.
+
+In a POSIX system, we might write:
+
+```c
+int fd = open("/path/to/file", O_RDWR);
+write(fd, "Hello, World!", 13);
+close(fd);
+```
+
+Using the synchronous I/O wrappers in PatchworkOS, we would write:
+
+```c
+fd_t fd;
+iowalk(IOCWD, "/path/to/file:rw", NULL, 0, &fd);
+
+size_t bytesWritten;
+iowrite(fd, IOBUF("Hello, World!", 13), IOCUR, &bytesWritten);
+ioclunk(fd);
+```
+
+We first open the file using `iowalk()`, specifying that the path should be traversed starting from the current working directory (`IOCWD`), that we want read and write access (`:rw`) AND that we do not need to provide additional data (`NULL` and `0`) this additional data or payload would be used when, for example, creating a symlink.
+
+> The term "walk" is used instead of "open" to clarify the many different things that can be done with this function and to reduce confusion internally within the kernel regarding the difference between constructing a file object and traversing the filesystem.
+
+Then we write to the file using `iowrite()`, passing the file descriptor, a buffer containing the data to write (the `iowrite()` function actually expects an array of `iovec_t` which the `IOBUF()` macro creates on the stack for convenience) and the offset to write at (in this case `IOCUR` to write at the current offset).
+
+Finally, we close the file using `ioclunk()`.
+
+> The term "clunk" is used to differentiate between closing a file descriptor and closeing an actual file when its reference count reaches zero, which is when the file is actually closed and its resources freed.
+
+Additionally, the `iowritet()`, `ioreadt()` and `iowalkt()` functions are provided that expect an additional `clock_t timeout` argument.
+
+### Process Creation
+
+Lets say we wanted to create a process, redirect its standard I/O to a set of file descriptors and then execute a program.
+
+In a POSIX system, we might write:
+
+```c
+int in[2];
+int out[2];
+  
+pipe(in);
+pipe(out);
+
+pid_t pid = fork();
+if (pid == 0)
+{
+    dup2(in[0], 0);
+    dup2(out[1], 1);
+    close(in[1]);
+    close(out[0]);
+    execl("/path/to/program", "program", NULL);
+}
+```
+
+Using the synchronous I/O wrappers in PatchworkOS, we would write:
+
+```c
+fd_t in;
+fd_t out;
+
+iowalk(IOCWD, "/dev/pipe/new", NULL, 0, &in);
+iowalk(IOCWD, "/dev/pipe/new", NULL, 0, &out);
+
+proc_t proc;
+const char* argv[] = {"/path/to/program", NULL};
+proc_create(&argv, PROC_SUSPENDED, &proc);
+
+iostorep(IOCWD, IOFMT("/proc/%llu/ctl", proc), IOFMT("dup 0 %llu; dup 1 %llu; close %llu %llu; start", in, out, in, out));
+```
+
+We first create two pipes by opening the special file `/dev/pipe/new` twice.
+
+Then we create a new process in a suspended state, this means that the process is created but is stuck blocking before it can load its executable, allowing us to set up its standard I/O before it starts executing.
+
+Finally, we use `iostorep()` to write a series of commands to the process's control file taking advantage of the `IOFMT()` helper to allocate a formatted string on the stack. These commands are then parsed and executed by the kernel, allowing us to set up the process's standard I/O and then start it.
 
 ## Other Features
 
@@ -132,6 +189,7 @@ Overall, an attempt is made to reuse and integrate our extensions cleanly withou
 - File based IPC and driver abstractions.
 - [Synchronization primitives](https://kainorberg.github.io/PatchworkOS/html/dd/d6b/group__kernel__sync.html) including Read-Copy-Update, mutexes, R/W locks, sequential locks, futex-inspired synchronization control objects and others.
 - Highly [Modular design](#modules), even [SMP Bootstrapping](https://kainorberg.github.io/PatchworkOS/html/d3/d0a/group__modules__smp.html) is done in a module.
+- From scratch ACPI implementation and AML parser, tested against ACPICA's runtime test suite. See [ACPI](#acpi) for more info.
 
 ### File System
 

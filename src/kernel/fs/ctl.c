@@ -3,12 +3,15 @@
 #include <kernel/io/irp.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/sched/thread.h>
+#include <kernel/mem/cache.h>
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/argsplit.h>
 
-#define CTL_MAX_DEPTH 64
+#define CTL_MAX_DEPTH 32
+
+static cache_t cache = CACHE_CREATE(cache, "ctl_state", sizeof(ctl_state_t), 64, NULL, NULL);
 
 static status_t ctl_do_next(irp_t* irp, ctl_state_t* state);
 
@@ -20,23 +23,57 @@ static void ctl_state_free(ctl_state_t* state)
     }
 
     UNREF(state->file);
-    free(state);
+    cache_free(state);
 }
 
 static status_t ctl_completion(irp_t* irp, void* ctx)
 {
     ctl_state_t* state = (ctl_state_t*)ctx;
 
-    if (IS_INFO(irp->status) && state->next != NULL)
+    if (state->next != NULL)
     {
-        status_t status = ctl_do_next(irp, state);
-        if (IS_ERR(status))
+        if (IS_INFO(irp->status) || state->runAlways)
         {
-            irp->status = status;
-            ctl_state_free(state);
-            return OK;
+            status_t status = ctl_do_next(irp, state);
+            if (IS_ERR(status))
+            {
+                irp->status = status;
+                ctl_state_free(state);
+                return OK;
+            }
+            return INFO(IO, COMPLETE);
         }
-        return INFO(IO, COMPLETE);
+
+        char* next = NULL;
+        for (char* p = state->next; *p != '\0'; p++)
+        {
+            if (*p == ';' || *p == '\n')
+            {
+                next = p + 1;
+                break;
+            }
+        }
+
+        if (next != NULL)
+        {
+            state->next = next;
+            while (isspace(*state->next))
+            {
+                state->next++;
+            }
+
+            if (*state->next != '\0')
+            {
+                status_t status = ctl_do_next(irp, state);
+                if (IS_ERR(status))
+                {
+                    irp->status = status;
+                    ctl_state_free(state);
+                    return OK;
+                }
+                return INFO(IO, COMPLETE);
+            }
+        }
     }
 
     ctl_state_free(state);
@@ -51,13 +88,31 @@ static status_t ctl_do_next(irp_t* irp, ctl_state_t* state)
     }
 
     char* string = state->next;
-    char* sep = strstr(string, "&&");
+    char* sep = NULL;
+    state->runAlways = true;
+
+    for (char* p = string; *p != '\0'; p++)
+    {
+        if (*p == ';' || *p == '\n')
+        {
+            sep = p;
+            state->runAlways = true;
+            break;
+        }
+        
+        if (p[0] == '&' && p[1] == '&')
+        {
+            sep = p;
+            state->runAlways = false;
+            break;
+        }
+    }
 
     if (sep != NULL)
     {
         *sep = '\0';
-        state->next = sep + 2;
-        while (*state->next == ' ')
+        state->next = sep + (state->runAlways ? 1 : 2);
+        while (isspace(*state->next))
         {
             state->next++;
         }
@@ -71,8 +126,13 @@ static status_t ctl_do_next(irp_t* irp, ctl_state_t* state)
         state->next = NULL;
     }
 
-    char* args = strchr(string, ' ');
-    if (args != NULL)
+    char* args = string;
+    while (*args != '\0' && !isspace(*args))
+    {
+        args++;
+    }
+
+    if (*args != '\0')
     {
         *args = '\0';
         args++;
@@ -86,6 +146,10 @@ static status_t ctl_do_next(irp_t* irp, ctl_state_t* state)
         {
             args[--len] = '\0';
         }
+    }
+    else
+    {
+        args = NULL;
     }
 
     iocmd_t cmd = 0;
@@ -119,7 +183,7 @@ status_t ctl_dispatch(irp_t* irp, file_t* file)
         return ERR(VFS, MJ_NOSYS);
     }
 
-    ctl_state_t* state = malloc(sizeof(ctl_state_t));
+    ctl_state_t* state = cache_alloc(&cache);
     if (state == NULL)
     {
         return ERR(VFS, NOMEM);
@@ -129,7 +193,7 @@ status_t ctl_dispatch(irp_t* irp, file_t* file)
     status_t status = mdl_copy_out(frame->write.buffer, SIZE_MAX, 0, &bytesWritten, state->buffer, CTL_BUFFER_SIZE - 1);
     if (IS_ERR(status))
     {
-        free(state);
+        cache_free(state);
         return status;
     }
 
@@ -138,7 +202,12 @@ status_t ctl_dispatch(irp_t* irp, file_t* file)
     state->file = REF(file);
     state->depth = 0;
 
-    ctl_do_next(irp, state);
+    status = ctl_do_next(irp, state);
+    if (IS_ERR(status))
+    {
+        ctl_state_free(state);
+        return status;
+    }
     return INFO(IO, PENDING);
 }
 

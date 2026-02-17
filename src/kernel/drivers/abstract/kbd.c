@@ -57,7 +57,7 @@ static vnode_class_t nameClass = {
         },
 };
 
-static status_t kbd_events_file_ctor(file_t* file)
+static status_t kbd_events_open(file_t* file)
 {
     kbd_t* kbd = file->vnode->data;
     assert(kbd != NULL);
@@ -78,7 +78,7 @@ static status_t kbd_events_file_ctor(file_t* file)
     return OK;
 }
 
-static void kbd_events_file_dtor(file_t* file)
+static void kbd_events_close(file_t* file)
 {
     kbd_t* kbd = file->vnode->data;
     assert(kbd != NULL);
@@ -148,8 +148,8 @@ static status_t kbd_events_poll(irp_t* irp)
 static vnode_class_t eventsClass = {
     .name = "kbd events",
     .type = VNODE_REGULAR,
-    .file_ctor = kbd_events_file_ctor,
-    .file_dtor = kbd_events_file_dtor,
+    .open = kbd_events_open,
+    .close = kbd_events_close,
     .handlers =
         {
             [IRP_MJ_READ] = kbd_events_read,

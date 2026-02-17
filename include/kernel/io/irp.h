@@ -171,13 +171,9 @@ typedef struct irp irp_t;
  *
  * ## Operations
  *
- * Each operation is specified by a "major function number", with each number having an associated argument structure
- * within the `irp_frame_t` structure.
+ * Each operation is specified by a "major function number", with each number having an associated argument structure of the same name within the `irp_frame_t` structure.
  *
  * Each operation is expected to place its result into the generic `irp_t::result` field.
- *
- * The meaning of each argument, and the real type of its result is specified in the documentation for each major
- * function number.
  *
  * @see kernel_io_ioring for the ring system.
  * @see [Wikipedia](https://en.wikipedia.org/wiki/I/O_request_packet) for more information about IRPs.
@@ -190,67 +186,47 @@ typedef uint16_t irp_major_t; ///< IRP major function number type.
 
 /**
  * @brief Read operation.
- * @param buffer The MDL describing the buffer to read into.
- * @param offset The offset within the file to read from.
  * @return The number of bytes read.
  */
 #define IRP_MJ_READ 0
 
 /**
  * @brief Write operation.
- * @param buffer The MDL describing the buffer to write from.
- * @param offset The offset within the file to write to.
  * @return The number of bytes written.
  */
 #define IRP_MJ_WRITE 1
 
 /**
  * @brief Poll operation.
- * @param events The events to poll for.
  * @result The events that occurred stored as a `ioevents_t` value.
  */
 #define IRP_MJ_POLL 2
 
 /**
  * @brief Seek operation.
- * @param offset The offset to seek to.
- * @param origin The origin of the seek operation.
  * @return The new file position.
  */
 #define IRP_MJ_SEEK 3
 
 /**
  * @brief Memory map operation.
- * @param address The virtual address to map the file into, or `NULL` for any address.
- * @param offset The offset within the file to start mapping from.
- * @param length The number of bytes to map.
- * @param flags The paging flags to apply to the mapping.
  * @return The virtual address where the file was mapped.
  */
 #define IRP_MJ_MMAP 4
 
 /**
  * @brief Control operation.
- * @param command The command to perform.
- * @param args The arguments for the command.
  * @return The result of the command.
  */
 #define IRP_MJ_CONTROL 5
 
 /**
- * @brief Lookup a dentry in a directory.
- * @param dentry The negative dentry to fill.
+ * @brief Open operation.
+ * @return Always `0`.
  */
-#define IRP_MJ_LOOKUP 6
+#define IRP_MJ_OPEN 6
 
-/**
- * @brief Create a file or directory.
- * @param dentry The dentry to create.
- * @param mode The mode to create with.
- */
-#define IRP_MJ_CREATE 7
-
-#define IRP_MJ_MAX 15 ///< The maximum number of major function numbers.
+#define IRP_MJ_MAX 7 ///< The maximum number of major function numbers.
 
 typedef uint16_t irp_minor_t; ///< IRP minor function number type.
 #define IRP_MN_NORMAL 0       ///< No special behaviour.
@@ -313,41 +289,43 @@ typedef struct irp_frame
     union {
         struct
         {
-            mdl_t* buffer;
-            size_t* offset;
+            mdl_t* buffer;      ///< The MDL describing the buffer to read into.
+            size_t* offset;     ///< The offset within the file to read from.
             size_t dummyOffset; ///< Allows the offset to be redirected to the file's current position.
         } read;
         struct
         {
-            mdl_t* buffer;
-            size_t* offset;
+            mdl_t* buffer;      ///< The MDL describing the buffer to write from.
+            size_t* offset;     ///< The offset within the file to write to.
             size_t dummyOffset; ///< Allows the offset to be redirected to the file's current position.
         } write;
         struct
         {
-            ioevents_t events;
+            ioevents_t events; ///< The events to poll for.
         } poll;
         struct
         {
-            ssize_t offset;
-            iowhence_t origin;
+            ssize_t offset;    ///< The offset to seek to.
+            iowhence_t origin; ///< The origin of the seek operation.
         } seek;
         struct
         {
-            void* address;
-            size_t offset;
-            uint32_t length;
-            pml_flags_t flags;
+            void* address;     ///< The virtual address to map the file into, or `NULL` for any address.
+            size_t offset;     ///< The offset within the file to start mapping from.
+            uint32_t length;   ///< The number of bytes to map.
+            pml_flags_t flags; ///< The paging flags to apply to the mapping.
         } mmap;
         struct
         {
-            iocmd_t command;
-            const char* args;
+            iocmd_t command;  ///< The command to perform.
+            const char* args; ///< The arguments for the command.
         } control;
         struct
         {
-            dentry_t* target;
-        } lookup;
+            const char* path; ///< A null-terminated string representing the path to open.
+            const void* payload; ///< Payload data for the open operation.
+            size_t payloadLen; ///< The length of the payload data.
+        } open;
         uint64_t args[IRP_ARGS_MAX]; ///< Generic arguments.
     };
 } irp_frame_t;
@@ -582,7 +560,7 @@ status_t irp_cancel(irp_t* irp);
  * @brief Set the cancellation callback for an IRP.
  *
  * @note It is generally preferred to use `irp_timeout_add()` over this function, `irp_set_cancel()` should only be used when timeouts are not desired.
- * 
+ *
  * @param irp The IRP.
  * @param cancel The cancellation callback.
  * @return The previous cancellation callback.
@@ -817,5 +795,24 @@ static inline void irp_prep_control(irp_t* irp, iocmd_t command, const char* arg
     next->control.command = command;
     next->control.args = args;
 }
+
+/**
+ * @brief Prepares the next IRP stack frame for an open operation.
+ * 
+ * @see `IRP_MJ_OPEN`
+ */
+static inline void irp_prep_open(irp_t* irp, const char* path, const void* payload, size_t payloadLen)
+{
+    irp_frame_t* next = irp_next(irp);
+    assert(next != NULL);
+
+    next->major = IRP_MJ_OPEN;
+    next->minor = IRP_MN_NORMAL;
+    next->flags = IRP_FLAG_NONE;
+    next->open.path = path;
+    next->open.payload = payload;
+    next->open.payloadLen = payloadLen;
+}
+
 
 /** @} */

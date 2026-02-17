@@ -23,9 +23,9 @@ static void file_free(file_t* file)
         return;
     }
 
-    if (file->vnode->cls->file_dtor != NULL)
+    if (file->vnode->cls->close != NULL)
     {
-        file->vnode->cls->file_dtor(file);
+        file->vnode->cls->close(file);
     }
 
     UNREF(file->vnode);

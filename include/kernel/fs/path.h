@@ -53,6 +53,7 @@ typedef struct file file_t;
  * | `private`   | `p` | Any files with this flag will be closed before a process starts executing. Any mounts with this flag will not be copied to a child namespace. | 
  * | `propagate`  | `g` | Propagate mounts and unmounts to child namespaces. | 
  * | `locked`    | `L` | Forbid unmounting this mount, useful for hiding directories or files. |
+ * | `nodotdot` | `N` | Do not allow the usage of `..` on paths opened relative to this file, this is useful for security. Will be inherited by any files opened relative to a file with this flag set. |
  *
  * For convenience, a single letter short form is also available as shown above, these single letter forms do not need
  * to be separated by colons, for example `/path/to/file:rwfte` is equivalent to
@@ -127,27 +128,6 @@ typedef struct path
 } path_t;
 
 /**
- * @brief Pathname structure.
- * @struct pathname_t
- *
- * A pathname is a string representation of a path.
- */
-typedef struct pathname
-{
-    char string[MAX_PATH];
-    mode_t mode;
-} pathname_t;
-
-/**
- * @brief Initialize a pathname.
- *
- * @param pathname The pathname to initialize.
- * @param string The string to initialize the pathname with.
- * @return An appropriate status code.
- */
-status_t pathname_init(pathname_t* pathname, const char* string);
-
-/**
  * @brief Helper to create an empty path.
  *
  * Its important to always use this as some functions, for example `path_copy()`, will deref the existing mount and
@@ -199,7 +179,31 @@ status_t pathname_init(pathname_t* pathname, const char* string);
  * @param mount The mount to set.
  * @param dentry The dentry to set.
  */
-void path_set(path_t* path, mount_t* mount, dentry_t* dentry);
+static inline void path_set(path_t* path, mount_t* mount, dentry_t* dentry)
+{
+    if (dentry != NULL)
+    {
+        REF(dentry);
+    }
+
+    if (mount != NULL)
+    {
+        REF(mount);
+    }
+
+    if (path->dentry != NULL)
+    {
+        UNREF(path->dentry);
+    }
+
+    if (path->mount != NULL)
+    {
+        UNREF(path->mount);
+    }
+
+    path->dentry = dentry;
+    path->mount = mount;
+}
 
 /**
  * @brief Copy a path.
@@ -209,7 +213,10 @@ void path_set(path_t* path, mount_t* mount, dentry_t* dentry);
  * @param dest The destination path.
  * @param src The source path.
  */
-void path_copy(path_t* dest, const path_t* src);
+static inline void path_copy(path_t* dest, const path_t* src)
+{
+    path_set(dest, src->mount, src->dentry);
+}
 
 /**
  * @brief Put a path.
@@ -218,57 +225,21 @@ void path_copy(path_t* dest, const path_t* src);
  *
  * @param path The path to put.
  */
-void path_put(path_t* path);
+static inline void path_put(path_t* path)
+{
+    if (path->dentry != NULL)
+    {
+        UNREF(path->dentry);
+        path->dentry = NULL;
+    }
 
-/**
- * @brief Walk a single path component.
- *
- * @param path The path to step from, will be updated to the new path, may be negative.
- * @param mode The mode to open the new path with.
- * @param name The name of the new path component.
- * @param ns The namespace to access mountpoints.
- * @return An appropriate status value.
- */
-status_t path_step(path_t* path, mode_t mode, const char* name, namespace_t* ns);
+    if (path->mount != NULL)
+    {
+        UNREF(path->mount);
+        path->mount = NULL;
+    }
+}
 
-/**
- * @brief Walk a pathname to a path.
- *
- * @param path The path to start from, will be updated to the new path, may be negative.
- * @param pathname The pathname to walk to.
- * @param ns The namespace to access mountpoints.
- * @return An appropriate status value.
- */
-status_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns);
-
-/**
- * @brief Walk a pathname to its parent and get the name of the last component.
- *
- * Will not modify `outParent` and `outChild` on failure.
-
- * @param path The path to start from, will be updated to the parent path.
- * @param pathname The pathname to traverse.
- * @param outLastName The output last component name, must be at least `MAX_NAME` bytes.
- * @param ns The namespace to access mountpoints.
- * @return An appropriate status value.
- */
-status_t path_walk_parent(path_t* path, const pathname_t* pathname, char* outLastName, namespace_t* ns);
-
-/**
- * @brief Traverse a pathname to its parent and child paths.
- *
- * Will not modify `outParent` and `outChild` on failure.
- *
- * @param from The path to start from.
- * @param outParent The output parent path.
- * @param outChild The output child path, may be negative.
- * @param pathname The pathname to traverse.
- * @param ns The namespace to access mountpoints.
- * @return An appropriate status value.
- */
-status_t path_walk_parent_and_child(const path_t* from, path_t* outParent, path_t* outChild, const pathname_t* pathname,
-    namespace_t* ns);
-    
 /**
  * @brief Convert a path to a pathname.
  *
@@ -276,9 +247,10 @@ status_t path_walk_parent_and_child(const path_t* from, path_t* outParent, path_
  *
  * @param path The path to convert.
  * @param pathname The output pathname.
+ * @param length The length of the output pathname buffer.
  * @return An appropriate status value.
  */
-status_t path_to_name(const path_t* path, pathname_t* pathname);
+status_t path_to_name(const path_t* path, const char* pathname, size_t length);
 
 /**
  * @brief Convert a mode to a string representation.

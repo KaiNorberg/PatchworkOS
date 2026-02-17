@@ -80,7 +80,7 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
 /**
  * @brief Cancel operation.
  * @param target The user data of the operation(s) to cancel.
- * @param flags Cancellation flags.
+ * @param cancel Cancellation flags.
  * @param Unused
  * @param Unused
  * @param Unused
@@ -151,43 +151,45 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
  * @param fd The file descriptor to perform the command on.
  * @param command The command to perform.
  * @param args The arguments for the command.
- * @param argsLen The length of the arguments.
+ * @param Unused
  * @param Unused
  * @result The result of the command.
  */
 #define IOOP_CONTROL 6
 
 /**
- * @brief Open operation.
+ * @brief Walk operation.
  *
- * @note The `extra` argument is used to provide additional data for the open operation, such as the target path when creating a symbolic link or the source file descriptor when creating a hardlink.
+ * Traverse the filesystem and open a file descriptor to the reached vnode.
+ * 
+ * @note The `payload` argument is used to provide additional data for the open operation, such as the target path when creating a symbolic link or the source file descriptor when creating a hardlink.
  *
  * @param fd The file descriptor to open the file relative to, or `IOCWD` to open from the current working directory.
  * @param path The path to the file to open, also contains flags @see kernel_fs_path.
  * @param count The length of the path.
- * @param extra Additional data for the open operation.
- * @param extraLen The length of the additional data.
+ * @param payload Additional data for the open operation.
+ * @param payloadLen The length of the additional data.
  * @result The opened file descriptor.
  */
-#define IOOP_OPEN 7
+#define IOOP_WALK 7
 
 /**
- * @brief Close operation.
- * @param fd The file descriptor to close.
+ * @brief Clunk operation.
+ * @param fd The file descriptor to discard.
  * @param Unused
  * @param Unused
  * @param Unused
  * @param Unused
  * @result Always `0`.
  */
-#define IOOP_CLOSE 8
+#define IOOP_CLUNK 8
 
 /**
  * @brief Remove operation.
  *
  * @note Will remove a file from the filesystem hierarchy, the files underlying resources will only be released once all file descriptors referencing it are closed.
  *
- * @param fd The file descriptor to remove.
+ * @param fd The file descriptor to a file to remove.
  * @param Unused
  * @param Unused
  * @param Unused
@@ -293,6 +295,16 @@ typedef struct iovec
     void* base;   ///< Pointer to the buffer.
     size_t length; ///< Length of the buffer.
 } iovec_t;
+
+/**
+ * @brief Helper macro for passing a simple buffer to `ioread()` or `iowrite()`.
+ *
+ * This macro expands to a pointer to a temporary `iovec_t` and a count of 1.
+ *
+ * @param ptr Pointer to the buffer.
+ * @param len Length of the buffer.
+ */
+#define IOBUF(ptr, len) &((iovec_t){ .base = (void*)(ptr), .length = (size_t)(len) }), 1
 
 typedef uint64_t ioattr_t; ///< File attribute operations.
 #define IOATTR_GET_SIZE  0 ///< Get the size of the file.
@@ -449,13 +461,13 @@ typedef struct iosqe
     union {
         uint64_t arg3;
         ssize_t offset;
-        const void* extra;
+        const void* payload;
         size_t argsLen;
     };
     union {
         uint64_t arg4;
         iomem_t mem;
-        size_t extraLen;
+        size_t payloadLen;
     };
 } iosqe_t;
 
@@ -547,16 +559,6 @@ typedef struct iopoll
     ioevents_t events;  ///< The events to wait for.
     ioevents_t revents; ///< The events that occurred.
 } iopoll_t;
-
-/**
- * @brief Helper macro for passing a simple buffer to `ioread()` or `iowrite()`.
- *
- * This macro expands to a pointer to a temporary `iovec_t` and a count of 1.
- *
- * @param ptr Pointer to the buffer.
- * @param len Length of the buffer.
- */
-#define IOBUF(ptr, len) &((iovec_t){ .base = (void*)(ptr), .length = (size_t)(len) }), 1
 
 #ifndef _KERNEL_
 extern ioring_t _stdIoring;
@@ -778,29 +780,29 @@ static inline void ioprep_control(iosqe_t* iosqe, iosqe_flags_t flags, clock_t t
 }
 
 /**
- * @brief Prepare an open submission queue entry (SQE).
+ * @brief Prepare an walk submission queue entry (SQE).
  *
- * @see `IOOP_OPEN`
+ * @see `IOOP_WALK`
  */
-static inline void ioprep_open(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
-    const char* path, size_t count, const void* extra, size_t extraLen)
+static inline void ioprep_walk(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
+    const char* path, size_t count, const void* payload, size_t payloadLen)
 {
-    *iosqe = IOSQE_CREATE(IOOP_OPEN, flags, timeout, data);
+    *iosqe = IOSQE_CREATE(IOOP_WALK, flags, timeout, data);
     iosqe->fd = fd;
     iosqe->path = path;
     iosqe->count = count;
-    iosqe->extra = extra;
-    iosqe->extraLen = extraLen;
+    iosqe->payload = payload;
+    iosqe->payloadLen = payloadLen;
 }
 
 /**
  * @brief Prepare a close submission queue entry (SQE).
  *
- * @see `IOOP_CLOSE`
+ * @see `IOOP_CLUNK`
  */
-static inline void ioprep_close(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd)
+static inline void ioprep_clunk(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd)
 {
-    *iosqe = IOSQE_CREATE(IOOP_CLOSE, flags, timeout, data);
+    *iosqe = IOSQE_CREATE(IOOP_CLUNK, flags, timeout, data);
     iosqe->fd = fd;
 }
 
@@ -875,7 +877,7 @@ void iosync(iosqe_t* sqe, iocqe_t* cqe);
 void iosyncn(iosqe_t* sqes, iocqe_t* cqes, size_t count, size_t wait, size_t* completed);
 
 /**
- * @brief Synchronous wrapper for a read operation.
+ * @brief Synchronous wrapper for a read operation with timeout.
  *
  * @param fd The file descriptor to read from.
  * @param vector An array of `iovec_t` structures to read into.
@@ -885,7 +887,7 @@ void iosyncn(iosqe_t* sqes, iocqe_t* cqes, size_t count, size_t wait, size_t* co
  * @param bytesRead Output pointer for the number of bytes read, can be `NULL`.
  * @return An appropriate status value.
  */
-static inline status_t ioread(fd_t fd, const iovec_t* vector, size_t count, ssize_t offset, clock_t timeout, size_t* bytesRead)
+static inline status_t ioreadt(fd_t fd, const iovec_t* vector, size_t count, ssize_t offset, clock_t timeout, size_t* bytesRead)
 {
     iosqe_t sqe;
     iocqe_t cqe;
@@ -899,17 +901,32 @@ static inline status_t ioread(fd_t fd, const iovec_t* vector, size_t count, ssiz
 }
 
 /**
- * @brief Synchronous wrapper for a write operation.
+ * @brief Synchronous wrapper for a read operation.
+ *
+ * @param fd The file descriptor to read from.
+ * @param vector An array of `iovec_t` structures to read into.
+ * @param count The number of `iovec_t` structures.
+ * @param offset The offset to read from, or `IOCUR`.
+ * @param bytesRead Output pointer for the number of bytes read, can be `NULL`.
+ * @return An appropriate status value.
+ */
+static inline status_t ioread(fd_t fd, const iovec_t* vector, size_t count, ssize_t offset, size_t* bytesRead)
+{
+    return ioreadt(fd, vector, count, offset, IONEVER, bytesRead);
+}
+
+/**
+ * @brief Synchronous wrapper for a write operation with timeout.
  *
  * @param fd The file descriptor to write to.
- * @param vector An array of `iovec_t` structures to read into.
+ * @param vector An array of `iovec_t` structures to write from.
  * @param count The number of `iovec_t` structures.
  * @param offset The offset to write to, or `IOCUR`.
  * @param timeout Timeout for the operation, `IONEVER` for no timeout or `IONOW` to fail the operation if it cannot be completed immediately.
  * @param bytesWritten Output pointer for the number of bytes written, can be `NULL`.
  * @return An appropriate status value.
  */
-static inline status_t iowrite(fd_t fd, const iovec_t* vector, size_t count, ssize_t offset, clock_t timeout, size_t* bytesWritten)
+static inline status_t iowritet(fd_t fd, const iovec_t* vector, size_t count, ssize_t offset, clock_t timeout, size_t* bytesWritten)
 {
     iosqe_t sqe;
     iocqe_t cqe;
@@ -920,6 +937,21 @@ static inline status_t iowrite(fd_t fd, const iovec_t* vector, size_t count, ssi
         *bytesWritten = cqe.result;
     }
     return cqe.status;
+}
+
+/**
+ * @brief Synchronous wrapper for a write operation.
+ *
+ * @param fd The file descriptor to write to.
+ * @param vector An array of `iovec_t` structures to write from.
+ * @param count The number of `iovec_t` structures.
+ * @param offset The offset to write to, or `IOCUR`.
+ * @param bytesWritten Output pointer for the number of bytes written, can be `NULL`.
+ * @return An appropriate status value.
+ */
+static inline status_t iowrite(fd_t fd, const iovec_t* vector, size_t count, ssize_t offset, size_t* bytesWritten)
+{
+    return iowritet(fd, vector, count, offset, IONEVER, bytesWritten);
 }
 
 /**
@@ -947,7 +979,7 @@ status_t iostore(fd_t fd, clock_t timeout, const char* in, size_t* bytesWritten)
 /**
  * @brief Synchronous wrapper for a reading a file directly using a path.
  *
- * This wrapper is more efficient than calling `ioopen()`, `ioread()`/`iowrite()`, and `ioclose()` in sequence as it uses the register system to chain the operations into a single `ioring_enter()` call.
+ * This wrapper is more efficient than calling `iowalk()`, `ioread()`/`iowrite()`, and `ioclunk()` in sequence as it uses the register system to chain the operations into a single `ioring_enter()` call.
  *
  * @param fd The file descriptor to open the file relative to, or `IOCWD` to open from the current working directory.
  * @param path The path to the file.
@@ -962,7 +994,7 @@ status_t ioreadp(fd_t fd, const char* path, const iovec_t* vector, size_t count,
 /**
  * @brief Synchronous wrapper for writing to a file directly using a path.
  *
- * This wrapper is more efficient than calling `ioopen()`, `ioread()`/`iowrite()`, and `ioclose()` in sequence as it uses the register system to chain the operations into a single `ioring_enter()` call.
+ * This wrapper is more efficient than calling `iowalk()`, `ioread()`/`iowrite()`, and `ioclunk()` in sequence as it uses the register system to chain the operations into a single `ioring_enter()` call.
  *
  * @param fd The file descriptor to open the file relative to, or `IOCWD` to open from the current working directory.
  * @param path The path to the file.
@@ -1085,7 +1117,7 @@ static inline status_t ioseek(fd_t fd, iowhence_t origin, ssize_t offset, clock_
  * @brief Synchronous wrapper for a memory map operation.
  *
  * @param fd The file descriptor to map.
- * @param address Input/Output pointer for the virtual address, if *address` is `NULL` the kernel will choose an
+ * @param address Input/Output pointer for the virtual address, if *address is NULL the kernel will choose an
  * address.
  * @param count The number of bytes to map.
  * @param offset The offset within the file to start mapping from.
@@ -1137,38 +1169,52 @@ static inline status_t ioprotect(void* address, size_t length, iomem_t map)
 }
 
 /**
- * @brief Synchronous wrapper for an open operation.
+ * @brief Synchronous wrapper for an walk operation with timeout.
  *
- * @param fd The file descriptor to open the file relative to, or `IOCWD` to open from the current working directory.
- * @param path The path to the file to open.
- * @param extra Additional data for the open operation, for example the path for a symlink, can be `NULL`.
- * @param extraLen The size of the additional data.
+ * @param fd The file descriptor to start walking from, or `IOCWD` start at the current working directory.
+ * @param path The path to walk.
+ * @param payload Additional data for the open operation, for example the path for a symlink, can be `NULL`.
+ * @param payloadLen The size of the additional data.
  * @param timeout Timeout for the operation, `IONEVER` for no timeout or `IONOW` to fail the operation if it cannot be completed immediately.
  * @param opened Output pointer for the opened file descriptor.
  * @return An appropriate status value.
  */
-static inline status_t ioopen(fd_t fd, const char* path, const void* extra, size_t extraLen, clock_t timeout, fd_t* opened)
+static inline status_t iowalkt(fd_t fd, const char* path, const void* payload, size_t payloadLen, clock_t timeout, fd_t* opened)
 {
     iosqe_t sqe;
     iocqe_t cqe;
-    ioprep_open(&sqe, IOSQE_NORMAL, timeout, 0, fd, path, strlen(path), extra, extraLen);
+    ioprep_walk(&sqe, IOSQE_NORMAL, timeout, 0, fd, path, strlen(path), payload, payloadLen);
     iosync(&sqe, &cqe);
     *opened = cqe.result;
     return cqe.status;
 }
 
 /**
+ * @brief Synchronous wrapper for an walk operation.
+ * 
+ * @param fd The file descriptor to start walking from, or `IOCWD` start at the current working directory.
+ * @param path The path to walk.
+ * @param payload Additional data for the open operation, for example the path for a symlink, can be `NULL`.
+ * @param payloadLen The size of the additional data.
+ * @param opened Output pointer for the opened file descriptor.
+ * @return An appropriate status value.
+ */
+static inline status_t iowalk(fd_t fd, const char* path, const void* payload, size_t payloadLen, fd_t* opened)
+{
+    return iowalkt(fd, path, payload, payloadLen, IONEVER, opened);
+}
+
+/**
  * @brief Synchronous wrapper for a close operation.
  *
  * @param fd The file descriptor to close.
- * @param timeout Timeout for the operation.
  * @return An appropriate status value.
  */
-static inline status_t ioclose(fd_t fd, clock_t timeout)
+static inline status_t ioclunk(fd_t fd)
 {
     iosqe_t sqe;
     iocqe_t cqe;
-    ioprep_close(&sqe, IOSQE_NORMAL, timeout, 0, fd);
+    ioprep_clunk(&sqe, IOSQE_NORMAL, IONEVER, 0, fd);
     iosync(&sqe, &cqe);
     return cqe.status;
 }
