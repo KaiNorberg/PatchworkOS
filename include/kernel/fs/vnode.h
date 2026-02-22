@@ -38,30 +38,6 @@ typedef struct dir_ctx dir_ctx_t;
  */
 
 /**
- * @brief Directory context used to iterate over directory entries.
- */
-typedef struct dir_ctx
-{
-    /**
-     * @brief Emit function.
-     *
-     * Should be called on all entries inside a directory while iterating over it, until this function returns `false`.
-     *
-     * Will be implemented by the VFS not the filesystem.
-     *
-     * @param ctx The directory context.
-     * @param name The name of the entry.
-     * @param number The vnode number of the entry.
-     * @param type The vnode type of the entry.
-     * @return `true` to continue iterating, `false` to stop.
-     */
-    bool (*emit)(dir_ctx_t* ctx, const char* name, vnode_type_t type);
-    size_t pos;   ///< The current position in the directory, can be used to skip entries.
-    void* data;   ///< Private data that the filesystem can use to conveniently pass data.
-    size_t index; ///< An index that the filesystem can use for its own purposes.
-} dir_ctx_t;
-
-/**
  * @brief Vnode class structure.
  * @struct vnode_class_t
  *
@@ -72,7 +48,6 @@ typedef struct vnode_class
 {
     const char* name;                    ///< The name of the class, used for debugging.
     iotype_t type;                   ///< The type of the vnode.
-    status_t (*open)(file_t* file); ///< File constructor.
     void (*close)(file_t* file);     ///< File destructor.
     irp_handler_t handlers[IRP_MJ_MAX];  ///< IRP handlers indexed by major function number.
     /**

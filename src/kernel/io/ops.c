@@ -1,5 +1,8 @@
+#include <_libstd/MAX_PATH.h>
+#include <kernel/fs/dentry.h>
 #include <kernel/fs/file_table.h>
 #include <kernel/fs/path.h>
+#include <kernel/fs/vnode.h>
 #include <kernel/io/ioring.h>
 #include <kernel/io/irp.h>
 #include <kernel/mem/paging_types.h>
@@ -47,10 +50,10 @@ static status_t io_op_read(irp_t* irp)
     {
         return ERR(IO, BADFD);
     }
+    UNREF_DEFER(file);
 
     if (!(file->mode & MODE_READ))
     {
-        UNREF(file);
         return ERR(IO, ACCESS);
     }
 
@@ -58,14 +61,12 @@ static status_t io_op_read(irp_t* irp)
     status_t status = irp_get_mdl(irp, &mdl);
     if (IS_ERR(status))
     {
-        UNREF(file);
         return status;
     }
 
     status = mdl_add_vector(mdl, &process->space, irp->sqe.vector, irp->sqe.count);
     if (IS_ERR(status))
     {
-        UNREF(file);
         return status;
     }
 
@@ -82,10 +83,10 @@ static status_t io_op_write(irp_t* irp)
     {
         return ERR(IO, BADFD);
     }
+    UNREF_DEFER(file);
 
     if (!(file->mode & MODE_WRITE))
     {
-        UNREF(file);
         return ERR(IO, ACCESS);
     }
 
@@ -93,14 +94,12 @@ static status_t io_op_write(irp_t* irp)
     status_t status = irp_get_mdl(irp, &mdl);
     if (IS_ERR(status))
     {
-        UNREF(file);
         return status;
     }
 
     status = mdl_add_vector(mdl, &process->space, irp->sqe.vector, irp->sqe.count);
     if (IS_ERR(status))
     {
-        UNREF(file);
         return status;
     }
 
@@ -117,6 +116,7 @@ static status_t io_op_poll(irp_t* irp)
     {
         return ERR(IO, BADFD);
     }
+    UNREF_DEFER(file);
 
     irp_prep_poll(irp, irp->sqe.events);
     return file_call(file, irp);
@@ -131,12 +131,13 @@ static status_t io_op_seek(irp_t* irp)
     {
         return ERR(IO, BADFD);
     }
+    UNREF_DEFER(file);
 
     irp_prep_seek(irp, irp->sqe.offset, irp->sqe.origin);
     return file_call(file, irp);
 }
 
-static status_t io_op_mmap(irp_t* irp)
+static status_t io_op_map(irp_t* irp)
 {
     process_t* process = irp_get_process(irp);
 
@@ -145,6 +146,7 @@ static status_t io_op_mmap(irp_t* irp)
     {
         return ERR(IO, BADFD);
     }
+    UNREF_DEFER(file);
 
     pml_flags_t pml = vmm_iomem_to_flags(irp->sqe.mem);
     irp_prep_mmap(irp, irp->sqe.address, irp->sqe.count, irp->sqe.offset, pml);
@@ -159,70 +161,138 @@ static status_t io_op_control(irp_t* irp)
     return ERR(IO, INVAL);
 }
 
-static status_t io_op_walk_complete(irp_t* irp, void* ctx)
+static status_t io_op_walk_done(irp_t* irp, struct path_state* state, file_t* file)
 {
-    free(ctx);
-    return file_table_open(&irp_get_process(irp)->files, irp_next(irp)->file);
+    return file_table_add(&irp_get_process(irp)->files, irp_next(irp)->file);
 }
 
 static status_t io_op_walk(irp_t* irp)
 {
     process_t* process = irp_get_process(irp);
 
-    if (irp->sqe.path == NULL || (irp->sqe.extra == NULL && irp->sqe.extraLen != 0))
+    if (irp->sqe.path == NULL || (irp->sqe.payload == NULL && irp->sqe.payloadLen != 0))
     {
         return ERR(IO, INVAL);
     }
 
-    path_t from = PATH_EMPTY;
-    if (irp->sqe.fd == IOCWD)
+    file_t* file = file_table_get(&process->files, irp->sqe.fd);
+    if (file == NULL)
     {
-        namespace_t* ns = process_get_ns(process);
-        if (ns == NULL)
-        {
-            return ERR(IO, DYING);
-        }
-        UNREF_DEFER(ns);
-
-        from = cwd_get(&process->cwd, ns);
+        return ERR(IO, BADFD);
     }
-    else
-    {
-        file_t* file = file_table_get(&process->files, irp->sqe.fd);
-        if (file == NULL)
-        {
-            return ERR(IO, BADFD);
-        }
+    UNREF_DEFER(file);
 
-        path_copy(&from, &file->path);
-    }
-
-    size_t length = irp->sqe.count + 1 + irp->sqe.extraLen;
-    char* path = malloc(length);
-    if (path == NULL)
+    size_t length = sizeof(path_state_t) + MAX_PATH + irp->sqe.payloadLen;
+    path_state_t* state = malloc(length);
+    if (state == NULL)
     {
         return ERR(IO, NOMEM);
     }
-    void* extra = path + irp->sqe.count + 1;
+    char* path = (char*)((uintptr_t)state + sizeof(path_state_t));
+    void* payload = (void*)((uintptr_t)path + irp->sqe.count);
 
     status_t status = space_copy_out(&process->space, path, irp->sqe.path, irp->sqe.count);
     if (IS_ERR(status))
     {
-        free(path);
+        free(state);
         return status;
     }
 
-    status = space_copy_out(&process->space, extra, irp->sqe.extra, irp->sqe.extraLen);
+    status = space_copy_out(&process->space, payload, irp->sqe.payload, irp->sqe.payloadLen);
     if (IS_ERR(status))
     {
-        free(path);
+        free(state);
         return status;
     }
 
-    irp_set_complete(irp, io_op_walk_complete, path);    
-    irp_prep_open(irp, path, extra, irp->sqe.extraLen);
+    path_state_init(state, file->path.dentry, file->path.mount, path, irp->sqe.count, MAX_PATH, payload, irp->sqe.payloadLen, io_op_walk_done);
+    return path_walk(irp, state);
+}
 
-    return path_call(&from, irp);
+static status_t io_op_clunk(irp_t* irp)
+{
+    process_t* process = irp_get_process(irp);
+
+    return file_table_clunk(&process->files, irp->sqe.fd);
+}
+
+static status_t io_op_remove(irp_t* irp)
+{
+    process_t* process = irp_get_process(irp);
+
+    file_t* file = file_table_get(&process->files, irp->sqe.fd);
+    if (file == NULL)
+    {
+        return ERR(IO, BADFD);
+    }
+    UNREF_DEFER(file);
+
+    dentry_t* dentry = file->path.dentry;
+    if (DENTRY_IS_ROOT(dentry))
+    {
+        return ERR(IO, BUSY);
+    }
+
+    irp_prep_remove(irp, dentry);
+    return file_call(file, irp);
+}
+
+static status_t io_op_attr(irp_t* irp)
+{
+    process_t* process = irp_get_process(irp);
+
+    file_t* file = file_table_get(&process->files, irp->sqe.fd);
+    if (file == NULL)
+    {
+        return ERR(IO, BADFD);
+    }
+    UNREF_DEFER(file);
+
+    irp_prep_attr(irp, irp->sqe.attr, irp->sqe.value);
+    return file_call(file, irp);
+}
+
+static status_t io_op_query(irp_t* irp)
+{
+    process_t* process = irp_get_process(irp);
+
+    file_t* file = file_table_get(&process->files, irp->sqe.fd);
+    if (file == NULL)
+    {
+        return ERR(IO, BADFD);
+    }
+    UNREF_DEFER(file);
+
+    mdl_t* mdl;
+    status_t status = irp_get_mdl(irp, &mdl);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+
+    status = mdl_add(mdl, &process->space, irp->sqe.info, sizeof(ioinfo_t));
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+
+    irp_prep_query(irp, mdl);
+    return file_call(file, irp);
+}
+
+static status_t io_op_flush(irp_t* irp)
+{
+    process_t* process = irp_get_process(irp);
+
+    file_t* file = file_table_get(&process->files, irp->sqe.fd);
+    if (file == NULL)
+    {
+        return ERR(IO, BADFD);
+    }
+    UNREF_DEFER(file);
+
+    irp_prep_flush(irp);
+    return file_call(file, irp);
 }
 
 typedef status_t (*io_op_func_t)(irp_t*);
@@ -233,8 +303,14 @@ static const io_op_func_t ops[IOOP_MAX] = {
     [IOOP_WRITE] = io_op_write,
     [IOOP_POLL] = io_op_poll,
     [IOOP_SEEK] = io_op_seek,
-    [IOOP_MAP] = io_op_mmap,
+    [IOOP_MAP] = io_op_map,    
+    [IOOP_CONTROL] = io_op_control,
     [IOOP_WALK] = io_op_walk,
+    [IOOP_CLUNK] = io_op_clunk,
+    [IOOP_REMOVE] = io_op_remove,
+    [IOOP_ATTR] = io_op_attr,
+    [IOOP_QUERY] = io_op_query,
+    [IOOP_FLUSH] = io_op_flush,
 };
 
 status_t io_op_dispatch(irp_t* irp)

@@ -76,7 +76,7 @@ typedef uint64_t dentry_id_t;
  * @param dentry The dentry to check.
  * @return true if the dentry is a regular file, false otherwise or if the dentry is negative.
  */
-#define DENTRY_IS_REGULAR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == VNODE_REGULAR)
+#define DENTRY_IS_REGULAR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == IOTYPE_REGULAR)
 
 /**
  * @brief Check if the vnode associated with a dentry is a directory.
@@ -84,7 +84,7 @@ typedef uint64_t dentry_id_t;
  * @param dentry The dentry to check.
  * @return true if the dentry is a directory, false otherwise or if the dentry is negative.
  */
-#define DENTRY_IS_DIR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == VNODE_DIR)
+#define DENTRY_IS_DIR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == IOTYPE_DIRECTORY)
 
 /**
  * @brief Check if the vnode associated with a dentry is a symbolic link.
@@ -92,7 +92,7 @@ typedef uint64_t dentry_id_t;
  * @param dentry The dentry to check.
  * @return true if the dentry is a symbolic link, false otherwise or if the dentry is negative.
  */
-#define DENTRY_IS_SYMLINK(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == VNODE_SYMLINK)
+#define DENTRY_IS_SYMLINK(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == IOTYPE_SYMLINK)
 
 /**
  * @brief Directory entry structure.

@@ -21,11 +21,29 @@
 
 <img src="meta/screenshots/desktop.png" alt="Desktop Screenshot" />
 
+## Setup
+
+```bash
+# Install dependencies
+sudo dnf install gcc make mtools qemu-system-x86 # For Fedora
+sudo apt install build-essential mtools qemu-system-x86 # For Debian/Ubuntu
+
+# Clone this repository, you can also use the green Code button at the top of the Github.
+git clone https://github.com/KaiNorberg/PatchworkOS
+cd PatchworkOS
+
+# Build (creates PatchworkOS.img in bin/)
+make all
+
+# Run using QEMU
+make run
+```
+
 ## Introduction
 
 **PatchworkOS** is a non-POSIX operating system written from scratch in C and assembly that takes inspiration from many sources, such as an "everything is a file" philosophy from Plan9, asynchronous IRP based I/O from Windows NT and io_uring from Linux.
 
-This is not a UNIX clone, it's intended to be a (hopefully) interesting experiment in operating system design while remaining approachable and educational. Sometimes this leads to bad results, and sometimes, with a bit of luck, good ones.
+This is not a UNIX clone; it's intended to be a (hopefully) interesting experiment in operating system design while remaining approachable and educational. Sometimes this leads to bad results, and sometimes, with a bit of luck, good ones.
 
 The goal is still to make a “real” operating system, one that runs on real hardware and has the performance one would expect from a modern operating system without jumping ahead to user space features or drivers, a floppy disk driver with a round-robin scheduler is not enough.
 
@@ -56,13 +74,13 @@ The "everything is a file" philosophy means that almost all kernel resources are
 
 > The file concept is distinct from a "regular file", which is a specific type of file that is stored on a disk and is what most people think of when they hear the word "file".
 
-This can often result in unorthodox APIs that seem overcomplicated at first, but the goal is to provide a simple, consistent and most importantly composable interface for all kernel subsystems. The core argument is not that each individual API is better than its POSIX counterpart, but that they combine to form a system that is greater than the sum of its parts, allowing for behaviour that was never explicitly designed for.
+This can often result in unorthodox APIs that seem overcomplicated at first, but the goal is to provide a simple, consistent and most importantly composable interface for all kernel subsystems. The core argument is not that each individual API is better than its POSIX counterpart, but that they combine to form a system that is greater than the sum of its parts, allowing for behavior that was never explicitly designed for.
 
 Plus its fun.
 
-### Modernised I/O
+### Modernized I/O
 
-The I/O system is designed from the ground up to take advantage of several modern I/O concepts. For example, all open operations use `openat()` semantics, all I/O is vectored (uses scatter-gather lists), asynchronous, dispatched via an I/O Ring and all operations support timeouts and cancellation. This is done with the goal of creating a powerful, flexible and efficient I/O system that can be used for a wide variety of purposes.
+The I/O system is designed from the ground up to take advantage of several modern I/O concepts. For example, all open operations use `openat()` semantics, all I/O is vectored (uses scatter-gather lists), asynchronous and dispatched via an I/O Ring supporting timeouts and cancellation. Finally, all I/O is direct and (more or less) zero-copy. This is done with the goal of creating a powerful, flexible and efficient I/O system that can be used for a wide variety of purposes.
 
 There are two components to asynchronous I/O, the I/O Ring and I/O Request Packets.
 
@@ -70,7 +88,11 @@ The I/O Ring acts as the user-kernel space boundary and is made up of two queues
 
 The I/O Request Packet is a self-contained structure that contains the information needed to perform an I/O operation. When the kernel receives a submission queue entry, it will parse it and create an I/O Request Packet from it. The I/O Request Packet will then be sent to the appropriate vnode (file system, device, etc.) for processing, once the I/O Request is completed, the kernel will write the result of the operation into the completion queue.
 
-Built on top of this system are several layers of abstractions. For example, the `iowrite()` function is a simple synchronous wrapper around the I/O ring and of course `fwrite()` is a wrapper around `iowrite()` that works as expected. Many helper functions are also provided, for example `iowritep()` is a version of `iowrite()` that will use the virtual register system to perform a open, write and close using a single system call.
+For reading or writing, the I/O Request Packet uses a Memory Descriptor List, which is an array of memory descriptors, each containing a page frame number, offset and length. These are created by reading the user space `iovec_t` structures from the submission queue entry and converting them into page frame numbers. Finally, since the kernel identity maps all of physical memory into its address space, it can directly read from or write to the user space buffers without needing to copy them into kernel space or even map them in, thus achieving direct and zero-copy I/O.
+
+Built on top of this system are several layers of abstractions. For example, the `iowrite()` function is a simple synchronous wrapper around the I/O ring and of course `fwrite()` is a wrapper around `iowrite()` that works as expected. Many helper functions are also provided, for example `iowritep()` is a version of `iowrite()` that will use the virtual register system to perform an open, write and close using a single system call.
+
+Finally, even the "error" handling or status system allows for certain optimizations. For example, if a read is performed on a file with a buffer of insufficient size to store the remaining contents of the file, the returned status will be an informational `ST_CODE_MORE` status. In certain cases, this means we can skip an additional read to check for EOF, potentially skipping a system call.
 
 The combination of this system and our "everything is a file" philosophy means that since files are interacted with via asynchronous I/O and everything is a file, practically all operations can be asynchronous and dispatched via a I/O Ring.
 
@@ -96,7 +118,7 @@ Overall, an attempt is made to reuse and integrate our extensions cleanly withou
 
 ## Practical Examples
 
-Included bellow are some practical examples of how to use the APIs provided by PatchworkOS, and how they differ from their POSIX counterparts. These examples are not meant to be comprehensive, but rather to give a taste of how the system works and how it can be used.
+Included below are some practical examples of how to use the APIs provided by PatchworkOS, and how they differ from their POSIX counterparts. These examples are not meant to be comprehensive, but rather to provide an instinct and intuition for how PatchworkOS works.
 
 ### Basic File I/O
 
@@ -123,19 +145,21 @@ ioclunk(fd);
 
 We first open the file using `iowalk()`, specifying that the path should be traversed starting from the current working directory (`IOCWD`), that we want read and write access (`:rw`) AND that we do not need to provide additional data (`NULL` and `0`) this additional data or payload would be used when, for example, creating a symlink.
 
-> The term "walk" is used instead of "open" to clarify the many different things that can be done with this function and to reduce confusion internally within the kernel regarding the difference between constructing a file object and traversing the filesystem.
+Note that the `IOCWD` constant is no different than standard file descriptors like `STDIN`, `STDOUT` and `STDERR` (called `IOIN`, `IOOUT` and `IOERR` respectively). In PatchworkOS, the current working directory is just a file descriptor like any other; an agreed upon convention that allows other processes to easily inherit it when needed.
+
+> The term "walk" is used instead of "open" to clarify its use within PatchworkOS, as all operations take in a file descriptor with `iowalk()` being the only operation that takes in a path. As such, performing any operation on a file should be thought of as "walking" to it and then acting upon it, instead of mearly "opening" it, after walking to a file we could walk to another file relative to it.
 
 Then we write to the file using `iowrite()`, passing the file descriptor, a buffer containing the data to write (the `iowrite()` function actually expects an array of `iovec_t` which the `IOBUF()` macro creates on the stack for convenience) and the offset to write at (in this case `IOCUR` to write at the current offset).
 
 Finally, we close the file using `ioclunk()`.
 
-> The term "clunk" is used to differentiate between closing a file descriptor and closeing an actual file when its reference count reaches zero, which is when the file is actually closed and its resources freed.
+> The term "clunk" is used to differentiate between closing a file descriptor and closing an actual file object when its reference count reaches zero, which is when the file object and its resources are freed.
 
 Additionally, the `iowritet()`, `ioreadt()` and `iowalkt()` functions are provided that expect an additional `clock_t timeout` argument.
 
 ### Process Creation
 
-Lets say we wanted to create a process, redirect its standard I/O to a set of file descriptors and then execute a program.
+Let's say we wanted to create a process, redirect its standard I/O to a set of file descriptors and then execute a program.
 
 In a POSIX system, we might write:
 
@@ -179,57 +203,34 @@ Then we create a new process in a suspended state, this means that the process i
 
 Finally, we use `iostorep()` to write a series of commands to the process's control file taking advantage of the `IOFMT()` helper to allocate a formatted string on the stack. These commands are then parsed and executed by the kernel, allowing us to set up the process's standard I/O and then start it.
 
-## Other Features
+As a side note, we could optimize the pipe creation by walking to the second pipe relative to the first one. This optimization can be applied any time we wish to open the same file multiple times:
 
-### Kernel
-
-- Preemptive and tickless [EEVDF scheduler](https://kainorberg.github.io/PatchworkOS/html/d7/d85/group__kernel__sched.html) based upon the [original paper](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=805acf7726282721504c8f00575d91ebfd750564) and implemented using an [Augmented Red-Black tree](https://kainorberg.github.io/PatchworkOS/html/da/d90/group__kernel__utils__rbtree.html) to achieve `O(log n)` worst case complexity. Providing a more approachable implementation of the scheduler used by the modern Linux kernel, but ours is obviously **a lot** less mature.
-- Multithreading and Symmetric Multi Processing with fine-grained locking.
-- Optimized memory management, featuring object caching and `O(1)` per page physical and virtual memory managers.
-- File based IPC and driver abstractions.
-- [Synchronization primitives](https://kainorberg.github.io/PatchworkOS/html/dd/d6b/group__kernel__sync.html) including Read-Copy-Update, mutexes, R/W locks, sequential locks, futex-inspired synchronization control objects and others.
-- Highly [Modular design](#modules), even [SMP Bootstrapping](https://kainorberg.github.io/PatchworkOS/html/d3/d0a/group__modules__smp.html) is done in a module.
-- From scratch ACPI implementation and AML parser, tested against ACPICA's runtime test suite. See [ACPI](#acpi) for more info.
-
-### File System
-
-- Vnode and dentry based VFS with RCU traversal, hardlinks, symlinks, per-process namespaces, etc.
-- Custom [Framebuffer BitMaP](https://github.com/KaiNorberg/fbmp) (.fbmp) image format, allows for faster loading by removing the need for parsing.
-- Custom [Grayscale Raster Font](https://github.com/KaiNorberg/grf) (.grf) font format, allows for antialiasing and kerning without complex vector graphics.
-
-### User Space
-
-- Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg).
-- Capability based containerization security model using per-process mountpoint namespaces. See [Security](#security) for more info.
-- Note that currently a heavy focus has been placed on the kernel and low-level stuff, so user space is quite small... for now.
-
-*And much more...*
-
-## Setup
-
-```bash
-# Install dependencies
-sudo dnf install gcc make mtools qemu-system-x86 # For Fedora
-sudo apt install build-essential mtools qemu-system-x86 # For Debian/Ubuntu
-
-# Clone this repository, you can also use the green Code button at the top of the Github.
-git clone https://github.com/KaiNorberg/PatchworkOS
-cd PatchworkOS
-
-# Build (creates PatchworkOS.img in bin/)
-make all
-
-# Run using QEMU
-make run
+```c
+fd_t in;
+fd_t out;
+iowalk(IOCWD, "/dev/pipe/new", NULL, 0, &in);
+iowalk(in, ".", NULL, 0, &out);
 ```
 
----
+### Mounting a Filesystem
 
-## Doxygen Documentation
+There is no `mount()` system call in PatchworkOS; instead "filesystem files" and a `iobind()` system call are used to mount filesystems.
 
-As one of the main goals of PatchworkOS is to be educational and approachable, the codebase is extensively documented with citations provided to any used sources when reasonable.
+Filesystem files are exposed by "sysfs" as files with the `IOTYPE_FILESYSTEM` type, for example, `/sys/fs/tmpfs` is the filesystem file for the tmpfs filesystem. Opening this file gives us a file descriptor containing the root of a new instance of that filesystem (for more complex filesystems, for example a disk based one, additional parameters might be needed, these would be passed as the payload to `iowalk()` when opening the filesystem file).
 
-For more, check out the [documentation](https://kainorberg.github.io/PatchworkOS/html/index.html). Within the documentation checking the `topics` section in the sidebar is recommended.
+Then we can use `iobind()` to bind the root of the filesystem instance into our desired target:
+
+```c
+fd_t fs;
+fd_t target;
+iowalk(IOCWD, "/sys/fs/tmpfs", NULL, 0, &fs);
+iowalk(IOCWD, "/mnt/tmpfs", NULL, 0, &target);
+iobind(target, fs);
+```
+
+> The `iobind()` system call can also be used to bind any file onto any other file. Any bind can be removed using `iounbind()`.
+
+An interesting side effect of this system is that namespaces do not need to be contiguous, for example, we could open two tmpfs instances and bind the second one inside the first one. Since the second filesystem instance is now referenced by our binding and the first is referenced by the second through that binding, both filesystems will remain even if we close both file descriptors, resulting in our namespace containing our original hierarchy and a second detached hierarchy consisting of the two tmpfs instances.
 
 ## Modules
 
@@ -318,7 +319,7 @@ See [ACPI specification Version 6.6](https://uefi.org/specs/ACPI/6.6/index.html)
 
 ACPI or Advanced Configuration and Power Interface is used for *a lot* of things in modern systems but mainly power management and device enumeration/configuration. It's not possible to go over everything here, instead a brief overview of the parts most likely to cause confusion while reading the code will be provided.
 
-It consists of two main parts, the ACPI tables and AML bytecode. If you have completed a basic operating systems tutorial, you have probably seen the ACPI tables before, for example the RSDP, FADT, MADT, etc. These tables are static in memory data structures storing information about the system, they are very easy to parse but are limited in what they can express.
+It consists of two main parts, the ACPI tables and AML bytecode. If you have completed a basic operating systems tutorial, you have probably seen the ACPI tables before, for example the RSDP, FADT, MADT, etc. These tables are static in memory data structures storing information about the system; they are very easy to parse but are limited in what they can express.
 
 AML or ACPI Machine Language is a Turing complete "mini language", and the source of much frustration, that is used to express more complex data, primarily device configuration. This is needed as its impossible for any specification to account for every possible hardware configuration that exists currently, much less that may exist in the future. So instead of trying to design that, what if we could just have a small program generate whatever data we wanted dynamically? Well that's more or less what AML is.
 
@@ -373,7 +374,37 @@ Having access to this information for all devices also allows us to avoid resour
 
 Of course, it gets way, way worse than this, but hopefully this clarifies why the PS/2 driver and other drivers, might look a bit different from what you might be used to.
 
+## Other Features
+
+### Kernel
+
+- Preemptive and tickless [EEVDF scheduler](https://kainorberg.github.io/PatchworkOS/html/d7/d85/group__kernel__sched.html) based upon the [original paper](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=805acf7726282721504c8f00575d91ebfd750564) and implemented using an [Augmented Red-Black tree](https://kainorberg.github.io/PatchworkOS/html/da/d90/group__kernel__utils__rbtree.html) to achieve `O(log n)` worst case complexity. Providing a more approachable implementation of the scheduler used by the modern Linux kernel, but ours is obviously **a lot** less mature.
+- Multithreading and Symmetric Multi Processing with fine-grained locking.
+- Optimized memory management, featuring object caching and `O(1)` per page physical and virtual memory managers.
+- File based IPC and driver abstractions.
+- [Synchronization primitives](https://kainorberg.github.io/PatchworkOS/html/dd/d6b/group__kernel__sync.html) including Read-Copy-Update, mutexes, R/W locks, sequential locks, futex-inspired synchronization control objects and others.
+- Highly [Modular design](#modules), even [SMP Bootstrapping](https://kainorberg.github.io/PatchworkOS/html/d3/d0a/group__modules__smp.html) is done in a module.
+- From scratch ACPI implementation and AML parser, tested against ACPICA's runtime test suite. See [ACPI](#acpi) for more info.
+
+### File System
+
+- Vnode and dentry based VFS with RCU traversal, hardlinks, symlinks, per-process namespaces, etc.
+- Custom [Framebuffer BitMaP](https://github.com/KaiNorberg/fbmp) (.fbmp) image format, allows for faster loading by removing the need for parsing.
+- Custom [Grayscale Raster Font](https://github.com/KaiNorberg/grf) (.grf) font format, allows for antialiasing and kerning without complex vector graphics.
+
+### User Space
+
+- Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg).
+- Capability based containerization security model using per-process mountpoint namespaces. See [Security](#security) for more info.
+- Note that currently a heavy focus has been placed on the kernel and low-level stuff, so user space is quite small... for now.
+
 ---
+
+## Doxygen Documentation
+
+As one of the main goals of PatchworkOS is to be educational and approachable, the codebase is extensively documented with citations provided to any used sources when reasonable.
+
+For more, check out the [documentation](https://kainorberg.github.io/PatchworkOS/html/index.html). Within the documentation checking the `topics` section in the sidebar is recommended.
 
 ## Development
 

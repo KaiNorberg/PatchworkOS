@@ -533,7 +533,7 @@ status_t vmm_unmap(space_t* space, void* virtAddr, size_t length)
     return OK;
 }
 
-SYSCALL_DEFINE(SYS_IO_UNMAP, void* address, size_t length)
+SYSCALL_DEFINE(SYS_UNMAP, void* address, size_t length)
 {
     process_t* process = process_current();
     space_t* space = &process->space;
@@ -703,7 +703,7 @@ void vmm_tlb_shootdown(space_t* space, void* virtAddr, size_t pageAmount)
     }
 }
 
-SYSCALL_DEFINE(SYS_IO_PROTECT, void* address, size_t length, iomem_t prot)
+SYSCALL_DEFINE(SYS_PROTECT, void* address, size_t length, iomem_t prot)
 {
     process_t* process = process_current();
     space_t* space = &process->space;

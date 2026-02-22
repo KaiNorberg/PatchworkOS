@@ -190,6 +190,7 @@ typedef enum
     ST_CODE_PERM,                               ///< Operation not permitted.
     ST_CODE_NOGROUP,                            ///< Not within a group.
     ST_CODE_INVAL_KEY,                          ///< Invalid key.
+    ST_CODE_DOTDOT,                             ///< Attempt to access parent directory when not allowed.
 
     ST_CODE_NOT_INIT = (ST_KIND_RESOURCE << 8) | 1, ///< Resource is not initialized.
     ST_CODE_ALREADY_INIT,                           ///< Resource is already initialized.

@@ -82,15 +82,21 @@ typedef enum mode
     MODE_READ = 1 << 0,
     MODE_WRITE = 1 << 1,
     MODE_EXECUTE = 1 << 2,
-    MODE_APPEND = 1 << 4,
-    MODE_CREATE = 1 << 5,
-    MODE_EXCLUSIVE = 1 << 6,
-    MODE_TRUNCATE = 1 << 7,
-    MODE_EXISTING = 1 << 8,
-    MODE_NOFOLLOW = 1 << 10,
-    MODE_PRIVATE = 1 << 11,
-    MODE_PROPAGATE = 1 << 12,
-    MODE_LOCKED = 1 << 13,
+    MODE_APPEND = 1 << 3,
+    MODE_FILE = 1 << 4,
+    MODE_DIRECTORY = 1 << 5,
+    MODE_SYMLINK = 1 << 6,
+    MODE_HARDLINK = 1 << 7,
+    MODE_EXCLUSIVE = 1 << 8,
+    MODE_EXISTING = 1 << 9,
+    MODE_TRUNCATE = 1 << 10,
+    MODE_NOFOLLOW = 1 << 11,
+    MODE_PRIVATE = 1 << 12,
+    MODE_PROPAGATE = 1 << 13,
+    MODE_LOCKED = 1 << 14,
+    MODE_NODOTDOT = 1 << 15,
+    MODE_CREATE = 1 << 16,
+    MODE_RECURSIVE = 1 << 17,
     MODE_ALL_PERMS = MODE_READ | MODE_WRITE | MODE_EXECUTE,
 } mode_t;
 
@@ -241,6 +247,64 @@ static inline void path_put(path_t* path)
 }
 
 /**
+ * @brief Path walking state.
+ * @struct path_state_t
+ * 
+ * @note The `dentry` and `mount` members will only hold references while outside of a RCU read-side critical section. For example, during lookups. Within these section there is no need for reference counting, improving performance.
+ */
+typedef struct path_state
+{
+    dentry_t* dentry; ///< The current dentry in the walk.
+    mount_t* mount;   ///< The current mount in the walk.
+    char* path;     ///< The full path string buffer, not `NULL` terminated.
+    uint64_t pathLength; ///< The length of the path string.
+    size_t pathCapacity; ///< The capacity of the path string buffer.
+    char* ptr;        ///< Pointer to the current component in the path.
+    size_t componentLen; ///< Length of the current component being processed.
+    const void* payload;  ///< Payload for the final open operation.
+    size_t payloadLen;    ///< Length of the payload.
+    mode_t mode; ///< Parsed mode from the path.
+    namespace_t* ns; ///< The namespace for the walk.
+    uint32_t symlinkDepth; ///< Current symlink recursion depth.
+    char* linkBuffer; ///< Temporary buffer for reading symlinks.
+    dentry_t* lookup; ///< A reference to the last "looked up" dentry to keep it and its parents alive.
+    status_t (*done)(irp_t* irp, struct path_state* state, file_t* file);
+} path_state_t;
+
+/**
+ * @brief Initialize a path state.
+ *
+ * @param state The path state to initialize.
+ */
+static inline void path_state_init(path_state_t* state, dentry_t* dentry, mount_t* mount, char* path, size_t pathLength, size_t pathCapacity, void* payload, size_t payloadLen, status_t (*done)(irp_t* irp, struct path_state* state, file_t* file))
+{
+    state->dentry = dentry;
+    state->mount = mount;
+    state->path = path;
+    state->pathLength = pathLength;
+    state->pathCapacity = pathCapacity;
+    state->ptr = path;
+    state->componentLen = 0;
+    state->payload = payload;
+    state->payloadLen = payloadLen;
+    state->mode = MODE_NONE;
+    state->ns = NULL;
+    state->symlinkDepth = 0;
+    state->linkBuffer = NULL;
+    state->lookup = NULL;
+    state->done = done;
+}
+
+/**
+ * @brief Asynchronously walk a path.
+ *
+ * @param irp The IRP to use for the operation.
+ * @param state The walking state, must be allocated by the caller but will be freed upon completion.
+ * @return An appropriate status value.
+ */
+status_t path_walk(irp_t* irp, path_state_t* state);
+
+/**
  * @brief Convert a path to a pathname.
  *
  * The resulting pathname will be absolute.
@@ -250,7 +314,7 @@ static inline void path_put(path_t* path)
  * @param length The length of the output pathname buffer.
  * @return An appropriate status value.
  */
-status_t path_to_name(const path_t* path, const char* pathname, size_t length);
+status_t path_to_name(const path_t* path, char* pathname, size_t length);
 
 /**
  * @brief Convert a mode to a string representation.

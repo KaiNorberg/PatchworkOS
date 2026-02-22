@@ -59,7 +59,7 @@ file_t* file_table_get(file_table_t* table, fd_t fd);
  * @param file The file to associate with the new file descriptor.
  * @return On success, the allocated file descriptor. On failure, `FDNONE`.
  */
-fd_t file_table_open(file_table_t* table, file_t* file);
+fd_t file_table_add(file_table_t* table, file_t* file);
 
 /**
  * @brief Free a file descriptor.
@@ -70,14 +70,14 @@ fd_t file_table_open(file_table_t* table, file_t* file);
  * @param fd The file descriptor to free.
  * @return An appropriate status value.
  */
-status_t file_table_close(file_table_t* table, fd_t fd);
+status_t file_table_clunk(file_table_t* table, fd_t fd);
 
 /**
  * @brief Close all files in the file table.
  *
  * @param table The file table.
  */
-void file_table_close_all(file_table_t* table);
+void file_table_clunk_all(file_table_t* table);
 
 /**
  * @brief Close all files in the file table with the specified mode.
@@ -85,7 +85,7 @@ void file_table_close_all(file_table_t* table);
  * @param table The file table.
  * @param mode The mode to close files with.
  */
-void file_table_close_mode(file_table_t* table, mode_t mode);
+void file_table_clunk_mode(file_table_t* table, mode_t mode);
 
 /**
  * @brief Free a range of file descriptors.
@@ -96,7 +96,7 @@ void file_table_close_mode(file_table_t* table, mode_t mode);
  * @param min The minimum file descriptor to free, inclusive.
  * @param max The maximum file descriptor to free, exclusive.
  */
-void file_table_close_range(file_table_t* table, fd_t min, fd_t max);
+void file_table_clunk_range(file_table_t* table, fd_t min, fd_t max);
 
 /**
  * @brief Set a specific file descriptor to a file.

@@ -32,7 +32,7 @@ typedef struct volume
 {
     ref_t ref;
     list_entry_t entry;
-    volume_id_t id;
+    uint64_t id;
     void* data;
     dentry_t* root; ///< Root dentry of the filesystem, should not take a reference.
     const volume_ops_t* ops;

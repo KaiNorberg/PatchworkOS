@@ -124,6 +124,8 @@ const char* st_code_str(st_code_t code)
         return "not within a group";
     case ST_CODE_INVAL_KEY:
         return "invalid key";
+    case ST_CODE_DOTDOT:
+        return "attempt to access parent directory when not allowed";
 
     // Resource
     case ST_CODE_NOT_INIT:

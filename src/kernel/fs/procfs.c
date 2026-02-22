@@ -502,11 +502,11 @@ static status_t procfs_ctl_control(irp_t* irp)
         int count = sscanf(args, "%lld %lld", &fd1, &fd2);
         if (count == 1)
         {
-            return file_table_close(&process->files, fd1);
+            return file_table_clunk(&process->files, fd1);
         }
         if (count == 2)
         {
-            file_table_close_range(&process->files, fd1, fd2);
+            file_table_clunk_range(&process->files, fd1, fd2);
             return OK;
         }
         return ERR(FS, INVAL);

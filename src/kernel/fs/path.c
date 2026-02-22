@@ -1,6 +1,8 @@
 #include <_libstd/MAX_PATH.h>
+#include <ctype.h>
 #include <kernel/fs/path.h>
 
+#include <kernel/fs/file.h>
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/vfs.h>
@@ -23,15 +25,18 @@ static path_flag_short_t shortFlags[UINT8_MAX + 1] = {
     ['w'] = {.mode = MODE_WRITE},
     ['x'] = {.mode = MODE_EXECUTE},
     ['a'] = {.mode = MODE_APPEND},
-    ['c'] = {.mode = MODE_CREATE},
+    ['f'] = {.mode = MODE_CREATE | MODE_FILE},
+    ['d'] = {.mode = MODE_CREATE | MODE_DIRECTORY},
+    ['s'] = {.mode = MODE_CREATE | MODE_SYMLINK},
+    ['h'] = {.mode = MODE_CREATE | MODE_HARDLINK},
     ['e'] = {.mode = MODE_EXCLUSIVE},
+    ['E'] = {.mode = MODE_EXISTING},
     ['t'] = {.mode = MODE_TRUNCATE},
-    ['d'] = {.mode = MODE_DIRECTORY},
-    ['R'] = {.mode = MODE_RECURSIVE},
     ['l'] = {.mode = MODE_NOFOLLOW},
     ['p'] = {.mode = MODE_PRIVATE},
     ['g'] = {.mode = MODE_PROPAGATE},
     ['L'] = {.mode = MODE_LOCKED},
+    ['N'] = {.mode = MODE_NODOTDOT},
 };
 
 typedef struct path_flag
@@ -45,15 +50,18 @@ static const path_flag_t flags[] = {
     {.mode = MODE_WRITE, .name = "write"},
     {.mode = MODE_EXECUTE, .name = "execute"},
     {.mode = MODE_APPEND, .name = "append"},
-    {.mode = MODE_CREATE, .name = "create"},
+    {.mode = MODE_CREATE | MODE_FILE, .name = "file"},
+    {.mode = MODE_CREATE | MODE_DIRECTORY, .name = "directory"},
+    {.mode = MODE_CREATE | MODE_SYMLINK, .name = "symlink"},
+    {.mode = MODE_CREATE | MODE_HARDLINK, .name = "hardlink"},
     {.mode = MODE_EXCLUSIVE, .name = "exclusive"},
+    {.mode = MODE_EXISTING, .name = "existing"},
     {.mode = MODE_TRUNCATE, .name = "truncate"},
-    {.mode = MODE_DIRECTORY, .name = "directory"},
-    {.mode = MODE_RECURSIVE, .name = "recursive"},
     {.mode = MODE_NOFOLLOW, .name = "nofollow"},
     {.mode = MODE_PRIVATE, .name = "private"},
     {.mode = MODE_PROPAGATE, .name = "propagate"},
     {.mode = MODE_LOCKED, .name = "locked"},
+    {.mode = MODE_NODOTDOT, .name = "nodotdot"},
 };
 
 static mode_t path_flag_to_mode(const char* flag, size_t length)
@@ -129,28 +137,38 @@ static bool path_is_name_valid(const char* name)
     return false;
 }
 
-typedef struct
-{
-    const pathname_t* pathname;
-    namespace_t* ns;
-    mode_t mode;
-    mount_t* mount;
-    dentry_t* dentry;
-    uint64_t symlinks;
-    dentry_t* lookup;
-} path_walk_ctx_t;
+static status_t path_walk_loop(irp_t* irp, path_state_t* state);
 
-static status_t path_rcu_walk(path_walk_ctx_t* ctx);
-
-static inline status_t path_walk_acquire(path_walk_ctx_t* ctx)
+static void path_state_free(path_state_t* state)
 {
-    if (REF_TRY(ctx->dentry) == NULL)
+    UNREF(state->ns);
+    if (state->linkBuffer != NULL)
+    {
+        free(state->linkBuffer);
+    }   
+    if (state->lookup != NULL)
+    {
+        UNREF(state->lookup);
+    }
+    free(state);
+}
+
+static void path_state_free_acquired(path_state_t* state)
+{
+    UNREF(state->dentry);
+    UNREF(state->mount);
+    path_state_free(state);
+}
+
+static inline status_t path_state_acquire(path_state_t* state)
+{
+    if (REF_TRY(state->dentry) == NULL)
     {
         return ERR(VFS, NOENT);
     }
-    if (REF_TRY(ctx->mount) == NULL)
+    if (REF_TRY(state->mount) == NULL)
     {
-        UNREF(ctx->dentry);
+        UNREF(state->dentry);
         return ERR(VFS, NOENT);
     }
 
@@ -158,82 +176,38 @@ static inline status_t path_walk_acquire(path_walk_ctx_t* ctx)
     return OK;
 }
 
-static inline void path_walk_release(path_walk_ctx_t* ctx)
+static inline void path_state_release(path_state_t* state)
 {
     rcu_read_lock();
 
-    UNREF(ctx->dentry);
-    UNREF(ctx->mount);
+    UNREF(state->dentry);
+    UNREF(state->mount);
 }
 
-static inline void path_walk_set_lookup(path_walk_ctx_t* ctx, dentry_t* dentry)
+static status_t path_dotdot(path_state_t* state)
 {
-    if (ctx->lookup != NULL)
+    status_t status = path_state_acquire(state);
+    if (IS_ERR(status))
     {
-        UNREF(ctx->lookup);
-    }
-    ctx->lookup = dentry;
-}
-
-static inline void path_walk_cleanup(path_walk_ctx_t* ctx)
-{
-    if (ctx->lookup != NULL)
-    {
-        UNREF(ctx->lookup);
-        ctx->lookup = NULL;
-    }
-}
-
-static inline status_t path_walk_get_result(path_walk_ctx_t* ctx, path_t* path)
-{
-    if (ctx->mount != NULL && REF_TRY(ctx->mount) == NULL)
-    {
-        return ERR(VFS, NOENT);
-    }
-
-    if ((ctx->lookup == NULL || ctx->dentry != ctx->lookup) && ctx->dentry != NULL && REF_TRY(ctx->dentry) == NULL)
-    {
-        UNREF(ctx->mount);
-        return ERR(VFS, NOENT);
-    }
-
-    UNREF(path->mount);
-    UNREF(path->dentry);
-    path->mount = ctx->mount;
-    path->dentry = ctx->dentry;
-
-    if (ctx->lookup != NULL && ctx->dentry != ctx->lookup)
-    {
-        UNREF(ctx->lookup);
-    }
-    ctx->lookup = NULL;
-
-    return OK;
-}
-
-static status_t path_rcu_dotdot(path_walk_ctx_t* ctx)
-{
-    status_t status = path_walk_acquire(ctx);
-    if (!IS_INFO(status))
-    {
+        path_state_free(state);
         return status;
     }
 
     status = OK;
     uint64_t iter = 0;
-    while (ctx->dentry == ctx->mount->source)
+    while (state->dentry == state->mount->source)
     {
-        if (ctx->mount->parent == NULL || ctx->mount->target == NULL)
+        if (state->mount->parent == NULL || state->mount->target == NULL)
         {
             break;
         }
 
-        mount_t* nextMount = REF(ctx->mount->parent);
-        dentry_t* nextDentry = REF(ctx->mount->target);
-        UNREF(ctx->mount);
-        ctx->mount = nextMount;
-        UNREF(ctx->dentry);
-        ctx->dentry = nextDentry;
+        mount_t* nextMount = REF(state->mount->parent);
+        dentry_t* nextDentry = REF(state->mount->target);
+        UNREF(state->mount);
+        state->mount = nextMount;
+        UNREF(state->dentry);
+        state->dentry = nextDentry;
 
         iter++;
         if (iter >= PATH_MAX_DOTDOT)
@@ -243,207 +217,424 @@ static status_t path_rcu_dotdot(path_walk_ctx_t* ctx)
         }
     }
 
-    dentry_t* parent = REF(ctx->dentry->parent);
-    UNREF(ctx->dentry);
-    ctx->dentry = parent;
+    dentry_t* parent = REF(state->dentry->parent);
+    UNREF(state->dentry);
+    state->dentry = parent;
 
-    path_walk_release(ctx);
+    if (IS_ERR(status))
+    {
+        path_state_free_acquired(state);
+        return status;
+    }
+    path_state_release(state);
     return status;
 }
 
-static status_t path_rcu_symlink(path_walk_ctx_t* ctx, dentry_t* symlink)
+static status_t path_symlink_complete(irp_t* irp, void* ctx)
 {
-    if (ctx->symlinks >= PATH_MAX_SYMLINK)
+    path_state_t* state = ctx;
+    size_t linkLen = irp->result;
+    char* link = state->linkBuffer;
+
+    if (IS_ERR(irp->status))
     {
-        return ERR(VFS, LOOP);
-    }
-
-    if (REF_TRY(symlink) == NULL)
-    {
-        return ERR(VFS, NOENT);
-    }
-    UNREF_DEFER(symlink);
-
-    status_t status = path_walk_acquire(ctx);
-    if (!IS_INFO(status))
-    {
-        return status;
-    }
-
-    char symlinkPath[MAX_PATH];
-    size_t readCount;
-    status = vfs_readlink(symlink->vnode, symlinkPath, MAX_PATH - 1, &readCount);
-
-    path_walk_release(ctx);
-
-    if (!IS_INFO(status))
-    {
-        return status;
-    }
-    symlinkPath[readCount] = '\0';
-
-    pathname_t pathname;
-    status = pathname_init(&pathname, symlinkPath);
-    if (!IS_INFO(status))
-    {
-        return status;
-    }
-
-    const pathname_t* oldPathname = ctx->pathname;
-
-    ctx->pathname = &pathname;
-    ctx->symlinks++;
-
-    status = path_rcu_walk(ctx);
-
-    ctx->symlinks--;
-    ctx->pathname = oldPathname;
-
-    return status;
-}
-
-static status_t path_rcu_step(path_walk_ctx_t* ctx, const char* name, size_t length)
-{
-    if (length == 1 && name[0] == '.')
-    {
+        path_state_free_acquired(state);
         return OK;
     }
 
-    if (length == 2 && name[0] == '.' && name[1] == '.')
+    if (linkLen == 0)
     {
-        return path_rcu_dotdot(ctx);
+        path_state_free_acquired(state);
+        return ERR(VFS, IO);
     }
 
-    dentry_t* next = dentry_rcu_get(ctx->dentry, name, length);
-    if (next == NULL)
+    char* start = state->ptr - state->componentLen;
+    size_t prefixLen = start - state->path;
+    size_t suffixLen = (state->path + state->pathLength) - state->ptr;
+    size_t newLen = prefixLen + linkLen + suffixLen;
+
+    if (newLen > state->pathCapacity)
     {
-        status_t status = path_walk_acquire(ctx);
-        if (IS_ERR(status))
-        {
-            return status;
-        }
-
-        status = dentry_lookup(&next, ctx->dentry, name, length);
-
-        path_walk_release(ctx);
-
-        if (IS_ERR(status))
-        {
-            return status;
-        }
-
-        path_walk_set_lookup(ctx, next);
+        path_state_free_acquired(state);
+        return ERR(VFS, PATHTOOLONG);
     }
 
-    if (DENTRY_IS_SYMLINK(next) && !(ctx->mode & MODE_NOFOLLOW))
+    memmove(start + linkLen, state->ptr, suffixLen);
+    memcpy(start, link, linkLen);
+
+    free(state->linkBuffer);
+    state->linkBuffer = NULL;
+
+    if (state->ptr[0] == '/')
     {
-        status_t status = path_rcu_symlink(ctx, next);
-        if (IS_ERR(status))
-        {
-            return status;
-        }
+        state->ptr = state->path;
+        path_t temp = {
+            .dentry = state->dentry,
+            .mount = state->mount,
+        };
+        namespace_get_root(state->ns, &temp);
+        state->dentry = temp.dentry;
+        state->mount = temp.mount;
     }
     else
     {
-        ctx->dentry = next;
+        state->ptr = start;
     }
 
-    if (atomic_load(&next->mountCount) != 0)
-    {
-        namespace_rcu_traverse(ctx->ns, &ctx->mount, &ctx->dentry);
-    }
-
-    return OK;
+    path_state_release(state);
+    return path_walk_loop(irp, state);
 }
 
-static status_t path_rcu_walk(path_walk_ctx_t* ctx)
+static status_t path_symlink(irp_t* irp, path_state_t* state, dentry_t* symlink)
 {
-    const char* p = ctx->pathname->string;
-    if (ctx->pathname->string[0] == '/')
+    if (++state->symlinkDepth > PATH_MAX_SYMLINK)
     {
-        namespace_rcu_get_root(ctx->ns, &ctx->mount, &ctx->dentry);
-        p++;
+        path_state_free(state);
+        return ERR(VFS, LOOP);
+    }
+
+    status_t status = path_state_acquire(state);
+    if (IS_ERR(status))
+    {
+        path_state_free(state);
+        return status;
+    }
+
+    mdl_t* mdl;
+    status = irp_get_mdl(irp, &mdl);
+    if (IS_ERR(status))
+    {
+        path_state_release(state);
+        path_state_free(state);
+        return status;
+    }
+
+    state->linkBuffer = malloc(MAX_PATH);
+    if (state->linkBuffer == NULL)
+    {
+        path_state_release(state);
+        path_state_free(state);
+        return ERR(VFS, NOMEM);
+    }
+
+    status = mdl_add(mdl, NULL, state->linkBuffer, MAX_PATH);
+    if (IS_ERR(status))
+    {
+        path_state_release(state);
+        path_state_free(state);
+        return status;
+    }
+
+    irp_prep_read(irp, mdl, 0);
+    irp_set_complete(irp, path_symlink_complete, state);
+    return vnode_call(symlink->vnode, irp);
+}
+
+static status_t path_lookup_complete(irp_t* irp, void* ctx)
+{
+    path_state_t* state = ctx;
+
+    if (IS_ERR(irp->status))
+    {
+        path_state_free(state);
+        return OK;
+    }
+
+    path_state_release(state);
+
+    state->dentry = state->lookup;
+
+    if (DENTRY_IS_SYMLINK(state->dentry) && !(state->mode & MODE_NOFOLLOW))
+    {
+        status_t status = path_symlink(irp, state, state->dentry);
+        if (IS_ERR(status))
+        {
+            path_state_free(state);
+            return status;
+        }
+    }
+
+    return path_walk_loop(irp, state);
+}
+
+static status_t path_walk_lookup(irp_t* irp, path_state_t* state, const char* name, size_t len)
+{
+    status_t status = path_state_acquire(state);
+    if (IS_ERR(status))
+    {
+        path_state_free(state);
+        return status;
+    }
+
+    if (!DENTRY_IS_DIR(state->dentry))
+    {
+        path_state_free_acquired(state);
+        return ERR(VFS, NOTDIR);
+    }
+
+    /// @todo Optimize by removing the copy, perhaps add a length string system?
+    char buffer[MAX_NAME];
+    if (len >= MAX_NAME)
+    {
+        path_state_free_acquired(state);
+        return ERR(VFS, NAMETOOLONG);
+    }
+    memcpy(buffer, name, len);
+    buffer[len] = '\0';
+
+    dentry_t* newDentry = dentry_new(state->dentry->volume, state->dentry, buffer);
+    if (newDentry == NULL)
+    {
+        path_state_free_acquired(state);
+        return ERR(VFS, NOMEM);
+    }
+
+    if (state->lookup != NULL)
+    {
+        UNREF(state->lookup);
+    }
+    state->lookup = newDentry;
+
+    irp_prep_lookup(irp, state->lookup);
+    irp_set_complete(irp, path_lookup_complete, state);
+    return vnode_call(state->dentry->vnode, irp);
+}
+
+static status_t path_done_complete(irp_t* irp, void* ctx)
+{
+    UNUSED(irp);
+
+    path_state_t* state = ctx;
+
+    status_t status = state->done(state, (file_t*)irp->result);
+    path_state_free(ctx);
+    return status;
+}
+
+static status_t path_done(irp_t* irp, path_state_t* state)
+{
+    dentry_t* dentry = REF_TRY(state->dentry);
+    if (dentry == NULL)
+    {
+        rcu_read_unlock();
+        path_state_free(state);
+        return ERR(VFS, NOENT);
+    }
+    UNREF_DEFER(dentry);
+
+    mount_t* mount = REF_TRY(state->mount);
+    if (mount == NULL)
+    {
+        rcu_read_unlock();
+        path_state_free(state);
+        return ERR(VFS, NOENT);
+    }
+    UNREF_DEFER(mount);
+
+    rcu_read_unlock();
+
+    file_t* file = file_new(dentry, mount, state->mode);
+    if (file == NULL)
+    {
+        path_state_free(state);
+        return ERR(VFS, NOMEM);
+    }
+    UNREF_DEFER(file);
+
+    irp_prep_open(irp, state->payload, state->payloadLen);
+    irp_set_complete(irp, path_done_complete, state);
+    return file_call(file, irp);  
+}
+
+static status_t path_walk_loop(irp_t* irp, path_state_t* state)
+{
+    if (state->ptr == state->path && state->ptr[0] == '/')
+    {
+        path_t root = PATH_EMPTY;
+        namespace_get_root(state->ns, &root);
+        state->dentry = root.dentry;
+        state->mount = root.mount;
     }
 
     while (true)
     {
-        while (*p == '/')
+        while (*state->ptr == '/')
         {
-            p++;
+            state->ptr++;
         }
 
-        if (*p == '\0')
+        if (*state->ptr == '\0' || *state->ptr == ':')
         {
-            break;
+            return path_done(irp, state);
         }
 
-        const char* component = p;
-        while (*p != '\0' && *p != '/')
+        const char* component = state->ptr;
+        while (*state->ptr != '\0' && *state->ptr != '/' && *state->ptr != ':')
         {
-            p++;
+            if (!path_is_char_valid(*state->ptr))
+            {
+                rcu_read_unlock();
+                path_state_free(state);
+                return ERR(VFS, INVALCHAR);
+            }
+            state->ptr++;
         }
-        size_t length = p - component;
+        size_t len = state->ptr - component;
+        state->componentLen = len;
 
-        status_t status = path_rcu_step(ctx, component, length);
-        if (IS_ERR(status))
+        if (len == 1 && component[0] == '.')
         {
-            return status;
+            continue;
+        }
+        if (len == 2 && component[0] == '.' && component[1] == '.')
+        {
+            if (state->mode & MODE_NODOTDOT)
+            {
+                rcu_read_unlock();
+                path_state_free(state);
+                return ERR(VFS, DOTDOT);
+            }
+
+            status_t status = path_dotdot(state);
+            if (IS_ERR(status))
+            {
+                return status;
+            }
+
+            continue; 
+        }
+
+        dentry_t* next = dentry_rcu_get(state->dentry, component, len);
+        if (next == NULL)
+        {
+            status_t status = path_walk_lookup(irp, state, component, len);
+            if (IS_ERR(status))
+            {
+                return status;
+            }
+        }
+
+        if (atomic_load(&next->mountCount) > 0)
+        {
+            namespace_rcu_traverse(state->ns, &state->mount, &next);
+        }
+
+        state->dentry = next;
+
+        if (DENTRY_IS_SYMLINK(next) && !(state->mode & MODE_NOFOLLOW))
+        {
+            status_t status = path_symlink(irp, state, next);
+            if (IS_ERR(status))
+            {
+                return status;
+            }
         }
     }
-
-    return OK;
 }
 
-status_t path_walk(path_t* path, const pathname_t* pathname, namespace_t* ns)
+static status_t path_verify(path_state_t* state)
 {
-    if (path == NULL || pathname == NULL || ns == NULL)
+    state->mode = MODE_NONE;
+
+    uint64_t index = 0;
+    uint64_t currentNameLength = 0;
+    while (state->path[index] != ':')
     {
-        return ERR(VFS, INVAL);
+        if (index >= state->pathLength)
+        {
+            return OK;
+        }
+
+        if (state->path[index] == '/')
+        {
+            currentNameLength = 0;
+        }
+        else
+        {
+            if (!path_is_char_valid(state->path[index]))
+            {
+                return ERR(VFS, INVALCHAR);
+            }
+            currentNameLength++;
+            if (currentNameLength >= MAX_NAME)
+            {
+                return ERR(VFS, NAMETOOLONG);
+            }
+        }
+
+        index++;
     }
 
-    RCU_READ_SCOPE();
-
-    path_walk_ctx_t ctx = {
-        .pathname = pathname,
-        .ns = ns,
-        .mode = pathname->mode,
-        .mount = path->mount,
-        .dentry = path->dentry,
-        .symlinks = 0,
-        .lookup = NULL,
-    };
-
-    if (path->dentry != NULL && atomic_load(&path->dentry->mountCount) != 0)
+    if (state->path[index] != ':')
     {
-        namespace_rcu_traverse(ctx.ns, &ctx.mount, &ctx.dentry);
+        return OK;
     }
 
-    status_t status = path_rcu_walk(&ctx);
-    if (IS_ERR(status))
-    {
-        path_walk_cleanup(&ctx);
-        return status;
-    }
+    index++; // Skip ':'.
 
-    status = path_walk_get_result(&ctx, path);
-    if (IS_ERR(status))
+    while (true)
     {
-        path_walk_cleanup(&ctx);
-        return status;
+        while (state->path[index] == ':' && index < state->pathLength)
+        {
+            index++;
+        }
+
+        const char* token = &state->path[index];
+        while (state->path[index] != ':' && index < state->pathLength)
+        {
+            if (!isalpha(state->path[index]))
+            {
+                return ERR(VFS, INVALCHAR);
+            }
+            index++;
+        }
+
+        if (index >= state->pathLength)
+        {
+            return OK;
+        }
+
+        size_t tokenLength = &state->path[index] - token;
+        mode_t mode = path_flag_to_mode(token, tokenLength);
+        if (mode == MODE_NONE)
+        {
+            return ERR(VFS, INVALFLAG);
+        }
+
+        state->mode |= mode;
+        index++;
     }
 
     return OK;
 }
 
-status_t path_to_name(const path_t* path, pathname_t* pathname)
+status_t path_walk(irp_t* irp, path_state_t* state)
+{
+    if (state->ns == NULL)
+    {
+        state->ns = process_get_ns(irp_get_process(irp));
+    }
+
+    status_t status = path_verify(state);
+    if (IS_ERR(status))
+    {
+        path_state_free(state);
+        return status;
+    }
+
+    rcu_read_lock();
+
+    return path_walk_loop(irp, state);
+}
+
+status_t path_to_name(const path_t* path, char* pathname, size_t length)
 {
     if (path == NULL || path->dentry == NULL || path->mount == NULL || pathname == NULL)
     {
         return ERR(VFS, INVAL);
     }
 
-    char* buffer = pathname->string;
-    char* ptr = buffer + MAX_PATH - 1;
+    char* ptr = pathname + length - 1;
     *ptr = '\0';
 
     dentry_t* dentry = path->dentry;
@@ -469,7 +660,7 @@ status_t path_to_name(const path_t* path, pathname_t* pathname)
         }
 
         size_t len = strnlen_s(dentry->name, MAX_NAME);
-        if ((size_t)(ptr - buffer) < len + 1)
+        if ((size_t)(ptr - pathname) < len + 1)
         {
             return ERR(VFS, NAMETOOLONG);
         }
@@ -485,7 +676,7 @@ status_t path_to_name(const path_t* path, pathname_t* pathname)
 
     if (*ptr == '\0')
     {
-        if (ptr == buffer)
+        if (ptr == pathname)
         {
             return ERR(VFS, NAMETOOLONG);
         }
@@ -493,10 +684,9 @@ status_t path_to_name(const path_t* path, pathname_t* pathname)
         *ptr = '/';
     }
 
-    size_t totalLen = (buffer + MAX_PATH - 1) - ptr;
-    memmove(buffer, ptr, totalLen + 1);
+    size_t totalLen = (pathname + length - 1) - ptr;
+    memmove((void*)pathname, ptr, totalLen + 1);
 
-    pathname->mode = MODE_NONE;
     return OK;
 }
 
@@ -553,47 +743,3 @@ status_t mode_check(mode_t* mode, mode_t maxPerms)
 
     return OK;
 }
-
-#ifdef _TESTING_
-
-#include <kernel/utils/test.h>
-
-TEST_DEFINE(path)
-{
-    pathname_t pathname;
-
-    TEST_ASSERT(IS_INFO(pathname_init(&pathname, "/usr/bin/init")));
-    TEST_ASSERT(strcmp(pathname.string, "/usr/bin/init") == 0);
-    TEST_ASSERT(pathname.mode == MODE_NONE);
-
-    TEST_ASSERT(IS_INFO(pathname_init(&pathname, "/dev/sda:read:write")));
-    TEST_ASSERT(strcmp(pathname.string, "/dev/sda") == 0);
-    TEST_ASSERT((pathname.mode & (MODE_READ | MODE_WRITE)) == (MODE_READ | MODE_WRITE));
-
-    TEST_ASSERT(IS_INFO(pathname_init(&pathname, "/tmp/file:c:w")));
-    TEST_ASSERT(strcmp(pathname.string, "/tmp/file") == 0);
-    TEST_ASSERT((pathname.mode & (MODE_CREATE | MODE_WRITE)) == (MODE_CREATE | MODE_WRITE));
-
-    TEST_ASSERT(IS_INFO(pathname_init(&pathname, "/var/log:append:c")));
-    TEST_ASSERT(strcmp(pathname.string, "/var/log") == 0);
-    TEST_ASSERT((pathname.mode & (MODE_APPEND | MODE_CREATE)) == (MODE_APPEND | MODE_CREATE));
-
-    TEST_ASSERT(IS_INFO(pathname_init(&pathname, "/file:rw")));
-    TEST_ASSERT(strcmp(pathname.string, "/file") == 0);
-    TEST_ASSERT((pathname.mode & (MODE_READ | MODE_WRITE)) == (MODE_READ | MODE_WRITE));
-
-    TEST_ASSERT(IS_CODE(pathname_init(&pathname, "/home/user/fi?le"), INVALCHAR));
-
-    TEST_ASSERT(IS_CODE(pathname_init(&pathname, "/home:invalid"), INVALFLAG));
-
-    TEST_ASSERT(IS_INFO(pathname_init(&pathname, "")));
-    TEST_ASSERT(strcmp(pathname.string, "") == 0);
-
-    TEST_ASSERT(IS_INFO(pathname_init(&pathname, ":read")));
-    TEST_ASSERT(strcmp(pathname.string, "") == 0);
-    TEST_ASSERT(pathname.mode == MODE_READ);
-
-    return 0;
-}
-
-#endif

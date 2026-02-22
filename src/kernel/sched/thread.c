@@ -288,35 +288,6 @@ status_t thread_copy_from_user_string(thread_t* thread, char* dest, const char* 
     return OK;
 }
 
-status_t thread_copy_from_user_pathname(thread_t* thread, pathname_t* pathname, const char* userPath)
-{
-    if (thread == NULL || pathname == NULL || userPath == NULL)
-    {
-        return ERR(SCHED, INVAL);
-    }
-
-    char terminator = '\0';
-    size_t pathLength;
-    status_t status = space_pin_terminated(&pathLength, &thread->process->space, userPath, &terminator, sizeof(char),
-        MAX_PATH, &thread->userStack);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
-    char copy[MAX_PATH];
-    memcpy(copy, userPath, pathLength);
-    space_unpin(&thread->process->space, userPath, pathLength);
-
-    status = pathname_init(pathname, copy);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
-    return OK;
-}
-
 status_t thread_copy_from_user_string_array(thread_t* thread, const char** user, char*** out, uint64_t* outAmount)
 {
     if (thread == NULL || user == NULL || out == NULL)

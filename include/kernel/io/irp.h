@@ -226,7 +226,37 @@ typedef uint16_t irp_major_t; ///< IRP major function number type.
  */
 #define IRP_MJ_OPEN 6
 
-#define IRP_MJ_MAX 7 ///< The maximum number of major function numbers.
+/**
+ * @brief Lookup operation.
+ * @return Always `0`.
+ */
+#define IRP_MJ_LOOKUP 7
+
+/**
+ * @brief Remove operation.
+ * @return Always `0`.
+ */
+#define IRP_MJ_REMOVE 8
+
+/**
+ * @brief Attribute operation.
+ * @return If a get operation, the value of the attribute. If a set operation, always `0`.
+ */
+#define IRP_MJ_ATTR 9
+
+/**
+ * @brief Query operation.
+ * @return Always `0`.
+ */
+#define IRP_MJ_QUERY 10
+
+/**
+ * @brief Flush operation.
+ * @return Always `0`.
+ */
+#define IRP_MJ_FLUSH 11
+
+#define IRP_MJ_MAX 12 ///< The maximum number of major function numbers.
 
 typedef uint16_t irp_minor_t; ///< IRP minor function number type.
 #define IRP_MN_NORMAL 0       ///< No special behaviour.
@@ -322,10 +352,26 @@ typedef struct irp_frame
         } control;
         struct
         {
-            const char* path; ///< A null-terminated string representing the path to open.
             const void* payload; ///< Payload data for the open operation.
             size_t payloadLen; ///< The length of the payload data.
         } open;
+        struct
+        {
+            dentry_t* dentry; ///< The negative dentry to fill.
+        } lookup;
+        struct
+        {
+            dentry_t* dentry; ///< The dentry to remove.
+        } remove;
+        struct
+        {
+            ioattr_t attr;    ///< The attribute to get or set.
+            uint64_t value;   ///< The value to set.
+        } attr;
+        struct
+        {
+            mdl_t* buffer;    ///< The buffer to write the `ioinfo_t` into.
+        } query;
         uint64_t args[IRP_ARGS_MAX]; ///< Generic arguments.
     };
 } irp_frame_t;
@@ -801,7 +847,7 @@ static inline void irp_prep_control(irp_t* irp, iocmd_t command, const char* arg
  * 
  * @see `IRP_MJ_OPEN`
  */
-static inline void irp_prep_open(irp_t* irp, const char* path, const void* payload, size_t payloadLen)
+static inline void irp_prep_open(irp_t* irp, const void* payload, size_t payloadLen)
 {
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);
@@ -809,10 +855,88 @@ static inline void irp_prep_open(irp_t* irp, const char* path, const void* paylo
     next->major = IRP_MJ_OPEN;
     next->minor = IRP_MN_NORMAL;
     next->flags = IRP_FLAG_NONE;
-    next->open.path = path;
     next->open.payload = payload;
     next->open.payloadLen = payloadLen;
 }
 
+/**
+ * @brief Prepares the next IRP stack frame for a lookup operation.
+ *
+ * @see `IRP_MJ_LOOKUP`
+ */
+static inline void irp_prep_lookup(irp_t* irp, dentry_t* dentry)
+{
+    irp_frame_t* next = irp_next(irp);
+    assert(next != NULL);
+
+    next->major = IRP_MJ_LOOKUP;
+    next->minor = IRP_MN_NORMAL;
+    next->flags = IRP_FLAG_NONE;
+    next->lookup.dentry = dentry;
+}
+
+/**
+ * @brief Prepares the next IRP stack frame for a remove operation.
+ *
+ * @see `IRP_MJ_REMOVE`
+ */
+static inline void irp_prep_remove(irp_t* irp, dentry_t* dentry)
+{
+    irp_frame_t* next = irp_next(irp);
+    assert(next != NULL);
+
+    next->major = IRP_MJ_REMOVE;
+    next->minor = IRP_MN_NORMAL;
+    next->flags = IRP_FLAG_NONE;
+    next->remove.dentry = dentry;
+}
+
+/**
+ * @brief Prepares the next IRP stack frame for an attribute operation.
+ *
+ * @see `IRP_MJ_ATTR`
+ */
+static inline void irp_prep_attr(irp_t* irp, ioattr_t attr, uint64_t value)
+{
+    irp_frame_t* next = irp_next(irp);
+    assert(next != NULL);
+
+    next->major = IRP_MJ_ATTR;
+    next->minor = IRP_MN_NORMAL;
+    next->flags = IRP_FLAG_NONE;
+    next->attr.attr = attr;
+    next->attr.value = value;
+}
+
+/**
+ * @brief Prepares the next IRP stack frame for a query operation.
+ *
+ * @see `IRP_MJ_QUERY`
+ */
+static inline void irp_prep_query(irp_t* irp, mdl_t* buffer)
+{
+    irp_frame_t* next = irp_next(irp);
+    assert(next != NULL);
+
+    next->major = IRP_MJ_QUERY;
+    next->minor = IRP_MN_NORMAL;
+    next->flags = IRP_FLAG_NONE;
+    next->query.buffer = buffer;
+}
+
+/**
+ * @brief Prepares the next IRP stack frame for a flush operation.
+ *
+ * @see `IRP_MJ_FLUSH`
+ */
+static inline void irp_prep_flush(irp_t* irp)
+{
+    irp_frame_t* next = irp_next(irp);
+    assert(next != NULL);
+
+    next->major = IRP_MJ_FLUSH;
+    next->minor = IRP_MN_NORMAL;
+    next->flags = IRP_FLAG_NONE;
+}
 
 /** @} */

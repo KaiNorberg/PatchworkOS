@@ -233,11 +233,10 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
 
 #define IOOP_MAX 13 ///< The maximum number of operations.
 
-#define IOSTD_IN 0  ///< Standard input file descriptor.
-#define IOSTD_OUT 1 ///< Standard output file descriptor.
-#define IOSTD_ERR 2 ///< Standard error file descriptor.
-
-#define IOCWD ((fd_t) - 1) ///< Use the current working directory.
+#define IOIN ((fd_t)0)  ///< Standard input file descriptor.
+#define IOOUT ((fd_t)1) ///< Standard output file descriptor.
+#define IOERR ((fd_t)2) ///< Standard error file descriptor.
+#define IOCWD ((fd_t)3) ///< Standard current working directory file descriptor.
 
 #define IOCUR (((ssize_t) - 1)) ///< Use the current file offset.
 
@@ -333,6 +332,9 @@ typedef uint32_t iotype_t; ///< File type operations.
 #define IOTYPE_DIRECTORY 3 ///< Directory.
 #define IOTYPE_SYMLINK 4 ///< Symbolic link.
 #define IOTYPE_DEVICE 5 ///< Device file.
+#define IOTYPE_SYSTEM 6 ///< System file, used for exposing kernel information to user space.
+#define IOTYPE_FILESYSTEM 7 ///< Filesystem file.
+
 
 typedef uint32_t ioflags_t; ///< File flags.
 #define IOFLAG_NONE 0 ///< No flags.
@@ -1121,11 +1123,11 @@ static inline status_t ioseek(fd_t fd, iowhence_t origin, ssize_t offset, clock_
  * address.
  * @param count The number of bytes to map.
  * @param offset The offset within the file to start mapping from.
- * @param mmap Memory mapping flags.
+ * @param mem Memory mapping flags.
  * @param timeout Timeout for the operation.
  * @return An appropriate status value.
  */
-static inline status_t iomap(fd_t fd, void** address, size_t count, ssize_t offset, iomem_t mmap, clock_t timeout)
+static inline status_t iomap(fd_t fd, void** address, size_t count, ssize_t offset, iomem_t mem, clock_t timeout)
 {
     if ((void*)address == NULL)
     {
@@ -1134,7 +1136,7 @@ static inline status_t iomap(fd_t fd, void** address, size_t count, ssize_t offs
 
     iosqe_t sqe;
     iocqe_t cqe;
-    ioprep_map(&sqe, IOSQE_NORMAL, timeout, 0, fd, *address, count, offset, mmap);
+    ioprep_map(&sqe, IOSQE_NORMAL, timeout, 0, fd, *address, count, offset, mem);
     iosync(&sqe, &cqe);
     *address = (void*)cqe.result;
     return cqe.status;
@@ -1151,7 +1153,7 @@ static inline status_t iomap(fd_t fd, void** address, size_t count, ssize_t offs
  */
 static inline status_t iounmap(void* address, size_t length)
 {
-    return syscall2(SYS_IO_UNMAP, NULL, (uintptr_t)address, length);
+    return syscall2(SYS_UNMAP, NULL, (uintptr_t)address, length);
 }
 
 /**
@@ -1165,7 +1167,7 @@ static inline status_t iounmap(void* address, size_t length)
  */
 static inline status_t ioprotect(void* address, size_t length, iomem_t map)
 {
-    return syscall3(SYS_IO_PROTECT, NULL, (uintptr_t)address, length, map);
+    return syscall3(SYS_PROTECT, NULL, (uintptr_t)address, length, map);
 }
 
 /**

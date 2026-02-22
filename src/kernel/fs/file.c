@@ -37,7 +37,7 @@ static void file_free(file_t* file)
 
 static cache_t cache = CACHE_CREATE(cache, "file", sizeof(file_t), CACHE_LINE, NULL, NULL);
 
-file_t* file_new(const path_t* path, mode_t mode)
+file_t* file_new(dentry_t* dentry, mount_t* mount, mode_t mode)
 {
     file_t* file = cache_alloc(&cache);
     if (file == NULL)
@@ -48,8 +48,8 @@ file_t* file_new(const path_t* path, mode_t mode)
     ref_init(&file->ref, file_free);
     file->pos = 0;
     file->mode = mode;
-    file->vnode = REF(path->dentry->vnode);
-    file->path = PATH_CREATE(path->mount, path->dentry);
+    file->vnode = REF(dentry->vnode);
+    file->path = PATH_CREATE(mount, dentry);
     file->data = NULL;
     return file;
 }

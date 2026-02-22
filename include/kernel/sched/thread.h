@@ -255,16 +255,6 @@ status_t thread_copy_from_user_terminated(thread_t* thread, const void* userArra
 status_t thread_copy_from_user_string(thread_t* thread, char* dest, const char* userSrc, uint64_t size);
 
 /**
- * @brief Safely copy a string from user space and use it to initialize a pathname.
- *
- * @param thread The thread performing the operation.
- * @param pathname A pointer to the pathname to initialize.
- * @param userPath The string in user space.
- * @return An appropriate status value.
- */
-status_t thread_copy_from_user_pathname(thread_t* thread, pathname_t* pathname, const char* userPath);
-
-/**
  * @brief Safely copy a null-terminated array of strings and their contents from user space into a string vector.
  *
  * @param thread The thread performing the operation.

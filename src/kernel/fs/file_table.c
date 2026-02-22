@@ -47,7 +47,7 @@ file_t* file_table_get(file_table_t* table, fd_t fd)
     return REF(table->files[fd]);
 }
 
-fd_t file_table_open(file_table_t* table, file_t* file)
+fd_t file_table_add(file_table_t* table, file_t* file)
 {
     if (table == NULL || file == NULL)
     {
@@ -67,7 +67,7 @@ fd_t file_table_open(file_table_t* table, file_t* file)
     return (fd_t)index;
 }
 
-status_t file_table_close(file_table_t* table, fd_t fd)
+status_t file_table_clunk(file_table_t* table, fd_t fd)
 {
     if (table == NULL)
     {
@@ -87,7 +87,7 @@ status_t file_table_close(file_table_t* table, fd_t fd)
     return OK;
 }
 
-void file_table_close_all(file_table_t* table)
+void file_table_clunk_all(file_table_t* table)
 {
     if (table == NULL)
     {
@@ -107,7 +107,7 @@ void file_table_close_all(file_table_t* table)
     }
 }
 
-void file_table_close_mode(file_table_t* table, mode_t mode)
+void file_table_clunk_mode(file_table_t* table, mode_t mode)
 {
     if (table == NULL)
     {
@@ -127,7 +127,7 @@ void file_table_close_mode(file_table_t* table, mode_t mode)
     }
 }
 
-void file_table_close_range(file_table_t* table, fd_t min, fd_t max)
+void file_table_clunk_range(file_table_t* table, fd_t min, fd_t max)
 {
     if (table == NULL)
     {
@@ -250,7 +250,7 @@ void file_table_copy(file_table_t* dest, file_table_t* src, fd_t min, fd_t max)
 
 SYSCALL_DEFINE(SYS_CLOSE, fd_t fd)
 {
-    return file_table_close(&process_current()->files, fd);
+    return file_table_clunk(&process_current()->files, fd);
 }
 
 SYSCALL_DEFINE(SYS_DUP, fd_t oldFd, fd_t newFd)
