@@ -153,17 +153,11 @@ static status_t io_op_map(irp_t* irp)
     return file_call(file, irp);
 }
 
-static status_t io_op_control(irp_t* irp)
-{
-    UNUSED(irp);
-
-    /// @todo Implement `IOOP_CONTROL`.
-    return ERR(IO, INVAL);
-}
-
 static status_t io_op_walk_done(irp_t* irp, struct path_state* state, file_t* file)
 {
-    return file_table_add(&irp_get_process(irp)->files, irp_next(irp)->file);
+    UNUSED(state);
+
+    return file_table_add(&irp_get_process(irp)->files, file);
 }
 
 static status_t io_op_walk(irp_t* irp)
@@ -205,7 +199,8 @@ static status_t io_op_walk(irp_t* irp)
         return status;
     }
 
-    path_state_init(state, file->path.dentry, file->path.mount, path, irp->sqe.count, MAX_PATH, payload, irp->sqe.payloadLen, io_op_walk_done);
+    path_state_init(state, file->path.dentry, file->path.mount, path, irp->sqe.count, MAX_PATH, payload,
+        irp->sqe.payloadLen, io_op_walk_done);
     return path_walk(irp, state);
 }
 
@@ -270,7 +265,7 @@ static status_t io_op_query(irp_t* irp)
         return status;
     }
 
-    status = mdl_add(mdl, &process->space, irp->sqe.info, sizeof(ioinfo_t));
+    status = mdl_add(mdl, &process->space, irp->sqe.info, sizeof(file_info_t));
     if (IS_ERR(status))
     {
         return status;
@@ -303,8 +298,7 @@ static const io_op_func_t ops[IOOP_MAX] = {
     [IOOP_WRITE] = io_op_write,
     [IOOP_POLL] = io_op_poll,
     [IOOP_SEEK] = io_op_seek,
-    [IOOP_MAP] = io_op_map,    
-    [IOOP_CONTROL] = io_op_control,
+    [IOOP_MAP] = io_op_map,
     [IOOP_WALK] = io_op_walk,
     [IOOP_CLUNK] = io_op_clunk,
     [IOOP_REMOVE] = io_op_remove,

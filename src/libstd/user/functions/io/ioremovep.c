@@ -20,7 +20,7 @@ status_t ioremovep(fd_t fd, const char* path)
     sqe = iosqe_get(&_stdIoring);
     ioprep_clunk(sqe, (IOSQE_REG0 << IOSQE_LOAD0) | IOSQE_LINK, CLOCKS_NEVER, 0, FDNONE);
     iosqe_put(&_stdIoring);
-    
+
     ioring_enter(&_stdIoring, 3, 3, NULL);
 
     status_t status = OK;
@@ -31,7 +31,7 @@ status_t ioremovep(fd_t fd, const char* path)
         status = cqe->status;
     }
     iocqe_put(&_stdIoring);
-    
+
     cqe = iocqe_get(&_stdIoring);
     if (cqe->status != OK && status == OK)
     {

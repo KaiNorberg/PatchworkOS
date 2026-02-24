@@ -34,12 +34,12 @@
  * @brief Open a file relative to another path.
  *
  * @param out Output pointer for the opened file.
- * @param from The path to open the file relative to, or `NULL` to use the process's current working directory.
+ * @param from The path to open the file relative to, or `NULL` to start from root.
  * @param pathname The pathname of the file to open.
  * @param process The process opening the file.
  * @return An appropriate status value.
  */
-status_t vfs_open(file_t** out, const path_t* from, const pathname_t* pathname, process_t* process);
+status_t vfs_open(file_t** out, const path_t* from, const char* pathname, process_t* process);
 
 /**
  * @brief Read from a file.
@@ -78,7 +78,7 @@ status_t vfs_write(file_t* file, const void* buffer, size_t count, size_t* out);
  * @param out Output pointer for the new file position.
  * @return An appropriate status value.
  */
-status_t vfs_seek(file_t* file, ssize_t offset, iowhence_t origin, size_t* out);
+status_t vfs_seek(file_t* file, ssize_t offset, whence_t origin, size_t* out);
 
 /**
  * @brief Generates a new unique ID, to be used for any VFS object.

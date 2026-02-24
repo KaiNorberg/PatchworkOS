@@ -6,9 +6,9 @@
 
 #include <errno.h>
 #include <stdlib.h>
+#include <sys/io.h>
 #include <sys/list.h>
 #include <sys/status.h>
-#include <sys/io.h>
 
 typedef struct process process_t;
 typedef struct space space_t;
@@ -140,8 +140,9 @@ status_t mdl_add(mdl_t* mdl, space_t* space, const void* addr, size_t size);
 /**
  * @brief Add an array of I/O vectors to the Memory Descriptor List.
  *
- * @note This function will function safely even if the vectors are in user-memory or not in the currently loaded address space.
- * 
+ * @note This function will function safely even if the vectors are in user-memory or not in the currently loaded
+ * address space.
+ *
  * @param mdl Pointer to the MDL.
  * @param space The address space of the user process.
  * @param vector Pointer to the array of I/O vectors, can be `NULL` if `count == 0`.

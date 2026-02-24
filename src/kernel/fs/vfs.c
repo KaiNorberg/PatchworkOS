@@ -307,7 +307,7 @@ status_t vfs_write(file_t* file, const void* buffer, size_t count, size_t* out)
     return status;
 }
 
-status_t vfs_seek(file_t* file, ssize_t offset, iowhence_t origin, size_t* out)
+status_t vfs_seek(file_t* file, ssize_t offset, whence_t origin, size_t* out)
 {
     if (file == NULL)
     {

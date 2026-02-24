@@ -15,7 +15,6 @@ extern "C"
 #include "_libstd/PAGE_SIZE.h"
 #include "_libstd/clock_t.h"
 #include "_libstd/config.h"
-#include "_libstd/fd_t.h"
 
 /**
  * @brief Notes.

@@ -141,11 +141,11 @@ static void init_config_load(void)
     for (uint64_t i = 0; i < services->length; i++)
     {
         struct timespec ts = {.tv_sec = 0, .tv_nsec = CLOCKS_PER_MS * 10};
-        thrd_sleep(&ts, NULL);    
+        thrd_sleep(&ts, NULL);
 
         printf("init: spawned service '%s'\n", services->items[i]);
         const char* argv[] = {services->items[i], NULL};
-        status = proc_create(argv, PROC_EMPTY_ENV | PROC_EMPTY_CWD | PROC_EMPTY_GROUP, NULL);
+        status = proc_create(argv, PROC_ENV_EMPTY | PROC_EMPTY_CWD | PROC_GROUP_EMPTY, NULL);
         if (IS_ERR(status))
         {
             printf("init: failed to spawn service '%s' %Y", services->items[i], status);
@@ -163,11 +163,11 @@ static void init_config_load(void)
     for (uint64_t i = 0; i < programs->length; i++)
     {
         struct timespec ts = {.tv_sec = 0, .tv_nsec = CLOCKS_PER_MS * 10};
-        thrd_sleep(&ts, NULL);    
+        thrd_sleep(&ts, NULL);
 
         printf("init: spawn program '%s'\n", programs->items[i]);
         const char* argv[] = {programs->items[i], NULL};
-        status = proc_create(argv, PROC_EMPTY_ENV | PROC_EMPTY_CWD | PROC_EMPTY_GROUP, NULL);
+        status = proc_create(argv, PROC_ENV_EMPTY | PROC_EMPTY_CWD | PROC_GROUP_EMPTY, NULL);
         if (IS_ERR(status))
         {
             printf("init: failed to spawn program '%s' %Y", programs->items[i], status);

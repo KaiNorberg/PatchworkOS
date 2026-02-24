@@ -230,17 +230,17 @@ int _file_seek(FILE* stream, int64_t offset, int whence)
         return EOF;
     }
 
-    iowhence_t ioWhence;
+    whence_t ioWhence;
     switch (whence)
     {
     case SEEK_SET:
-        ioWhence = IOSEEK_SET;
+        ioWhence = WHENCE_START;
         break;
     case SEEK_CUR:
-        ioWhence = IOSEEK_CUR;
+        ioWhence = WHENCE_CUR;
         break;
     case SEEK_END:
-        ioWhence = IOSEEK_END;
+        ioWhence = WHENCE_END;
         break;
     default:
         errno = EINVAL;

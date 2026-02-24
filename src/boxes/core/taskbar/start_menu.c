@@ -6,10 +6,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <sys/defs.h>
 #include <sys/fs.h>
 #include <sys/proc.h>
+#include <time.h>
 
 #define START_ENTRY_MAX 16
 
@@ -89,7 +89,7 @@ static uint64_t startmenu_procedure(window_t* win, element_t* elem, const event_
             start_menu_close(win);
 
             const char* argv[] = {entries[event->libAction.source].path, NULL};
-            if (IS_ERR(proc_create(argv, PROC_STDIO_FDS | PROC_EMPTY_GROUP | PROC_COPY_NS, NULL)))
+            if (IS_ERR(proc_create(argv, PROC_FD_STD | PROC_GROUP_EMPTY | PROC_NS_COPY, NULL)))
             {
                 char buffer[MAX_PATH];
                 sprintf(buffer, "Failed to spawn (%s)!", entries[event->libAction.source].path);

@@ -408,7 +408,7 @@ static status_t procfs_wait_poll(irp_t* irp)
         return irp_delay(irp, &process->dyingIrps, procfs_wait_cancel);
     }
 
-    irp->result = IOPOLL_READ;
+    irp->result = EVENTS_READ;
     return OK;
 }
 

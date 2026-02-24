@@ -223,10 +223,10 @@ static void box_spawn(box_spawn_t* ctx)
     bool isForeground = foreground != NULL && strcmp(foreground, "true") == 0;
     bool shouldInheritNamespace = false;
 
-    proc_flags_t flags = PROC_SUSPEND | PROC_EMPTY_ENV | PROC_EMPTY_CWD | PROC_EMPTY_GROUP;
+    proc_flags_t flags = PROC_SUSPEND | PROC_ENV_EMPTY | PROC_EMPTY_CWD | PROC_GROUP_EMPTY;
     if (strcmp(profile, "empty") == 0)
     {
-        flags |= PROC_EMPTY_NS;
+        flags |= PROC_NS_EMPTY;
     }
     else if (strcmp(profile, "inherit") == 0)
     {
@@ -355,7 +355,7 @@ static void box_spawn(box_spawn_t* ctx)
             goto error;
         }
 
-        char waitKey[KEY_128BIT];
+        char waitKey[KEY128BIT];
         status = share(waitKey, sizeof(waitKey), wait, CLOCKS_PER_SEC);
         if (IS_ERR(status))
         {

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <kernel/drivers/perf.h>
-#include <kernel/fs/cwd.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file_table.h>
 #include <kernel/fs/namespace.h>
@@ -46,16 +45,6 @@
  *
  * ```
  * %llu
- * ```
- *
- * ## cwd (restricted)
- *
- * A readable and writable file that contains the current working directory of the process.
- *
- * Format:
- *
- * ```
- * %s
  * ```
  *
  * ## cmdline
@@ -145,7 +134,7 @@
  * ### dup <newfd> <oldfd>
  *
  * Duplicates the specified old file descriptor to the new file descriptor in the process.
- * 
+ *
  * ### bind <target> <source>
  *
  * Bind a source path from the writing process to a target path in the processes namespace.

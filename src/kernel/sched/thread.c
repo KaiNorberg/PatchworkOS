@@ -16,8 +16,8 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <sys/list.h>
 #include <sys/arch.h>
+#include <sys/list.h>
 #include <sys/math.h>
 
 static void thread_ctor(void* ptr)

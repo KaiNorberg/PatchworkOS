@@ -27,7 +27,7 @@ static status_t fb_name_read(irp_t* irp)
 
 static vnode_class_t nameClass = {
     .name = "fb name",
-    .type = VNODE_REGULAR,
+    .type = FILE_DEVICE,
     .handlers =
         {
             [IRP_MJ_READ] = fb_name_read,
@@ -78,7 +78,7 @@ static status_t fb_data_mmap(irp_t* irp)
 
 static vnode_class_t dataClass = {
     .name = "fb data",
-    .type = VNODE_REGULAR,
+    .type = FILE_DEVICE,
     .handlers =
         {
             [IRP_MJ_READ] = fb_data_read,
@@ -119,7 +119,7 @@ static status_t fb_info_read(irp_t* irp)
 
 static vnode_class_t infoClass = {
     .name = "fb info",
-    .type = VNODE_REGULAR,
+    .type = FILE_DEVICE,
     .handlers =
         {
             [IRP_MJ_READ] = fb_info_read,
@@ -136,18 +136,18 @@ static void fb_dir_cleanup(vnode_t* vnode)
     }
 }
 
-static vnode_class_t dirClass = {
-    .name = "fb dir",
-    .type = VNODE_DIR,
+static vnode_class_t dirClass = {.name = "fb dir",
+    .type = FILE_DIRECTORY,
     .cleanup = fb_dir_cleanup,
-    .iterate = dentry_generic_iterate,
-};
+    .handlers = {
+        [IRP_MJ_READ] = vnode_generic_dir_read,
+    }};
 
-static vnode_class_t rootClass = {
-    .name = "fb root",
-    .type = VNODE_DIR,
-    .iterate = dentry_generic_iterate,
-};
+static vnode_class_t rootClass = {.name = "fb root",
+    .type = FILE_DIRECTORY,
+    .handlers = {
+        [IRP_MJ_READ] = vnode_generic_dir_read,
+    }};
 
 status_t fb_register(fb_t* fb)
 {
@@ -176,11 +176,12 @@ status_t fb_register(fb_t* fb)
         return ERR(DRIVER, NOMEM);
     }
 
-    devfs_desc_t files[] = {{
-                                .name = "name",
-                                .cls = &nameClass,
-                                .data = fb,
-                            },
+    devfs_desc_t files[] = {
+        {
+            .name = "name",
+            .cls = &nameClass,
+            .data = fb,
+        },
         {
             .name = "info",
             .cls = &infoClass,
@@ -190,7 +191,8 @@ status_t fb_register(fb_t* fb)
             .name = "data",
             .cls = &dataClass,
             .data = fb,
-        }};
+        },
+    };
 
     if (!devfs_dentrys_new(&fb->files, fb->dir, files, ARRAY_SIZE(files)))
     {

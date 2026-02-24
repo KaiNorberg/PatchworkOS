@@ -595,7 +595,7 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         term->prevCursor = &term->screen[0][0];
 
         const char* argv[] = {"/base/bin/shell", NULL};
-        if (IS_ERR(proc_create(argv, PROC_SUSPEND | PROC_EMPTY_GROUP | PROC_COPY_NS, &term->shell)))
+        if (IS_ERR(proc_create(argv, PROC_SUSPEND | PROC_GROUP_EMPTY | PROC_NS_COPY, &term->shell)))
         {
             close(term->stdin);
             close(term->stdout);
@@ -605,7 +605,8 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         }
 
         if (IS_ERR(writefiles(IOFMT("/proc/%d/ctl", term->shell),
-                IOFMT("dup %d 0 && dup %d 1 && dup %d 2 && close 3 -1 && start", term->stdin, term->stdout, term->stdout))))
+                IOFMT("dup %d 0 && dup %d 1 && dup %d 2 && close 3 -1 && start", term->stdin, term->stdout,
+                    term->stdout))))
         {
             writefiles(IOFMT("/proc/%d/ctl", term->shell), "kill");
             close(term->stdin);
@@ -751,7 +752,7 @@ void terminal_loop(window_t* win)
 
         iopoll_t fds[1] = {{
             .fd = terminal->stdout,
-            .events = IOPOLL_READ,
+            .events = EVENTS_READ,
         }};
         if (display_poll(disp, fds, 1, timeout) == PFAIL)
         {
@@ -764,7 +765,7 @@ void terminal_loop(window_t* win)
             display_dispatch(disp, &event);
         }
 
-        if ((!(fds[0].revents & IOPOLL_READ) && length > 0) || length == TERMINAL_MAX_DATA)
+        if ((!(fds[0].revents & EVENTS_READ) && length > 0) || length == TERMINAL_MAX_DATA)
         {
             element_t* elem = window_get_client_element(terminal->win);
             terminal_t* term = element_get_private(elem);
@@ -779,11 +780,11 @@ void terminal_loop(window_t* win)
             display_cmds_flush(disp);
         }
 
-        if (fds[0].revents & IOPOLL_READ)
-        {        
+        if (fds[0].revents & EVENTS_READ)
+        {
             size_t readCount;
-            status_t status =
-                ioread(terminal->stdout, IOBUF(&buffer[length], TERMINAL_MAX_DATA - length), IOCUR, CLOCKS_NEVER, &readCount);
+            status_t status = ioread(terminal->stdout, IOBUF(&buffer[length], TERMINAL_MAX_DATA - length), IOCUR,
+                CLOCKS_NEVER, &readCount);
             if (IS_ERR(status) || readCount == 0)
             {
                 break;

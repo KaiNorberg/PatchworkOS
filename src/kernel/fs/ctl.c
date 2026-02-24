@@ -1,9 +1,9 @@
 #include <kernel/fs/ctl.h>
 
 #include <kernel/io/irp.h>
+#include <kernel/mem/cache.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/sched/thread.h>
-#include <kernel/mem/cache.h>
 
 #include <ctype.h>
 #include <stdlib.h>
@@ -99,7 +99,7 @@ static status_t ctl_do_next(irp_t* irp, ctl_state_t* state)
             state->runAlways = true;
             break;
         }
-        
+
         if (p[0] == '&' && p[1] == '&')
         {
             sep = p;

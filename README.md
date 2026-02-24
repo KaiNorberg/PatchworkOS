@@ -136,16 +136,16 @@ Using the synchronous I/O wrappers in PatchworkOS, we would write:
 
 ```c
 fd_t fd;
-iowalk(IOCWD, "/path/to/file:rw", NULL, 0, &fd);
+iowalk(FDCWD, "/path/to/file:rw", NULL, 0, &fd);
 
 size_t bytesWritten;
 iowrite(fd, IOBUF("Hello, World!", 13), IOCUR, &bytesWritten);
 ioclunk(fd);
 ```
 
-We first open the file using `iowalk()`, specifying that the path should be traversed starting from the current working directory (`IOCWD`), that we want read and write access (`:rw`) AND that we do not need to provide additional data (`NULL` and `0`) this additional data or payload would be used when, for example, creating a symlink.
+We first open the file using `iowalk()`, specifying that the path should be traversed starting from the current working directory (`FDCWD`), that we want "read and write access" (`:rw`) AND that we do not need to provide additional data (`NULL` and `0`) this additional data or payload would be used when, for example, creating a symlink.
 
-Note that the `IOCWD` constant is no different than standard file descriptors like `STDIN`, `STDOUT` and `STDERR` (called `IOIN`, `IOOUT` and `IOERR` respectively). In PatchworkOS, the current working directory is just a file descriptor like any other; an agreed upon convention that allows other processes to easily inherit it when needed.
+Note that the `FDCWD` constant is no different than standard file descriptors like `STDIN`, `STDOUT` and `STDERR` (called `FDIN`, `FDOUT` and `FDERR` respectively). In PatchworkOS, the current working directory is just a file descriptor like any other; an agreed upon convention that allows other processes to easily inherit it when needed.
 
 > The term "walk" is used instead of "open" to clarify its use within PatchworkOS, as all operations take in a file descriptor with `iowalk()` being the only operation that takes in a path. As such, performing any operation on a file should be thought of as "walking" to it and then acting upon it, instead of mearly "opening" it, after walking to a file we could walk to another file relative to it.
 
@@ -187,14 +187,14 @@ Using the synchronous I/O wrappers in PatchworkOS, we would write:
 fd_t in;
 fd_t out;
 
-iowalk(IOCWD, "/dev/pipe/new", NULL, 0, &in);
-iowalk(IOCWD, "/dev/pipe/new", NULL, 0, &out);
+iowalk(FDCWD, "/dev/pipe/new", NULL, 0, &in);
+iowalk(FDCWD, "/dev/pipe/new", NULL, 0, &out);
 
 proc_t proc;
 const char* argv[] = {"/path/to/program", NULL};
 proc_create(&argv, PROC_SUSPENDED, &proc);
 
-iostorep(IOCWD, IOFMT("/proc/%llu/ctl", proc), IOFMT("dup 0 %llu; dup 1 %llu; close %llu %llu; start", in, out, in, out));
+iostorep(FDCWD, IOFMT("/proc/%llu/ctl", proc), IOFMT("fdcopy 0 %llu; fdcopy 1 %llu; close %llu %llu; start", in, out, in, out));
 ```
 
 We first create two pipes by opening the special file `/dev/pipe/new` twice.
@@ -208,7 +208,7 @@ As a side note, we could optimize the pipe creation by walking to the second pip
 ```c
 fd_t in;
 fd_t out;
-iowalk(IOCWD, "/dev/pipe/new", NULL, 0, &in);
+iowalk(FDCWD, "/dev/pipe/new", NULL, 0, &in);
 iowalk(in, ".", NULL, 0, &out);
 ```
 
@@ -216,15 +216,15 @@ iowalk(in, ".", NULL, 0, &out);
 
 There is no `mount()` system call in PatchworkOS; instead "filesystem files" and a `iobind()` system call are used to mount filesystems.
 
-Filesystem files are exposed by "sysfs" as files with the `IOTYPE_FILESYSTEM` type, for example, `/sys/fs/tmpfs` is the filesystem file for the tmpfs filesystem. Opening this file gives us a file descriptor containing the root of a new instance of that filesystem (for more complex filesystems, for example a disk based one, additional parameters might be needed, these would be passed as the payload to `iowalk()` when opening the filesystem file).
+Filesystem files are exposed by "sysfs" as files with the `FILE_FILESYSTEM` type, for example, `/sys/fs/tmpfs` is the filesystem file for the tmpfs filesystem. Opening this file gives us a file descriptor containing the root of a new instance of that filesystem (for more complex filesystems, for example a disk based one, additional parameters might be needed, these would be passed as the payload to `iowalk()` when opening the filesystem file).
 
 Then we can use `iobind()` to bind the root of the filesystem instance into our desired target:
 
 ```c
 fd_t fs;
 fd_t target;
-iowalk(IOCWD, "/sys/fs/tmpfs", NULL, 0, &fs);
-iowalk(IOCWD, "/mnt/tmpfs", NULL, 0, &target);
+iowalk(FDCWD, "/sys/fs/tmpfs", NULL, 0, &fs);
+iowalk(FDCWD, "/mnt/tmpfs", NULL, 0, &target);
 iobind(target, fs);
 ```
 

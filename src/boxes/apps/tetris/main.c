@@ -5,8 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <sys/proc.h>
+#include <time.h>
 
 #define BLOCK_SIZE 32
 

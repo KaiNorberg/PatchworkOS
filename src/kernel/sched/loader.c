@@ -46,14 +46,7 @@ void loader_exec(void)
 
     uintptr_t* addrs = NULL;
 
-    pathname_t pathname;
-    status_t status = pathname_init(&pathname, process->argv[0]);
-    if (IS_ERR(status))
-    {
-        goto cleanup;
-    }
-
-    status = vfs_open(&file, &pathname, process);
+    status_t status = vfs_open(&file, NULL, process->argv[0], process);
     if (IS_ERR(status))
     {
         goto cleanup;
@@ -66,8 +59,8 @@ void loader_exec(void)
     }
 
     size_t fileSize;
-    vfs_seek(file, 0, IOSEEK_END, &fileSize);
-    vfs_seek(file, 0, IOSEEK_SET, NULL);
+    vfs_seek(file, 0, WHENCE_END, &fileSize);
+    vfs_seek(file, 0, WHENCE_START, NULL);
 
     fileData = malloc(fileSize);
     if (fileData == NULL)
@@ -203,7 +196,11 @@ SYSCALL_DEFINE(SYS_PROC_CREATE, const char** argv, proc_flags_t flags)
     UNREF_DEFER(ns);
 
     namespace_t* childNs;
-    if (flags & PROC_EMPTY_NS || flags & PROC_COPY_NS)
+    if (flags & PROC_NS)
+    {
+        childNs = REF(ns);
+    }
+    else
     {
         childNs = namespace_new(ns);
         if (childNs == NULL)
@@ -211,7 +208,7 @@ SYSCALL_DEFINE(SYS_PROC_CREATE, const char** argv, proc_flags_t flags)
             return ERR(SCHED, NOMEM);
         }
 
-        if (!(flags & PROC_EMPTY_NS))
+        if (flags & PROC_NS_COPY)
         {
             status_t status = namespace_copy(childNs, ns);
             if (IS_ERR(status))
@@ -221,15 +218,11 @@ SYSCALL_DEFINE(SYS_PROC_CREATE, const char** argv, proc_flags_t flags)
             }
         }
     }
-    else
-    {
-        childNs = REF(ns);
-    }
     UNREF_DEFER(childNs);
 
     process_t* child;
-    status_t status = process_new(&child, atomic_load(&process->priority),
-        flags & PROC_EMPTY_GROUP ? NULL : &process->group, childNs);
+    status_t status = process_new(&child, (flags & PROC_PRIO) ? atomic_load(&process->priority) : PROC_PRIO_MIN,
+        (flags & PROC_GROUP) ? &process->group : NULL, childNs);
     if (IS_ERR(status))
     {
         return status;
@@ -269,19 +262,31 @@ SYSCALL_DEFINE(SYS_PROC_CREATE, const char** argv, proc_flags_t flags)
         atomic_fetch_or(&child->flags, PROCESS_SUSPENDED);
     }
 
-    if (!(flags & PROC_EMPTY_FDS))
+    if (flags & PROC_FD)
     {
-        if (flags & PROC_STDIO_FDS)
+        file_table_copy(&child->files, &process->files, 0, CONFIG_MAX_FD);
+    }
+    else
+    {
+        if (flags & PROC_FDIN)
         {
-            file_table_copy(&child->files, &process->files, 0, 3);
+            file_table_copy(&child->files, &process->files, FDIN, FDIN + 1);
         }
-        else
+        if (flags & PROC_FDOUT)
         {
-            file_table_copy(&child->files, &process->files, 0, CONFIG_MAX_FD);
+            file_table_copy(&child->files, &process->files, FDOUT, FDOUT + 1);
+        }
+        if (flags & PROC_FDERR)
+        {
+            file_table_copy(&child->files, &process->files, FDERR, FDERR + 1);
+        }
+        if (flags & PROC_FDCWD)
+        {
+            file_table_copy(&child->files, &process->files, FDCWD, FDCWD + 1);
         }
     }
 
-    if (!(flags & PROC_EMPTY_ENV))
+    if (flags & PROC_ENV)
     {
         status = env_copy(&child->env, &process->env);
         if (IS_ERR(status))
@@ -289,13 +294,6 @@ SYSCALL_DEFINE(SYS_PROC_CREATE, const char** argv, proc_flags_t flags)
             loader_strv_free(argvCopy, argc);
             return status;
         }
-    }
-
-    if (!(flags & PROC_EMPTY_CWD))
-    {
-        path_t cwd = cwd_get(&process->cwd, ns);
-        cwd_set(&child->cwd, &cwd);
-        path_put(&cwd);
     }
 
     // Call loader_exec()

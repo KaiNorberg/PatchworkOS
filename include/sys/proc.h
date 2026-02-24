@@ -15,7 +15,6 @@ extern "C"
 #include "_libstd/PAGE_SIZE.h"
 #include "_libstd/clock_t.h"
 #include "_libstd/config.h"
-#include "_libstd/fd_t.h"
 
 /**
  * @brief Process management.
@@ -47,42 +46,38 @@ typedef uint8_t proc_prio_t;
 
 /**
  * @brief Process creation behaviour flags.
- * @enum proc_flags_t
  */
-typedef enum
-{
-    PROC_DEFAULT = 0, ///< Default creation behaviour.
-    /**
-     * Starts the created process in a suspended state. The process will not begin executing until a "start" note is
-     * received.
-     *
-     * The purpose of this flag is to allow the parent process to modify the child process before it starts executing,
-     * for example modifying its environment variables.
-     */
-    PROC_SUSPEND = 1 << 0,
-    PROC_EMPTY_FDS = 1 << 1,   ///< Dont inherit the file descriptors of the parent process.
-    PROC_STDIO_FDS = 1 << 2,   ///< Only inherit stdin, stdout and stderr from the parent process.
-    PROC_EMPTY_ENV = 1 << 3,   ///< Don't inherit the parent's environment variables.
-    PROC_EMPTY_CWD = 1 << 4,   ///< Don't inherit the parent's current working directory, starts at root (/).
-    PROC_EMPTY_GROUP = 1 << 5, ///< Don't inherit the parent's process group, instead create a new group.
-    PROC_COPY_NS = 1 << 6,     ///< Don't share the parent's namespace, instead create a new copy of it.
-    PROC_EMPTY_NS =
-        1 << 7, ///< Create a new empty namespace, the new namespace will not contain any mountpoints or even a root.
-    PROC_EMPTY_ALL = PROC_EMPTY_FDS | PROC_EMPTY_ENV | PROC_EMPTY_CWD | PROC_EMPTY_GROUP |
-        PROC_EMPTY_NS ///< Empty all inheritable resources.
-} proc_flags_t;
+typedef uint64_t proc_flags_t;
+#define PROC_EMPTY 0 ///< Default behaviour, the child process inherits no resources from the parent process.
+/**
+ * Starts the created process in a suspended state. The process will not begin executing until a "start" note is
+ * received.
+ *
+ * The purpose of this flag is to allow the parent process to modify the child process before it starts executing, primarily via the "procfs" filesystem.
+ * 
+ * @see kernel_fs_procfs
+ */
+#define PROC_SUSPEND (1 << 0)
+#define PROC_FDIN (1 << 1)    ///< Inherit the parent's standard input file descriptor.
+#define PROC_FDOUT (1 << 2)   ///< Inherit the parent's standard output file descriptor.
+#define PROC_FDERR (1 << 3)   ///< Inherit the parent's standard error file descriptor.
+#define PROC_FDCWD (1 << 4)  ///< Inherit the parent's current working directory file descriptor.
+#define PROC_IOALL (PROC_FDIN | PROC_FDOUT | PROC_FDERR | PROC_FDCWD) ///< Inherit all standard file descriptors.
+#define PROC_FD (1 << 5) ///< Inherit the parent's file descriptors.
+#define PROC_ENV (1 << 6) ///< Inherit the parent's environment variables.
+#define PROC_GROUP (1 << 7) ///< Inherit the parent's process group.
+#define PROC_NS (1 << 8)    ///< Inherit the parent's namespace.
+#define PROC_NS_COPY (1 << 9) ///< Create a new copy of the parent's namespace.
+#define PROC_PRIO (1 << 10) ///< Inherit the parent's scheduling priority.
+#define PROC_ALL (PROC_FD | PROC_ENV | PROC_GROUP | PROC_NS | PROC_PRIO) ///< Inherit all resources.
 
 /**
  * @brief System call for creating new processes.
  *
- * By default, the created process will inherit the file table, environment variables, priority and current
- * working directory of the parent process by creating a copy. Additionally the child will exist within the same
- * namespace as the parent.
- *
  * @param argv A NULL-terminated array of strings, where `argv[0]` is the filepath to the desired executable.
  * @param flags Creation behaviour flags.
  * @param proc Optional ouput pointer for the childs identifier.
- * @return
+ * @return An appropriate status value.
  */
 static inline status_t proc_create(const char** argv, proc_flags_t flags, proc_t* proc)
 {

@@ -405,15 +405,8 @@ typedef struct
 static status_t module_file_read(module_file_t* outFile, const path_t* dirPath, process_t* process,
     const char* filename)
 {
-    pathname_t pathname;
-    status_t status = pathname_init(&pathname, filename);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
     file_t* file;
-    status = vfs_openat(&file, dirPath, &pathname, process);
+    status_t status = vfs_open(&file, dirPath, filename, process);
     if (IS_ERR(status))
     {
         return status;
@@ -421,8 +414,8 @@ static status_t module_file_read(module_file_t* outFile, const path_t* dirPath, 
     UNREF_DEFER(file);
 
     size_t fileSize;
-    vfs_seek(file, 0, IOSEEK_END, &fileSize);
-    vfs_seek(file, 0, IOSEEK_SET, NULL);
+    vfs_seek(file, 0, WHENCE_END, &fileSize);
+    vfs_seek(file, 0, WHENCE_START, NULL);
 
     uint8_t* fileData = malloc(fileSize);
     if (fileData == NULL)
@@ -626,6 +619,50 @@ static void module_cache_clear(void)
     cacheValid = false;
 }
 
+static status_t module_cache_process_entry(const char* name, file_t* dir, process_t* process)
+{
+    file_t* file;
+    status_t status = vfs_open(&file, &dir->path, name, process);
+    if (IS_ERR(status))
+    {
+        return OK;
+    }
+
+    bool isRegular = (file->vnode->cls->type == FILE_REGULAR);
+    UNREF(file);
+
+    if (!isRegular)
+    {
+        return OK;
+    }
+
+    module_file_t modFile;
+    status = module_file_read(&modFile, &dir->path, process, name);
+    if (IS_ERR(status))
+    {
+        LOG_ERR("skipping invalid module file '%s' %Y\n", name, status);
+        return OK;
+    }
+
+    status = module_cache_symbols_add(&modFile, name);
+    if (IS_ERR(status))
+    {
+        module_file_deinit(&modFile);
+        return status;
+    }
+
+    status = module_cache_device_types_add(&modFile, name);
+    if (IS_ERR(status))
+    {
+        module_file_deinit(&modFile);
+        return status;
+    }
+
+    LOG_DEBUG("built cache entry for module '%s'\n", modFile.info->name);
+    module_file_deinit(&modFile);
+    return OK;
+}
+
 static status_t module_cache_build(void)
 {
     if (cacheValid)
@@ -636,72 +673,70 @@ static status_t module_cache_build(void)
     process_t* process = process_current();
     assert(process != NULL);
 
-    pathname_t moduleDir;
-    status_t status = pathname_init(&moduleDir, MODULE_DIR);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
     file_t* dir;
-    status = vfs_open(&dir, &moduleDir, process);
+    status_t status = vfs_open(&dir, NULL, MODULE_DIR, process);
     if (IS_ERR(status))
     {
         return status;
     }
     UNREF_DEFER(dir);
 
-    dirent_t buffer[PAGE_SIZE / sizeof(dirent_t)];
-    while (true)
+    char* buffer = malloc(PAGE_SIZE);
+    if (buffer == NULL)
+    {
+        return ERR(MODULE, NOMEM);
+    }
+
+    char* name = malloc(MAX_PATH);
+    if (name == NULL)
+    {
+        free(buffer);
+        return ERR(MODULE, NOMEM);
+    }
+
+    size_t nameLen = 0;
+
+    do
     {
         size_t bytesRead;
-        status = vfs_getdents(dir, buffer, sizeof(buffer), &bytesRead);
+        status = vfs_read(dir, buffer, PAGE_SIZE, &bytesRead);
         if (IS_ERR(status))
         {
             module_cache_clear();
+            free(buffer);
+            free(name);
             return status;
         }
-        if (bytesRead == 0)
-        {
-            break;
-        }
 
-        for (uint64_t i = 0; i < bytesRead / sizeof(dirent_t); i++)
+        for (size_t i = 0; i < bytesRead; i++)
         {
-            if (buffer[i].path[0] == '.' || buffer[i].type != VNODE_REGULAR)
+            if (buffer[i] != '\0')
             {
+                if (nameLen < MAX_PATH - 1)
+                {
+                    name[nameLen++] = buffer[i];
+                }
                 continue;
             }
 
-            module_file_t file;
-            status = module_file_read(&file, &dir->path, process, buffer[i].path);
-            if (IS_ERR(status))
+            name[nameLen] = '\0';
+            if (nameLen > 0 && name[0] != '.')
             {
-                LOG_ERR("skipping invalid module file '%s' %Y\n", buffer[i].path, status);
-                continue;
+                status_t status = module_cache_process_entry(name, dir, process);
+                if (IS_ERR(status))
+                {
+                    module_cache_clear();
+                    free(buffer);
+                    free(name);
+                    return status;
+                }
             }
-
-            status = module_cache_symbols_add(&file, buffer[i].path);
-            if (IS_ERR(status))
-            {
-                module_file_deinit(&file);
-                module_cache_clear();
-                return status;
-            }
-
-            status = module_cache_device_types_add(&file, buffer[i].path);
-            if (IS_ERR(status))
-            {
-                module_file_deinit(&file);
-                module_cache_clear();
-                return status;
-            }
-
-            LOG_DEBUG("built cache entry for module '%s'\n", file.info->name);
-            module_file_deinit(&file);
+            nameLen = 0;
         }
-    }
+    } while (IS_CODE(status, MORE));
 
+    free(buffer);
+    free(name);
     cacheValid = true;
     return OK;
 }
@@ -1123,15 +1158,8 @@ status_t module_device_attach(const char* type, const char* name, module_load_fl
         return OK;
     }
 
-    pathname_t moduleDir;
-    status = pathname_init(&moduleDir, MODULE_DIR);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
     file_t* dir;
-    status = vfs_open(&dir, &moduleDir, process_current());
+    status = vfs_open(&dir, NULL, MODULE_DIR, process_current());
     if (IS_ERR(status))
     {
         return status;

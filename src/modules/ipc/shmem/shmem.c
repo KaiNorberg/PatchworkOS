@@ -208,7 +208,7 @@ static status_t shmem_mmap(irp_t* irp)
         {
             return status;
         }
-        
+
         irp->result = (uint64_t)address;
         return OK;
     }

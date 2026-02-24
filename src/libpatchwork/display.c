@@ -239,15 +239,15 @@ uint64_t display_next(display_t* disp, event_t* event, clock_t timeout)
         return PFAIL;
     }
 
-    ioevents_t revents = 0;
-    status_t status = iopoll(disp->data, IOPOLL_READ, timeout, &revents);
+    events_t revents = 0;
+    status_t status = iopoll(disp->data, EVENTS_READ, timeout, &revents);
     if (IS_ERR(status) && !IS_CODE(status, TIMEOUT))
     {
         display_disconnect(disp);
         return PFAIL;
     }
 
-    if (!(revents & IOPOLL_READ))
+    if (!(revents & EVENTS_READ))
     {
         errno = ETIMEDOUT;
         return PFAIL;
@@ -294,7 +294,7 @@ uint64_t display_poll(display_t* disp, iopoll_t* fds, uint64_t nfds, clock_t tim
     }
 
     allFds[0].fd = disp->data;
-    allFds[0].events = IOPOLL_READ;
+    allFds[0].events = EVENTS_READ;
     for (uint64_t i = 0; i < nfds; i++)
     {
         allFds[i + 1] = fds[i];
@@ -308,7 +308,7 @@ uint64_t display_poll(display_t* disp, iopoll_t* fds, uint64_t nfds, clock_t tim
         return PFAIL;
     }
 
-    if (allFds[0].revents & IOPOLL_ERROR)
+    if (allFds[0].revents & EVENTS_ERROR)
     {
         display_disconnect(disp);
         free(allFds);
@@ -316,7 +316,7 @@ uint64_t display_poll(display_t* disp, iopoll_t* fds, uint64_t nfds, clock_t tim
     }
 
     uint64_t totalReady = ready;
-    if (allFds[0].revents & IOPOLL_READ)
+    if (allFds[0].revents & EVENTS_READ)
     {
         totalReady--;
     }

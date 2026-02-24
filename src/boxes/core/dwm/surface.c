@@ -34,8 +34,8 @@ surface_t* surface_new(client_t* client, const char* name, const point_t* point,
         return NULL;
     }
     surface->buffer = NULL;
-    status_t status = iomap(surface->shmem, (void**)&surface->buffer, width * height * sizeof(pixel_t), 0,
-            IOMAP_READ | IOMAP_WRITE);
+    status_t status =
+        iomap(surface->shmem, (void**)&surface->buffer, width * height * sizeof(pixel_t), 0, IOMAP_READ | IOMAP_WRITE);
     if (IS_ERR(status))
     {
         close(surface->shmem);

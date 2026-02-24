@@ -2,11 +2,12 @@
 
 #include <alloca.h>
 #include <ctype.h>
+#include <kernel/io/irp.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <kernel/utils/ref.h>
 #include <sys/fs.h>
 #include <sys/status.h>
-#include <kernel/io/irp.h>
 
 typedef struct path path_t;
 typedef struct mount mount_t;
@@ -249,25 +250,26 @@ static inline void path_put(path_t* path)
 /**
  * @brief Path walking state.
  * @struct path_state_t
- * 
- * @note The `dentry` and `mount` members will only hold references while outside of a RCU read-side critical section. For example, during lookups. Within these section there is no need for reference counting, improving performance.
+ *
+ * @note The `dentry` and `mount` members will only hold references while outside of a RCU read-side critical section.
+ * For example, during lookups. Within these section there is no need for reference counting, improving performance.
  */
 typedef struct path_state
 {
-    dentry_t* dentry; ///< The current dentry in the walk.
-    mount_t* mount;   ///< The current mount in the walk.
-    char* path;     ///< The full path string buffer, not `NULL` terminated.
-    uint64_t pathLength; ///< The length of the path string.
-    size_t pathCapacity; ///< The capacity of the path string buffer.
-    char* ptr;        ///< Pointer to the current component in the path.
-    size_t componentLen; ///< Length of the current component being processed.
-    const void* payload;  ///< Payload for the final open operation.
-    size_t payloadLen;    ///< Length of the payload.
-    mode_t mode; ///< Parsed mode from the path.
-    namespace_t* ns; ///< The namespace for the walk.
+    dentry_t* dentry;      ///< The current dentry in the walk.
+    mount_t* mount;        ///< The current mount in the walk.
+    char* path;            ///< The full path string buffer, not `NULL` terminated.
+    uint64_t pathLength;   ///< The length of the path string.
+    size_t pathCapacity;   ///< The capacity of the path string buffer.
+    char* ptr;             ///< Pointer to the current component in the path.
+    size_t componentLen;   ///< Length of the current component being processed.
+    const void* payload;   ///< Payload for the final open operation.
+    size_t payloadLen;     ///< Length of the payload.
+    mode_t mode;           ///< Parsed mode from the path.
+    namespace_t* ns;       ///< The namespace for the walk.
     uint32_t symlinkDepth; ///< Current symlink recursion depth.
-    char* linkBuffer; ///< Temporary buffer for reading symlinks.
-    dentry_t* lookup; ///< A reference to the last "looked up" dentry to keep it and its parents alive.
+    char* linkBuffer;      ///< Temporary buffer for reading symlinks.
+    dentry_t* lookup;      ///< A reference to the last "looked up" dentry to keep it and its parents alive.
     status_t (*done)(irp_t* irp, struct path_state* state, file_t* file);
 } path_state_t;
 
@@ -276,7 +278,9 @@ typedef struct path_state
  *
  * @param state The path state to initialize.
  */
-static inline void path_state_init(path_state_t* state, dentry_t* dentry, mount_t* mount, char* path, size_t pathLength, size_t pathCapacity, void* payload, size_t payloadLen, status_t (*done)(irp_t* irp, struct path_state* state, file_t* file))
+static inline void path_state_init(path_state_t* state, dentry_t* dentry, mount_t* mount, char* path, size_t pathLength,
+    size_t pathCapacity, void* payload, size_t payloadLen,
+    status_t (*done)(irp_t* irp, struct path_state* state, file_t* file))
 {
     state->dentry = dentry;
     state->mount = mount;

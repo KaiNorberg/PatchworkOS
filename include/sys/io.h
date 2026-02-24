@@ -5,12 +5,13 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-#include <threads.h>
 #include <sys/defs.h>
 #include <sys/list.h>
 #include <sys/proc.h>
+#include <sys/fs.h>
 #include <sys/status.h>
 #include <sys/syscall.h>
+#include <threads.h>
 
 #if defined(__cplusplus)
 extern "C"
@@ -21,15 +22,12 @@ extern "C"
 #include "_libstd/MAX_PATH.h"
 #include "_libstd/clock_t.h"
 #include "_libstd/errno_t.h"
-#include "_libstd/fd_t.h"
 #include "_libstd/ssize_t.h"
 
 /**
- * @brief Scriptable submission/completion interface.
+ * @brief Userspace I/O interface.
  * @defgroup libstd_sys_io I/O Ring ABI
  * @ingroup libstd
- *
- * The ring interface acts as the interface for all asynchronous operations in the kernel.
  *
  * @todo Write I/O Ring user-side interface documentation.
  *
@@ -91,7 +89,8 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
 /**
  * @brief Read operation.
  *
- * @note Reading for a directory will return a stream of null deliminated strings, with each string representing the name of a file within the directory.
+ * @note Reading for a directory will return a stream of null deliminated strings, with each string representing the
+ * name of a file within the directory.
  *
  * @param fd The file descriptor to read from.
  * @param vector An array of `iovec_t` structures to read into.
@@ -120,7 +119,7 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
  * @param Unused
  * @param Unused
  * @param Unused
- * @result The events that occurred stored as a `ioevents_t` value.
+ * @result The events that occurred stored as a `events_t` value.
  */
 #define IOOP_POLL 3
 
@@ -128,7 +127,7 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
  * @brief Seek operation.
  * @param fd The file descriptor to seek.
  * @param Unused
- * @param origin The origin of the seek operation (e.g., `IOSEEK_SET`, `IOSEEK_CUR`, `IOSEEK_END`).
+ * @param origin The origin of the seek operation (e.g., `WHENCE_START`, `WHENCE_CUR`, `WHENCE_END`).
  * @param offset The offset to seek to.
  * @param Unused
  * @result The new file position.
@@ -147,31 +146,21 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
 #define IOOP_MAP 5
 
 /**
- * @brief Control operation.
- * @param fd The file descriptor to perform the command on.
- * @param command The command to perform.
- * @param args The arguments for the command.
- * @param Unused
- * @param Unused
- * @result The result of the command.
- */
-#define IOOP_CONTROL 6
-
-/**
  * @brief Walk operation.
  *
  * Traverse the filesystem and open a file descriptor to the reached vnode.
- * 
- * @note The `payload` argument is used to provide additional data for the open operation, such as the target path when creating a symbolic link or the source file descriptor when creating a hardlink.
  *
- * @param fd The file descriptor to open the file relative to, or `IOCWD` to open from the current working directory.
+ * @note The `payload` argument is used to provide additional data for the open operation, such as the target path when
+ * creating a symbolic link or the source file descriptor when creating a hardlink.
+ *
+ * @param fd The file descriptor to open the file relative to, or `FDCWD` to open from the current working directory.
  * @param path The path to the file to open, also contains flags @see kernel_fs_path.
  * @param count The length of the path.
  * @param payload Additional data for the open operation.
  * @param payloadLen The length of the additional data.
  * @result The opened file descriptor.
  */
-#define IOOP_WALK 7
+#define IOOP_WALK 6
 
 /**
  * @brief Clunk operation.
@@ -182,12 +171,13 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
  * @param Unused
  * @result Always `0`.
  */
-#define IOOP_CLUNK 8
+#define IOOP_CLUNK 7
 
 /**
  * @brief Remove operation.
  *
- * @note Will remove a file from the filesystem hierarchy, the files underlying resources will only be released once all file descriptors referencing it are closed.
+ * @note Will remove a file from the filesystem hierarchy, the files underlying resources will only be released once all
+ * file descriptors referencing it are closed.
  *
  * @param fd The file descriptor to a file to remove.
  * @param Unused
@@ -196,7 +186,7 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
  * @param Unused
  * @result Always `0`.
  */
-#define IOOP_REMOVE 9
+#define IOOP_REMOVE 8
 
 /**
  * @brief File attribute operation.
@@ -207,18 +197,18 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
  * @param Unused
  * @result The requested value or `0` if setting a value.
  */
-#define IOOP_ATTR 10
+#define IOOP_ATTR 9
 
 /**
  * @brief File query operation.
  * @param fd The file descriptor.
- * @param info Pointer to the `ioinfo_t` structure to fill.
+ * @param info Pointer to the `file_info_t` structure to fill.
  * @param Unused
  * @param Unused
  * @param Unused
  * @result Always `0`.
  */
-#define IOOP_QUERY 11
+#define IOOP_QUERY 10
 
 /**
  * @brief Flush operation.
@@ -229,31 +219,11 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
  * @param Unused
  * @result Always `0`.
  */
-#define IOOP_FLUSH 12
+#define IOOP_FLUSH 11
 
-#define IOOP_MAX 13 ///< The maximum number of operations.
-
-#define IOIN ((fd_t)0)  ///< Standard input file descriptor.
-#define IOOUT ((fd_t)1) ///< Standard output file descriptor.
-#define IOERR ((fd_t)2) ///< Standard error file descriptor.
-#define IOCWD ((fd_t)3) ///< Standard current working directory file descriptor.
+#define IOOP_MAX 12 ///< The maximum number of operations.
 
 #define IOCUR (((ssize_t) - 1)) ///< Use the current file offset.
-
-#define IONEVER ((clock_t) -1) ///< Operation will never timeout.
-#define IONOW ((clock_t) 0) ///< Operation must be completed immediately.
-
-typedef uint64_t iowhence_t; ///< Seek origin type.
-#define IOSEEK_SET (1)       ///< Use the start of the file.
-#define IOSEEK_END (2)       ///< Use the end of the file.
-#define IOSEEK_CUR (3)       ///< Use the current file offset.
-
-typedef uint64_t ioevents_t;  ///< Poll events type.
-#define IOPOLL_READ (1 << 0)  ///< File descriptor is ready to be read from.
-#define IOPOLL_WRITE (1 << 1) ///< File descriptor is ready to be written to.
-#define IOPOLL_ERROR (1 << 2) ///< File descriptor caused an error.
-#define IOPOLL_HUP (1 << 3)   ///< File descriptor is closed.
-#define IOPOLL_NVAL (1 << 4)  ///< Invalid file descriptor.
 
 /**
  * @brief I/O command identifier type.
@@ -265,6 +235,7 @@ typedef uint64_t ioevents_t;  ///< Poll events type.
  *
  */
 typedef uint64_t iocmd_t;
+
 /**
  * @brief Creates a command value from its text representation.
  *
@@ -291,7 +262,7 @@ typedef uint64_t iocancel_t;  ///< Cancel operation flags.
  */
 typedef struct iovec
 {
-    void* base;   ///< Pointer to the buffer.
+    void* base;    ///< Pointer to the buffer.
     size_t length; ///< Length of the buffer.
 } iovec_t;
 
@@ -303,83 +274,7 @@ typedef struct iovec
  * @param ptr Pointer to the buffer.
  * @param len Length of the buffer.
  */
-#define IOBUF(ptr, len) &((iovec_t){ .base = (void*)(ptr), .length = (size_t)(len) }), 1
-
-typedef uint64_t ioattr_t; ///< File attribute operations.
-#define IOATTR_GET_SIZE  0 ///< Get the size of the file.
-#define IOATTR_SET_SIZE  1 ///< Set the size of the file.
-#define IOATTR_GET_BLOCKS 2 ///< Get the number of blocks allocated.
-#define IOATTR_GET_BLOCK_SIZE 3 ///< Get the block size.
-#define IOATTR_GET_MAX_SIZE 4 ///< Get the maximum file size.
-#define IOATTR_GET_ATIME 5 ///< Get the access time.
-#define IOATTR_SET_ATIME 6 ///< Set the access time.
-#define IOATTR_GET_MTIME 7 ///< Get the modification time.
-#define IOATTR_SET_MTIME 8 ///< Set the modification time.
-#define IOATTR_GET_CTIME 9 ///< Get the change time.
-#define IOATTR_SET_CTIME 10 ///< Set the change time.
-#define IOATTR_GET_BTIME 11 ///< Get the birth time.
-#define IOATTR_SET_BTIME 12 ///< Set the birth time.
-#define IOATTR_GET_NUM 13 ///< Get the file number.
-#define IOATTR_GET_VOL 14 ///< Get the volume ID.
-#define IOATTR_GET_NLINK 15 ///< Get the number of hard links.
-#define IOATTR_GET_FLAGS 16 ///< Get the file flags.
-#define IOATTR_SET_FLAGS 17 ///< Set the file flags.
-#define IOATTR_GET_TYPE 18 ///< Get the file type.
-
-typedef uint32_t iotype_t; ///< File type operations.
-#define IOTYPE_UNKNOWN 0 ///< Unknown file type.
-#define IOTYPE_REGULAR 1 ///< Regular file.
-#define IOTYPE_DIRECTORY 3 ///< Directory.
-#define IOTYPE_SYMLINK 4 ///< Symbolic link.
-#define IOTYPE_DEVICE 5 ///< Device file.
-#define IOTYPE_SYSTEM 6 ///< System file, used for exposing kernel information to user space.
-#define IOTYPE_FILESYSTEM 7 ///< Filesystem file.
-
-
-typedef uint32_t ioflags_t; ///< File flags.
-#define IOFLAG_NONE 0 ///< No flags.
-
-typedef uint64_t ioinfo_valid_t; ///< Bitmask of which fields are valid.
-#define IOINFO_SIZE  (1 << 0) ///< File size is valid.
-#define IOINFO_BLOCKS  (1 << 1) ///< Blocks allocated is valid.
-#define IOINFO_BLOCK_SIZE  (1 << 2) ///< Block size is valid.
-#define IOINFO_MAX_SIZE (1 << 3) ///< Maximum file size is valid.
-#define IOINFO_ATIME  (1 << 4) ///< Access time is valid.
-#define IOINFO_MTIME  (1 << 5) ///< Modification time is valid.
-#define IOINFO_CTIME  (1 << 6) ///< Change time is valid.
-#define IOINFO_BTIME  (1 << 7) ///< Birth/Creation time is valid.
-#define IOINFO_NUM  (1 << 8) ///< File number is valid.
-#define IOINFO_VOL  (1 << 9) ///< Volume ID is valid.
-#define IOINFO_NLINK (1 << 10) ///< Number of hard links is valid.
-#define IOINFO_FLAGS (1 << 11) ///< File flags are valid.
-#define IOINFO_TYPE (1 << 12) ///< File type is valid.
-#define IOINFO_NAME (1 << 13) ///< File name is valid.
-#define IOINFO_MODE (1 << 14) ///< File mode is valid.
-
-/**
- * @brief File information structure.
- * @struct ioinfo_t
- */
-typedef struct ioinfo
-{
-    ioinfo_valid_t valid; ///< Bitmask of which fields are valid.
-    size_t size;       ///< File size in bytes.
-    size_t blocks;     ///< Blocks allocated.
-    size_t blockSize;  ///< Block size in bytes.
-    size_t maxSize;      ///< Maximum file size.
-    clock_t atime;      ///< Access time (ns).
-    clock_t mtime;      ///< Modification time (ns).
-    clock_t ctime;      ///< Change time (ns).
-    clock_t btime;      ///< Birth/Creation time (ns).
-    uint64_t num;        ///< File number, depends on the file system, for example, inode number in ext4.
-    uint64_t vol;        ///< Volume ID.
-    uint32_t nlink;      ///< Number of hard links.
-    ioflags_t flags;     ///< File flags.
-    iotype_t type;       ///< File type.
-    char name[MAX_PATH]; ///< File name.
-    char mode[MAX_NAME]; ///< File mode represented by their short-hand.
-    uint8_t _reserved[123];
-} ioinfo_t;
+#define IOBUF(ptr, len) &((iovec_t){.base = (void*)(ptr), .length = (size_t)(len)}), 1
 
 typedef uint32_t iosqe_flags_t; ///< Submission queue entry (SQE) flags.
 #define IOSQE_NORMAL 0          ///< Default behaviour flags.
@@ -430,7 +325,7 @@ typedef uint32_t iosqe_flags_t; ///< Submission queue entry (SQE) flags.
 typedef struct iosqe
 {
     /**
-     * Timeout for the operation, `IONEVER` for no timeout, or `IONOW` to fail the operation if it cannot be completed
+     * Timeout for the operation, `CLOCKS_NEVER` for no timeout, or `CLOCKS_NOW` to fail the operation if it cannot be completed
      * immediately.
      */
     clock_t timeout;
@@ -445,26 +340,24 @@ typedef struct iosqe
     union {
         uint64_t arg1;
         const iovec_t* vector;
-        ioevents_t events;
+        events_t events;
         iocancel_t cancel;
         iocmd_t command;
         void* address;
         const char* path;
-        ioattr_t attr;
-        ioinfo_t* info;
+        file_attr_t attr;
+        file_info_t* info;
     };
     union {
         uint64_t arg2;
         size_t count;
-        const void* args;
-        iowhence_t origin;
+        whence_t origin;
         uint64_t value;
     };
     union {
         uint64_t arg3;
         ssize_t offset;
         const void* payload;
-        size_t argsLen;
     };
     union {
         uint64_t arg4;
@@ -482,7 +375,7 @@ static_assert(sizeof(iosqe_t) == 64, "iosqe_t is not 64 bytes");
  *
  * @param _op The operation to perform.
  * @param _flags Submission flags.
- * @param _timeout Timeout for the operation, `IONEVER` for no timeout.
+ * @param _timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout.
  * @param _data Private data for the operation.
  */
 #define IOSQE_CREATE(_op, _flags, _timeout, _data) \
@@ -558,8 +451,8 @@ typedef struct ioring
 typedef struct iopoll
 {
     fd_t fd;            ///< The file descriptor to poll.
-    ioevents_t events;  ///< The events to wait for.
-    ioevents_t revents; ///< The events that occurred.
+    events_t events;  ///< The events to wait for.
+    events_t revents; ///< The events that occurred.
 } iopoll_t;
 
 #ifndef _KERNEL_
@@ -730,7 +623,7 @@ static inline void ioprep_write(iosqe_t* iosqe, iosqe_flags_t flags, clock_t tim
  * @see `IOOP_POLL`
  */
 static inline void ioprep_poll(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
-    ioevents_t events)
+    events_t events)
 {
     *iosqe = IOSQE_CREATE(IOOP_POLL, flags, timeout, data);
     iosqe->fd = fd;
@@ -743,7 +636,7 @@ static inline void ioprep_poll(iosqe_t* iosqe, iosqe_flags_t flags, clock_t time
  * @see `IOOP_SEEK`
  */
 static inline void ioprep_seek(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
-    iowhence_t origin, ssize_t offset)
+    whence_t origin, ssize_t offset)
 {
     *iosqe = IOSQE_CREATE(IOOP_SEEK, flags, timeout, data);
     iosqe->fd = fd;
@@ -765,20 +658,6 @@ static inline void ioprep_map(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeo
     iosqe->count = count;
     iosqe->offset = offset;
     iosqe->mem = mem;
-}
-
-/**
- * @brief Prepare a control submission queue entry (SQE).
- *
- * @see `IOOP_CONTROL`
- */
-static inline void ioprep_control(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
-    iocmd_t command, const char* args)
-{
-    *iosqe = IOSQE_CREATE(IOOP_CONTROL, flags, timeout, data);
-    iosqe->fd = fd;
-    iosqe->command = command;
-    iosqe->args = args;
 }
 
 /**
@@ -824,7 +703,8 @@ static inline void ioprep_remove(iosqe_t* iosqe, iosqe_flags_t flags, clock_t ti
  *
  * @see `IOOP_ATTR`
  */
-static inline void ioprep_attr(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd, ioattr_t attr, uint64_t value)
+static inline void ioprep_attr(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
+    file_attr_t attr, uint64_t value)
 {
     *iosqe = IOSQE_CREATE(IOOP_ATTR, flags, timeout, data);
     iosqe->fd = fd;
@@ -837,7 +717,8 @@ static inline void ioprep_attr(iosqe_t* iosqe, iosqe_flags_t flags, clock_t time
  *
  * @see `IOOP_QUERY`
  */
-static inline void ioprep_query(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd, ioinfo_t* info)
+static inline void ioprep_query(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
+    file_info_t* info)
 {
     *iosqe = IOSQE_CREATE(IOOP_QUERY, flags, timeout, data);
     iosqe->fd = fd;
@@ -885,11 +766,13 @@ void iosyncn(iosqe_t* sqes, iocqe_t* cqes, size_t count, size_t wait, size_t* co
  * @param vector An array of `iovec_t` structures to read into.
  * @param count The number of `iovec_t` structures.
  * @param offset The offset to read from, or `IOCUR`.
- * @param timeout Timeout for the operation, `IONEVER` for no timeout or `IONOW` to fail the operation if it cannot be completed immediately.
+ * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout or `CLOCKS_NOW` to fail the operation if it cannot be
+ * completed immediately.
  * @param bytesRead Output pointer for the number of bytes read, can be `NULL`.
  * @return An appropriate status value.
  */
-static inline status_t ioreadt(fd_t fd, const iovec_t* vector, size_t count, ssize_t offset, clock_t timeout, size_t* bytesRead)
+static inline status_t ioreadt(fd_t fd, const iovec_t* vector, size_t count, ssize_t offset, clock_t timeout,
+    size_t* bytesRead)
 {
     iosqe_t sqe;
     iocqe_t cqe;
@@ -914,7 +797,7 @@ static inline status_t ioreadt(fd_t fd, const iovec_t* vector, size_t count, ssi
  */
 static inline status_t ioread(fd_t fd, const iovec_t* vector, size_t count, ssize_t offset, size_t* bytesRead)
 {
-    return ioreadt(fd, vector, count, offset, IONEVER, bytesRead);
+    return ioreadt(fd, vector, count, offset, CLOCKS_NEVER, bytesRead);
 }
 
 /**
@@ -924,11 +807,13 @@ static inline status_t ioread(fd_t fd, const iovec_t* vector, size_t count, ssiz
  * @param vector An array of `iovec_t` structures to write from.
  * @param count The number of `iovec_t` structures.
  * @param offset The offset to write to, or `IOCUR`.
- * @param timeout Timeout for the operation, `IONEVER` for no timeout or `IONOW` to fail the operation if it cannot be completed immediately.
+ * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout or `CLOCKS_NOW` to fail the operation if it cannot be
+ * completed immediately.
  * @param bytesWritten Output pointer for the number of bytes written, can be `NULL`.
  * @return An appropriate status value.
  */
-static inline status_t iowritet(fd_t fd, const iovec_t* vector, size_t count, ssize_t offset, clock_t timeout, size_t* bytesWritten)
+static inline status_t iowritet(fd_t fd, const iovec_t* vector, size_t count, ssize_t offset, clock_t timeout,
+    size_t* bytesWritten)
 {
     iosqe_t sqe;
     iocqe_t cqe;
@@ -953,14 +838,15 @@ static inline status_t iowritet(fd_t fd, const iovec_t* vector, size_t count, ss
  */
 static inline status_t iowrite(fd_t fd, const iovec_t* vector, size_t count, ssize_t offset, size_t* bytesWritten)
 {
-    return iowritet(fd, vector, count, offset, IONEVER, bytesWritten);
+    return iowritet(fd, vector, count, offset, CLOCKS_NEVER, bytesWritten);
 }
 
 /**
  * @brief Synchronous wrapper for reading a file into a null-terminated string.
  *
  * @param fd The file descriptor to read from.
- * @param timeout Timeout for the operation, `IONEVER` for no timeout or `IONOW` to fail the operation if it cannot be completed immediately.
+ * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout or `CLOCKS_NOW` to fail the operation if it cannot be
+ * completed immediately.
  * @param out Output pointer for the null-terminated string.
  * @param outLen Output pointer for the length of the string.
  * @return An appropriate status value.
@@ -971,7 +857,8 @@ status_t ioload(fd_t fd, clock_t timeout, char** out, size_t* outLen);
  * @brief Synchronous wrapper for writing a null-terminated string to a file.
  *
  * @param fd The file descriptor to write from.
- * @param timeout Timeout for the operation, `IONEVER` for no timeout or `IONOW` to fail the operation if it cannot be completed immediately.
+ * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout or `CLOCKS_NOW` to fail the operation if it cannot be
+ * completed immediately.
  * @param in The null-terminated string to write.
  * @param bytesWritten Output pointer for the number of bytes written, can be `NULL`.
  * @return An appropriate status value.
@@ -981,9 +868,10 @@ status_t iostore(fd_t fd, clock_t timeout, const char* in, size_t* bytesWritten)
 /**
  * @brief Synchronous wrapper for a reading a file directly using a path.
  *
- * This wrapper is more efficient than calling `iowalk()`, `ioread()`/`iowrite()`, and `ioclunk()` in sequence as it uses the register system to chain the operations into a single `ioring_enter()` call.
+ * This wrapper is more efficient than calling `iowalk()`, `ioread()`/`iowrite()`, and `ioclunk()` in sequence as it
+ * uses the register system to chain the operations into a single `ioring_enter()` call.
  *
- * @param fd The file descriptor to open the file relative to, or `IOCWD` to open from the current working directory.
+ * @param fd The file descriptor to open the file relative to, or `FDCWD` to open from the current working directory.
  * @param path The path to the file.
  * @param vector An array of `iovec_t` structures.
  * @param count The number of `iovec_t` structures.
@@ -996,9 +884,10 @@ status_t ioreadp(fd_t fd, const char* path, const iovec_t* vector, size_t count,
 /**
  * @brief Synchronous wrapper for writing to a file directly using a path.
  *
- * This wrapper is more efficient than calling `iowalk()`, `ioread()`/`iowrite()`, and `ioclunk()` in sequence as it uses the register system to chain the operations into a single `ioring_enter()` call.
+ * This wrapper is more efficient than calling `iowalk()`, `ioread()`/`iowrite()`, and `ioclunk()` in sequence as it
+ * uses the register system to chain the operations into a single `ioring_enter()` call.
  *
- * @param fd The file descriptor to open the file relative to, or `IOCWD` to open from the current working directory.
+ * @param fd The file descriptor to open the file relative to, or `FDCWD` to open from the current working directory.
  * @param path The path to the file.
  * @param vector An array of `iovec_t` structures.
  * @param count The number of `iovec_t` structures.
@@ -1011,7 +900,7 @@ status_t iowritep(fd_t fd, const char* path, const iovec_t* vector, size_t count
 /**
  * @brief Synchronous wrapper for reading a file directly into a null-terminated string using a path.
  *
- * @param fd The file descriptor to open the file relative to, or `IOCWD` to open from the current working directory.
+ * @param fd The file descriptor to open the file relative to, or `FDCWD` to open from the current working directory.
  * @param path The path to the file.
  * @param out Output pointer for the null-terminated string.
  * @param outLen Output pointer for the length of the string.
@@ -1022,7 +911,7 @@ status_t ioloadp(fd_t fd, const char* path, char** out, size_t* outLen);
 /**
  * @brief Synchronous wrapper for writing a null-terminated string directly to a file using a path.
  *
- * @param fd The file descriptor to open the file relative to, or `IOCWD` to open from the current working directory.
+ * @param fd The file descriptor to open the file relative to, or `FDCWD` to open from the current working directory.
  * @param path The path to the file.
  * @param in The null-terminated string to write.
  * @return An appropriate status value.
@@ -1032,7 +921,7 @@ status_t iostorep(fd_t fd, const char* path, const char* in);
 /**
  * @brief Synchronous wrapper for removing a file directly using a path.
  *
- * @param fd The file descriptor to open the file relative to, or `IOCWD` to open from the current working directory.
+ * @param fd The file descriptor to open the file relative to, or `FDCWD` to open from the current working directory.
  * @param path The path to the file.
  * @return An appropriate status value.
  */
@@ -1041,34 +930,35 @@ status_t ioremovep(fd_t fd, const char* path);
 /**
  * @brief Synchronous wrapper for getting/setting attributes of a file directly using a path.
  *
- * @param fd The file descriptor to open the file relative to, or `IOCWD` to open from the current working directory.
+ * @param fd The file descriptor to open the file relative to, or `FDCWD` to open from the current working directory.
  * @param path The path to the file.
  * @param attr The attribute to get or set.
  * @param value Pointer to the value to set or retrieve.
  * @return An appropriate status value.
  */
-status_t ioattrp(fd_t fd, const char* path, ioattr_t attr, uint64_t* value);
+status_t ioattrp(fd_t fd, const char* path, file_attr_t attr, uint64_t* value);
 
 /**
  * @brief Synchronous wrapper for querying a file directly using a path.
  *
- * @param fd The file descriptor to open the file relative to, or `IOCWD` to open from the current working directory.
+ * @param fd The file descriptor to open the file relative to, or `FDCWD` to open from the current working directory.
  * @param path The path to the file.
- * @param info Pointer to the `ioinfo_t` structure to fill.
+ * @param info Pointer to the `file_info_t` structure to fill.
  * @return An appropriate status value.
  */
-status_t ioqueryp(fd_t fd, const char* path, ioinfo_t* info);
+status_t ioqueryp(fd_t fd, const char* path, file_info_t* info);
 
 /**
  * @brief Synchronous wrapper for a poll operation.
  *
  * @param fd The file descriptor to poll.
  * @param events The events to wait for.
- * @param timeout Timeout for the operation, `IONEVER` for no timeout or `IONOW` to fail the operation if it cannot be completed immediately.
+ * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout or `CLOCKS_NOW` to fail the operation if it cannot be
+ * completed immediately.
  * @param revents Output pointer for the events that occurred, can be `NULL`.
  * @return An appropriate status value.
  */
-static inline status_t iopoll(fd_t fd, ioevents_t events, clock_t timeout, ioevents_t* revents)
+static inline status_t iopoll(fd_t fd, events_t events, clock_t timeout, events_t* revents)
 {
     iosqe_t sqe;
     iocqe_t cqe;
@@ -1076,7 +966,7 @@ static inline status_t iopoll(fd_t fd, ioevents_t events, clock_t timeout, ioeve
     iosync(&sqe, &cqe);
     if (revents != NULL)
     {
-        *revents = (ioevents_t)cqe.result;
+        *revents = (events_t)cqe.result;
     }
     return cqe.status;
 }
@@ -1102,7 +992,7 @@ status_t iopolln(iopoll_t* fds, size_t nfds, clock_t timeout, size_t* count);
  * @param pos Output pointer for the new file position, can be `NULL`.
  * @return An appropriate status value.
  */
-static inline status_t ioseek(fd_t fd, iowhence_t origin, ssize_t offset, clock_t timeout, size_t* pos)
+static inline status_t ioseek(fd_t fd, whence_t origin, ssize_t offset, clock_t timeout, size_t* pos)
 {
     iosqe_t sqe;
     iocqe_t cqe;
@@ -1173,15 +1063,17 @@ static inline status_t ioprotect(void* address, size_t length, iomem_t map)
 /**
  * @brief Synchronous wrapper for an walk operation with timeout.
  *
- * @param fd The file descriptor to start walking from, or `IOCWD` start at the current working directory.
+ * @param fd The file descriptor to start walking from, or `FDCWD` start at the current working directory.
  * @param path The path to walk.
  * @param payload Additional data for the open operation, for example the path for a symlink, can be `NULL`.
  * @param payloadLen The size of the additional data.
- * @param timeout Timeout for the operation, `IONEVER` for no timeout or `IONOW` to fail the operation if it cannot be completed immediately.
+ * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout or `CLOCKS_NOW` to fail the operation if it cannot be
+ * completed immediately.
  * @param opened Output pointer for the opened file descriptor.
  * @return An appropriate status value.
  */
-static inline status_t iowalkt(fd_t fd, const char* path, const void* payload, size_t payloadLen, clock_t timeout, fd_t* opened)
+static inline status_t iowalkt(fd_t fd, const char* path, const void* payload, size_t payloadLen, clock_t timeout,
+    fd_t* opened)
 {
     iosqe_t sqe;
     iocqe_t cqe;
@@ -1193,8 +1085,8 @@ static inline status_t iowalkt(fd_t fd, const char* path, const void* payload, s
 
 /**
  * @brief Synchronous wrapper for an walk operation.
- * 
- * @param fd The file descriptor to start walking from, or `IOCWD` start at the current working directory.
+ *
+ * @param fd The file descriptor to start walking from, or `FDCWD` start at the current working directory.
  * @param path The path to walk.
  * @param payload Additional data for the open operation, for example the path for a symlink, can be `NULL`.
  * @param payloadLen The size of the additional data.
@@ -1203,7 +1095,7 @@ static inline status_t iowalkt(fd_t fd, const char* path, const void* payload, s
  */
 static inline status_t iowalk(fd_t fd, const char* path, const void* payload, size_t payloadLen, fd_t* opened)
 {
-    return iowalkt(fd, path, payload, payloadLen, IONEVER, opened);
+    return iowalkt(fd, path, payload, payloadLen, CLOCKS_NEVER, opened);
 }
 
 /**
@@ -1216,7 +1108,7 @@ static inline status_t ioclunk(fd_t fd)
 {
     iosqe_t sqe;
     iocqe_t cqe;
-    ioprep_clunk(&sqe, IOSQE_NORMAL, IONEVER, 0, fd);
+    ioprep_clunk(&sqe, IOSQE_NORMAL, CLOCKS_NEVER, 0, fd);
     iosync(&sqe, &cqe);
     return cqe.status;
 }
@@ -1246,7 +1138,7 @@ static inline status_t ioremove(fd_t fd, clock_t timeout)
  * @param timeout Timeout for the operation.
  * @result The requested value or `0` if setting a value.
  */
-static inline status_t ioattr(fd_t fd, ioattr_t attr, uint64_t* value, clock_t timeout)
+static inline status_t ioattr(fd_t fd, file_attr_t attr, uint64_t* value, clock_t timeout)
 {
     iosqe_t sqe;
     iocqe_t cqe;
@@ -1260,11 +1152,11 @@ static inline status_t ioattr(fd_t fd, ioattr_t attr, uint64_t* value, clock_t t
  * @brief Synchronous wrapper for a query operation.
  *
  * @param fd The file descriptor.
- * @param info Pointer to the `ioinfo_t` structure to fill.
+ * @param info Pointer to the `file_info_t` structure to fill.
  * @param timeout Timeout for the operation.
  * @result The status of the operation.
  */
-static inline status_t ioquery(fd_t fd, ioinfo_t* info, clock_t timeout)
+static inline status_t ioquery(fd_t fd, file_info_t* info, clock_t timeout)
 {
     iosqe_t sqe;
     iocqe_t cqe;
@@ -1287,19 +1179,6 @@ static inline status_t ioflush(fd_t fd, clock_t timeout)
     ioprep_flush(&sqe, IOSQE_NORMAL, timeout, 0, fd);
     iosync(&sqe, &cqe);
     return cqe.status;
-}
-
-/**
- * @brief System call for duplicating file descriptors.
- *
- * @param oldFd The open file descriptor to duplicate.
- * @param newFd Output pointer for the new file descriptor, if `FDNONE` any free file descriptor will be used,
- * otherwise the specified file descriptor will be used.
- * @return An appropriate status value.
- */
-static inline status_t iodup(fd_t oldFd, fd_t* newFd)
-{
-    return syscall2(SYS_DUP, newFd, oldFd, *newFd);
 }
 
 #endif

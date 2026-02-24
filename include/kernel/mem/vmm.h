@@ -6,9 +6,9 @@
 
 #include <boot/boot_info.h>
 
+#include <sys/io.h>
 #include <sys/list.h>
 #include <sys/proc.h>
-#include <sys/io.h>
 
 /**
  * @brief Virtual Memory Manager (VMM).

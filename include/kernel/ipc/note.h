@@ -38,9 +38,9 @@ typedef struct cpu cpu_t;
  * new frame that calls the note handler function registered using `note_set()`. During the handling of the note, no
  * further notes will be delivered to the thread.
  *
- * Later, when the note handler function calls `note_done()`, the kernel will restore the saved interrupt frame and continue
- * execution from where it left off as if nothing happened. Alternatively, the note handler can choose to exit the
- * thread. If no handler is registered, the thread is killed.
+ * Later, when the note handler function calls `note_done()`, the kernel will restore the saved interrupt frame and
+ * continue execution from where it left off as if nothing happened. Alternatively, the note handler can choose to exit
+ * the thread. If no handler is registered, the thread is killed.
  *
  * ## System Notes
  *

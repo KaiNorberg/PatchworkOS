@@ -83,3 +83,49 @@ status_t vnode_call(vnode_t* vnode, irp_t* irp)
 
     return irp_call(irp, handler);
 }
+
+status_t vnode_generic_dir_read(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
+
+    if (file == NULL)
+    {
+        return ERR(FS, INVAL);
+    }
+
+    dentry_t* dentry = file->path.dentry;
+    vnode_t* vnode = dentry->vnode;
+
+    diremit_t emit;
+    diremit_begin(&emit, irp);
+
+    mutex_acquire(&vnode->mutex);
+
+    if (!diremit(&emit, "."))
+    {
+        goto done;
+    }
+    if (!diremit(&emit, ".."))
+    {
+        goto done;
+    }
+
+    dentry_t* child;
+    LIST_FOR_EACH(child, &dentry->children, siblingEntry)
+    {
+        if (DENTRY_IS_POSITIVE(child))
+        {
+            if (!diremit(&emit, child->name))
+            {
+                goto done;
+            }
+        }
+    }
+
+    status_t status;
+done:
+    status = diremit_end(&emit);
+    mutex_release(&vnode->mutex);
+    return status;
+}

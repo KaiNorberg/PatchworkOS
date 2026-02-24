@@ -1,7 +1,6 @@
 #include <kernel/fs/filesystem.h>
 
 #include <kernel/cpu/syscall.h>
-#include <kernel/fs/cwd.h>
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file_table.h>
 #include <kernel/fs/key.h>

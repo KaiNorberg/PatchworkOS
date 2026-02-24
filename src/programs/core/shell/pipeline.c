@@ -350,7 +350,7 @@ static proc_t pipeline_execute_cmd(cmd_t* cmd)
         stat_t info;
         if (IS_INFO(stat(argv[0], &info)) && info.type != VNODE_DIR)
         {
-            if (IS_ERR(proc_create(argv, PROC_STDIO_FDS, &result)))
+            if (IS_ERR(proc_create(argv, PROC_FD_STD, &result)))
             {
                 result = PFAIL;
             }
@@ -392,7 +392,7 @@ static proc_t pipeline_execute_cmd(cmd_t* cmd)
                             newArgv[k] = argv[k];
                         }
                         newArgv[argc] = NULL;
-                        if (IS_ERR(proc_create(newArgv, PROC_STDIO_FDS, &result)))
+                        if (IS_ERR(proc_create(newArgv, PROC_FD_STD, &result)))
                         {
                             result = PFAIL;
                         }
@@ -478,8 +478,7 @@ void pipeline_wait(pipeline_t* pipeline)
 
         memset(pipeline->status, 0, sizeof(pipeline->status));
         size_t readCount;
-        status_t st =
-            RETRY_ON_CODE(ioread(wait, pipeline->status, sizeof(pipeline->status), IOCUR, &readCount), INTR);
+        status_t st = RETRY_ON_CODE(ioread(wait, pipeline->status, sizeof(pipeline->status), IOCUR, &readCount), INTR);
         close(wait);
         if (IS_ERR(st))
         {

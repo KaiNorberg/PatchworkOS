@@ -44,7 +44,7 @@ int main(int argc, char** argv)
         proc_exit(IOFMT("boxspawn: failed to connect to boxspawn %Y", status));
     }
 
-    char stdio[3][KEY_128BIT];
+    char stdio[3][KEY128BIT];
     for (uint8_t i = 0; i < 3; i++)
     {
         status = share(stdio[i], sizeof(stdio[i]), i, CLOCKS_PER_SEC);
@@ -54,8 +54,8 @@ int main(int argc, char** argv)
         }
     }
 
-    char group[KEY_128BIT] = {0};
-    char namespace[KEY_128BIT] = {0};
+    char group[KEY128BIT] = {0};
+    char namespace[KEY128BIT] = {0};
     status = sharefile(group, sizeof(group), "/proc/self/group", CLOCKS_PER_SEC);
     if (IS_ERR(status))
     {
@@ -140,7 +140,7 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    char waitkey[KEY_MAX];
+    char waitkey[KEYMAX];
     if (sscanf(buffer, "foreground %s", waitkey) != 1)
     {
         proc_exit(IOFMT("boxspawn: failed to parse response (%s)", strerror(errno)));

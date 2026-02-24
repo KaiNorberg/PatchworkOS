@@ -248,12 +248,7 @@ void file_table_copy(file_table_t* dest, file_table_t* src, fd_t min, fd_t max)
     }
 }
 
-SYSCALL_DEFINE(SYS_CLOSE, fd_t fd)
-{
-    return file_table_clunk(&process_current()->files, fd);
-}
-
-SYSCALL_DEFINE(SYS_DUP, fd_t oldFd, fd_t newFd)
+SYSCALL_DEFINE(SYS_FD_COPY, fd_t oldFd, fd_t newFd)
 {
     status_t status = file_table_dup(&process_current()->files, oldFd, &newFd);
     *_result = newFd;

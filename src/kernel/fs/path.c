@@ -2,8 +2,8 @@
 #include <ctype.h>
 #include <kernel/fs/path.h>
 
-#include <kernel/fs/file.h>
 #include <kernel/fs/dentry.h>
+#include <kernel/fs/file.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
@@ -145,7 +145,7 @@ static void path_state_free(path_state_t* state)
     if (state->linkBuffer != NULL)
     {
         free(state->linkBuffer);
-    }   
+    }
     if (state->lookup != NULL)
     {
         UNREF(state->lookup);
@@ -443,7 +443,7 @@ static status_t path_done(irp_t* irp, path_state_t* state)
 
     irp_prep_open(irp, state->payload, state->payloadLen);
     irp_set_complete(irp, path_done_complete, state);
-    return file_call(file, irp);  
+    return file_call(file, irp);
 }
 
 static status_t path_walk_loop(irp_t* irp, path_state_t* state)
@@ -501,7 +501,7 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state)
                 return status;
             }
 
-            continue; 
+            continue;
         }
 
         dentry_t* next = dentry_rcu_get(state->dentry, component, len);

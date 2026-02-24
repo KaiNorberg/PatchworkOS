@@ -102,7 +102,7 @@ static status_t perf_cpu_read(irp_t* irp)
 
 static vnode_class_t cpuClass = {
     .name = "perf cpu",
-    .type = VNODE_REGULAR,
+    .type = FILE_DEVICE,
     .handlers =
         {
             [IRP_MJ_READ] = perf_cpu_read,
@@ -134,7 +134,7 @@ static status_t perf_mem_read(irp_t* irp)
 
 static vnode_class_t memClass = {
     .name = "perf mem",
-    .type = VNODE_REGULAR,
+    .type = FILE_DEVICE,
     .handlers =
         {
             [IRP_MJ_READ] = perf_mem_read,
@@ -143,7 +143,11 @@ static vnode_class_t memClass = {
 
 static vnode_class_t rootClass = {
     .name = "perf root",
-    .type = VNODE_DIR,
+    .type = FILE_DIRECTORY,
+    .handlers =
+        {
+            [IRP_MJ_READ] = vnode_generic_dir_read,
+        },
 };
 
 void perf_process_ctx_init(perf_process_ctx_t* ctx)

@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <sys/proc.h>
 #include <sys/syscall.h>
-#include <time.h>
 #include <threads.h>
+#include <time.h>
 
 #include "user/common/threading.h"
 

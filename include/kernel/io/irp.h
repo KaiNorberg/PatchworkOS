@@ -1,6 +1,5 @@
 #pragma once
 
-#include <kernel/fs/path.h>
 #include <kernel/mem/mdl.h>
 #include <kernel/mem/pool.h>
 #include <kernel/sync/lock.h>
@@ -21,7 +20,6 @@ typedef struct file file_t;
 typedef struct process process_t;
 typedef struct vnode vnode_t;
 typedef struct dentry dentry_t;
-typedef struct dir_ctx dir_ctx_t;
 
 typedef struct irp irp_t;
 
@@ -171,7 +169,8 @@ typedef struct irp irp_t;
  *
  * ## Operations
  *
- * Each operation is specified by a "major function number", with each number having an associated argument structure of the same name within the `irp_frame_t` structure.
+ * Each operation is specified by a "major function number", with each number having an associated argument structure of
+ * the same name within the `irp_frame_t` structure.
  *
  * Each operation is expected to place its result into the generic `irp_t::result` field.
  *
@@ -198,7 +197,7 @@ typedef uint16_t irp_major_t; ///< IRP major function number type.
 
 /**
  * @brief Poll operation.
- * @result The events that occurred stored as a `ioevents_t` value.
+ * @result The events that occurred stored as a `events_t` value.
  */
 #define IRP_MJ_POLL 2
 
@@ -331,12 +330,12 @@ typedef struct irp_frame
         } write;
         struct
         {
-            ioevents_t events; ///< The events to poll for.
+            events_t events; ///< The events to poll for.
         } poll;
         struct
         {
             ssize_t offset;    ///< The offset to seek to.
-            iowhence_t origin; ///< The origin of the seek operation.
+            whence_t origin; ///< The origin of the seek operation.
         } seek;
         struct
         {
@@ -353,7 +352,7 @@ typedef struct irp_frame
         struct
         {
             const void* payload; ///< Payload data for the open operation.
-            size_t payloadLen; ///< The length of the payload data.
+            size_t payloadLen;   ///< The length of the payload data.
         } open;
         struct
         {
@@ -365,12 +364,12 @@ typedef struct irp_frame
         } remove;
         struct
         {
-            ioattr_t attr;    ///< The attribute to get or set.
-            uint64_t value;   ///< The value to set.
+            file_attr_t attr;  ///< The attribute to get or set.
+            uint64_t value; ///< The value to set.
         } attr;
         struct
         {
-            mdl_t* buffer;    ///< The buffer to write the `ioinfo_t` into.
+            mdl_t* buffer; ///< The buffer to write the `file_info_t` into.
         } query;
         uint64_t args[IRP_ARGS_MAX]; ///< Generic arguments.
     };
@@ -590,7 +589,8 @@ status_t irp_call(irp_t* irp, irp_handler_t func);
  * for the IRP to be returned to its pool.
  *
  * @param irp The IRP to complete.
- * @param status The status of the completed operation, if an informational `ST_CODE_PENDING` or `ST_CODE_COMPLETE` than this becomes a no-op.
+ * @param status The status of the completed operation, if an informational `ST_CODE_PENDING` or `ST_CODE_COMPLETE` than
+ * this becomes a no-op.
  */
 void irp_complete(irp_t* irp, status_t status);
 
@@ -605,7 +605,8 @@ status_t irp_cancel(irp_t* irp);
 /**
  * @brief Set the cancellation callback for an IRP.
  *
- * @note It is generally preferred to use `irp_timeout_add()` over this function, `irp_set_cancel()` should only be used when timeouts are not desired.
+ * @note It is generally preferred to use `irp_timeout_add()` over this function, `irp_set_cancel()` should only be used
+ * when timeouts are not desired.
  *
  * @param irp The IRP.
  * @param cancel The cancellation callback.
@@ -778,7 +779,7 @@ static inline void irp_prep_write(irp_t* irp, mdl_t* buffer, ssize_t offset)
  *
  * @see `IRP_MJ_POLL`
  */
-static inline void irp_prep_poll(irp_t* irp, ioevents_t events)
+static inline void irp_prep_poll(irp_t* irp, events_t events)
 {
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);
@@ -794,7 +795,7 @@ static inline void irp_prep_poll(irp_t* irp, ioevents_t events)
  *
  * @see `IRP_MJ_SEEK`
  */
-static inline void irp_prep_seek(irp_t* irp, ssize_t offset, iowhence_t origin)
+static inline void irp_prep_seek(irp_t* irp, ssize_t offset, whence_t origin)
 {
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);
@@ -844,7 +845,7 @@ static inline void irp_prep_control(irp_t* irp, iocmd_t command, const char* arg
 
 /**
  * @brief Prepares the next IRP stack frame for an open operation.
- * 
+ *
  * @see `IRP_MJ_OPEN`
  */
 static inline void irp_prep_open(irp_t* irp, const void* payload, size_t payloadLen)
@@ -896,7 +897,7 @@ static inline void irp_prep_remove(irp_t* irp, dentry_t* dentry)
  *
  * @see `IRP_MJ_ATTR`
  */
-static inline void irp_prep_attr(irp_t* irp, ioattr_t attr, uint64_t value)
+static inline void irp_prep_attr(irp_t* irp, file_attr_t attr, uint64_t value)
 {
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);

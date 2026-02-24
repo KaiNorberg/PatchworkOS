@@ -7,10 +7,10 @@
 #include <stddef.h>
 #include <sys/defs.h>
 #include <sys/elf.h>
+#include <sys/io.h>
 #include <sys/list.h>
 #include <sys/math.h>
 #include <sys/proc.h>
-#include <sys/io.h>
 
 // Include functions directly to avoid multiple object files
 #include <functions/assert/assert.c>

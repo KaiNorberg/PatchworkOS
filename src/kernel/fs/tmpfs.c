@@ -164,13 +164,13 @@ static status_t tmpfs_seek(irp_t* irp)
     size_t pos;
     switch (frame->seek.origin)
     {
-    case IOSEEK_SET:
+    case WHENCE_START:
         pos = frame->seek.offset;
         break;
-    case IOSEEK_CUR:
+    case WHENCE_CUR:
         pos = file->pos + frame->seek.offset;
         break;
-    case IOSEEK_END:
+    case WHENCE_END:
         pos = file->vnode->size + frame->seek.offset;
         break;
     default:

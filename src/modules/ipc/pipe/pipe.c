@@ -154,14 +154,14 @@ static status_t pipe_read(irp_t* irp)
     {
         irp_frame_t* pollFrame = irp_current(poll);
 
-        ioevents_t events = 0;
+        events_t events = 0;
         if (fifo_bytes_readable(&data->fifo) > 0)
         {
-            events |= IOPOLL_READ;
+            events |= EVENTS_READ;
         }
         if (fifo_bytes_writeable(&data->fifo) > 0)
         {
-            events |= IOPOLL_WRITE;
+            events |= EVENTS_WRITE;
         }
 
         if (!(pollFrame->poll.events & events))
@@ -233,14 +233,14 @@ static status_t pipe_write(irp_t* irp)
     {
         irp_frame_t* pollFrame = irp_current(poll);
 
-        ioevents_t events = 0;
+        events_t events = 0;
         if (fifo_bytes_readable(&data->fifo) > 0)
         {
-            events |= IOPOLL_READ;
+            events |= EVENTS_READ;
         }
         if (fifo_bytes_writeable(&data->fifo) > 0)
         {
-            events |= IOPOLL_WRITE;
+            events |= EVENTS_WRITE;
         }
 
         if (!(pollFrame->poll.events & events))
@@ -277,18 +277,18 @@ static status_t pipe_poll(irp_t* irp)
     irp->result = 0;
     if (fifo_bytes_readable(&data->fifo) > 0)
     {
-        irp->result |= IOPOLL_READ;
+        irp->result |= EVENTS_READ;
     }
     if (fifo_bytes_writeable(&data->fifo) > 0)
     {
-        irp->result |= IOPOLL_WRITE;
+        irp->result |= EVENTS_WRITE;
     }
 
     if (irp->result & frame->poll.events)
     {
         return OK;
     }
-    
+
     return irp_delay(irp, &data->polls, pipe_cancel);
 }
 

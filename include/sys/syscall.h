@@ -5,12 +5,15 @@
 #include <sys/defs.h>
 #include <sys/status.h>
 
+#if defined(__cplusplus)
+extern "C"
+{
+#endif
+
 /**
  * @brief Userspace System Calls.
  * @defgroup libstd_sys_math System Calls
  * @ingroup libstd
- *
- * @todo Write documentation for libstd_sys_math
  *
  * @{
  */
@@ -33,11 +36,11 @@ typedef enum
     SYS_TIME,
     SYS_UNMAP,
     SYS_PROTECT,
-    SYS_DUP,
-    SYS_SHARE,
-    SYS_CLAIM,
-    SYS_BIND,
-    SYS_UNBIND,
+    SYS_FD_COPY,
+    SYS_FD_SHARE,
+    SYS_FD_CLAIM,
+    SYS_FS_BIND,
+    SYS_FS_UNBIND,
     SYS_NOTE_SET,
     SYS_NOTE_DONE,
     SYS_ARCH_CTL,
@@ -156,5 +159,9 @@ static inline status_t syscall6(syscall_number_t number, uint64_t* result, uint6
 }
 
 /** @} */
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif

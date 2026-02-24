@@ -67,7 +67,6 @@ static void process_ctor(void* ptr)
     process->space = (space_t){0};
     process->nspace = NULL;
     lock_init(&process->nspaceLock);
-    process->cwd = (cwd_t){0};
     process->files = (file_table_t){0};
     process->sync = (sync_ctl_t){0};
     process->perf = (perf_process_ctx_t){0};
@@ -111,7 +110,6 @@ static void process_free(process_t* process)
     }
 
     group_member_deinit(&process->group);
-    cwd_deinit(&process->cwd);
     file_table_deinit(&process->files);
     if (process->nspace != NULL)
     {
@@ -156,7 +154,6 @@ status_t process_new(process_t** out, proc_prio_t priority, group_member_t* grou
     }
 
     process->nspace = REF(ns);
-    cwd_init(&process->cwd);
     file_table_init(&process->files);
     sync_ctl_init(&process->sync);
     perf_process_ctx_init(&process->perf);
@@ -260,7 +257,6 @@ void process_kill(process_t* process, const char* result)
 
     // Anything that another process could be waiting on must be cleaned up here.
 
-    cwd_clear(&process->cwd);
     file_table_clunk_all(&process->files);
 
     lock_acquire(&process->nspaceLock);
@@ -285,7 +281,7 @@ void process_kill(process_t* process, const char* result)
             irp_complete(irp, status);
             break;
         case IRP_MJ_POLL:
-            irp->result = IOPOLL_READ;
+            irp->result = EVENTS_READ;
             irp_complete(irp, OK);
             break;
         default:

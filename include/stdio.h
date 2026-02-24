@@ -11,7 +11,6 @@ extern "C"
 #include "_libstd/MAX_PATH.h"
 #include "_libstd/NULL.h"
 #include "_libstd/config.h"
-#include "_libstd/fd_t.h"
 #include "_libstd/size_t.h"
 
 #define SEEK_SET 0

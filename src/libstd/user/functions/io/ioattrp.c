@@ -1,6 +1,6 @@
 #include <sys/io.h>
 
-status_t ioattrp(fd_t fd, const char* path, ioattr_t attr, uint64_t* value)
+status_t ioattrp(fd_t fd, const char* path, file_attr_t attr, uint64_t* value)
 {
     if (value == NULL)
     {
@@ -25,7 +25,7 @@ status_t ioattrp(fd_t fd, const char* path, ioattr_t attr, uint64_t* value)
     sqe = iosqe_get(&_stdIoring);
     ioprep_clunk(sqe, (IOSQE_REG0 << IOSQE_LOAD0) | IOSQE_LINK, CLOCKS_NEVER, 0, FDNONE);
     iosqe_put(&_stdIoring);
-    
+
     ioring_enter(&_stdIoring, 3, 3, NULL);
 
     status_t status = OK;
@@ -36,7 +36,7 @@ status_t ioattrp(fd_t fd, const char* path, ioattr_t attr, uint64_t* value)
         status = cqe->status;
     }
     iocqe_put(&_stdIoring);
-    
+
     cqe = iocqe_get(&_stdIoring);
     *value = cqe->result;
     if (cqe->status != OK && status == OK)

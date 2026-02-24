@@ -50,15 +50,22 @@ static status_t kbd_name_read(irp_t* irp)
 
 static vnode_class_t nameClass = {
     .name = "kbd name",
-    .type = VNODE_REGULAR,
+    .type = FILE_DEVICE,
     .handlers =
         {
             [IRP_MJ_READ] = kbd_name_read,
         },
 };
 
-static status_t kbd_events_open(file_t* file)
+static status_t kbd_events_open(irp_t* irp)
 {
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
+    if (frame->file == NULL)
+    {
+        return ERR(IO, EXPECT_FILE);
+    }
+
     kbd_t* kbd = file->vnode->data;
     assert(kbd != NULL);
 
@@ -138,7 +145,7 @@ static status_t kbd_events_poll(irp_t* irp)
 
     if (fifo_bytes_readable(&client->fifo) > 0)
     {
-        irp->result = IOPOLL_READ;
+        irp->result = EVENTS_READ;
         return OK;
     }
 
@@ -147,11 +154,11 @@ static status_t kbd_events_poll(irp_t* irp)
 
 static vnode_class_t eventsClass = {
     .name = "kbd events",
-    .type = VNODE_REGULAR,
-    .open = kbd_events_open,
+    .type = FILE_DEVICE,
     .close = kbd_events_close,
     .handlers =
         {
+            [IRP_MJ_OPEN] = kbd_events_open,
             [IRP_MJ_READ] = kbd_events_read,
             [IRP_MJ_POLL] = kbd_events_poll,
         },
@@ -177,15 +184,21 @@ static void kbd_dir_cleanup(vnode_t* vnode)
 
 static vnode_class_t dirClass = {
     .name = "kbd dir",
-    .type = VNODE_DIR,
+    .type = FILE_DIRECTORY,
     .cleanup = kbd_dir_cleanup,
-    .iterate = dentry_generic_iterate,
+    .handlers =
+        {
+            [IRP_MJ_READ] = vnode_generic_dir_read,
+        },
 };
 
 static vnode_class_t rootClass = {
     .name = "kbd root",
-    .type = VNODE_DIR,
-    .iterate = dentry_generic_iterate,
+    .type = FILE_DIRECTORY,
+    .handlers =
+        {
+            [IRP_MJ_READ] = vnode_generic_dir_read,
+        },
 };
 
 status_t kbd_register(kbd_t* kbd)
@@ -278,7 +291,7 @@ static void kbd_broadcast(kbd_t* kbd, const char* string, size_t length)
         irp_frame_t* frame = irp_current(irp);
         if (frame->major == IRP_MJ_READ)
         {
-            irp_complete(irp, kbd_events_read(irp)); 
+            irp_complete(irp, kbd_events_read(irp));
         }
         else if (frame->major == IRP_MJ_POLL)
         {

@@ -116,14 +116,16 @@ static void exception_user_page_fault_handler(interrupt_frame_t* frame)
     uintptr_t alignedFaultAddr = ROUND_DOWN(faultAddr, PAGE_SIZE);
     if (stack_pointer_overlaps_guard(&thread->userStack, alignedFaultAddr, 1))
     {
-        exception_handle_user(frame, IOFMT("pagefault at 0x%llx due to stack overflow at 0x%llx", frame->rip, faultAddr));
+        exception_handle_user(frame,
+            IOFMT("pagefault at 0x%llx due to stack overflow at 0x%llx", frame->rip, faultAddr));
         return;
     }
 
     status_t status = exception_grow_stack(thread, faultAddr, &thread->userStack, PML_USER | PML_WRITE | PML_PRESENT);
     if (IS_ERR(status))
     {
-        exception_handle_user(frame, IOFMT("pagefault at 0x%llx failed to grow stack at 0x%llx", frame->rip, faultAddr));
+        exception_handle_user(frame,
+            IOFMT("pagefault at 0x%llx failed to grow stack at 0x%llx", frame->rip, faultAddr));
         return;
     }
 
@@ -231,8 +233,8 @@ void interrupt_handler(interrupt_frame_t* frame)
     SELF->inInterrupt = false;
 
     // Sanity check to make sure blocking and scheduling is functioning correctly.
-    if(!(frame->rflags & RFLAGS_INTERRUPT_ENABLE))
+    if (!(frame->rflags & RFLAGS_INTERRUPT_ENABLE))
     {
         panic(frame, "Interrupt returning to interrupt disabled context");
-    }    
+    }
 }

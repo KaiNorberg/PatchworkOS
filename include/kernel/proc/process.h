@@ -1,7 +1,6 @@
 #pragma once
 
 #include <kernel/drivers/perf.h>
-#include <kernel/fs/cwd.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file_table.h>
 #include <kernel/fs/namespace.h>
@@ -87,7 +86,6 @@ typedef struct process
     space_t space;
     namespace_t* nspace;
     lock_t nspaceLock;
-    cwd_t cwd;
     file_table_t files;
     sync_ctl_t sync;
     perf_process_ctx_t perf;

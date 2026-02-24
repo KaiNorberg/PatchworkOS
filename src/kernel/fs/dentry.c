@@ -210,65 +210,6 @@ static dentry_t* dentry_get(const dentry_t* parent, const char* name, size_t len
     return REF_TRY(dentry_rcu_get(parent, name, length));
 }
 
-status_t dentry_lookup(dentry_t** out, dentry_t* parent, const char* name, size_t length)
-{
-    if (out == NULL || parent == NULL || name == NULL || length == 0)
-    {
-        return ERR(VFS, INVAL);
-    }
-
-    dentry_t* dentry = dentry_get(parent, name, length);
-    if (dentry != NULL)
-    {
-        *out = dentry;
-        return OK;
-    }
-
-    if (!DENTRY_IS_DIR(parent))
-    {
-        return ERR(VFS, NOTDIR);
-    }
-
-    char buffer[MAX_NAME];
-    strncpy(buffer, name, length);
-    buffer[length] = '\0';
-
-    dentry = dentry_new(parent->volume, parent, buffer);
-    if (dentry == NULL)
-    {
-        /// @todo Is there a race condition here?
-        return ERR(VFS, NOMEM);
-    }
-
-    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-
-    vnode_t* dir = parent->vnode;
-    if (dir->cls->lookup == NULL)
-    {
-        *out = dentry; // Leave it as negative.
-        return OK;
-    }
-
-    status_t status = dir->cls->lookup(dir, dentry);
-    if (IS_ERR(status))
-    {
-        UNREF(dentry);
-        return status;
-    }
-
-    if (DENTRY_IS_POSITIVE(dentry))
-    {
-        if (dentry->vnode->cls->revalidate != NULL && !dentry->vnode->cls->revalidate(dentry))
-        {
-            UNREF(dentry);
-            return ERR(VFS, NOENT);
-        }
-    }
-
-    *out = dentry;
-    return OK;
-}
-
 void dentry_make_positive(dentry_t* dentry, vnode_t* vnode)
 {
     if (dentry == NULL || vnode == NULL)
@@ -282,48 +223,4 @@ void dentry_make_positive(dentry_t* dentry, vnode_t* vnode)
     {
         list_push_back(&dentry->parent->children, &dentry->siblingEntry);
     }
-}
-
-bool dentry_iterate_dots(dentry_t* dentry, dir_ctx_t* ctx)
-{
-    if (ctx->index++ >= ctx->pos)
-    {
-        if (!ctx->emit(ctx, ".", dentry->vnode->cls->type))
-        {
-            return false;
-        }
-    }
-
-    if (ctx->index++ >= ctx->pos)
-    {
-        if (!ctx->emit(ctx, "..", dentry->parent->vnode->cls->type))
-        {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-status_t dentry_generic_iterate(dentry_t* dentry, dir_ctx_t* ctx)
-{
-    if (!dentry_iterate_dots(dentry, ctx))
-    {
-        return OK;
-    }
-
-    dentry_t* child;
-    LIST_FOR_EACH(child, &dentry->children, siblingEntry)
-    {
-        if (ctx->index++ >= ctx->pos)
-        {
-            assert(DENTRY_IS_POSITIVE(child));
-            if (!ctx->emit(ctx, child->name, child->vnode->cls->type))
-            {
-                return 0;
-            }
-        }
-    }
-
-    return OK;
 }

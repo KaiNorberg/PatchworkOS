@@ -1,5 +1,6 @@
 #pragma once
 
+#include <kernel/fs/diremit.h>
 #include <kernel/fs/path.h>
 #include <kernel/io/irp.h>
 #include <kernel/sync/mutex.h>
@@ -16,7 +17,6 @@
 typedef struct vnode vnode_t;
 typedef struct volume volume_t;
 typedef struct dentry dentry_t;
-typedef struct dir_ctx dir_ctx_t;
 
 /**
  * @brief Virtual node.
@@ -24,15 +24,6 @@ typedef struct dir_ctx dir_ctx_t;
  * @ingroup kernel_fs
  *
  * @todo Update the virtual node documentation for the new class and IRP stuff.
- *
- * A vnode represents the actual data and metadata of a file. It is referenced by dentries, which represent the name or
- * "location" of the file but a vnode can appear in multiple dentries due to hardlinks or mounts.
- *
- * ## Synchronization
- *
- * Vnodes have an additional purpose within the Virtual File System (VFS) as they act as the primary means of
- * synchronization. All dentries synchronize upon their vnodes mutex, open files synchronize upon the mutex of the
- * underlying vnode and operations like create, remove, etc synchronize upon the vnode mutex of the parent directory.
  *
  * @{
  */
@@ -46,10 +37,10 @@ typedef struct dir_ctx dir_ctx_t;
  */
 typedef struct vnode_class
 {
-    const char* name;                    ///< The name of the class, used for debugging.
-    iotype_t type;                   ///< The type of the vnode.
-    void (*close)(file_t* file);     ///< File destructor.
-    irp_handler_t handlers[IRP_MJ_MAX];  ///< IRP handlers indexed by major function number.
+    const char* name;                   ///< The name of the class, used for debugging.
+    file_type_t type;                      ///< The type of the vnode.
+    void (*close)(file_t* file);        ///< File destructor. @todo Replace with a IRP handler.
+    irp_handler_t handlers[IRP_MJ_MAX]; ///< IRP handlers indexed by major function number.
     /**
      * @brief Cleanup function called when the vnode is being freed.
      *
@@ -112,5 +103,15 @@ vnode_t* vnode_new(volume_t* volume, const vnode_class_t* cls);
  * @return An appropriate status value.
  */
 status_t vnode_call(vnode_t* vnode, irp_t* irp);
+
+/**
+ * @brief Generic directory read handler.
+ *
+ * This function can be used as a default `IRP_MJ_READ` handler for directory vnodes.
+ *
+ * @param irp The IRP.
+ * @return An appropriate status value.
+ */
+status_t vnode_generic_dir_read(irp_t* irp);
 
 /** @} */

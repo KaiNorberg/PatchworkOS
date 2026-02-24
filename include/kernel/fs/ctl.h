@@ -22,7 +22,8 @@
  * command1 [arguments] [&&|;|\n] command2 [arguments] ...
  * ```
  *
- * The `&&` operator will only execute the next command if the previous command was successful, while the `;` or `\n` operators will always execute the next command.
+ * The `&&` operator will only execute the next command if the previous command was successful, while the `;` or `\n`
+ * operators will always execute the next command.
  *
  * The given command values will be converted from the provided text representation into their `iocmd_t` representation,
  * with the arguments being passed as a string.

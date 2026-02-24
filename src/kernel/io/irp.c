@@ -391,7 +391,7 @@ status_t irp_cancel(irp_t* irp)
 
     irp_timeout_remove(irp);
 
-    irp->status = ERR(IO, CANCELLED);    
+    irp->status = ERR(IO, CANCELLED);
     status_t status = handler(irp);
     irp_unwind_stack(irp);
     return status;

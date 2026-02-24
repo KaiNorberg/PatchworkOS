@@ -57,7 +57,7 @@ int main()
 
     printf("sleeping for 5 seconds...\n");
     struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
-    thrd_sleep(&ts, NULL);    
+    thrd_sleep(&ts, NULL);
 
     iocqe_t* iocqe;
     while ((iocqe = iocqe_get(&ring)) != NULL)

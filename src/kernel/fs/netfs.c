@@ -202,7 +202,7 @@ static void netfs_data_poll_ctx_free(netfs_data_poll_ctx_t* ctx)
 }
 
 static status_t netfs_poll_cancel(irp_t* irp)
-{    
+{
     netfs_data_poll_ctx_t* ctx = irp_current(irp)->ctx;
     socket_t* sock = ctx->sock;
 
@@ -223,14 +223,14 @@ static void netfs_data_poll_thread(void* arg)
     {
         mutex_acquire(&sock->mutex);
         irp_t* irp = ctx->irp;
-        if (irp == NULL) 
+        if (irp == NULL)
         {
             mutex_release(&sock->mutex);
             break;
         }
         irp_frame_t* frame = irp_current(irp);
 
-        ioevents_t revents = 0;
+        events_t revents = 0;
         wait_queue_t* queue = NULL;
         status_t status = sock->family->poll(sock, &revents, &queue);
         assert(IS_INFO(status));
@@ -280,7 +280,7 @@ static status_t netfs_data_poll(irp_t* irp)
     }
 
     mutex_acquire(&sock->mutex);
-    ioevents_t revents = 0;
+    events_t revents = 0;
     wait_queue_t* queue = NULL;
     status_t status = sock->family->poll(sock, &revents, &queue);
     if (IS_ERR(status))
@@ -333,15 +333,18 @@ static status_t netfs_data_poll(irp_t* irp)
     return INFO(IO, PENDING);
 }
 
-static vnode_class_t dataClass = {.name = "netfs data",
+static vnode_class_t dataClass = {
+    .name = "netfs data",
     .type = VNODE_REGULAR,
     .open = netfs_data_open,
     .close = netfs_data_close,
-    .handlers = {
-        [IRP_MJ_READ] = netfs_data_read,
-        [IRP_MJ_WRITE] = netfs_data_write,
-        [IRP_MJ_POLL] = netfs_data_poll,
-    },};
+    .handlers =
+        {
+            [IRP_MJ_READ] = netfs_data_read,
+            [IRP_MJ_WRITE] = netfs_data_write,
+            [IRP_MJ_POLL] = netfs_data_poll,
+        },
+};
 
 static status_t netfs_accept_open(file_t* file)
 {

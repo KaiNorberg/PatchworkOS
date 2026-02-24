@@ -76,7 +76,7 @@ typedef uint64_t dentry_id_t;
  * @param dentry The dentry to check.
  * @return true if the dentry is a regular file, false otherwise or if the dentry is negative.
  */
-#define DENTRY_IS_REGULAR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == IOTYPE_REGULAR)
+#define DENTRY_IS_REGULAR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == FILE_REGULAR)
 
 /**
  * @brief Check if the vnode associated with a dentry is a directory.
@@ -84,7 +84,7 @@ typedef uint64_t dentry_id_t;
  * @param dentry The dentry to check.
  * @return true if the dentry is a directory, false otherwise or if the dentry is negative.
  */
-#define DENTRY_IS_DIR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == IOTYPE_DIRECTORY)
+#define DENTRY_IS_DIR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == FILE_DIRECTORY)
 
 /**
  * @brief Check if the vnode associated with a dentry is a symbolic link.
@@ -92,7 +92,7 @@ typedef uint64_t dentry_id_t;
  * @param dentry The dentry to check.
  * @return true if the dentry is a symbolic link, false otherwise or if the dentry is negative.
  */
-#define DENTRY_IS_SYMLINK(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == IOTYPE_SYMLINK)
+#define DENTRY_IS_SYMLINK(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == FILE_SYMLINK)
 
 /**
  * @brief Directory entry structure.
@@ -155,19 +155,6 @@ void dentry_remove(dentry_t* dentry);
 dentry_t* dentry_rcu_get(const dentry_t* parent, const char* name, size_t length);
 
 /**
- * @brief Lookup a dentry for the given name without traversing mountpoints.
- *
- * If the dentry is not found in the dentry cache, the filesystem's lookup function will be called to try to find it.
- *
- * @param out Output pointer to store the looked up dentry.
- * @param parent The parent dentry.
- * @param name The name of the dentry.
- * @param length The length of the name.
- * @return An appropriate status value.
- */
-status_t dentry_lookup(dentry_t** out, dentry_t* parent, const char* name, size_t length);
-
-/**
  * @brief Make a dentry positive by associating it with an vnode.
  *
  * This function is expected to be protected by the parent vnode's mutex.
@@ -176,26 +163,5 @@ status_t dentry_lookup(dentry_t** out, dentry_t* parent, const char* name, size_
  * @param vnode The vnode to associate with the dentry, or `NULL` for no-op.
  */
 void dentry_make_positive(dentry_t* dentry, vnode_t* vnode);
-
-/**
- * @brief The amount of special entries "." and ".." that `dentry_iterate_dots()` emits.
- */
-#define DENTRY_DOTS_AMOUNT 2
-
-/**
- * @brief Helper function to iterate over the special entries "." and "..".
- *
- * Intended to be used in filesystem iterate implementations.
- *
- * @param dentry The directory dentry to iterate over.
- * @param ctx The directory context to use for iteration.
- * @return `true` if the iteration should continue, `false` if it should stop.
- */
-bool dentry_iterate_dots(dentry_t* dentry, dir_ctx_t* ctx);
-
-/**
- * @brief Helper function for a basic iterate.
- */
-status_t dentry_generic_iterate(dentry_t* dentry, dir_ctx_t* ctx);
 
 /** @} */

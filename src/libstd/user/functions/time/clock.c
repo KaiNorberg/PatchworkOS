@@ -1,5 +1,5 @@
-#include <time.h>
 #include <sys/syscall.h>
+#include <time.h>
 
 clock_t clock(void)
 {
