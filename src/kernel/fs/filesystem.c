@@ -288,12 +288,6 @@ filesystem_t* filesystem_get_by_path(const char* path, process_t* process)
         return NULL;
     }
 
-    pathname_t pathname;
-    if (IS_ERR(pathname_init(&pathname, path)))
-    {
-        return NULL;
-    }
-
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
     {

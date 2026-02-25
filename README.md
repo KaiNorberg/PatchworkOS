@@ -140,7 +140,7 @@ iowalk(FDCWD, "/path/to/file:rw", NULL, 0, &fd);
 
 size_t bytesWritten;
 iowrite(fd, IOBUF("Hello, World!", 13), IOCUR, &bytesWritten);
-ioclunk(fd);
+iodrop(fd);
 ```
 
 We first open the file using `iowalk()`, specifying that the path should be traversed starting from the current working directory (`FDCWD`), that we want "read and write access" (`:rw`) AND that we do not need to provide additional data (`NULL` and `0`) this additional data or payload would be used when, for example, creating a symlink.
@@ -151,9 +151,9 @@ Note that the `FDCWD` constant is no different than standard file descriptors li
 
 Then we write to the file using `iowrite()`, passing the file descriptor, a buffer containing the data to write (the `iowrite()` function actually expects an array of `iovec_t` which the `IOBUF()` macro creates on the stack for convenience) and the offset to write at (in this case `IOCUR` to write at the current offset).
 
-Finally, we close the file using `ioclunk()`.
+Finally, we close the file using `iodrop()`.
 
-> The term "clunk" is used to differentiate between closing a file descriptor and closing an actual file object when its reference count reaches zero, which is when the file object and its resources are freed.
+> The term "drop" is used to differentiate between closing a file descriptor and closing an actual file object when its reference count reaches zero, which is when the file object and its resources are freed.
 
 Additionally, the `iowritet()`, `ioreadt()` and `iowalkt()` functions are provided that expect an additional `clock_t timeout` argument.
 

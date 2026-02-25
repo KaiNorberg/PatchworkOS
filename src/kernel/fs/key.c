@@ -169,7 +169,7 @@ status_t key_claim(file_t** out, const char* key)
     return OK;
 }
 
-SYSCALL_DEFINE(SYS_FD_SHARE, char* key, size_t size, fd_t fd, clock_t timeout)
+SYSCALL_DEFINE(SYS_FD_SHARE, fd_t fd, char* key, size_t size, clock_t timeout)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
@@ -222,7 +222,7 @@ SYSCALL_DEFINE(SYS_FD_CLAIM, const char* key)
     }
     UNREF_DEFER(file);
 
-    fd_t fd = file_table_add(&process->files, file);
+    fd_t fd = file_table_grab(&process->files, file);
     if (fd == FDNONE)
     {
         return ERR(VFS, MFILE);

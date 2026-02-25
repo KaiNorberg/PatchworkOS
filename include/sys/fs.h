@@ -58,15 +58,15 @@ typedef uint64_t fd_t; ///< File descriptor type.
 /**
  * @brief System call for sharing a file descriptor with another process.
  *
+ * @param fd The file descriptor to share.
  * @param key Output buffer to store the generated key.
  * @param size The size of the output buffer.
- * @param fd The file descriptor to share.
  * @param timeout The time until the shared file descriptor expires. If `CLOCKS_NEVER`, it never expires.
  * @return An appropriate status value.
  */
-static inline status_t fdshare(char* key, size_t size, fd_t fd, clock_t timeout)
+static inline status_t fdshare(fd_t fd, char* key, size_t size, clock_t timeout)
 {
-    return syscall4(SYS_FD_SHARE, NULL, (uintptr_t)key, size, fd, timeout);
+    return syscall4(SYS_FD_SHARE, NULL, fd, (uintptr_t)key, size, timeout);
 }
 
 /**

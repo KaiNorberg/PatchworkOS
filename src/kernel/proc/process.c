@@ -257,7 +257,7 @@ void process_kill(process_t* process, const char* result)
 
     // Anything that another process could be waiting on must be cleaned up here.
 
-    file_table_clunk_all(&process->files);
+    file_table_drop_all(&process->files);
 
     lock_acquire(&process->nspaceLock);
     UNREF(process->nspace);
