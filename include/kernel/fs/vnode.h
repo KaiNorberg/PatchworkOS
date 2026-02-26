@@ -34,6 +34,9 @@ typedef struct dentry dentry_t;
  *
  * Defines the behavior and I/O handlers for a specific class of vnodes, for example a ext4 filesystem might have a
  * "ext4 regular" class and a "ext4 directory" vnode class.
+ *
+ * @note The `VNODE_HANDLERS()` and `VNODE_DIR_HANDLERS()` macros should always be used to define the handlers of a
+ * class in order to ensure that appropriate defaults are set.
  */
 typedef struct vnode_class
 {
@@ -70,8 +73,8 @@ typedef struct vnode_class
 typedef struct vnode
 {
     ref_t ref;
-    void* data;                    ///< Filesystem defined data.
-    uint64_t size;                 ///< Used for convenience by certain filesystems, does not represent the file size.
+    void* data;    ///< Filesystem defined data.
+    uint64_t size; ///< Used for convenience by certain filesystems, does not represent the file size.
     volume_t* volume;
     const vnode_class_t* cls;
     rcu_entry_t rcu;
@@ -104,6 +107,26 @@ vnode_t* vnode_new(volume_t* volume, const vnode_class_t* cls);
 status_t vnode_call(vnode_t* vnode, irp_t* irp);
 
 /**
+ * @brief Generic attribute handler.
+ *
+ * This function can be used as a default `IRP_MJ_ATTR` handler.
+ *
+ * @param irp The IRP.
+ * @return An appropriate status value.
+ */
+status_t vnode_generic_attr(irp_t* irp);
+
+/**
+ * @brief Generic query handler.
+ *
+ * This function can be used as a default `IRP_MJ_QUERY` handler.
+ *
+ * @param irp The IRP.
+ * @return An appropriate status value.
+ */
+status_t vnode_generic_query(irp_t* irp);
+
+/**
  * @brief Generic directory read handler.
  *
  * This function can be used as a default `IRP_MJ_READ` handler for directory vnodes.
@@ -112,5 +135,28 @@ status_t vnode_call(vnode_t* vnode, irp_t* irp);
  * @return An appropriate status value.
  */
 status_t vnode_generic_dir_read(irp_t* irp);
+
+/**
+ * @brief Helper macro to define vnode handlers with defaults.
+ *
+ * This macro should be used for all non-directory vnodes.
+ *
+ * @param ... The handlers to override.
+ */
+#define VNODE_HANDLERS(...) \
+    .handlers = {[IRP_MJ_ATTR] = vnode_generic_attr, [IRP_MJ_QUERY] = vnode_generic_query, __VA_ARGS__}
+
+/**
+ * @brief Helper macro to define directory vnode handlers with defaults.
+ *
+ * This macro should be used for all directory vnodes.
+ *
+ * @param ... The handlers to override.
+ */
+#define VNODE_DIR_HANDLERS(...) \
+    .handlers = {[IRP_MJ_READ] = vnode_generic_dir_read, \
+        [IRP_MJ_ATTR] = vnode_generic_attr, \
+        [IRP_MJ_QUERY] = vnode_generic_query, \
+        __VA_ARGS__}
 
 /** @} */

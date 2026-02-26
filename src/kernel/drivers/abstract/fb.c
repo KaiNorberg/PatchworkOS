@@ -28,10 +28,7 @@ static status_t fb_name_read(irp_t* irp)
 static vnode_class_t nameClass = {
     .name = "fb name",
     .type = FILE_TYPE_DEVICE,
-    .handlers =
-        {
-            [IRP_MJ_READ] = fb_name_read,
-        },
+    VNODE_HANDLERS([IRP_MJ_READ] = fb_name_read),
 };
 
 static status_t fb_data_read(irp_t* irp)
@@ -79,12 +76,7 @@ static status_t fb_data_mmap(irp_t* irp)
 static vnode_class_t dataClass = {
     .name = "fb data",
     .type = FILE_TYPE_DEVICE,
-    .handlers =
-        {
-            [IRP_MJ_READ] = fb_data_read,
-            [IRP_MJ_WRITE] = fb_data_write,
-            [IRP_MJ_MMAP] = fb_data_mmap,
-        },
+    VNODE_HANDLERS([IRP_MJ_READ] = fb_data_read, [IRP_MJ_WRITE] = fb_data_write, [IRP_MJ_MMAP] = fb_data_mmap),
 };
 
 static status_t fb_info_read(irp_t* irp)
@@ -120,10 +112,7 @@ static status_t fb_info_read(irp_t* irp)
 static vnode_class_t infoClass = {
     .name = "fb info",
     .type = FILE_TYPE_DEVICE,
-    .handlers =
-        {
-            [IRP_MJ_READ] = fb_info_read,
-        },
+    VNODE_HANDLERS([IRP_MJ_READ] = fb_info_read),
 };
 
 static void fb_dir_cleanup(vnode_t* vnode)
@@ -140,19 +129,13 @@ static vnode_class_t dirClass = {
     .name = "fb dir",
     .type = FILE_TYPE_DIRECTORY,
     .cleanup = fb_dir_cleanup,
-    .handlers =
-        {
-            [IRP_MJ_READ] = vnode_generic_dir_read,
-        },
+    VNODE_DIR_HANDLERS(),
 };
 
 static vnode_class_t rootClass = {
     .name = "fb root",
     .type = FILE_TYPE_DIRECTORY,
-    .handlers =
-        {
-            [IRP_MJ_READ] = vnode_generic_dir_read,
-        },
+    VNODE_DIR_HANDLERS(),
 };
 
 status_t fb_register(fb_t* fb)

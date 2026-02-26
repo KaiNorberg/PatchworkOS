@@ -38,7 +38,7 @@ typedef struct file file_t;
  * `/path/to/file:append:append:execute`.
  *
  * Included is a list of all available flags:
- * 
+ *
  * | Flag | Short | Description |
  * |------|-------|-------------|
  * | `read` | `r` | Open with read permissions. |
@@ -50,13 +50,14 @@ typedef struct file file_t;
  * | `symlink` | `s` | Create a symlink, or fail if the file already exists but is not a symlink. |
  * | `hardlink` | `h` | Create a hardlink, or fail if the file already exists. |
  * | `exclusive` | `e` | Will cause the open to fail if the file already exists. |
- * | `existing` | `E` | Force failure if the file does not exist, even if any creation flags are specified, useful if you want to, for example, ensure you are opening a directory. |
- * | `truncate` | `t` | Truncate the file to zero length if it already exists. |
- * | `nofollow`  | `l` | Do not follow symlinks. | 
- * | `private`   | `p` | Any files with this flag will be closed before a process starts executing. Any mounts with this flag will not be copied to a child namespace. | 
- * | `propagate`  | `g` | Propagate mounts and unmounts to child namespaces. | 
- * | `locked`    | `L` | Forbid unmounting this mount, useful for hiding directories or files. |
- * | `nodotdot` | `N` | Do not allow the usage of `..` on paths opened relative to this file, this is useful for security. Will be inherited by any files opened relative to a file with this flag set. |
+ * | `existing` | `E` | Force failure if the file does not exist, even if any creation flags are specified, useful if
+ * you want to, for example, ensure you are opening a directory. | | `truncate` | `t` | Truncate the file to zero length
+ * if it already exists. | | `nofollow`  | `l` | Do not follow symlinks. | | `private`   | `p` | Any files with this
+ * flag will be closed before a process starts executing. Any mounts with this flag will not be copied to a child
+ * namespace. | | `propagate`  | `g` | Propagate mounts and unmounts to child namespaces. | | `locked`    | `L` | Forbid
+ * unmounting this mount, useful for hiding directories or files. | | `nodotdot` | `N` | Do not allow the usage of `..`
+ * on paths opened relative to this file, this is useful for security. Will be inherited by any files opened relative to
+ * a file with this flag set. |
  *
  * For convenience, a single letter short form is also available as shown above, these single letter forms do not need
  * to be separated by colons, for example `/path/to/file:rwfte` is equivalent to
@@ -78,8 +79,8 @@ typedef struct file file_t;
  * For a practical example, we can create a symlink using the path `/path/to/symlink:symlink?/path/to/target`.
  *
  * @note The payload itself is not parsed by the path parser, instead it only extracts it and passes it to the vnode
- * being opened as a `NULL`-terminated string, it is then responsible for parsing it and using it as needed. This means that unique filesystems could
- * define their own custom payload formats and semantics.
+ * being opened as a `NULL`-terminated string, it is then responsible for parsing it and using it as needed. This means
+ * that unique filesystems could define their own custom payload formats and semantics.
  *
  * ## Forbidden Characters
  *
@@ -302,8 +303,8 @@ typedef struct path_state
     uint32_t symlinkDepth; ///< Current symlink recursion depth.
     dentry_t* lookup;      ///< A reference to the last "looked up" dentry to keep it and its parents alive.
     status_t (*done)(irp_t* irp, struct path_state* state, file_t* file);
-    char linkBuffer[MAX_PATH];      ///< Temporary buffer for reading symlinks.
-    char* payload;         ///< The payload string extracted from the path.
+    char linkBuffer[MAX_PATH]; ///< Temporary buffer for reading symlinks.
+    char* payload;             ///< The payload string extracted from the path.
 } path_state_t;
 
 /**
@@ -312,8 +313,7 @@ typedef struct path_state
  * @param state The path state to initialize.
  */
 static inline void path_state_init(path_state_t* state, dentry_t* dentry, mount_t* mount, char* path, size_t pathLength,
-    size_t pathCapacity,
-    status_t (*done)(irp_t* irp, struct path_state* state, file_t* file))
+    size_t pathCapacity, status_t (*done)(irp_t* irp, struct path_state* state, file_t* file))
 {
     state->dentry = dentry;
     state->mount = mount;

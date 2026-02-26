@@ -48,14 +48,9 @@ static status_t mouse_name_read(irp_t* irp)
     return irp_read_helper(irp, mouse->name, length);
 }
 
-static vnode_class_t nameClass = {
-    .name = "mouse name",
+static vnode_class_t nameClass = {.name = "mouse name",
     .type = FILE_TYPE_DEVICE,
-    .handlers =
-        {
-            [IRP_MJ_READ] = mouse_name_read,
-        },
-};
+    VNODE_HANDLERS([IRP_MJ_READ] = mouse_name_read)};
 
 static status_t mouse_events_open(irp_t* irp)
 {
@@ -152,17 +147,11 @@ static status_t mouse_events_poll(irp_t* irp)
     return irp_delay(irp, &mouse->pending, mouse_cancel);
 }
 
-static vnode_class_t eventsClass = {
-    .name = "mouse events",
+static vnode_class_t eventsClass = {.name = "mouse events",
     .type = FILE_TYPE_DEVICE,
     .close = mouse_events_close,
-    .handlers =
-        {
-            [IRP_MJ_OPEN] = mouse_events_open,
-            [IRP_MJ_READ] = mouse_events_read,
-            [IRP_MJ_POLL] = mouse_events_poll,
-        },
-};
+    VNODE_HANDLERS([IRP_MJ_OPEN] = mouse_events_open, [IRP_MJ_READ] = mouse_events_read,
+        [IRP_MJ_POLL] = mouse_events_poll)};
 
 static void mouse_dir_cleanup(vnode_t* vnode)
 {
@@ -182,24 +171,12 @@ static void mouse_dir_cleanup(vnode_t* vnode)
     }
 }
 
-static vnode_class_t dirClass = {
-    .name = "mouse dir",
+static vnode_class_t dirClass = {.name = "mouse dir",
     .type = FILE_TYPE_DIRECTORY,
     .cleanup = mouse_dir_cleanup,
-    .handlers =
-        {
-            [IRP_MJ_READ] = vnode_generic_dir_read,
-        },
-};
+    VNODE_DIR_HANDLERS()};
 
-static vnode_class_t rootClass = {
-    .name = "mouse root",
-    .type = FILE_TYPE_DIRECTORY,
-    .handlers =
-        {
-            [IRP_MJ_READ] = vnode_generic_dir_read,
-        },
-};
+static vnode_class_t rootClass = {.name = "mouse root", .type = FILE_TYPE_DIRECTORY, VNODE_DIR_HANDLERS()};
 
 status_t mouse_register(mouse_t* mouse)
 {

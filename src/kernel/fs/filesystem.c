@@ -74,10 +74,7 @@ static vnode_class_t volumeClass = {
     .name = "volume file",
     .type = FILE_TYPE_REGULAR,
     .cleanup = volume_cleanup,
-    .handlers =
-        {
-            [IRP_MJ_READ] = volume_read,
-        },
+    VNODE_HANDLERS([IRP_MJ_READ] = volume_read),
 };
 
 static status_t filesystem_lookup(vnode_t* dir, dentry_t* dentry)

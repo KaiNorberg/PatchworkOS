@@ -565,7 +565,7 @@ static status_t path_verify(path_state_t* state)
     {
         return OK;
     }
-    
+
     if (delimiter == '?')
     {
         state->payload = &state->path[index];
@@ -584,7 +584,7 @@ static status_t path_verify(path_state_t* state)
         {
             index++;
         }
-        
+
         if (state->path[index] == '?' || index >= state->pathLength)
         {
             if (index < state->pathLength && state->path[index] == '?')

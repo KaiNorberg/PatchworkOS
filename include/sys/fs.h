@@ -94,8 +94,6 @@ typedef uint16_t file_type_t;  ///< File type enum.
 #define FILE_TYPE_FILESYSTEM 7 ///< Filesystem file.
 
 typedef uint16_t file_attr_t; ///< File attribute operations.
-#define FILE_ATTR_IS_SET(attr) ((attr) & 1)
-#define FILE_ATTR_IS_GET(attr) (!((attr) & 1))
 #define _FILE_ATTR_GET(x) (((x) << 1) & ~1)
 #define _FILE_ATTR_SET(x) (((x) << 1) | 1)
 #define FILE_GET_SIZE _FILE_ATTR_GET(0)       ///< Get the size of the file.
@@ -115,6 +113,9 @@ typedef uint16_t file_attr_t; ///< File attribute operations.
 #define FILE_GET_VOL _FILE_ATTR_GET(9)        ///< Get the volume ID.
 #define FILE_GET_NLINK _FILE_ATTR_GET(10)     ///< Get the number of hard links.
 #define FILE_GET_TYPE _FILE_ATTR_GET(11)      ///< Get the file type.
+
+#define FILE_ATTR_IS_SET(attr) ((attr) & 1)
+#define FILE_ATTR_IS_GET(attr) (!((attr) & 1))
 
 typedef uint64_t file_mask_t;         ///< Bitmask of which fields are valid within a `file_info_t` structure.
 #define FILE_MASK_SIZE (1 << 0)       ///< File size is valid.

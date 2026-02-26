@@ -42,14 +42,7 @@ static filesystem_t devfs = {
     .mount = devfs_mount,
 };
 
-static vnode_class_t rootClass = {
-    .name = "devfs root",
-    .type = FILE_TYPE_DIRECTORY,
-    .handlers =
-        {
-            [IRP_MJ_READ] = vnode_generic_dir_read,
-        },
-};
+static vnode_class_t rootClass = {.name = "devfs root", .type = FILE_TYPE_DIRECTORY, VNODE_DIR_HANDLERS()};
 
 void devfs_init(void)
 {

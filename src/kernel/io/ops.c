@@ -6,7 +6,6 @@
 #include <kernel/io/ioring.h>
 #include <kernel/io/irp.h>
 #include <kernel/mem/paging_types.h>
-#include <kernel/mem/vmm.h>
 #include <kernel/proc/process.h>
 
 #include <sys/io.h>
@@ -224,91 +223,10 @@ static status_t io_op_remove(irp_t* irp)
     return file_call(file, irp);
 }
 
-static status_t io_op_attr_complete(irp_t* irp, void* ctx)
-{
-    file_info_t* info = ctx;
-
-    if (IS_ERR(irp->status))
-    {
-        free(info);
-        return OK;
-    }
-
-    file_attr_t attr = irp->sqe.attr;
-    uint64_t result = 0;
-    bool valid = false;
-
-    switch (attr)
-    {
-    case FILE_GET_SIZE:
-        result = info->size;
-        valid = info->valid & FILE_MASK_SIZE;
-        break;
-    case FILE_GET_BLOCKS:
-        result = info->blocks;
-        valid = info->valid & FILE_MASK_BLOCKS;
-        break;
-    case FILE_GET_BLOCK_SIZE:
-        result = info->blockSize;
-        valid = info->valid & FILE_MASK_BLOCK_SIZE;
-        break;
-    case FILE_GET_MAX_SIZE:
-        result = info->maxSize;
-        valid = info->valid & FILE_MASK_MAX_SIZE;
-        break;
-    case FILE_GET_ATIME:
-        result = info->atime;
-        valid = info->valid & FILE_MASK_ATIME;
-        break;
-    case FILE_GET_MTIME:
-        result = info->mtime;
-        valid = info->valid & FILE_MASK_MTIME;
-        break;
-    case FILE_GET_CTIME:
-        result = info->ctime;
-        valid = info->valid & FILE_MASK_CTIME;
-        break;
-    case FILE_GET_BTIME:
-        result = info->btime;
-        valid = info->valid & FILE_MASK_BTIME;
-        break;
-    case FILE_GET_NUM:
-        result = info->num;
-        valid = info->valid & FILE_MASK_NUM;
-        break;
-    case FILE_GET_VOL:
-        result = info->vol;
-        valid = info->valid & FILE_MASK_VOL;
-        break;
-    case FILE_GET_NLINK:
-        result = info->nlink;
-        valid = info->valid & FILE_MASK_NLINK;
-        break;
-    case FILE_GET_TYPE:
-        result = info->type;
-        valid = info->valid & FILE_MASK_TYPE;
-        break;
-    default:
-        break;
-    }
-
-    free(info);
-
-    if (!valid)
-    {
-        irp->status = ERR(IO, IMPL);
-    }
-    else
-    {
-        irp->result = result;
-    }
-
-    return OK;
-}
-
 static status_t io_op_attr(irp_t* irp)
 {
     process_t* process = irp_get_process(irp);
+
     file_t* file = file_table_get(&process->files, irp->sqe.fd);
     if (file == NULL)
     {
@@ -316,37 +234,7 @@ static status_t io_op_attr(irp_t* irp)
     }
     UNREF_DEFER(file);
 
-    if (FILE_ATTR_IS_SET(irp->sqe.attr))
-    {
-        irp_prep_attr(irp, irp->sqe.attr, irp->sqe.value);
-    }
-    else
-    {
-        file_info_t* info = malloc(sizeof(file_info_t));
-        if (info == NULL)
-        {
-            return ERR(IO, NOMEM);
-        }
-
-        mdl_t* mdl;
-        status_t status = irp_get_mdl(irp, &mdl);
-        if (IS_ERR(status))
-        {
-            free(info);
-            return status;
-        }
-
-        status = mdl_add(mdl, vmm_kernel_space_get(), info, sizeof(file_info_t));
-        if (IS_ERR(status))
-        {
-            free(info);
-            return status;
-        }
-
-        irp_prep_query(irp, mdl);
-        irp_set_complete(irp, io_op_attr_complete, info);
-    }
-
+    irp_prep_attr(irp, irp->sqe.attr, irp->sqe.value);
     return file_call(file, irp);
 }
 

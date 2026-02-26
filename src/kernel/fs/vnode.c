@@ -83,6 +83,54 @@ status_t vnode_call(vnode_t* vnode, irp_t* irp)
     return irp_call(irp, handler);
 }
 
+status_t vnode_generic_attr(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    vnode_t* vnode = frame->vnode;
+
+    switch (frame->attr.attr)
+    {
+    case FILE_GET_TYPE:
+        irp->result = vnode->cls->type;
+        return OK;
+    case FILE_GET_VOL:
+        irp->result = vnode->volume->id;
+        return OK;
+    case FILE_GET_NUM:
+        if (frame->file != NULL)
+        {
+            irp->result = frame->file->path.dentry->id;
+            return OK;
+        }
+        return ERR(FS, EXPECT_FILE);
+    default:
+        return ERR(FS, INVAL);
+    }
+}
+
+status_t vnode_generic_query(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    vnode_t* vnode = frame->vnode;
+    file_t* file = frame->file;
+
+    file_info_t info = {0};
+
+    info.type = vnode->cls->type;
+    info.valid |= FILE_MASK_TYPE;
+
+    info.vol = vnode->volume->id;
+    info.valid |= FILE_MASK_VOL;
+
+    if (file != NULL && file->path.dentry != NULL)
+    {
+        info.num = file->path.dentry->id;
+        info.valid |= FILE_MASK_NUM;
+    }
+
+    return mdl_copy_in(frame->query.buffer, sizeof(file_info_t), 0, &irp->result, &info, sizeof(file_info_t));
+}
+
 status_t vnode_generic_dir_read(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
