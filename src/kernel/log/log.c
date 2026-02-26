@@ -78,7 +78,7 @@ static status_t klog_write(irp_t* irp)
 
 static vnode_class_t klogClass = {
     .name = "klog",
-    .type = FILE_DEVICE,
+    .type = FILE_TYPE_DEVICE,
     .handlers =
         {
             [IRP_MJ_READ] = klog_read,

@@ -44,7 +44,7 @@ static filesystem_t devfs = {
 
 static vnode_class_t rootClass = {
     .name = "devfs root",
-    .type = FILE_DIRECTORY,
+    .type = FILE_TYPE_DIRECTORY,
     .handlers =
         {
             [IRP_MJ_READ] = vnode_generic_dir_read,

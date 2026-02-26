@@ -164,7 +164,7 @@ static status_t io_op_walk(irp_t* irp)
 {
     process_t* process = irp_get_process(irp);
 
-    if (irp->sqe.path == NULL || (irp->sqe.payload == NULL && irp->sqe.payloadLen != 0))
+    if (irp->sqe.path == NULL || irp->sqe.count >= MAX_PATH)
     {
         return ERR(IO, INVAL);
     }
@@ -176,14 +176,13 @@ static status_t io_op_walk(irp_t* irp)
     }
     UNREF_DEFER(file);
 
-    size_t length = sizeof(path_state_t) + MAX_PATH + irp->sqe.payloadLen;
+    size_t length = sizeof(path_state_t) + MAX_PATH;
     path_state_t* state = malloc(length);
     if (state == NULL)
     {
         return ERR(IO, NOMEM);
     }
     char* path = (char*)((uintptr_t)state + sizeof(path_state_t));
-    void* payload = (void*)((uintptr_t)path + irp->sqe.count);
 
     status_t status = space_copy_out(&process->space, path, irp->sqe.path, irp->sqe.count);
     if (IS_ERR(status))
@@ -192,15 +191,7 @@ static status_t io_op_walk(irp_t* irp)
         return status;
     }
 
-    status = space_copy_out(&process->space, payload, irp->sqe.payload, irp->sqe.payloadLen);
-    if (IS_ERR(status))
-    {
-        free(state);
-        return status;
-    }
-
-    path_state_init(state, file->path.dentry, file->path.mount, path, irp->sqe.count, MAX_PATH, payload,
-        irp->sqe.payloadLen, io_op_walk_done);
+    path_state_init(state, file->path.dentry, file->path.mount, path, irp->sqe.count, MAX_PATH, io_op_walk_done);
     return path_walk(irp, state);
 }
 

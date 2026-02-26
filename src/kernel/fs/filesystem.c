@@ -72,7 +72,7 @@ static void volume_cleanup(vnode_t* vnode)
 
 static vnode_class_t volumeClass = {
     .name = "volume file",
-    .type = VNODE_REGULAR,
+    .type = FILE_TYPE_REGULAR,
     .cleanup = volume_cleanup,
     .handlers =
         {

@@ -334,7 +334,7 @@ typedef struct irp_frame
         } poll;
         struct
         {
-            ssize_t offset;    ///< The offset to seek to.
+            ssize_t offset;  ///< The offset to seek to.
             whence_t origin; ///< The origin of the seek operation.
         } seek;
         struct
@@ -364,8 +364,8 @@ typedef struct irp_frame
         } remove;
         struct
         {
-            file_attr_t attr;  ///< The attribute to get or set.
-            uint64_t value; ///< The value to set.
+            file_attr_t attr; ///< The attribute to get or set.
+            uint64_t value;   ///< The value to set.
         } attr;
         struct
         {

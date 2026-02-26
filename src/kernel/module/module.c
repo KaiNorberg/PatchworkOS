@@ -628,7 +628,7 @@ static status_t module_cache_process_entry(const char* name, file_t* dir, proces
         return OK;
     }
 
-    bool isRegular = (file->vnode->cls->type == FILE_REGULAR);
+    bool isRegular = (file->vnode->cls->type == FILE_TYPE_REGULAR);
     UNREF(file);
 
     if (!isRegular)

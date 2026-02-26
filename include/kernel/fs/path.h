@@ -3,9 +3,9 @@
 #include <alloca.h>
 #include <ctype.h>
 #include <kernel/io/irp.h>
+#include <kernel/utils/ref.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <kernel/utils/ref.h>
 #include <sys/fs.h>
 #include <sys/status.h>
 
@@ -21,14 +21,16 @@ typedef struct file file_t;
  * @defgroup kernel_fs_path Path
  * @ingroup kernel_fs
  *
- * A path is a single unique location in the filesystem hierarchy. It consists of a mount and a dentry. The mount is the
- * filesystem that the path is in and the dentry is the actual location in that filesystem.
+ * A path represents a single unique location in the filesystem hierarchy.
+ * 
+
  *
- * Note how just a dentry is not enough to uniquely identify a location in the filesystem, this is because of
- * mountpoints. A dentry can exist in a filesystem that is mounted at multiple locations in the filesystem hierarchy,
- * thus both a mountpoint and a dentry is needed to uniquely identify a location.
- *
- * ## Flags/Mode
+ * @{
+ */
+// clang-format on
+
+/**
+ * @brief Path flags and permissions. * ## Flags
  *
  * Paths can have flags appended at the end, these flags are parsed to determine the mode of the related operation.
  *
@@ -36,7 +38,7 @@ typedef struct file file_t;
  * `/path/to/file:append:append:execute`.
  *
  * Included is a list of all available flags:
- *
+ * 
  * | Flag | Short | Description |
  * |------|-------|-------------|
  * | `read` | `r` | Open with read permissions. |
@@ -67,12 +69,46 @@ typedef struct file file_t;
  * If no permissions, i.e. read, write or execute, are specified, the default is to open with the maximum currently
  * allowed permissions.
  *
- * @{
- */
-// clang-format on
-
-/**
- * @brief Path flags and permissions.
+ * ## Payload
+ *
+ * In addition to flags, a path can also have an optional payload, specified after a `?` at the end of the path. This is
+ * used to pass additional data to the kernel for certain operations, for example, the file descriptor to create a
+ * hardlink to as an integer when used with the `hardlink` flag.
+ *
+ * For a practical example, we can create a symlink using the path `/path/to/symlink:symlink?/path/to/target`.
+ *
+ * @note The payload itself is not parsed by the path parser, instead it only extracts it and passes it to the vnode
+ * being opened, it is then responsible for parsing it and using it as needed. This means that unique filesystems could
+ * define their own custom payload formats and semantics.
+ *
+ * ## Forbidden Characters
+ *
+ * The below characters are forbidden in paths:
+ *
+ * | Character | Description |
+ * | 0 ... 31  | Control characters. |
+ * | `<` | Less than. |
+ * | `>` | Greater than. |
+ * | `:` | Colon (reserved for flags). |
+ * | `"` | Double quote. |
+ * | `/` | Forward slash. |
+ * | `\` | Backslash. |
+ * | `|` | Pipe. |
+ * | `?` | Question mark (reserved for payload). |
+ * | `*` | Asterisk. |
+ *
+ * These characters are not coincidentally the same characters reserved by Windows NT. As such, using them is already
+ * bad practice and their loss is not significant.
+ *
+ * @see https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+ *
+ * ## Rationale
+ *
+ * The primary intent behind the use of the flags and payload system is to allow for greater composability. With this
+ * system, any environment that can open a file, a Lua script, a shell, etc. can create any file, directory, symlink or
+ * hardlink with any permissions and flags without needing to rely on custom "PatchworkOS extensions".
+ *
+ * One can as an exercise imagine the potential of a basic "touch" shell utility with this system.
  * @enum mode_t
  *
  * We store both flags and permissions in the same enum but permissions are sometimes treated differently to flags.
