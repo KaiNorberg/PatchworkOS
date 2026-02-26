@@ -733,7 +733,7 @@ static status_t module_cache_build(void)
             }
             nameLen = 0;
         }
-    } while (IS_CODE(status, MORE));
+    } while (!IS_CODE(status, EOF));
 
     free(buffer);
     free(name);

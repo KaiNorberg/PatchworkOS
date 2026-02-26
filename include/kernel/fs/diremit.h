@@ -38,7 +38,7 @@ static inline void diremit_begin(diremit_t* emit, irp_t* irp)
     emit->offset = *irp_current(irp)->read.offset;
     emit->currentPos = 0;
     emit->bytes = 0;
-    emit->status = OK;
+    emit->status = INFO(VFS, EOF);
 }
 
 /**

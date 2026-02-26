@@ -45,7 +45,7 @@ status_t ioload(fd_t fd, clock_t timeout, char** out, size_t* outLen)
 
         size += bytesRead;
 
-        if (bytesRead == 0 || (!IS_CODE(status, MORE) && size < capacity))
+        if (bytesRead == 0 || IS_CODE(status, EOF))
         {
             break;
         }

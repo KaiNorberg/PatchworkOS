@@ -34,8 +34,8 @@ const char* st_code_str(st_code_t code)
         return "state changed";
     case ST_CODE_FULL:
         return "buffer full";
-    case ST_CODE_MORE:
-        return "more data available";
+    case ST_CODE_EOF:
+        return "end of file";
     case ST_CODE_ARGC:
         return "invalid argument count";
     case ST_CODE_INVALCTL:

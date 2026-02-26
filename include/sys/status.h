@@ -20,10 +20,10 @@
  *
  * The status value allows information to be passed even if a operation completed successfully.
  *
- * For example, if a partial-read is performed, meaning that the provided buffer was not large enough to store all
- * available data, an informational `ST_CODE_MORE` status value will be returned.
+ * For example, if a read is performed and the end of the file is reached, an informational `ST_CODE_EOF` status value
+ * will be returned.
  *
- * Using the `ST_CODE_MORE` status can in some cases allow us to avoid an entire additional read operation just to check
+ * Using the `ST_CODE_EOF` status can in some cases allow us to avoid an entire additional read operation just to check
  * if there is more data available.
  *
  * @note There are no "warning" or similar status values. The reasoning for this decision is that it is often not
@@ -145,7 +145,7 @@ typedef enum
     ST_CODE_INVALFLAG,                            ///< Invalid flag.
     ST_CODE_CHANGED,                              ///< State changed.
     ST_CODE_FULL,                                 ///< Buffer full.
-    ST_CODE_MORE,                                 ///< More data is available then what was returned.
+    ST_CODE_EOF,                                  ///< End of file.
     ST_CODE_ARGC,                                 ///< Invalid argument count.
     ST_CODE_INVALCTL,                             ///< Invalid control command.
     ST_CODE_TOCTOU,                               ///< Time-of-check to time-of-use race condition.

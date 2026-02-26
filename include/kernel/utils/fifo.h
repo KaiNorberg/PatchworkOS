@@ -158,9 +158,9 @@ static inline status_t fifo_read(fifo_t* fifo, void* buffer, size_t count, size_
         *bytesRead = count;
     }
 
-    if (fifo_bytes_readable(fifo) > 0)
+    if (fifo_bytes_readable(fifo) == 0)
     {
-        return INFO(DRIVER, MORE);
+        return INFO(DRIVER, EOF);
     }
 
     return OK;
@@ -271,9 +271,9 @@ static inline status_t fifo_read_mdl(fifo_t* fifo, mdl_t* mdl, size_t offset, si
         *bytesRead = totalRead;
     }
 
-    if (fifo_bytes_readable(fifo) > 0)
+    if (fifo_bytes_readable(fifo) == 0)
     {
-        return INFO(DRIVER, MORE);
+        return INFO(DRIVER, EOF);
     }
 
     return OK;

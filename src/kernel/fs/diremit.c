@@ -35,7 +35,7 @@ bool diremit(diremit_t* emit, const char* name)
 
     if (copied != toWrite)
     {
-        emit->status = INFO(IO, MORE);
+        emit->status = OK;
         return false;
     }
 

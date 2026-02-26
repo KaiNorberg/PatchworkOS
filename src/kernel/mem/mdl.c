@@ -243,9 +243,9 @@ status_t mdl_copy_in(mdl_t* mdl, size_t count, size_t offset, size_t* copied, co
         *copied = copySize - remaining;
     }
 
-    if (remaining > 0)
+    if (remaining == 0)
     {
-        return INFO(MMU, MORE);
+        return INFO(MMU, EOF);
     }
 
     return OK;
