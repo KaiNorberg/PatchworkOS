@@ -188,7 +188,7 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
 /**
  * @brief File attribute operation.
  * @param fd The file descriptor.
- * @param attr The attribute to get or set (e.g., IOATTR_GET_SIZE, IOATTR_SET_SIZE).
+ * @param attr The attribute to get or set (e.g., FILE_GET_SIZE, FILE_SET_SIZE).
  * @param value The value to set (ignored for getters).
  * @param Unused
  * @param Unused

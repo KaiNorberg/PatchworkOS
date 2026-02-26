@@ -70,7 +70,6 @@ typedef struct vnode_class
 typedef struct vnode
 {
     ref_t ref;
-    _Atomic(uint64_t) dentryCount; ///< The number of dentries pointing to this vnode.
     void* data;                    ///< Filesystem defined data.
     uint64_t size;                 ///< Used for convenience by certain filesystems, does not represent the file size.
     volume_t* volume;

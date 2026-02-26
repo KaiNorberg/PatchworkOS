@@ -94,7 +94,6 @@ static void dentry_free(dentry_t* dentry)
 
     if (dentry->vnode != NULL)
     {
-        atomic_fetch_sub_explicit(&dentry->vnode->dentryCount, 1, memory_order_relaxed);
         UNREF(dentry->vnode);
         dentry->vnode = NULL;
     }
@@ -217,7 +216,6 @@ void dentry_make_positive(dentry_t* dentry, vnode_t* vnode)
         return;
     }
 
-    atomic_fetch_add_explicit(&vnode->dentryCount, 1, memory_order_relaxed);
     dentry->vnode = REF(vnode);
     if (!DENTRY_IS_ROOT(dentry))
     {

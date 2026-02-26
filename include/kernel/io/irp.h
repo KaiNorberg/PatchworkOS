@@ -239,7 +239,7 @@ typedef uint16_t irp_major_t; ///< IRP major function number type.
 
 /**
  * @brief Attribute operation.
- * @return If a get operation, the value of the attribute. If a set operation, always `0`.
+ * @return Always `0`.
  */
 #define IRP_MJ_ATTR 9
 
@@ -363,7 +363,7 @@ typedef struct irp_frame
         } remove;
         struct
         {
-            file_attr_t attr; ///< The attribute to get or set.
+            file_attr_t attr; ///< The attribute to set (will never be a get attribute operation).
             uint64_t value;   ///< The value to set.
         } attr;
         struct

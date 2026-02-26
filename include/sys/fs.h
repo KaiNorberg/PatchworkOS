@@ -94,25 +94,27 @@ typedef uint16_t file_type_t;  ///< File type enum.
 #define FILE_TYPE_FILESYSTEM 7 ///< Filesystem file.
 
 typedef uint16_t file_attr_t; ///< File attribute operations.
-#define FILE_GET_SIZE 0       ///< Get the size of the file.
-#define FILE_SET_SIZE 1       ///< Set the size of the file.
-#define FILE_GET_BLOCKS 2     ///< Get the number of blocks allocated.
-#define FILE_GET_BLOCK_SIZE 3 ///< Get the block size.
-#define FILE_GET_MAX_SIZE 4   ///< Get the maximum file size.
-#define FILE_GET_ATIME 5      ///< Get the access time.
-#define FILE_SET_ATIME 6      ///< Set the access time.
-#define FILE_GET_MTIME 7      ///< Get the modification time.
-#define FILE_SET_MTIME 8      ///< Set the modification time.
-#define FILE_GET_CTIME 9      ///< Get the change time.
-#define FILE_SET_CTIME 10     ///< Set the change time.
-#define FILE_GET_BTIME 11     ///< Get the birth time.
-#define FILE_SET_BTIME 12     ///< Set the birth time.
-#define FILE_GET_NUM 13       ///< Get the file number.
-#define FILE_GET_VOL 14       ///< Get the volume ID.
-#define FILE_GET_NLINK 15     ///< Get the number of hard links.
-#define FILE_GET_FLAGS 16     ///< Get the file flags.
-#define FILE_SET_FLAGS 17     ///< Set the file flags.
-#define FILE_GET_TYPE 18      ///< Get the file type.
+#define FILE_ATTR_IS_SET(attr) ((attr) & 1)
+#define FILE_ATTR_IS_GET(attr) (!((attr) & 1))
+#define _FILE_ATTR_GET(x) (((x) << 1) & ~1)
+#define _FILE_ATTR_SET(x) (((x) << 1) | 1)
+#define FILE_GET_SIZE _FILE_ATTR_GET(0)       ///< Get the size of the file.
+#define FILE_SET_SIZE _FILE_ATTR_SET(0)       ///< Set the size of the file.
+#define FILE_GET_BLOCKS _FILE_ATTR_GET(1)     ///< Get the number of blocks allocated.
+#define FILE_GET_BLOCK_SIZE _FILE_ATTR_GET(2) ///< Get the block size.
+#define FILE_GET_MAX_SIZE _FILE_ATTR_GET(3)   ///< Get the maximum file size.
+#define FILE_GET_ATIME _FILE_ATTR_GET(4)      ///< Get the access time.
+#define FILE_SET_ATIME _FILE_ATTR_SET(4)      ///< Set the access time.
+#define FILE_GET_MTIME _FILE_ATTR_GET(5)      ///< Get the modification time.
+#define FILE_SET_MTIME _FILE_ATTR_SET(5)      ///< Set the modification time.
+#define FILE_GET_CTIME _FILE_ATTR_GET(6)      ///< Get the change time.
+#define FILE_SET_CTIME _FILE_ATTR_SET(6)      ///< Set the change time.
+#define FILE_GET_BTIME _FILE_ATTR_GET(7)      ///< Get the birth time.
+#define FILE_SET_BTIME _FILE_ATTR_SET(7)      ///< Set the birth time.
+#define FILE_GET_NUM _FILE_ATTR_GET(8)        ///< Get the file number.
+#define FILE_GET_VOL _FILE_ATTR_GET(9)        ///< Get the volume ID.
+#define FILE_GET_NLINK _FILE_ATTR_GET(10)     ///< Get the number of hard links.
+#define FILE_GET_TYPE _FILE_ATTR_GET(11)      ///< Get the file type.
 
 typedef uint64_t file_mask_t;         ///< Bitmask of which fields are valid within a `file_info_t` structure.
 #define FILE_MASK_SIZE (1 << 0)       ///< File size is valid.

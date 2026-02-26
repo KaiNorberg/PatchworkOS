@@ -35,7 +35,6 @@ static void vnode_ctor(void* ptr)
     vnode_t* vnode = (vnode_t*)ptr;
 
     vnode->ref = (ref_t){0};
-    atomic_init(&vnode->dentryCount, 0);
     vnode->data = NULL;
     vnode->size = 0;
     vnode->volume = NULL;
