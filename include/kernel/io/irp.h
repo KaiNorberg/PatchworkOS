@@ -352,7 +352,6 @@ typedef struct irp_frame
         struct
         {
             const void* payload; ///< Payload data for the open operation.
-            size_t payloadLen;   ///< The length of the payload data.
         } open;
         struct
         {
@@ -848,7 +847,7 @@ static inline void irp_prep_control(irp_t* irp, iocmd_t command, const char* arg
  *
  * @see `IRP_MJ_OPEN`
  */
-static inline void irp_prep_open(irp_t* irp, const void* payload, size_t payloadLen)
+static inline void irp_prep_open(irp_t* irp, const char* payload)
 {
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);
@@ -857,7 +856,6 @@ static inline void irp_prep_open(irp_t* irp, const void* payload, size_t payload
     next->minor = IRP_MN_NORMAL;
     next->flags = IRP_FLAG_NONE;
     next->open.payload = payload;
-    next->open.payloadLen = payloadLen;
 }
 
 /**

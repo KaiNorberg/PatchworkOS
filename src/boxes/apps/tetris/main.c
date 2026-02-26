@@ -36,7 +36,7 @@
 #define PLAYED_BLOCKS_LABEL_ID 2
 
 #define TICK_SPEED (CLOCKS_PER_SEC)
-#define DROPPING_TICK_SPEED (CLOCKS_PER_SEC / 12)
+#define CLOSEPING_TICK_SPEED (CLOCKS_PER_SEC / 12)
 #define CLEARING_LINES_TICK_SPEED (CLOCKS_PER_SEC / 15)
 #define START_SCREEN_TICK_SPEED ((CLOCKS_PER_SEC / 4) * 3)
 
@@ -797,7 +797,7 @@ static uint64_t procedure(window_t* win, element_t* elem, const event_t* event)
         }
         else if (currentPiece.isDropping)
         {
-            window_set_timer(win, TIMER_NONE, DROPPING_TICK_SPEED);
+            window_set_timer(win, TIMER_NONE, CLOSEPING_TICK_SPEED);
         }
         else
         {

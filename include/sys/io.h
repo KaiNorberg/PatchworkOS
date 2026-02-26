@@ -160,7 +160,7 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
 #define IOOP_WALK 6
 
 /**
- * @brief Drop operation.
+ * @brief Close operation.
  * @param fd The file descriptor to discard.
  * @param Unused
  * @param Unused
@@ -168,7 +168,7 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
  * @param Unused
  * @result Always `0`.
  */
-#define IOOP_DROP 7
+#define IOOP_CLOSE 7
 
 /**
  * @brief Remove operation.
@@ -672,11 +672,11 @@ static inline void ioprep_walk(iosqe_t* iosqe, iosqe_flags_t flags, clock_t time
 /**
  * @brief Prepare a close submission queue entry (SQE).
  *
- * @see `IOOP_DROP`
+ * @see `IOOP_CLOSE`
  */
-static inline void ioprep_drop(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd)
+static inline void ioprep_close(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd)
 {
-    *iosqe = IOSQE_CREATE(IOOP_DROP, flags, timeout, data);
+    *iosqe = IOSQE_CREATE(IOOP_CLOSE, flags, timeout, data);
     iosqe->fd = fd;
 }
 
@@ -861,7 +861,7 @@ status_t iostore(fd_t fd, clock_t timeout, const char* in, size_t* bytesWritten)
 /**
  * @brief Synchronous wrapper for a reading a file directly using a path.
  *
- * This wrapper is more efficient than calling `iowalk()`, `ioread()`/`iowrite()`, and `iodrop()` in sequence as it
+ * This wrapper is more efficient than calling `iowalk()`, `ioread()`/`iowrite()`, and `ioclose()` in sequence as it
  * uses the register system to chain the operations into a single `ioring_enter()` call.
  *
  * @param fd The file descriptor to open the file relative to, or `FDCWD` to open from the current working directory.
@@ -877,7 +877,7 @@ status_t ioreadp(fd_t fd, const char* path, const iovec_t* vector, size_t count,
 /**
  * @brief Synchronous wrapper for writing to a file directly using a path.
  *
- * This wrapper is more efficient than calling `iowalk()`, `ioread()`/`iowrite()`, and `iodrop()` in sequence as it
+ * This wrapper is more efficient than calling `iowalk()`, `ioread()`/`iowrite()`, and `ioclose()` in sequence as it
  * uses the register system to chain the operations into a single `ioring_enter()` call.
  *
  * @param fd The file descriptor to open the file relative to, or `FDCWD` to open from the current working directory.
@@ -1092,11 +1092,11 @@ static inline status_t iowalk(fd_t fd, const char* path, fd_t* opened)
  * @param fd The file descriptor to close.
  * @return An appropriate status value.
  */
-static inline status_t iodrop(fd_t fd)
+static inline status_t ioclose(fd_t fd)
 {
     iosqe_t sqe;
     iocqe_t cqe;
-    ioprep_drop(&sqe, IOSQE_NORMAL, CLOCKS_NEVER, 0, fd);
+    ioprep_close(&sqe, IOSQE_NORMAL, CLOCKS_NEVER, 0, fd);
     iosync(&sqe, &cqe);
     return cqe.status;
 }

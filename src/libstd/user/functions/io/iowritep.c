@@ -18,7 +18,7 @@ status_t iowritep(fd_t fd, const char* path, const iovec_t* vector, size_t count
     iosqe_put(&_stdIoring);
 
     sqe = iosqe_get(&_stdIoring);
-    ioprep_drop(sqe, (IOSQE_REG0 << IOSQE_LOAD0) | IOSQE_LINK, CLOCKS_NEVER, 0, FDNONE);
+    ioprep_close(sqe, (IOSQE_REG0 << IOSQE_LOAD0) | IOSQE_LINK, CLOCKS_NEVER, 0, FDNONE);
     iosqe_put(&_stdIoring);
 
     ioring_enter(&_stdIoring, 3, 3, NULL);

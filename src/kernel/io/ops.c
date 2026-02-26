@@ -157,7 +157,7 @@ static status_t io_op_walk_done(irp_t* irp, struct path_state* state, file_t* fi
 {
     UNUSED(state);
 
-    return file_table_grab(&irp_get_process(irp)->files, file);
+    return file_table_open(&irp_get_process(irp)->files, file);
 }
 
 static status_t io_op_walk(irp_t* irp)
@@ -195,11 +195,11 @@ static status_t io_op_walk(irp_t* irp)
     return path_walk(irp, state);
 }
 
-static status_t io_op_drop(irp_t* irp)
+static status_t io_op_close(irp_t* irp)
 {
     process_t* process = irp_get_process(irp);
 
-    return file_table_drop(&process->files, irp->sqe.fd);
+    return file_table_close(&process->files, irp->sqe.fd);
 }
 
 static status_t io_op_remove(irp_t* irp)
@@ -291,7 +291,7 @@ static const io_op_func_t ops[IOOP_MAX] = {
     [IOOP_SEEK] = io_op_seek,
     [IOOP_MAP] = io_op_map,
     [IOOP_WALK] = io_op_walk,
-    [IOOP_DROP] = io_op_drop,
+    [IOOP_CLOSE] = io_op_close,
     [IOOP_REMOVE] = io_op_remove,
     [IOOP_ATTR] = io_op_attr,
     [IOOP_QUERY] = io_op_query,

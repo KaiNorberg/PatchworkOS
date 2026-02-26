@@ -11,7 +11,7 @@ status_t ioloadp(fd_t fd, const char* path, char** out, size_t* outLen)
 
     status = ioload(file, CLOCKS_NEVER, out, outLen);
 
-    iodrop(file, CLOCKS_NEVER);
+    ioclose(file, CLOCKS_NEVER);
 
     return status;
 }

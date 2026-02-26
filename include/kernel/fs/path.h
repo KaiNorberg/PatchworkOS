@@ -71,14 +71,14 @@ typedef struct file file_t;
  *
  * ## Payload
  *
- * In addition to flags, a path can also have an optional payload, specified after a `?` at the end of the path. This is
+ * In addition to flags, a path can contain an optional payload, specified after a `?` at the end of the path. This is
  * used to pass additional data to the kernel for certain operations, for example, the file descriptor to create a
  * hardlink to as an integer when used with the `hardlink` flag.
  *
  * For a practical example, we can create a symlink using the path `/path/to/symlink:symlink?/path/to/target`.
  *
  * @note The payload itself is not parsed by the path parser, instead it only extracts it and passes it to the vnode
- * being opened, it is then responsible for parsing it and using it as needed. This means that unique filesystems could
+ * being opened as a `NULL`-terminated string, it is then responsible for parsing it and using it as needed. This means that unique filesystems could
  * define their own custom payload formats and semantics.
  *
  * ## Forbidden Characters
@@ -132,8 +132,6 @@ typedef enum mode
     MODE_PROPAGATE = 1 << 13,
     MODE_LOCKED = 1 << 14,
     MODE_NODOTDOT = 1 << 15,
-    MODE_CREATE = 1 << 16,
-    MODE_RECURSIVE = 1 << 17,
     MODE_ALL_PERMS = MODE_READ | MODE_WRITE | MODE_EXECUTE,
 } mode_t;
 
@@ -299,14 +297,13 @@ typedef struct path_state
     size_t pathCapacity;   ///< The capacity of the path string buffer.
     char* ptr;             ///< Pointer to the current component in the path.
     size_t componentLen;   ///< Length of the current component being processed.
-    const void* payload;   ///< Payload for the final open operation.
-    size_t payloadLen;     ///< Length of the payload.
     mode_t mode;           ///< Parsed mode from the path.
     namespace_t* ns;       ///< The namespace for the walk.
     uint32_t symlinkDepth; ///< Current symlink recursion depth.
-    char* linkBuffer;      ///< Temporary buffer for reading symlinks.
     dentry_t* lookup;      ///< A reference to the last "looked up" dentry to keep it and its parents alive.
     status_t (*done)(irp_t* irp, struct path_state* state, file_t* file);
+    char linkBuffer[MAX_PATH];      ///< Temporary buffer for reading symlinks.
+    char* payload;         ///< The payload string extracted from the path.
 } path_state_t;
 
 /**
@@ -315,7 +312,7 @@ typedef struct path_state
  * @param state The path state to initialize.
  */
 static inline void path_state_init(path_state_t* state, dentry_t* dentry, mount_t* mount, char* path, size_t pathLength,
-    size_t pathCapacity, void* payload, size_t payloadLen,
+    size_t pathCapacity,
     status_t (*done)(irp_t* irp, struct path_state* state, file_t* file))
 {
     state->dentry = dentry;
@@ -325,13 +322,11 @@ static inline void path_state_init(path_state_t* state, dentry_t* dentry, mount_
     state->pathCapacity = pathCapacity;
     state->ptr = path;
     state->componentLen = 0;
-    state->payload = payload;
-    state->payloadLen = payloadLen;
     state->mode = MODE_NONE;
     state->ns = NULL;
     state->symlinkDepth = 0;
-    state->linkBuffer = NULL;
     state->lookup = NULL;
+    state->payload = NULL;
     state->done = done;
 }
 

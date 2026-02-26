@@ -72,16 +72,16 @@ static inline status_t fdclaim(fd_t* out, const char* key)
 }
 
 /**
- * @brief System call for copying file descriptors.
+ * @brief System call for duplicating file descriptors.
  *
- * @param src The open file descriptor to copy.
+ * @param src The open file descriptor to duplicate.
  * @param dest Output pointer for the new file descriptor, if `FDNONE` any free file descriptor will be used,
  * otherwise the specified file descriptor will be used.
  * @return An appropriate status value.
  */
-static inline status_t fdcopy(fd_t src, fd_t* dest)
+static inline status_t fddup(fd_t src, fd_t* dest)
 {
-    return syscall2(SYS_FD_COPY, dest, src, *dest);
+    return syscall2(SYS_FD_DUP, dest, src, *dest);
 }
 
 typedef uint16_t file_type_t;  ///< File type enum.

@@ -36,7 +36,7 @@ typedef enum
     SYS_TIME,
     SYS_UNMAP,
     SYS_PROTECT,
-    SYS_FD_COPY,
+    SYS_FD_DUP,
     SYS_FD_SHARE,
     SYS_FD_CLAIM,
     SYS_FS_BIND,

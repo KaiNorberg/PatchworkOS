@@ -92,7 +92,7 @@ For reading or writing, the I/O Request Packet uses a Memory Descriptor List, wh
 
 Built on top of this system are several layers of abstractions. For example, the `iowrite()` function is a simple synchronous wrapper around the I/O ring and of course `fwrite()` is a wrapper around `iowrite()` that works as expected. Many helper functions are also provided, for example `iowritep()` is a version of `iowrite()` that will use the virtual register system to perform an open, write and close using a single system call.
 
-Finally, even the "error" handling or status system allows for certain optimizations. For example, if a read is performed on a file with a buffer of insufficient size to store the remaining contents of the file, the returned status will be an informational `ST_CODE_MORE` status. In certain cases, this means we can skip an additional read to check for EOF, potentially skipping a system call.
+Finally, even the "error" handling or status system allows for certain optimizations. For example, if a read is performed on a file such that no more data remains, the returned status will be an informational `ST_CODE_EOF` status. In certain cases, this means we can skip an additional read to check for EOF, potentially skipping a system call.
 
 The combination of this system and our "everything is a file" philosophy means that since files are interacted with via asynchronous I/O and everything is a file, practically all operations can be asynchronous and dispatched via a I/O Ring.
 
@@ -136,24 +136,22 @@ Using the synchronous I/O wrappers in PatchworkOS, we would write:
 
 ```c
 fd_t fd;
-iowalk(FDCWD, "/path/to/file:rw", NULL, 0, &fd);
+iowalk(FDCWD, "/path/to/file:rw", &fd);
 
 size_t bytesWritten;
 iowrite(fd, IOBUF("Hello, World!", 13), IOCUR, &bytesWritten);
-iodrop(fd);
+ioclose(fd);
 ```
 
-We first open the file using `iowalk()`, specifying that the path should be traversed starting from the current working directory (`FDCWD`), that we want "read and write access" (`:rw`) AND that we do not need to provide additional data (`NULL` and `0`) this additional data or payload would be used when, for example, creating a symlink.
+We first open the file using `iowalk()`, specifying that the path should be traversed starting from the current working directory (`FDCWD`) and that we want "read and write access" (`:rw`).
 
 Note that the `FDCWD` constant is no different than standard file descriptors like `STDIN`, `STDOUT` and `STDERR` (called `FDIN`, `FDOUT` and `FDERR` respectively). In PatchworkOS, the current working directory is just a file descriptor like any other; an agreed upon convention that allows other processes to easily inherit it when needed.
 
-> The term "walk" is used instead of "open" to clarify its use within PatchworkOS, as all operations take in a file descriptor with `iowalk()` being the only operation that takes in a path. As such, performing any operation on a file should be thought of as "walking" to it and then acting upon it, instead of mearly "opening" it, after walking to a file we could walk to another file relative to it.
+> The term "walk" is used instead of "open" to clarify its use within PatchworkOS. All operations take in a file descriptor with `iowalk()` being the only operation that takes in a path. As such, performing any operation on a file should be thought of as "walking" to it and then acting upon it, instead of merely "opening" it, after walking to a file we could walk to another file relative to it.
 
 Then we write to the file using `iowrite()`, passing the file descriptor, a buffer containing the data to write (the `iowrite()` function actually expects an array of `iovec_t` which the `IOBUF()` macro creates on the stack for convenience) and the offset to write at (in this case `IOCUR` to write at the current offset).
 
-Finally, we close the file using `iodrop()`.
-
-> The term "drop" is used to differentiate between closing a file descriptor and closing an actual file object when its reference count reaches zero, which is when the file object and its resources are freed.
+Finally, we close the file using `ioclose()`.
 
 Additionally, the `iowritet()`, `ioreadt()` and `iowalkt()` functions are provided that expect an additional `clock_t timeout` argument.
 
@@ -187,14 +185,14 @@ Using the synchronous I/O wrappers in PatchworkOS, we would write:
 fd_t in;
 fd_t out;
 
-iowalk(FDCWD, "/dev/pipe/new", NULL, 0, &in);
-iowalk(FDCWD, "/dev/pipe/new", NULL, 0, &out);
+iowalk(FDCWD, "/dev/pipe/new", &in);
+iowalk(FDCWD, "/dev/pipe/new", &out);
 
 proc_t proc;
 const char* argv[] = {"/path/to/program", NULL};
 proc_create(&argv, PROC_SUSPENDED, &proc);
 
-iostorep(FDCWD, IOFMT("/proc/%llu/ctl", proc), IOFMT("fdcopy 0 %llu; fdcopy 1 %llu; close %llu %llu; start", in, out, in, out));
+iostorep(FDCWD, IOFMT("/proc/%llu/ctl", proc), IOFMT("dup 0 %llu; dup 1 %llu; close %llu; close %llu; start", in, out, in, out));
 ```
 
 We first create two pipes by opening the special file `/dev/pipe/new` twice.
@@ -208,8 +206,8 @@ As a side note, we could optimize the pipe creation by walking to the second pip
 ```c
 fd_t in;
 fd_t out;
-iowalk(FDCWD, "/dev/pipe/new", NULL, 0, &in);
-iowalk(in, ".", NULL, 0, &out);
+iowalk(FDCWD, "/dev/pipe/new", &in);
+iowalk(in, ".", &out);
 ```
 
 ### Mounting a Filesystem
@@ -223,8 +221,8 @@ Then we can use `iobind()` to bind the root of the filesystem instance into our 
 ```c
 fd_t fs;
 fd_t target;
-iowalk(FDCWD, "/sys/fs/tmpfs", NULL, 0, &fs);
-iowalk(FDCWD, "/mnt/tmpfs", NULL, 0, &target);
+iowalk(FDCWD, "/sys/fs/tmpfs", &fs);
+iowalk(FDCWD, "/mnt/tmpfs", &target);
 iobind(target, fs);
 ```
 
