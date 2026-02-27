@@ -3,7 +3,7 @@
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/filesystem.h>
-#include <kernel/fs/mount.h>
+#include <kernel/fs/binding.h>
 #include <kernel/fs/netfs.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vfs.h>
@@ -230,7 +230,7 @@ static void netfs_data_poll_thread(void* arg)
         }
         irp_frame_t* frame = irp_current(irp);
 
-        events_t revents = 0;
+        iopoll_t revents = 0;
         wait_queue_t* queue = NULL;
         status_t status = sock->family->poll(sock, &revents, &queue);
         assert(IS_INFO(status));
@@ -280,7 +280,7 @@ static status_t netfs_data_poll(irp_t* irp)
     }
 
     mutex_acquire(&sock->mutex);
-    events_t revents = 0;
+    iopoll_t revents = 0;
     wait_queue_t* queue = NULL;
     status_t status = sock->family->poll(sock, &revents, &queue);
     if (IS_ERR(status))

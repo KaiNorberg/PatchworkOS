@@ -4,7 +4,7 @@
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file_table.h>
 #include <kernel/fs/key.h>
-#include <kernel/fs/mount.h>
+#include <kernel/fs/binding.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
@@ -72,7 +72,7 @@ static void volume_cleanup(vnode_t* vnode)
 
 static vnode_class_t volumeClass = {
     .name = "volume file",
-    .type = FILE_TYPE_REGULAR,
+    .type = VTYPE_REGULAR,
     .cleanup = volume_cleanup,
     VNODE_HANDLERS([IRP_MJ_READ] = volume_read),
 };

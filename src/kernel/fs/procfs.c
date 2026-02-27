@@ -5,7 +5,7 @@
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/filesystem.h>
-#include <kernel/fs/mount.h>
+#include <kernel/fs/binding.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vfs.h>
@@ -408,7 +408,7 @@ static status_t procfs_wait_poll(irp_t* irp)
         return irp_delay(irp, &process->dyingIrps, procfs_wait_cancel);
     }
 
-    irp->result = EVENTS_READ;
+    irp->result = IOEVENT_READ;
     return OK;
 }
 

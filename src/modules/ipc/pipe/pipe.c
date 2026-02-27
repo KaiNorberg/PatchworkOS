@@ -27,13 +27,8 @@
  *
  * ## Creating Pipes
  *
- * Pipes are created using the `/dev/pipe/new` file. Opening this file using `open()` will return one file descriptor
+ * Pipes are created using the `/dev/pipe/clone` file. Opening this file will return one file descriptor
  * that can be used for both reading and writing.
- *
- * ## Using Pipes
- *
- * Pipes can be read from and written to using the expected `read()` and `write()` system calls. Pipes are blocking and
- * pollable, following expected POSIX semantics.
  *
  * @{
  */
@@ -48,8 +43,8 @@ typedef struct
     uint8_t buffer[PAGE_SIZE - sizeof(lock_t) - (sizeof(list_t) * 3) - sizeof(fifo_t)];
 } pipe_t;
 
-static dentry_t* pipeDir = NULL;
-static dentry_t* newFile = NULL;
+static dentry_t* dir = NULL;
+static dentry_t* clone = NULL;
 
 static status_t pipe_open(file_t* file)
 {
@@ -154,14 +149,14 @@ static status_t pipe_read(irp_t* irp)
     {
         irp_frame_t* pollFrame = irp_current(poll);
 
-        events_t events = 0;
+        iopoll_t events = 0;
         if (fifo_bytes_readable(&data->fifo) > 0)
         {
-            events |= EVENTS_READ;
+            events |= IOEVENT_READ;
         }
         if (fifo_bytes_writeable(&data->fifo) > 0)
         {
-            events |= EVENTS_WRITE;
+            events |= IOEVENT_WRITE;
         }
 
         if (!(pollFrame->poll.events & events))
@@ -233,14 +228,14 @@ static status_t pipe_write(irp_t* irp)
     {
         irp_frame_t* pollFrame = irp_current(poll);
 
-        events_t events = 0;
+        iopoll_t events = 0;
         if (fifo_bytes_readable(&data->fifo) > 0)
         {
-            events |= EVENTS_READ;
+            events |= IOEVENT_READ;
         }
         if (fifo_bytes_writeable(&data->fifo) > 0)
         {
-            events |= EVENTS_WRITE;
+            events |= IOEVENT_WRITE;
         }
 
         if (!(pollFrame->poll.events & events))
@@ -277,11 +272,11 @@ static status_t pipe_poll(irp_t* irp)
     irp->result = 0;
     if (fifo_bytes_readable(&data->fifo) > 0)
     {
-        irp->result |= EVENTS_READ;
+        irp->result |= IOEVENT_READ;
     }
     if (fifo_bytes_writeable(&data->fifo) > 0)
     {
-        irp->result |= EVENTS_WRITE;
+        irp->result |= IOEVENT_WRITE;
     }
 
     if (irp->result & frame->poll.events)
@@ -313,17 +308,17 @@ static vnode_class_t dirClass = {
 
 status_t pipe_init(void)
 {
-    pipeDir = devfs_dentry_new(NULL, "pipe", &dirClass, NULL);
-    if (pipeDir == NULL)
+    dir = devfs_dentry_new(NULL, "pipe", &dirClass, NULL);
+    if (dir == NULL)
     {
         LOG_ERR("failed to initialize pipe directory");
         return ERR(DRIVER, IO);
     }
 
-    newFile = devfs_dentry_new(pipeDir, "new", &pipeClass, NULL);
-    if (newFile == NULL)
+    clone = devfs_dentry_new(dir, "clone", &pipeClass, NULL);
+    if (clone == NULL)
     {
-        UNREF(pipeDir);
+        UNREF(dir);
         LOG_ERR("failed to initialize pipe new file");
         return ERR(DRIVER, IO);
     }
@@ -333,10 +328,10 @@ status_t pipe_init(void)
 
 void pipe_deinit(void)
 {
-    UNREF(newFile);
-    newFile = NULL;
-    UNREF(pipeDir);
-    pipeDir = NULL;
+    UNREF(clone);
+    clone = NULL;
+    UNREF(dir);
+    dir = NULL;
 }
 
 /** @} */

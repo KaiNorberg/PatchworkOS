@@ -563,13 +563,13 @@ static uint64_t terminal_procedure(window_t* win, element_t* elem, const event_t
         term->cursorBlink = false;
         term->isCursorVisible = true;
 
-        if (IS_ERR(open(&term->stdin, "/dev/pipe/new")))
+        if (IS_ERR(open(&term->stdin, "/dev/pipe/clone")))
         {
             font_free(term->font);
             free(term);
             return PFAIL;
         }
-        if (IS_ERR(open(&term->stdout, "/dev/pipe/new")))
+        if (IS_ERR(open(&term->stdout, "/dev/pipe/clone")))
         {
             close(term->stdin);
             font_free(term->font);
@@ -752,7 +752,7 @@ void terminal_loop(window_t* win)
 
         iopoll_t fds[1] = {{
             .fd = terminal->stdout,
-            .events = EVENTS_READ,
+            .events = IOEVENT_READ,
         }};
         if (display_poll(disp, fds, 1, timeout) == PFAIL)
         {
@@ -765,7 +765,7 @@ void terminal_loop(window_t* win)
             display_dispatch(disp, &event);
         }
 
-        if ((!(fds[0].revents & EVENTS_READ) && length > 0) || length == TERMINAL_MAX_DATA)
+        if ((!(fds[0].revents & IOEVENT_READ) && length > 0) || length == TERMINAL_MAX_DATA)
         {
             element_t* elem = window_get_client_element(terminal->win);
             terminal_t* term = element_get_private(elem);
@@ -780,7 +780,7 @@ void terminal_loop(window_t* win)
             display_cmds_flush(disp);
         }
 
-        if (fds[0].revents & EVENTS_READ)
+        if (fds[0].revents & IOEVENT_READ)
         {
             size_t readCount;
             status_t status = ioread(terminal->stdout, IOBUF(&buffer[length], TERMINAL_MAX_DATA - length), IOCUR,

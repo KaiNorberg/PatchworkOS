@@ -21,33 +21,22 @@ static void vnode_free(vnode_t* vnode)
     }
     vnode->data = NULL;
 
-    if (vnode->volume != NULL)
-    {
-        UNREF(vnode->volume);
-        vnode->volume = NULL;
-    }
-
-    rcu_call(&vnode->rcu, rcu_call_cache_free, vnode);
+    cache_free(vnode);
 }
 
 static void vnode_ctor(void* ptr)
 {
     vnode_t* vnode = (vnode_t*)ptr;
 
-    vnode->ref = (ref_t){0};
     vnode->data = NULL;
-    vnode->size = 0;
-    vnode->volume = NULL;
-    vnode->cls = NULL;
-    vnode->rcu = (rcu_entry_t){0};
     mutex_init(&vnode->mutex);
 }
 
 static cache_t cache = CACHE_CREATE(cache, "vnode", sizeof(vnode_t), CACHE_LINE, vnode_ctor, NULL);
 
-vnode_t* vnode_new(volume_t* volume, const vnode_class_t* cls)
+vnode_t* vnode_new(fsvol_t vol, const vnode_class_t* cls, vnum_t num)
 {
-    if (volume == NULL || cls == NULL)
+    if (cls == NULL)
     {
         return NULL;
     }
@@ -59,7 +48,8 @@ vnode_t* vnode_new(volume_t* volume, const vnode_class_t* cls)
     }
 
     ref_init(&vnode->ref, vnode_free);
-    vnode->volume = REF(volume);
+    vnode->vol = 0;
+    vnode->num = 0;
     vnode->cls = cls;
     return vnode;
 }
@@ -90,13 +80,13 @@ status_t vnode_generic_attr(irp_t* irp)
 
     switch (frame->attr.attr)
     {
-    case FILE_GET_TYPE:
+    case VATTR_GET_TYPE:
         irp->result = vnode->cls->type;
         return OK;
-    case FILE_GET_VOL:
+    case VATTR_GET_VOL:
         irp->result = vnode->volume->id;
         return OK;
-    case FILE_GET_NUM:
+    case VATTR_GET_NUM:
         if (frame->file != NULL)
         {
             irp->result = frame->file->path.dentry->id;
@@ -114,21 +104,18 @@ status_t vnode_generic_query(irp_t* irp)
     vnode_t* vnode = frame->vnode;
     file_t* file = frame->file;
 
-    file_info_t info = {0};
+    vinfo_t info = {0};
 
     info.type = vnode->cls->type;
-    info.valid |= FILE_MASK_TYPE;
+    info.valid |= VMASK_TYPE;
 
-    info.vol = vnode->volume->id;
-    info.valid |= FILE_MASK_VOL;
+    info.vol = vnode->vol;
+    info.valid |= VMASK_VOL;
 
-    if (file != NULL && file->path.dentry != NULL)
-    {
-        info.num = file->path.dentry->id;
-        info.valid |= FILE_MASK_NUM;
-    }
+    info.num = vnode->num;
+    info.valid |= VMASK_NUM;
 
-    return mdl_copy_in(frame->query.buffer, sizeof(file_info_t), 0, &irp->result, &info, sizeof(file_info_t));
+    return mdl_copy_in(frame->query.buffer, sizeof(vinfo_t), 0, &irp->result, &info, sizeof(vinfo_t));
 }
 
 status_t vnode_generic_dir_read(irp_t* irp)
@@ -175,4 +162,24 @@ done:
     status = diremit_end(&emit);
     mutex_release(&vnode->mutex);
     return status;
+}
+
+vnum_t vnum_hash(vnum_t parent, const char* name, size_t length)
+{
+    uint64_t hash = 0xcbf29ce484222325ULL;
+    const uint64_t prime = 0x100000001b3ULL;
+
+    for (size_t i = 0; i < sizeof(vnum_t); i++)
+    {
+        hash ^= ((uint8_t*)&parent)[i];
+        hash *= prime;
+    }
+
+    for (size_t i = 0; i < length; i++)
+    {
+        hash ^= (uint8_t)name[i];
+        hash *= prime;
+    }
+
+    return hash;
 }

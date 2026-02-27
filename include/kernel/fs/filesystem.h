@@ -3,7 +3,7 @@
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file.h>
-#include <kernel/fs/mount.h>
+#include <kernel/fs/binding.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vnode.h>
 #include <kernel/fs/volume.h>
@@ -17,95 +17,65 @@
 #include <sys/proc.h>
 
 /**
- * @brief Filesystem interface.
- * @defgroup kernel_fs_filesystem Filesystem.
+ * @brief Filesystem structure.
+ * @defgroup kernel_fs_filesystem Filesystem
  * @ingroup kernel_fs
  *
- * The filesystem interface represents a filesystem type, e.g. fat32, tmpfs, devfs, etc. Each filesystem is exposed in a
- * directory within the `fs` sysfs directory named after the filesystem.
+ * A filesystem defines the format and behaviour of volumes. For example, a fat32 filesystem would define how to read
+ * and write files on a fat32 formatted volume, while a tmpfs filesystem would define how to manage an in-memory volume.
  *
- * The directory itself can be used to mount instances of that filesystem type.
+ * @note There is not explicit "volume" structure, instead an opened filesystem simply returns the root of a heirarchy
+ * representing the volume.
  *
- * Within each filesystem directory are readable files representing each mounted instance of that filesystem type, named
- * after the volume ID, containing the following information:
+ * ## Interacting with Filesystems
  *
- * ```
- * id: %llu
+ * All filesystems will have a directory within the `fs` directory of a `sysfs` instance. Included below is a list of
+ * all files located within this directory.
  *
- * ```
+ * ## clone
  *
- * Where the `id` is the volume ID.
+ * A special file that when opened creates a new opened instance of the filesystem, usually called a volume, with the
+ * opened file being of type `VTYPE_DIRECTORY` and storing the root of this volume.
  *
- * @see kernel_fs_sysfs
+ * After opening this file, the returned file can be bound to complete a traditional mount operation or used directly.
+ *
+ * The payload specified in the path while opening this file is used to specify options for the new volume, for example
+ * `/sys/fs/myfs/clone?option1=value1,option2=value2`. The interpretation of these options is up to the filesystem.
+ *
+ * @note For filesystems that do not support multiple volumes, the clone file may simply return the same root dentry
+ * each time.
+ *
+ * ## Volumes
+ *
+ * Each volume is represented as a file within the associated filesystems directory with the name being the volume ID.
+ *
+ * @todo Decide on a format and contents of each volume file.
  *
  * @{
  */
 
 /**
  * @brief Filesystem structure, represents a filesystem type, e.g. fat32, tmpfs, devfs, etc.
- *
- * @todo Add safety for if a module defining a filesystem is unloaded.
+ * @struct filesystem_t
  */
 typedef struct filesystem
 {
-    list_entry_t entry;   ///< Used internally.
-    map_entry_t mapEntry; ///< Used internally.
-    list_t volumes;       ///< Used internally.
-    rwlock_t lock;        ///< Used internally.
-    const char* name;
-    /**
-     * @brief Mount a filesystem.
-     *
-     * @param fs The filesystem to mount.
-     * @param out pointer to store the root dentry of the mounted filesystem.
-     * @param details A string containing filesystem defined `key=value` pairs, with multiple options separated by
-     * commas, or `NULL`.
-     * @param private Private data for the filesystem's mount function.
-     * @return An appropriate status value.
-     */
-    status_t (*mount)(filesystem_t* fs, dentry_t** out, const char* details, void* data);
+    dentry_t* dir;   ///< The directory containing this filesystem.
+    dentry_t* clone; ///< The clone file within this filesystems directory.
+    list_t volumes;  ///< A list of `dentry_t` representing the volumes of this filesystem.
+    lock_t lock;     ///< Lock protecting the volumes list.
 } filesystem_t;
 
-/**s
- * @brief Exposes the sysfs `fs` directory.
- *
- * Must be called before `filesystem_get_by_path()` can be used.
- */
-void filesystem_expose(void);
-
 /**
- * @brief Registers a filesystem.
+ * @brief Register a new filesystem.
  *
- * @param fs The filesystem to register.
- * @return An appropriate status code.
- */
-status_t filesystem_register(filesystem_t* fs);
-
-/**
- * @brief Unregisters a filesystem.
- *
- * @param fs The filesystem to unregister, or `NULL` for no-op.
- */
-void filesystem_unregister(filesystem_t* fs);
-
-/**
- * @brief Gets a filesystem by name.
+ * The provided class should implement a `IRP_MJ_OPEN` handler that creates a new volume.
  *
  * @param name The name of the filesystem.
- * @return On success, the filesystem. On failure, returns `NULL`.
+ * @param cls The vnode class to use for the filesystems clone file.
+ * @return On success, the new filesystem. On failure, `NULL`.
  */
-filesystem_t* filesystem_get_by_name(const char* name);
-
-/**
- * @brief Gets a filesystem by path.
- *
- * The path should point to a directory in the `fs` sysfs directory.
- *
- * @param path The path to check.
- * @param process The process whose namespace to use.
- * @return On success, the filesystem. On failure, returns `NULL`.
- */
-filesystem_t* filesystem_get_by_path(const char* path, process_t* process);
+filesystem_t* filesystem_register(const char* name, const vnode_class_t* cls);
 
 /**
  * @brief Helper function for iterating over options passed to a filesystem mount operation.

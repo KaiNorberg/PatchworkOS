@@ -47,7 +47,7 @@ image_t* image_new(display_t* disp, const char* path)
     }
 
     uint64_t fileSize;
-    ioseek(file, WHENCE_END, 0, &fileSize);
+    ioseek(file, IOSEEK_END, 0, &fileSize);
 
     if (fileSize != header.width * header.height * sizeof(pixel_t) + sizeof(header) || header.magic != FBMP_MAGIC)
     {

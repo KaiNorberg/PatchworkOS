@@ -640,9 +640,9 @@ static void dwm_mouse_read(void)
     int64_t y = 0;
     while (true)
     {
-        events_t revents;
-        iopoll(mouse, EVENTS_READ, CLOCKS_NOW, &revents);
-        if (!(revents & EVENTS_READ))
+        iopoll_t revents;
+        iopoll(mouse, IOEVENT_READ, CLOCKS_NOW, &revents);
+        if (!(revents & IOEVENT_READ))
         {
             break;
         }
@@ -707,13 +707,13 @@ static void dwm_poll_ctx_update(void)
         pollCtx = newCtx;
     }
     pollCtx->data.fd = data;
-    pollCtx->data.events = EVENTS_READ;
+    pollCtx->data.events = IOEVENT_READ;
     pollCtx->data.revents = 0;
     pollCtx->kbd.fd = kbd;
-    pollCtx->kbd.events = EVENTS_READ;
+    pollCtx->kbd.events = IOEVENT_READ;
     pollCtx->kbd.revents = 0;
     pollCtx->mouse.fd = mouse;
-    pollCtx->mouse.events = EVENTS_READ;
+    pollCtx->mouse.events = IOEVENT_READ;
     pollCtx->mouse.revents = 0;
 
     uint64_t i = 0;
@@ -722,7 +722,7 @@ static void dwm_poll_ctx_update(void)
     {
         iopoll_t* fd = &pollCtx->clients[i++];
         fd->fd = client->fd;
-        fd->events = EVENTS_READ;
+        fd->events = IOEVENT_READ;
         fd->revents = 0;
     }
 }
@@ -767,18 +767,18 @@ static void dwm_update(void)
 {
     dwm_poll();
     // printf("dwm: updating pid=%d\n", proc_current());
-    if (pollCtx->data.revents & EVENTS_READ)
+    if (pollCtx->data.revents & IOEVENT_READ)
     {
         // printf("dwm: accepting new client\n");
         dwm_client_accept();
         return; // The clients array is now invalid, so we have to update it.
     }
-    if (pollCtx->kbd.revents & EVENTS_READ)
+    if (pollCtx->kbd.revents & IOEVENT_READ)
     {
         // printf("dwm: reading keyboard input\n");
         dwm_kbd_read();
     }
-    if (pollCtx->mouse.revents & EVENTS_READ)
+    if (pollCtx->mouse.revents & IOEVENT_READ)
     {
         // printf("dwm: reading mouse input\n");
         dwm_mouse_read();
@@ -790,17 +790,17 @@ static void dwm_update(void)
     LIST_FOR_EACH_SAFE(client, temp, &clients, entry)
     {
         iopoll_t* fd = &pollCtx->clients[i++];
-        if (fd->revents & EVENTS_HUP)
+        if (fd->revents & IOEVENT_HUP)
         {
             // printf("dwm: client %d hung up\n", client->fd);
             dwm_client_disconnect(client);
         }
-        else if (fd->revents & EVENTS_ERROR)
+        else if (fd->revents & IOEVENT_ERROR)
         {
             // printf("dwm: client %d error\n", client->fd);
             dwm_client_disconnect(client);
         }
-        else if (fd->revents & EVENTS_READ)
+        else if (fd->revents & IOEVENT_READ)
         {
             if (IS_ERR(client_receive_cmds(client)))
             {

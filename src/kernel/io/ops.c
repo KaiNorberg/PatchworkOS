@@ -256,7 +256,7 @@ static status_t io_op_query(irp_t* irp)
         return status;
     }
 
-    status = mdl_add(mdl, &process->space, irp->sqe.info, sizeof(file_info_t));
+    status = mdl_add(mdl, &process->space, irp->sqe.info, sizeof(vinfo_t));
     if (IS_ERR(status))
     {
         return status;

@@ -5,7 +5,7 @@
 #include <kernel/acpi/devices.h>
 #include <kernel/acpi/tables.h>
 
-#include <kernel/fs/mount.h>
+#include <kernel/fs/binding.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/init/boot_info.h>

@@ -4,7 +4,7 @@
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/filesystem.h>
-#include <kernel/fs/mount.h>
+#include <kernel/fs/binding.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vfs.h>
@@ -164,13 +164,13 @@ static status_t tmpfs_seek(irp_t* irp)
     size_t pos;
     switch (frame->seek.origin)
     {
-    case WHENCE_START:
+    case IOSEEK_START:
         pos = frame->seek.offset;
         break;
-    case WHENCE_CUR:
+    case IOSEEK_CUR:
         pos = file->pos + frame->seek.offset;
         break;
-    case WHENCE_END:
+    case IOSEEK_END:
         pos = file->vnode->size + frame->seek.offset;
         break;
     default:

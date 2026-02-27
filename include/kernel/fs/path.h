@@ -10,7 +10,7 @@
 #include <sys/status.h>
 
 typedef struct path path_t;
-typedef struct mount mount_t;
+typedef struct mount binding_t;
 typedef struct dentry dentry_t;
 typedef struct namespace namespace_t;
 typedef struct file file_t;
@@ -165,7 +165,7 @@ typedef enum mode
  */
 typedef struct path
 {
-    mount_t* mount;
+    binding_t* mount;
     dentry_t* dentry;
 } path_t;
 
@@ -221,7 +221,7 @@ typedef struct path
  * @param mount The mount to set.
  * @param dentry The dentry to set.
  */
-static inline void path_set(path_t* path, mount_t* mount, dentry_t* dentry)
+static inline void path_set(path_t* path, binding_t* mount, dentry_t* dentry)
 {
     if (dentry != NULL)
     {
@@ -292,7 +292,7 @@ static inline void path_put(path_t* path)
 typedef struct path_state
 {
     dentry_t* dentry;      ///< The current dentry in the walk.
-    mount_t* mount;        ///< The current mount in the walk.
+    binding_t* mount;        ///< The current mount in the walk.
     char* path;            ///< The full path string buffer, not `NULL` terminated.
     uint64_t pathLength;   ///< The length of the path string.
     size_t pathCapacity;   ///< The capacity of the path string buffer.
@@ -312,7 +312,7 @@ typedef struct path_state
  *
  * @param state The path state to initialize.
  */
-static inline void path_state_init(path_state_t* state, dentry_t* dentry, mount_t* mount, char* path, size_t pathLength,
+static inline void path_state_init(path_state_t* state, dentry_t* dentry, binding_t* mount, char* path, size_t pathLength,
     size_t pathCapacity, status_t (*done)(irp_t* irp, struct path_state* state, file_t* file))
 {
     state->dentry = dentry;

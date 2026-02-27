@@ -124,7 +124,7 @@ space_t* vmm_kernel_space_get(void)
     return &kernelSpace;
 }
 
-pml_flags_t vmm_iomem_to_flags(iomem_t mem)
+pml_flags_t vmm_iomem_to_flags(iomap_t mem)
 {
     pml_flags_t pml = 0;
     if (mem & IOMAP_READ)
@@ -703,7 +703,7 @@ void vmm_tlb_shootdown(space_t* space, void* virtAddr, size_t pageAmount)
     }
 }
 
-SYSCALL_DEFINE(SYS_PROTECT, void* address, size_t length, iomem_t prot)
+SYSCALL_DEFINE(SYS_PROTECT, void* address, size_t length, iomap_t prot)
 {
     process_t* process = process_current();
     space_t* space = &process->space;

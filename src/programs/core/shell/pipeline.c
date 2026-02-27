@@ -85,7 +85,7 @@ status_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
             cmd->argc = currentArg;
 
             fd_t pipe;
-            status_t status = open(&pipe, "/dev/pipe/new");
+            status_t status = open(&pipe, "/dev/pipe/clonr");
             if (IS_ERR(status))
             {
                 printf("shell: unable to open pipe (%s)\n", st_code_str(ST_CODE(status)));

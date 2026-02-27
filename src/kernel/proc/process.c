@@ -281,7 +281,7 @@ void process_kill(process_t* process, const char* result)
             irp_complete(irp, status);
             break;
         case IRP_MJ_POLL:
-            irp->result = EVENTS_READ;
+            irp->result = IOEVENT_READ;
             irp_complete(irp, OK);
             break;
         default:

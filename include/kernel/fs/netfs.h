@@ -228,7 +228,7 @@ typedef struct netfs_family
      * @param queue Pointer to store the wait queue to block on.
      * @return An appropriate status value.
      */
-    status_t (*poll)(socket_t* sock, events_t* revents, wait_queue_t** queue);
+    status_t (*poll)(socket_t* sock, iopoll_t* revents, wait_queue_t** queue);
     list_entry_t listEntry;
     list_t sockets;
     rwmutex_t mutex;

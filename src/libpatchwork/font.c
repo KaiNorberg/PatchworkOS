@@ -30,8 +30,8 @@ font_t* font_new(display_t* disp, const char* family, const char* weight, uint64
     }
 
     uint64_t fileSize;
-    ioseek(file, WHENCE_END, 0, &fileSize);
-    ioseek(file, WHENCE_START, 0, NULL);
+    ioseek(file, IOSEEK_END, 0, &fileSize);
+    ioseek(file, IOSEEK_START, 0, NULL);
 
     if (fileSize <= sizeof(font_t))
     {

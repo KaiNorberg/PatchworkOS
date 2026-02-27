@@ -102,7 +102,7 @@ static status_t perf_cpu_read(irp_t* irp)
 
 static vnode_class_t cpuClass = {
     .name = "perf cpu",
-    .type = FILE_TYPE_DEVICE,
+    .type = VTYPE_DEVICE,
     VNODE_HANDLERS([IRP_MJ_READ] = perf_cpu_read),
 };
 
@@ -129,13 +129,15 @@ static status_t perf_mem_read(irp_t* irp)
     return status;
 }
 
-static vnode_class_t memClass = {.name = "perf mem",
-    .type = FILE_TYPE_DEVICE,
-    VNODE_HANDLERS([IRP_MJ_READ] = perf_mem_read)};
+static vnode_class_t memClass = {
+    .name = "perf mem",
+    .type = VTYPE_DEVICE,
+    VNODE_HANDLERS([IRP_MJ_READ] = perf_mem_read),
+};
 
 static vnode_class_t rootClass = {
     .name = "perf root",
-    .type = FILE_TYPE_DIRECTORY,
+    .type = VTYPE_DIRECTORY,
     VNODE_DIR_HANDLERS(),
 };
 

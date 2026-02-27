@@ -50,7 +50,7 @@ static status_t kbd_name_read(irp_t* irp)
 
 static vnode_class_t nameClass = {
     .name = "kbd name",
-    .type = FILE_TYPE_DEVICE,
+    .type = VTYPE_DEVICE,
     VNODE_HANDLERS([IRP_MJ_READ] = kbd_name_read),
 };
 
@@ -142,7 +142,7 @@ static status_t kbd_events_poll(irp_t* irp)
 
     if (fifo_bytes_readable(&client->fifo) > 0)
     {
-        irp->result = EVENTS_READ;
+        irp->result = IOEVENT_READ;
         return OK;
     }
 
@@ -150,7 +150,7 @@ static status_t kbd_events_poll(irp_t* irp)
 }
 
 static vnode_class_t eventsClass = {.name = "kbd events",
-    .type = FILE_TYPE_DEVICE,
+    .type = VTYPE_DEVICE,
     .close = kbd_events_close,
     VNODE_HANDLERS([IRP_MJ_OPEN] = kbd_events_open, [IRP_MJ_READ] = kbd_events_read, [IRP_MJ_POLL] = kbd_events_poll)};
 
@@ -173,11 +173,11 @@ static void kbd_dir_cleanup(vnode_t* vnode)
 }
 
 static vnode_class_t dirClass = {.name = "kbd dir",
-    .type = FILE_TYPE_DIRECTORY,
+    .type = VTYPE_DIRECTORY,
     .cleanup = kbd_dir_cleanup,
     VNODE_DIR_HANDLERS()};
 
-static vnode_class_t rootClass = {.name = "kbd root", .type = FILE_TYPE_DIRECTORY, VNODE_DIR_HANDLERS()};
+static vnode_class_t rootClass = {.name = "kbd root", .type = VTYPE_DIRECTORY, VNODE_DIR_HANDLERS()};
 
 status_t kbd_register(kbd_t* kbd)
 {

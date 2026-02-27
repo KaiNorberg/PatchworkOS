@@ -52,7 +52,7 @@ status_t iopolln(iopoll_t* fds, size_t nfds, clock_t timeout, size_t* count)
 
         if (IS_INFO(cqes[i].status))
         {
-            poll->revents = (events_t)cqes[i].result;
+            poll->revents = (iopoll_t)cqes[i].result;
             if (poll->revents != 0)
             {
                 events++;
@@ -64,7 +64,7 @@ status_t iopolln(iopoll_t* fds, size_t nfds, clock_t timeout, size_t* count)
         }
         else
         {
-            poll->revents = EVENTS_ERROR;
+            poll->revents = IOEVENT_ERROR;
             events++;
         }
     }

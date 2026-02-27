@@ -2,7 +2,7 @@
 
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file_table.h>
-#include <kernel/fs/mount.h>
+#include <kernel/fs/binding.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vnode.h>
 #include <kernel/fs/volume.h>
@@ -37,7 +37,7 @@ static void file_free(file_t* file)
 
 static cache_t cache = CACHE_CREATE(cache, "file", sizeof(file_t), CACHE_LINE, NULL, NULL);
 
-file_t* file_new(dentry_t* dentry, mount_t* mount, mode_t mode)
+file_t* file_new(dentry_t* dentry, binding_t* mount, mode_t mode)
 {
     file_t* file = cache_alloc(&cache);
     if (file == NULL)

@@ -15,7 +15,7 @@ static void _populate_std_descriptors(void)
 {
     for (fd_t i = 0; i <= STDERR_FILENO; i++)
     {
-        status_t status = ioseek(i, WHENCE_CUR, 0, NULL);
+        status_t status = ioseek(i, IOSEEK_CUR, 0, NULL);
         if (!IS_CODE(status, BADFD))
         {
             continue;

@@ -7,7 +7,7 @@
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file_table.h>
 #include <kernel/fs/key.h>
-#include <kernel/fs/mount.h>
+#include <kernel/fs/binding.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vnode.h>
 #include <kernel/io/io.h>
@@ -307,7 +307,7 @@ status_t vfs_write(file_t* file, const void* buffer, size_t count, size_t* out)
     return status;
 }
 
-status_t vfs_seek(file_t* file, ssize_t offset, whence_t origin, size_t* out)
+status_t vfs_seek(file_t* file, ssize_t offset, ioseek_t origin, size_t* out)
 {
     if (file == NULL)
     {

@@ -27,14 +27,13 @@
  *
  * ## Creating Shared Memory
  *
- * Shared memory objects are created using the `/dev/shmem/new` file. Opening this file using `open()` will create a new
+ * Shared memory objects are created using the `/dev/shmem/clone` file. Opening this file will create a new
  * anonymous shared memory object and return a file descriptor to it.
  *
  * ## Using Shared Memory
  *
- * Shared memory objects can be mapped to the current process's address space using the `mmap()` system call. The first
- * call to `mmap()` will decide the size of the shared memory object. Subsequent calls to `mmap()` will map the existing
- * shared memory object.
+ * Shared memory objects can be mapped to the current process's address space. The first mapping operation will decide
+ * the size of the shared memory object. Subsequent mapping will map the existing shared memory object.
  *
  * @{
  */
@@ -50,8 +49,8 @@ typedef struct
     lock_t lock;
 } shmem_object_t;
 
-static dentry_t* shmemDir = NULL;
-static dentry_t* newFile = NULL;
+static dentry_t* dir = NULL;
+static dentry_t* clone = NULL;
 
 static void shmem_object_free(shmem_object_t* shmem)
 {
@@ -258,18 +257,18 @@ static vnode_class_t dirClass = {
 
 static status_t shmem_init(void)
 {
-    shmemDir = devfs_dentry_new(NULL, "shmem", &dirClass, NULL);
-    if (shmemDir == NULL)
+    dir = devfs_dentry_new(NULL, "shmem", &dirClass, NULL);
+    if (dir == NULL)
     {
         LOG_ERR("failed to create /dev/shmem directory");
         return ERR(DRIVER, IO);
     }
 
-    newFile = devfs_dentry_new(shmemDir, "new", &fileClass, NULL);
-    if (newFile == NULL)
+    clone = devfs_dentry_new(dir, "clone", &fileClass, NULL);
+    if (clone == NULL)
     {
-        UNREF(shmemDir);
-        LOG_ERR("failed to create /dev/shmem/new file");
+        UNREF(dir);
+        LOG_ERR("failed to create /dev/shmem/clone file");
         return ERR(DRIVER, IO);
     }
 
@@ -278,10 +277,10 @@ static status_t shmem_init(void)
 
 static void shmem_deinit(void)
 {
-    UNREF(newFile);
-    newFile = NULL;
-    UNREF(shmemDir);
-    shmemDir = NULL;
+    UNREF(clone);
+    clone = NULL;
+    UNREF(dir);
+    dir = NULL;
 }
 
 /** @} */

@@ -1,6 +1,6 @@
 #include <sys/io.h>
 
-status_t ioqueryp(fd_t fd, const char* path, file_info_t* info)
+status_t ioqueryp(fd_t fd, const char* path, vinfo_t* info)
 {
     if (info == NULL)
     {

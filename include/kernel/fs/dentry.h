@@ -15,7 +15,6 @@
 
 typedef struct dentry dentry_t;
 typedef struct vnode vnode_t;
-typedef struct volume volume_t;
 
 /**
  * @brief Directory entry.
@@ -76,7 +75,7 @@ typedef uint64_t dentry_id_t;
  * @param dentry The dentry to check.
  * @return true if the dentry is a regular file, false otherwise or if the dentry is negative.
  */
-#define DENTRY_IS_REGULAR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == FILE_TYPE_REGULAR)
+#define DENTRY_IS_REGULAR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == VTYPE_REGULAR)
 
 /**
  * @brief Check if the vnode associated with a dentry is a directory.
@@ -84,7 +83,7 @@ typedef uint64_t dentry_id_t;
  * @param dentry The dentry to check.
  * @return true if the dentry is a directory, false otherwise or if the dentry is negative.
  */
-#define DENTRY_IS_DIR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == FILE_TYPE_DIRECTORY)
+#define DENTRY_IS_DIR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == VTYPE_DIRECTORY)
 
 /**
  * @brief Check if the vnode associated with a dentry is a symbolic link.
@@ -92,7 +91,7 @@ typedef uint64_t dentry_id_t;
  * @param dentry The dentry to check.
  * @return true if the dentry is a symbolic link, false otherwise or if the dentry is negative.
  */
-#define DENTRY_IS_SYMLINK(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == FILE_TYPE_SYMLINK)
+#define DENTRY_IS_SYMLINK(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == VTYPE_SYMLINK)
 
 /**
  * @brief Directory entry structure.
@@ -110,7 +109,6 @@ typedef struct dentry
     dentry_t* parent;    ///< The parent dentry, will be itself if this is the root dentry, immutable after creation.
     list_entry_t siblingEntry;
     list_t children;
-    volume_t* volume;
     map_entry_t mapEntry;         ///< Entry in the dentry cache hash map.
     _Atomic(uint64_t) mountCount; ///< Number of mounts targeting this dentry.
     rcu_entry_t rcu;              ///< RCU entry for deferred cleanup.

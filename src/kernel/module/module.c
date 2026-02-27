@@ -414,8 +414,8 @@ static status_t module_file_read(module_file_t* outFile, const path_t* dirPath, 
     UNREF_DEFER(file);
 
     size_t fileSize;
-    vfs_seek(file, 0, WHENCE_END, &fileSize);
-    vfs_seek(file, 0, WHENCE_START, NULL);
+    vfs_seek(file, 0, IOSEEK_END, &fileSize);
+    vfs_seek(file, 0, IOSEEK_START, NULL);
 
     uint8_t* fileData = malloc(fileSize);
     if (fileData == NULL)
@@ -628,7 +628,7 @@ static status_t module_cache_process_entry(const char* name, file_t* dir, proces
         return OK;
     }
 
-    bool isRegular = (file->vnode->cls->type == FILE_TYPE_REGULAR);
+    bool isRegular = (file->vnode->cls->type == VTYPE_REGULAR);
     UNREF(file);
 
     if (!isRegular)

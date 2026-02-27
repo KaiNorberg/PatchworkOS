@@ -119,7 +119,7 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
  * @param Unused
  * @param Unused
  * @param Unused
- * @result The events that occurred stored as a `events_t` value.
+ * @result The events that occurred stored as a `iopoll_t` value.
  */
 #define IOOP_POLL 3
 
@@ -127,7 +127,7 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
  * @brief Seek operation.
  * @param fd The file descriptor to seek.
  * @param Unused
- * @param origin The origin of the seek operation (e.g., `WHENCE_START`, `WHENCE_CUR`, `WHENCE_END`).
+ * @param origin The origin of the seek operation (e.g., `IOSEEK_START`, `IOSEEK_CUR`, `IOSEEK_END`).
  * @param offset The offset to seek to.
  * @param Unused
  * @result The new file position.
@@ -188,7 +188,7 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
 /**
  * @brief File attribute operation.
  * @param fd The file descriptor.
- * @param attr The attribute to get or set (e.g., FILE_GET_SIZE, FILE_SET_SIZE).
+ * @param attr The attribute to get or set (e.g., VATTR_GET_SIZE, VATTR_SET_SIZE).
  * @param value The value to set (ignored for getters).
  * @param Unused
  * @param Unused
@@ -199,7 +199,7 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
 /**
  * @brief File query operation.
  * @param fd The file descriptor.
- * @param info Pointer to the `file_info_t` structure to fill.
+ * @param info Pointer to the `vinfo_t` structure to fill.
  * @param Unused
  * @param Unused
  * @param Unused
@@ -243,7 +243,7 @@ typedef uint64_t iocmd_t;
 #define IOCMD(...) \
     _IOCMD_ANY(__VA_ARGS__, _IOCMD_8, _IOCMD_7, _IOCMD_6, _IOCMD_5, _IOCMD_4, _IOCMD_3, _IOCMD_2, _IOCMD_1)(__VA_ARGS__)
 
-typedef uint64_t iomem_t;    ///< I/O memory map flags.
+typedef uint64_t iomap_t;    ///< I/O memory map flags.
 #define IOMAP_NONE (0)       ///< No flags.
 #define IOMAP_READ (1 << 0)  ///< Map for reading.
 #define IOMAP_WRITE (1 << 1) ///< Map for writing.
@@ -252,6 +252,18 @@ typedef uint64_t iomem_t;    ///< I/O memory map flags.
 typedef uint64_t iocancel_t;  ///< Cancel operation flags.
 #define IOCANCEL_ALL (1 << 0) ///< Cancel all matching requests.
 #define IOCANCEL_ANY (1 << 1) ///< Match any user data.
+
+typedef uint64_t ioseek_t;           ///< Seek origin type.
+#define IOSEEK_START ((ioseek_t)0)   ///< Seek from the beginning of the file.
+#define IOSEEK_CURRENT ((ioseek_t)1) ///< Seek from the current position.
+#define IOSEEK_END ((ioseek_t)2)     ///< Seek from the end of the file.
+
+typedef uint64_t ioevents_t;    ///< Events type.
+#define IOEVENT_READ (1 << 0)  ///< File descriptor is ready to be read from.
+#define IOEVENT_WRITE (1 << 1) ///< File descriptor is ready to be written to.
+#define IOEVENT_ERROR (1 << 2) ///< File descriptor caused an error.
+#define IOEVENT_HUP (1 << 3)   ///< File descriptor is closed.
+#define IOEVENT_NVAL (1 << 4)  ///< Invalid file descriptor.
 
 /**
  * @brief I/O vector structure.
@@ -337,18 +349,18 @@ typedef struct iosqe
     union {
         uint64_t arg1;
         const iovec_t* vector;
-        events_t events;
+        ioevents_t events;
         iocancel_t cancel;
         iocmd_t command;
         void* address;
         const char* path;
-        file_attr_t attr;
-        file_info_t* info;
+        vattr_t attr;
+        vinfo_t* info;
     };
     union {
         uint64_t arg2;
         size_t count;
-        whence_t origin;
+        ioseek_t origin;
         uint64_t value;
     };
     union {
@@ -357,7 +369,7 @@ typedef struct iosqe
     };
     union {
         uint64_t arg4;
-        iomem_t mem;
+        iomap_t map;
     };
 } iosqe_t;
 
@@ -446,8 +458,8 @@ typedef struct ioring
 typedef struct iopoll
 {
     fd_t fd;          ///< The file descriptor to poll.
-    events_t events;  ///< The events to wait for.
-    events_t revents; ///< The events that occurred.
+    ioevents_t events;  ///< The events to wait for.
+    ioevents_t revents; ///< The events that occurred.
 } iopoll_t;
 
 #ifndef _KERNEL_
@@ -618,7 +630,7 @@ static inline void ioprep_write(iosqe_t* iosqe, iosqe_flags_t flags, clock_t tim
  * @see `IOOP_POLL`
  */
 static inline void ioprep_poll(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
-    events_t events)
+    ioevents_t events)
 {
     *iosqe = IOSQE_CREATE(IOOP_POLL, flags, timeout, data);
     iosqe->fd = fd;
@@ -631,7 +643,7 @@ static inline void ioprep_poll(iosqe_t* iosqe, iosqe_flags_t flags, clock_t time
  * @see `IOOP_SEEK`
  */
 static inline void ioprep_seek(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
-    whence_t origin, ssize_t offset)
+    ioseek_t origin, ssize_t offset)
 {
     *iosqe = IOSQE_CREATE(IOOP_SEEK, flags, timeout, data);
     iosqe->fd = fd;
@@ -645,14 +657,14 @@ static inline void ioprep_seek(iosqe_t* iosqe, iosqe_flags_t flags, clock_t time
  * @see `IOOP_MAP`
  */
 static inline void ioprep_map(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
-    void* address, size_t count, ssize_t offset, iomem_t mem)
+    void* address, size_t count, ssize_t offset, iomap_t map)
 {
     *iosqe = IOSQE_CREATE(IOOP_MAP, flags, timeout, data);
     iosqe->fd = fd;
     iosqe->address = address;
     iosqe->count = count;
     iosqe->offset = offset;
-    iosqe->mem = mem;
+    iosqe->map = map;
 }
 
 /**
@@ -697,7 +709,7 @@ static inline void ioprep_remove(iosqe_t* iosqe, iosqe_flags_t flags, clock_t ti
  * @see `IOOP_ATTR`
  */
 static inline void ioprep_attr(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
-    file_attr_t attr, uint64_t value)
+    vattr_t attr, uint64_t value)
 {
     *iosqe = IOSQE_CREATE(IOOP_ATTR, flags, timeout, data);
     iosqe->fd = fd;
@@ -711,7 +723,7 @@ static inline void ioprep_attr(iosqe_t* iosqe, iosqe_flags_t flags, clock_t time
  * @see `IOOP_QUERY`
  */
 static inline void ioprep_query(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
-    file_info_t* info)
+    vinfo_t* info)
 {
     *iosqe = IOSQE_CREATE(IOOP_QUERY, flags, timeout, data);
     iosqe->fd = fd;
@@ -929,17 +941,17 @@ status_t ioremovep(fd_t fd, const char* path);
  * @param value Pointer to the value to set or retrieve.
  * @return An appropriate status value.
  */
-status_t ioattrp(fd_t fd, const char* path, file_attr_t attr, uint64_t* value);
+status_t ioattrp(fd_t fd, const char* path, vattr_t attr, uint64_t* value);
 
 /**
  * @brief Synchronous wrapper for querying a file directly using a path.
  *
  * @param fd The file descriptor to open the file relative to, or `FDCWD` to open from the current working directory.
  * @param path The path to the file.
- * @param info Pointer to the `file_info_t` structure to fill.
+ * @param info Pointer to the `vinfo_t` structure to fill.
  * @return An appropriate status value.
  */
-status_t ioqueryp(fd_t fd, const char* path, file_info_t* info);
+status_t ioqueryp(fd_t fd, const char* path, vinfo_t* info);
 
 /**
  * @brief Synchronous wrapper for a poll operation.
@@ -951,7 +963,7 @@ status_t ioqueryp(fd_t fd, const char* path, file_info_t* info);
  * @param revents Output pointer for the events that occurred, can be `NULL`.
  * @return An appropriate status value.
  */
-static inline status_t iopoll(fd_t fd, events_t events, clock_t timeout, events_t* revents)
+static inline status_t iopoll(fd_t fd, ioevents_t events, clock_t timeout, ioevents_t* revents)
 {
     iosqe_t sqe;
     iocqe_t cqe;
@@ -959,7 +971,7 @@ static inline status_t iopoll(fd_t fd, events_t events, clock_t timeout, events_
     iosync(&sqe, &cqe);
     if (revents != NULL)
     {
-        *revents = (events_t)cqe.result;
+        *revents = (ioevents_t)cqe.result;
     }
     return cqe.status;
 }
@@ -985,7 +997,7 @@ status_t iopolln(iopoll_t* fds, size_t nfds, clock_t timeout, size_t* count);
  * @param pos Output pointer for the new file position, can be `NULL`.
  * @return An appropriate status value.
  */
-static inline status_t ioseek(fd_t fd, whence_t origin, ssize_t offset, clock_t timeout, size_t* pos)
+static inline status_t ioseek(fd_t fd, ioseek_t origin, ssize_t offset, clock_t timeout, size_t* pos)
 {
     iosqe_t sqe;
     iocqe_t cqe;
@@ -1010,7 +1022,7 @@ static inline status_t ioseek(fd_t fd, whence_t origin, ssize_t offset, clock_t 
  * @param timeout Timeout for the operation.
  * @return An appropriate status value.
  */
-static inline status_t iomap(fd_t fd, void** address, size_t count, ssize_t offset, iomem_t mem, clock_t timeout)
+static inline status_t iomap(fd_t fd, void** address, size_t count, ssize_t offset, iomap_t mem, clock_t timeout)
 {
     if ((void*)address == NULL)
     {
@@ -1048,7 +1060,7 @@ static inline status_t iounmap(void* address, size_t length)
  * unmapped.
  * @return An appropriate status value.
  */
-static inline status_t ioprotect(void* address, size_t length, iomem_t map)
+static inline status_t ioprotect(void* address, size_t length, iomap_t map)
 {
     return syscall3(SYS_PROTECT, NULL, (uintptr_t)address, length, map);
 }
@@ -1126,7 +1138,7 @@ static inline status_t ioremove(fd_t fd, clock_t timeout)
  * @param timeout Timeout for the operation.
  * @result The requested value or `0` if setting a value.
  */
-static inline status_t ioattr(fd_t fd, file_attr_t attr, uint64_t* value, clock_t timeout)
+static inline status_t ioattr(fd_t fd, vattr_t attr, uint64_t* value, clock_t timeout)
 {
     iosqe_t sqe;
     iocqe_t cqe;
@@ -1140,11 +1152,11 @@ static inline status_t ioattr(fd_t fd, file_attr_t attr, uint64_t* value, clock_
  * @brief Synchronous wrapper for a query operation.
  *
  * @param fd The file descriptor.
- * @param info Pointer to the `file_info_t` structure to fill.
+ * @param info Pointer to the `vinfo_t` structure to fill.
  * @param timeout Timeout for the operation.
  * @result The status of the operation.
  */
-static inline status_t ioquery(fd_t fd, file_info_t* info, clock_t timeout)
+static inline status_t ioquery(fd_t fd, vinfo_t* info, clock_t timeout)
 {
     iosqe_t sqe;
     iocqe_t cqe;

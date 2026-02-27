@@ -185,8 +185,8 @@ Using the synchronous I/O wrappers in PatchworkOS, we would write:
 fd_t in;
 fd_t out;
 
-iowalk(FDCWD, "/dev/pipe/new", &in);
-iowalk(FDCWD, "/dev/pipe/new", &out);
+iowalk(FDCWD, "/dev/pipe/clone", &in);
+iowalk(FDCWD, "/dev/pipe/clone", &out);
 
 proc_t proc;
 const char* argv[] = {"/path/to/program", NULL};
@@ -195,7 +195,7 @@ proc_create(&argv, PROC_SUSPENDED, &proc);
 iostorep(FDCWD, IOFMT("/proc/%llu/ctl", proc), IOFMT("dup 0 %llu; dup 1 %llu; close %llu; close %llu; start", in, out, in, out));
 ```
 
-We first create two pipes by opening the special file `/dev/pipe/new` twice.
+We first create two pipes by opening the special file `/dev/pipe/clone` twice.
 
 Then we create a new process in a suspended state, this means that the process is created but is stuck blocking before it can load its executable, allowing us to set up its standard I/O before it starts executing.
 
@@ -206,7 +206,7 @@ As a side note, we could optimize the pipe creation by walking to the second pip
 ```c
 fd_t in;
 fd_t out;
-iowalk(FDCWD, "/dev/pipe/new", &in);
+iowalk(FDCWD, "/dev/pipe/clone", &in);
 iowalk(in, ".", &out);
 ```
 

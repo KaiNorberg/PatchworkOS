@@ -197,7 +197,7 @@ typedef uint16_t irp_major_t; ///< IRP major function number type.
 
 /**
  * @brief Poll operation.
- * @result The events that occurred stored as a `events_t` value.
+ * @result The events that occurred stored as a `iopoll_t` value.
  */
 #define IRP_MJ_POLL 2
 
@@ -330,12 +330,12 @@ typedef struct irp_frame
         } write;
         struct
         {
-            events_t events; ///< The events to poll for.
+            iopoll_t events; ///< The events to poll for.
         } poll;
         struct
         {
             ssize_t offset;  ///< The offset to seek to.
-            whence_t origin; ///< The origin of the seek operation.
+            ioseek_t origin; ///< The origin of the seek operation.
         } seek;
         struct
         {
@@ -363,12 +363,12 @@ typedef struct irp_frame
         } remove;
         struct
         {
-            file_attr_t attr; ///< The attribute to get or set.
+            vattr_t attr; ///< The attribute to get or set.
             uint64_t value;   ///< The value to set.
         } attr;
         struct
         {
-            mdl_t* buffer; ///< The buffer to write the `file_info_t` into.
+            mdl_t* buffer; ///< The buffer to write the `vinfo_t` into.
         } query;
         uint64_t args[IRP_ARGS_MAX]; ///< Generic arguments.
     };
@@ -778,7 +778,7 @@ static inline void irp_prep_write(irp_t* irp, mdl_t* buffer, ssize_t offset)
  *
  * @see `IRP_MJ_POLL`
  */
-static inline void irp_prep_poll(irp_t* irp, events_t events)
+static inline void irp_prep_poll(irp_t* irp, iopoll_t events)
 {
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);
@@ -794,7 +794,7 @@ static inline void irp_prep_poll(irp_t* irp, events_t events)
  *
  * @see `IRP_MJ_SEEK`
  */
-static inline void irp_prep_seek(irp_t* irp, ssize_t offset, whence_t origin)
+static inline void irp_prep_seek(irp_t* irp, ssize_t offset, ioseek_t origin)
 {
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);
@@ -895,7 +895,7 @@ static inline void irp_prep_remove(irp_t* irp, dentry_t* dentry)
  *
  * @see `IRP_MJ_ATTR`
  */
-static inline void irp_prep_attr(irp_t* irp, file_attr_t attr, uint64_t value)
+static inline void irp_prep_attr(irp_t* irp, vattr_t attr, uint64_t value)
 {
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);

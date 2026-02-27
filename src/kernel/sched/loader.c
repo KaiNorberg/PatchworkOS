@@ -59,8 +59,8 @@ void loader_exec(void)
     }
 
     size_t fileSize;
-    vfs_seek(file, 0, WHENCE_END, &fileSize);
-    vfs_seek(file, 0, WHENCE_START, NULL);
+    vfs_seek(file, 0, IOSEEK_END, &fileSize);
+    vfs_seek(file, 0, IOSEEK_START, NULL);
 
     fileData = malloc(fileSize);
     if (fileData == NULL)

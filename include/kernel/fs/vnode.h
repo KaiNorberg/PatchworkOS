@@ -25,6 +25,8 @@ typedef struct dentry dentry_t;
  *
  * @todo Update the virtual node documentation for the new class and IRP stuff.
  *
+ * @todo Add system for allocating vnodes of different sizes to replace the `data` pointer.
+ *
  * @{
  */
 
@@ -41,7 +43,7 @@ typedef struct dentry dentry_t;
 typedef struct vnode_class
 {
     const char* name;                   ///< The name of the class, used for debugging.
-    file_type_t type;                   ///< The type of the vnode.
+    vtype_t type;                   ///< The type of the vnode.
     void (*close)(file_t* file);        ///< File destructor. @todo Replace with a IRP handler.
     irp_handler_t handlers[IRP_MJ_MAX]; ///< IRP handlers indexed by major function number.
     /**
@@ -73,11 +75,10 @@ typedef struct vnode_class
 typedef struct vnode
 {
     ref_t ref;
-    void* data;    ///< Filesystem defined data.
-    uint64_t size; ///< Used for convenience by certain filesystems, does not represent the file size.
-    volume_t* volume;
+    void* data; ///< Filesystem defined data.
+    fsvol_t vol; ///< The id of the volume the vnode belongs to.
+    vnum_t num; ///< The number of the vnode, should be unique within the volume.
     const vnode_class_t* cls;
-    rcu_entry_t rcu;
     mutex_t mutex;
 } vnode_t;
 
@@ -89,11 +90,12 @@ typedef struct vnode
  *
  * There is no `vnode_free()` instead use `UNREF()`.
  *
- * @param volume The volume the vnode belongs to.
- * @param cls The vnode class defining I/O its behaviour.
+ * @param vol The id of the volume the vnode belongs to.
+ * @param cls The vnode class defining its behaviour.
+ * @param mum The number of the vnode, should be unique within the volume.
  * @return On success, the new vnode. On failure, returns `NULL`.
  */
-vnode_t* vnode_new(volume_t* volume, const vnode_class_t* cls);
+vnode_t* vnode_new(fsvol_t vol, const vnode_class_t* cls, vnum_t num);
 
 /**
  * @brief Send an IRP to a specified vnode.
@@ -158,5 +160,17 @@ status_t vnode_generic_dir_read(irp_t* irp);
         [IRP_MJ_ATTR] = vnode_generic_attr, \
         [IRP_MJ_QUERY] = vnode_generic_query, \
         __VA_ARGS__}
+
+/**
+ * @brief Generate a unique vnode number based on the parent vnode and the name of the file.
+ *
+ * Intended as a helper for filesystems that do not have some form of number that uniquely identifies a file, for example, devfs.
+ * 
+ * @param parent The vnode number of the parent directory.
+ * @param name The name of the file.
+ * @param length The length of the name.
+ * @return The generated vnode number.
+ */
+vnum_t vnum_hash(vnum_t parent, const char* name, size_t length);
 
 /** @} */

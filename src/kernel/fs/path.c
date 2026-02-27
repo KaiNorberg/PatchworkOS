@@ -198,7 +198,7 @@ static status_t path_dotdot(path_state_t* state)
             break;
         }
 
-        mount_t* nextMount = REF(state->mount->parent);
+        binding_t* nextMount = REF(state->mount->parent);
         dentry_t* nextDentry = REF(state->mount->target);
         UNREF(state->mount);
         state->mount = nextMount;
@@ -413,7 +413,7 @@ static status_t path_done(irp_t* irp, path_state_t* state)
     }
     UNREF_DEFER(dentry);
 
-    mount_t* mount = REF_TRY(state->mount);
+    binding_t* mount = REF_TRY(state->mount);
     if (mount == NULL)
     {
         rcu_read_unlock();
@@ -658,7 +658,7 @@ status_t path_to_name(const path_t* path, char* pathname, size_t length)
     *ptr = '\0';
 
     dentry_t* dentry = path->dentry;
-    mount_t* mount = path->mount;
+    binding_t* mount = path->mount;
 
     while (true)
     {

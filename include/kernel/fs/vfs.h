@@ -3,7 +3,7 @@
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file.h>
-#include <kernel/fs/mount.h>
+#include <kernel/fs/binding.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vnode.h>
 #include <kernel/fs/volume.h>
@@ -78,7 +78,7 @@ status_t vfs_write(file_t* file, const void* buffer, size_t count, size_t* out);
  * @param out Output pointer for the new file position.
  * @return An appropriate status value.
  */
-status_t vfs_seek(file_t* file, ssize_t offset, whence_t origin, size_t* out);
+status_t vfs_seek(file_t* file, ssize_t offset, ioseek_t origin, size_t* out);
 
 /**
  * @brief Generates a new unique ID, to be used for any VFS object.

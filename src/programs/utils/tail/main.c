@@ -50,9 +50,9 @@ int main(int argc, char* argv[])
 
     while (true)
     {
-        events_t revents;
-        iopoll(file, EVENTS_READ, follow ? CLOCKS_NEVER : CLOCKS_NOW, &revents);
-        if (revents & EVENTS_READ)
+        iopoll_t revents;
+        iopoll(file, IOEVENT_READ, follow ? CLOCKS_NEVER : CLOCKS_NOW, &revents);
+        if (revents & IOEVENT_READ)
         {
             char buffer[1024];
             uint64_t bytesRead;

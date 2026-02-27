@@ -385,7 +385,7 @@ static status_t local_socket_recv(socket_t* sock, void* buffer, size_t count, si
     return OK;
 }
 
-static status_t local_socket_poll(socket_t* sock, events_t* revents, wait_queue_t** queue)
+static status_t local_socket_poll(socket_t* sock, iopoll_t* revents, wait_queue_t** queue)
 {
     local_socket_t* data = sock->data;
     if (data == NULL)
@@ -400,18 +400,18 @@ static status_t local_socket_poll(socket_t* sock, events_t* revents, wait_queue_
         local_listen_t* listen = data->listen;
         if (listen == NULL)
         {
-            *revents |= EVENTS_ERROR;
+            *revents |= IOEVENT_ERROR;
             return OK;
         }
 
         LOCK_SCOPE(&listen->lock);
         if (listen->isClosed)
         {
-            *revents |= EVENTS_ERROR;
+            *revents |= IOEVENT_ERROR;
         }
         else if (listen->pendingAmount > 0)
         {
-            *revents |= EVENTS_READ;
+            *revents |= IOEVENT_READ;
         }
 
         *queue = &listen->waitQueue;
@@ -422,14 +422,14 @@ static status_t local_socket_poll(socket_t* sock, events_t* revents, wait_queue_
         local_conn_t* conn = data->conn;
         if (conn == NULL)
         {
-            *revents |= EVENTS_ERROR;
+            *revents |= IOEVENT_ERROR;
             return OK;
         }
 
         LOCK_SCOPE(&conn->lock);
         if (conn->isClosed)
         {
-            *revents |= EVENTS_HUP;
+            *revents |= IOEVENT_HUP;
         }
         else
         {
@@ -438,12 +438,12 @@ static status_t local_socket_poll(socket_t* sock, events_t* revents, wait_queue_
 
             if (fifo_bytes_readable(readRing) >= sizeof(local_packet_header_t))
             {
-                *revents |= EVENTS_READ;
+                *revents |= IOEVENT_READ;
             }
 
             if (fifo_bytes_writeable(writeRing) >= sizeof(local_packet_header_t) + 1)
             {
-                *revents |= EVENTS_WRITE;
+                *revents |= IOEVENT_WRITE;
             }
         }
 
