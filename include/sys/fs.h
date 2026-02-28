@@ -74,14 +74,14 @@ static inline status_t fdclaim(fd_t* out, const char* key)
 /**
  * @brief System call for duplicating file descriptors.
  *
- * @param src The open file descriptor to duplicate.
- * @param dest Output pointer for the new file descriptor, if `FDNONE` any free file descriptor will be used,
+ * @param oldFd The open file descriptor to duplicate.
+ * @param newFd Output pointer for the new file descriptor, if `FDNONE` any free file descriptor will be used,
  * otherwise the specified file descriptor will be used.
  * @return An appropriate status value.
  */
-static inline status_t fddup(fd_t src, fd_t* dest)
+static inline status_t fddup(fd_t oldFd, fd_t* newFd)
 {
-    return syscall2(SYS_FD_DUP, dest, src, *dest);
+    return syscall2(SYS_FD_DUP, newFd, oldFd, *newFd);
 }
 
 typedef uint64_t fsvol_t; ///< Filesystem volume id type.
@@ -95,7 +95,7 @@ typedef uint64_t fsvol_t; ///< Filesystem volume id type.
  */
 static inline status_t fsbind(fd_t target, fd_t source)
 {
-    return syscall2(SYS_FS_BIND, target, source);
+    return syscall2(SYS_FS_BIND, NULL, target, source);
 }
 
 /**
@@ -106,7 +106,7 @@ static inline status_t fsbind(fd_t target, fd_t source)
  */
 static inline status_t fsunbind(fd_t target)
 {
-    return syscall1(SYS_FS_UNBIND, target);
+    return syscall1(SYS_FS_UNBIND, NULL, target);
 }
 
 typedef uint64_t vnum_t; ///< Virtual node number type.

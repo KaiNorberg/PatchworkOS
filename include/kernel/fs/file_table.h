@@ -59,36 +59,36 @@ file_t* file_table_get(file_table_t* table, fd_t fd);
  * @param file The file to associate with the new file descriptor.
  * @return On success, the allocated file descriptor. On failure, `FDNONE`.
  */
-fd_t file_table_open(file_table_t* table, file_t* file);
+fd_t file_table_grab(file_table_t* table, file_t* file);
 
 /**
  * @brief Free a file descriptor.
  *
- * If the file has no other references, it will be freed.
+ * If the file has no other references, it will be closed.
  *
  * @param table The file table.
  * @param fd The file descriptor to free.
  * @return An appropriate status value.
  */
-status_t file_table_close(file_table_t* table, fd_t fd);
+status_t file_table_drop(file_table_t* table, fd_t fd);
 
 /**
- * @brief Close all files in the file table.
+ * @brief Drop all file descriptors in the file table.
  *
  * @param table The file table.
  */
-void file_table_close_all(file_table_t* table);
+void file_table_drop_all(file_table_t* table);
 
 /**
- * @brief Close all files in the file table with the specified mode.
+ * @brief Drop all file descriptors in the file table with the specified mode.
  *
  * @param table The file table.
  * @param mode The mode to close files with.
  */
-void file_table_close_mode(file_table_t* table, mode_t mode);
+void file_table_drop_mode(file_table_t* table, mode_t mode);
 
 /**
- * @brief Free a range of file descriptors.
+ * @brief Drop a range of file descriptors.
  *
  * If the files have no other references, they will be freed.
  *
@@ -96,7 +96,7 @@ void file_table_close_mode(file_table_t* table, mode_t mode);
  * @param min The minimum file descriptor to free, inclusive.
  * @param max The maximum file descriptor to free, exclusive.
  */
-void file_table_close_range(file_table_t* table, fd_t min, fd_t max);
+void file_table_drop_range(file_table_t* table, fd_t min, fd_t max);
 
 /**
  * @brief Set a specific file descriptor to a file.
@@ -113,15 +113,15 @@ bool file_table_set(file_table_t* table, fd_t fd, file_t* file);
 /**
  * @brief Duplicate a file descriptor.
  *
- * Allocates a new file descriptor that refers to the same file as `oldFd`.
+ * Allocates a new file descriptor that refers to the same file as `src`.
  *
  * @param table The file table.
- * @param oldFd The file descriptor to duplicate.
- * @param newFd Output pointer for the new file descriptor, if `FDNONE` any free file descriptor will be used,
+ * @param src The file descriptor to duplicate.
+ * @param dest Output pointer for the new file descriptor, if `FDNONE` any free file descriptor will be used,
  * otherwise the specified file descriptor will be used.
  * @return An appropriate status value.
  */
-status_t file_table_dup(file_table_t* table, fd_t oldFd, fd_t* newFd);
+status_t file_table_dup(file_table_t* table, fd_t src, fd_t* dest);
 
 /**
  * @brief Copy a file table, closing any overlapping file descriptors.

@@ -140,18 +140,20 @@ iowalk(FDCWD, "/path/to/file:rw", &fd);
 
 size_t bytesWritten;
 iowrite(fd, IOBUF("Hello, World!", 13), IOCUR, &bytesWritten);
-ioclose(fd);
+iodrop(fd);
 ```
 
 We first open the file using `iowalk()`, specifying that the path should be traversed starting from the current working directory (`FDCWD`) and that we want "read and write access" (`:rw`).
 
-Note that the `FDCWD` constant is no different than standard file descriptors like `STDIN`, `STDOUT` and `STDERR` (called `FDIN`, `FDOUT` and `FDERR` respectively). In PatchworkOS, the current working directory is just a file descriptor like any other; an agreed upon convention that allows other processes to easily inherit it when needed.
+> The term "walk" is used instead of "open" since all operations act on file descriptors and the ability to reach files relative to other files is a key part of the security model. As such, performing any operation on a file should be thought of as "walking" to it and then acting upon it, instead of merely "opening" it, after walking to a file we could walk to another file relative to it.
 
-> The term "walk" is used instead of "open" to clarify its use within PatchworkOS. All operations take in a file descriptor with `iowalk()` being the only operation that takes in a path. As such, performing any operation on a file should be thought of as "walking" to it and then acting upon it, instead of merely "opening" it, after walking to a file we could walk to another file relative to it.
+Note that the `FDCWD` constant is no different than standard file descriptors like `STDIN`, `STDOUT` and `STDERR` (called `FDIN`, `FDOUT` and `FDERR` respectively). In PatchworkOS, the current working directory is just a file descriptor like any other; an agreed upon convention that allows other processes to easily inherit it when needed.
 
 Then we write to the file using `iowrite()`, passing the file descriptor, a buffer containing the data to write (the `iowrite()` function actually expects an array of `iovec_t` which the `IOBUF()` macro creates on the stack for convenience) and the offset to write at (in this case `IOCUR` to write at the current offset).
 
-Finally, we close the file using `ioclose()`.
+Finally, we close the file using `iodrop()`.
+
+> The term "drop" is used instead of "close" to cleanly differentiate between closing a file and closing a file descriptor. We only use the terms "open" and "close" when referring to the underlying file (`file_t`), while using terms such as "grab" and "drop" when referring to file descriptors (`fd_t`).
 
 Additionally, the `iowritet()`, `ioreadt()` and `iowalkt()` functions are provided that expect an additional `clock_t timeout` argument.
 
@@ -192,7 +194,7 @@ proc_t proc;
 const char* argv[] = {"/path/to/program", NULL};
 proc_create(&argv, PROC_SUSPENDED, &proc);
 
-iostorep(FDCWD, IOFMT("/proc/%llu/ctl", proc), IOFMT("dup 0 %llu; dup 1 %llu; close %llu; close %llu; start", in, out, in, out));
+iostorep(FDCWD, IOFMT("/proc/%llu/ctl", proc), IOFMT("dup %llu 0; dup %llu 1; close %llu; close %llu; start", in, out, in, out));
 ```
 
 We first create two pipes by opening the special file `/dev/pipe/clone` twice.
