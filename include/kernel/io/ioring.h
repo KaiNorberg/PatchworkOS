@@ -94,7 +94,10 @@ typedef enum
 typedef struct ioring_ctx
 {
     ioring_t ring;          ///< The kernel-side ring structure.
-    irp_pool_t* irps;       ///< Pool of preallocated IRPs.
+    process_t* process;     ///< The process that owns this ring.
+    list_t active;          ///< List of active IRPs.
+    lock_t lock;            ///< Lock for the active list.
+    atomic_size_t activeCount; ///< Number of active IRPs.
     void* userAddr;         ///< Userspace address of the ring.
     void* kernelAddr;       ///< Kernel address of the ring.
     size_t pageAmount;      ///< Amount of pages mapped for the ring.

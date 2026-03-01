@@ -2,7 +2,6 @@
 
 #include <kernel/mem/paging_types.h>
 #include <kernel/mem/pmm.h>
-#include <kernel/mem/pool.h>
 
 #include <errno.h>
 #include <stdlib.h>

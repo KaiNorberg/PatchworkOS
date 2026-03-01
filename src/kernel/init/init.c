@@ -10,7 +10,6 @@
 #include <kernel/drivers/pic.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/filesystem.h>
-#include <kernel/fs/netfs.h>
 #include <kernel/fs/procfs.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/tmpfs.h>
@@ -98,7 +97,6 @@ static void init_finalize(void)
     devfs_init();
     sysfs_init();
     procfs_init();
-    netfs_init();
 
     log_expose();
 

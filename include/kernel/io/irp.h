@@ -1,7 +1,7 @@
 #pragma once
 
 #include <kernel/mem/mdl.h>
-#include <kernel/mem/pool.h>
+#include <kernel/mem/cache.h>
 #include <kernel/sync/lock.h>
 #include <kernel/utils/ref.h>
 
@@ -390,6 +390,7 @@ typedef struct irp
 {
     list_entry_t entry;           ///< Used to store the IRP in various lists.
     list_entry_t timeoutEntry;    ///< Used to store the IRP in the timeout queue.
+    list_entry_t activeEntry;     ///< Used to store the IRP in a I/O rings active list.
     _Atomic(irp_cancel_t) cancel; ///< Cancellation callback, must be atomic to ensure an IRP is only cancelled once.
     union {
         clock_t timeout;  ///< The timeout of the operation starting from when the IRP is added to a timeout queue.
@@ -398,53 +399,15 @@ typedef struct irp
     mdl_t mdl;        ///< A preallocated memory descriptor list for use by the IRP.
     uintptr_t result; ///< The result returned by the last completed frame.
     status_t status;  ///< The status of the last completed frame.
-    pool_idx_t index; ///< Index of the IRP in its pool.
-    pool_idx_t next;  ///< Index of the next IRP in a chain or in the free list.
+    struct irp* next; ///< Pointer to the next IRP in a chain.
+    void* ctx; ///< Allows various subsystems to associate context with an IRP, can be `NULL`.
+    process_t* process; ///< The process that owns this IRP.
     cpu_id_t cpu;     ///< The CPU whose timeout queue the IRP is in.
     uint8_t loc;      ///< The index of the current frame in the stack.
     uint8_t _reserved[5];
-    iosqe_t sqe;                      // A copy of the submission queue entry associated with this IRP.
+    iosqe_t sqe;                      ///< A copy of the submission queue entry associated with this IRP.
     irp_frame_t stack[IRP_FRAME_MAX]; ///< The frame stack, grows downwards.
 } ALIGNED(64) irp_t;
-
-/**
- * @brief Request pool structure.
- * @struct irp_pool_t
- */
-typedef struct irp_pool
-{
-    void* ctx;
-    process_t* process; ///< Will only hold a reference if there is at least one active IRP.
-    atomic_size_t active;
-    pool_t pool;
-    size_t size;
-    irp_t irps[] ALIGNED(64);
-} irp_pool_t;
-
-/**
- * @brief Allocate a new IRP pool.
- *
- * @param out Output pointer for the pool.
- * @param size The amount of requests to allocate.
- * @param process The process that will own the IRPs allocated from this pool.
- * @param ctx The context of the IRP pool.
- * @return An appropriate status value.
- */
-status_t irp_pool_new(irp_pool_t** out, size_t size, process_t* process, void* ctx);
-
-/**
- * @brief Free a IRP pool.
- *
- * @param pool The IRP pool to free.
- */
-void irp_pool_free(irp_pool_t* pool);
-
-/**
- * @brief Attempt to cancel all IRPs in a pool.
- *
- * @param pool The IRP pool.
- */
-void irp_pool_cancel_all(irp_pool_t* pool);
 
 /**
  * @brief Add an IRP to a per-CPU timeout queue.
@@ -470,13 +433,13 @@ void irp_timeout_remove(irp_t* irp);
 void irp_timeouts_check(void);
 
 /**
- * @brief Retrieve an inactive IRP from an IRP pool.
+ * @brief Allocate a new IRP.
  *
- * @param pool The IRP pool.
- * @param out Output pointer for the IRP.
- * @return An appropriate status value.
+ * @param process The process that owns this IRP.
+ * @param ctx The context pointer to associate with this IRP, can be `NULL`.
+ * @return The allocated IRP, or `NULL` if the allocation failed.
  */
-status_t irp_get(irp_pool_t* pool, irp_t** out);
+irp_t* irp_new(process_t* process, void* ctx);
 
 /**
  * @brief Retrieve a memory descriptor list and associate it with an IRP.
@@ -490,39 +453,6 @@ status_t irp_get(irp_pool_t* pool, irp_t** out);
 status_t irp_get_mdl(irp_t* irp, mdl_t** out);
 
 /**
- * @brief Retrieve the IRP pool that an IRP was allocated from.
- *
- * @param irp The IRP.
- * @return The IRP pool.
- */
-static inline irp_pool_t* irp_get_pool(irp_t* irp)
-{
-    return CONTAINER_OF(irp, irp_pool_t, irps[irp->index]);
-}
-
-/**
- * @brief Retrieve the context of the IRP pool that an IRP was allocated from.
- *
- * @param irp The IRP.
- * @return The context.
- */
-static inline void* irp_get_ctx(irp_t* irp)
-{
-    return irp_get_pool(irp)->ctx;
-}
-
-/**
- * @brief Retrieve the process that owns an IRP.
- *
- * @param irp The IRP.
- * @return The process.
- */
-static inline process_t* irp_get_process(irp_t* irp)
-{
-    return irp_get_pool(irp)->process;
-}
-
-/**
  * @brief Retrieve the next IRP in a chain and clear its next pointer.
  *
  * @param irp The current IRP.
@@ -530,14 +460,8 @@ static inline process_t* irp_get_process(irp_t* irp)
  */
 static inline irp_t* irp_chain_next(irp_t* irp)
 {
-    if (irp->next == POOL_IDX_MAX)
-    {
-        return NULL;
-    }
-
-    irp_pool_t* pool = irp_get_pool(irp);
-    irp_t* next = &pool->irps[irp->next];
-    irp->next = POOL_IDX_MAX;
+    irp_t* next = irp->next;
+    irp->next = NULL;
     return next;
 }
 
@@ -593,13 +517,6 @@ status_t irp_call(irp_t* irp, irp_handler_t func);
  */
 void irp_complete(irp_t* irp, status_t status);
 
-/**
- * @brief Attempt to cancel an IRP.
- *
- * @param irp The IRP to cancel.
- * @return An appropriate status value.
- */
-status_t irp_cancel(irp_t* irp);
 
 /**
  * @brief Set the cancellation callback for an IRP.
@@ -623,6 +540,52 @@ static inline irp_cancel_t irp_set_cancel(irp_t* irp, irp_cancel_t cancel)
     }
     return IRP_CANCELLED;
 }
+
+/**
+ * @brief Set the completion callback and context for the next frame in the IRP stack.
+ *
+ * @param irp The IRP to set.
+ * @param complete The completion callback.
+ * @param ctx The context pointer to pass to the completion callback.
+ */
+static inline void irp_set_complete(irp_t* irp, irp_complete_t complete, void* ctx)
+{
+    irp_frame_t* next = irp_next(irp);
+    next->complete = complete;
+    next->ctx = ctx;
+}
+
+/**
+ * @brief Finish cancelling an IRP.
+ *
+ * @param irp The IRP to cancel.
+ * @param handler The cancellation handler returned by `irp_cancel_claim()`.
+ */
+void irp_cancel_finish(irp_t* irp, irp_cancel_t handler);
+
+/**
+ * @brief Claim an IRP for cancellation.
+ *
+ * After calling this function the `irp_cancel_finish()` function should be called with the returned cancellation callback to finish cancelling the IRP.
+ * 
+ * The reason for this separation is to prevent deadlocks and certain race conditions while cancelling an IRP. For example, if an IRP is stored in a lock protected list whose lock would be held both while completing the IRP (completion also happens during cancellation) and by the caller performing the cancellation, we would have a deadlock if we had to perform cancellation all at once.
+ * 
+ * @param irp The IRP to claim.
+ * @return The cancellation callback if successfully claimed, `NULL` otherwise.
+ */
+static inline irp_cancel_t irp_cancel_claim(irp_t* irp)
+{
+    irp_cancel_t expected = atomic_load(&irp->cancel);
+    while (expected != IRP_CANCELLED && expected != NULL)
+    {
+        if (atomic_compare_exchange_weak(&irp->cancel, &expected, IRP_CANCELLED))
+        {
+            return expected;
+        }
+    }
+    return NULL;
+}
+
 
 /**
  * @brief Claim an IRP, ensuring that it is not already cancelled or being cancelled.
@@ -693,20 +656,6 @@ static inline status_t irp_delay(irp_t* irp, list_t* list, irp_cancel_t cancel)
     }
 
     return INFO(IO, PENDING);
-}
-
-/**
- * @brief Set the completion callback and context for the next frame in the IRP stack.
- *
- * @param irp The IRP to set.
- * @param complete The completion callback.
- * @param ctx The context pointer to pass to the completion callback.
- */
-static inline void irp_set_complete(irp_t* irp, irp_complete_t complete, void* ctx)
-{
-    irp_frame_t* next = irp_next(irp);
-    next->complete = complete;
-    next->ctx = ctx;
 }
 
 /**

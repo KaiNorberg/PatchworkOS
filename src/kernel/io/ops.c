@@ -12,28 +12,48 @@
 
 static status_t io_op_cancel(irp_t* irp)
 {
-    ioring_ctx_t* ctx = irp_get_ctx(irp);
+    ioring_ctx_t* ctx = irp->ctx;
     size_t count = 0;
-    for (size_t i = 0; i < ctx->irps->size; i++)
+
+    while (true)
     {
-        irp_t* target = &ctx->irps->irps[i];
-        if (target == irp)
+        bool found = false;
+        lock_acquire(&ctx->lock);
+        irp_t* target;
+        LIST_FOR_EACH(target, &ctx->active, activeEntry)
         {
-            continue;
-        }
-
-        if (target->sqe.data != irp->sqe.target && !(irp->sqe.cancel & IOCANCEL_ANY))
-        {
-            continue;
-        }
-
-        if (irp_cancel(target) == EOK)
-        {
-            count++;
-            if (!(irp->sqe.cancel & IOCANCEL_ALL))
+            if (target == irp)
             {
+                continue;
+            }
+
+            if (target->sqe.data != irp->sqe.target && !(irp->sqe.cancel & IOCANCEL_ANY))
+            {
+                continue;
+            }
+
+            irp_cancel_t handler = irp_cancel_claim(target);
+            if (handler != NULL)
+            {
+                list_remove(&target->activeEntry);
+                lock_release(&ctx->lock);
+
+                irp_cancel_finish(target, handler);
+                count++;
+                found = true;
                 break;
             }
+        }
+
+        if (!found)
+        {
+            lock_release(&ctx->lock);
+            break;
+        }
+
+        if (!(irp->sqe.cancel & IOCANCEL_ALL))
+        {
+            break;
         }
     }
 
@@ -43,9 +63,7 @@ static status_t io_op_cancel(irp_t* irp)
 
 static status_t io_op_read(irp_t* irp)
 {
-    process_t* process = irp_get_process(irp);
-
-    file_t* file = file_table_get(&process->files, irp->sqe.fd);
+    file_t* file = file_table_get(&irp->process->files, irp->sqe.fd);
     if (file == NULL)
     {
         return ERR(IO, BADFD);
@@ -64,7 +82,7 @@ static status_t io_op_read(irp_t* irp)
         return status;
     }
 
-    status = mdl_add_vector(mdl, &process->space, irp->sqe.vector, irp->sqe.count);
+    status = mdl_add_vector(mdl, &irp->process->space, irp->sqe.vector, irp->sqe.count);
     if (IS_ERR(status))
     {
         return status;
@@ -76,9 +94,7 @@ static status_t io_op_read(irp_t* irp)
 
 static status_t io_op_write(irp_t* irp)
 {
-    process_t* process = irp_get_process(irp);
-
-    file_t* file = file_table_get(&process->files, irp->sqe.fd);
+    file_t* file = file_table_get(&irp->process->files, irp->sqe.fd);
     if (file == NULL)
     {
         return ERR(IO, BADFD);
@@ -97,7 +113,7 @@ static status_t io_op_write(irp_t* irp)
         return status;
     }
 
-    status = mdl_add_vector(mdl, &process->space, irp->sqe.vector, irp->sqe.count);
+    status = mdl_add_vector(mdl, &irp->process->space, irp->sqe.vector, irp->sqe.count);
     if (IS_ERR(status))
     {
         return status;
@@ -109,9 +125,7 @@ static status_t io_op_write(irp_t* irp)
 
 static status_t io_op_poll(irp_t* irp)
 {
-    process_t* process = irp_get_process(irp);
-
-    file_t* file = file_table_get(&process->files, irp->sqe.fd);
+    file_t* file = file_table_get(&irp->process->files, irp->sqe.fd);
     if (file == NULL)
     {
         return ERR(IO, BADFD);
@@ -124,9 +138,7 @@ static status_t io_op_poll(irp_t* irp)
 
 static status_t io_op_seek(irp_t* irp)
 {
-    process_t* process = irp_get_process(irp);
-
-    file_t* file = file_table_get(&process->files, irp->sqe.fd);
+    file_t* file = file_table_get(&irp->process->files, irp->sqe.fd);
     if (file == NULL)
     {
         return ERR(IO, BADFD);
@@ -139,9 +151,7 @@ static status_t io_op_seek(irp_t* irp)
 
 static status_t io_op_map(irp_t* irp)
 {
-    process_t* process = irp_get_process(irp);
-
-    file_t* file = file_table_get(&process->files, irp->sqe.fd);
+    file_t* file = file_table_get(&irp->process->files, irp->sqe.fd);
     if (file == NULL)
     {
         return ERR(IO, BADFD);
@@ -157,26 +167,24 @@ static status_t io_op_walk_done(irp_t* irp, struct path_state* state, file_t* fi
 {
     UNUSED(state);
 
-    return file_table_grab(&irp_get_process(irp)->files, file);
+    return file_table_grab(&irp->process->files, file);
 }
 
 static status_t io_op_walk(irp_t* irp)
 {
-    process_t* process = irp_get_process(irp);
-
     if (irp->sqe.path == NULL || irp->sqe.count >= MAX_PATH)
     {
         return ERR(IO, INVAL);
     }
 
-    file_t* from = file_table_get(&process->files, irp->sqe.fd);
+    file_t* from = file_table_get(&irp->process->files, irp->sqe.fd);
     if (from == NULL)
     {
         return ERR(IO, BADFD);
     }
     UNREF_DEFER(from);
 
-    file_t* root = file_table_get(&process->files, irp->sqe.root);
+    file_t* root = file_table_get(&irp->process->files, irp->sqe.root);
     if (root == NULL)
     {
         return ERR(IO, BADFD);
@@ -190,7 +198,7 @@ static status_t io_op_walk(irp_t* irp)
     }
     path_state_init(state, from->path.dentry, from->path.binding, root->path.dentry, root->path.binding, io_op_walk_done);
 
-    status_t status = space_copy_out(&process->space, state->path, irp->sqe.path, irp->sqe.count);
+    status_t status = space_copy_out(&irp->process->space, state->path, irp->sqe.path, irp->sqe.count);
     if (IS_ERR(status))
     {
         free(state);
@@ -203,16 +211,12 @@ static status_t io_op_walk(irp_t* irp)
 
 static status_t io_op_drop(irp_t* irp)
 {
-    process_t* process = irp_get_process(irp);
-
-    return file_table_drop(&process->files, irp->sqe.fd);
+    return file_table_drop(&irp->process->files, irp->sqe.fd);
 }
 
 static status_t io_op_remove(irp_t* irp)
 {
-    process_t* process = irp_get_process(irp);
-
-    file_t* file = file_table_get(&process->files, irp->sqe.fd);
+    file_t* file = file_table_get(&irp->process->files, irp->sqe.fd);
     if (file == NULL)
     {
         return ERR(IO, BADFD);
@@ -231,9 +235,7 @@ static status_t io_op_remove(irp_t* irp)
 
 static status_t io_op_attr(irp_t* irp)
 {
-    process_t* process = irp_get_process(irp);
-
-    file_t* file = file_table_get(&process->files, irp->sqe.fd);
+    file_t* file = file_table_get(&irp->process->files, irp->sqe.fd);
     if (file == NULL)
     {
         return ERR(IO, BADFD);
@@ -246,9 +248,7 @@ static status_t io_op_attr(irp_t* irp)
 
 static status_t io_op_query(irp_t* irp)
 {
-    process_t* process = irp_get_process(irp);
-
-    file_t* file = file_table_get(&process->files, irp->sqe.fd);
+    file_t* file = file_table_get(&irp->process->files, irp->sqe.fd);
     if (file == NULL)
     {
         return ERR(IO, BADFD);
@@ -262,7 +262,7 @@ static status_t io_op_query(irp_t* irp)
         return status;
     }
 
-    status = mdl_add(mdl, &process->space, irp->sqe.info, sizeof(vinfo_t));
+    status = mdl_add(mdl, &irp->process->space, irp->sqe.info, sizeof(vinfo_t));
     if (IS_ERR(status))
     {
         return status;
@@ -274,9 +274,7 @@ static status_t io_op_query(irp_t* irp)
 
 static status_t io_op_flush(irp_t* irp)
 {
-    process_t* process = irp_get_process(irp);
-
-    file_t* file = file_table_get(&process->files, irp->sqe.fd);
+    file_t* file = file_table_get(&irp->process->files, irp->sqe.fd);
     if (file == NULL)
     {
         return ERR(IO, BADFD);
@@ -306,7 +304,7 @@ static const io_op_func_t ops[IOOP_MAX] = {
 
 status_t io_op_dispatch(irp_t* irp)
 {
-    ioring_ctx_t* ctx = irp_get_ctx(irp);
+    ioring_ctx_t* ctx = irp->ctx;
     ioring_t* ring = &ctx->ring;
 
     iosqe_flags_t reg = (irp->sqe.flags >> IOSQE_LOAD0) & IOSQE_REG_MASK;

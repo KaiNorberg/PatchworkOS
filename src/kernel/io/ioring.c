@@ -45,11 +45,6 @@ static inline status_t ioring_map(ioring_ctx_t* ctx, process_t* process, ioring_
         return ERR(IO, TOOBIG);
     }
 
-    if (centries >= POOL_IDX_MAX)
-    {
-        return ERR(IO, TOOBIG);
-    }
-
     pfn_t pages[CONFIG_MAX_RINGS_PAGES];
     if (!pmm_alloc_pages(pages, pageAmount))
     {
@@ -76,15 +71,6 @@ static inline status_t ioring_map(ioring_ctx_t* ctx, process_t* process, ioring_
         vmm_map_pages(&process->space, &userAddr, pages, pageAmount, PML_WRITE | PML_PRESENT | PML_USER, NULL, NULL);
     if (IS_ERR(status))
     {
-        vmm_unmap(NULL, kernelAddr, pageAmount * PAGE_SIZE);
-        return status;
-    }
-
-    irp_pool_t* pool;
-    status = irp_pool_new(&pool, centries, process, ctx);
-    if (IS_ERR(status))
-    {
-        vmm_unmap(&process->space, userAddr, pageAmount * PAGE_SIZE);
         vmm_unmap(NULL, kernelAddr, pageAmount * PAGE_SIZE);
         return status;
     }
@@ -117,7 +103,7 @@ static inline status_t ioring_map(ioring_ctx_t* ctx, process_t* process, ioring_
     kernelRing->centries = centries;
     kernelRing->cmask = centries - 1;
 
-    ctx->irps = pool;
+    ctx->process = process; // No reference
     ctx->userAddr = userAddr;
     ctx->kernelAddr = kernelAddr;
     ctx->pageAmount = pageAmount;
@@ -128,11 +114,8 @@ static inline status_t ioring_map(ioring_ctx_t* ctx, process_t* process, ioring_
 
 static inline void ioring_unmap(ioring_ctx_t* ctx)
 {
-    vmm_unmap(&ctx->irps->process->space, ctx->userAddr, ctx->pageAmount * PAGE_SIZE);
+    vmm_unmap(&ctx->process->space, ctx->userAddr, ctx->pageAmount * PAGE_SIZE);
     vmm_unmap(NULL, ctx->kernelAddr, ctx->pageAmount * PAGE_SIZE);
-
-    irp_pool_free(ctx->irps);
-    ctx->irps = NULL;
 
     atomic_fetch_and(&ctx->flags, ~IORING_CTX_MAPPED);
 }
@@ -153,7 +136,10 @@ void ioring_ctx_init(ioring_ctx_t* ctx)
     }
 
     ctx->ring = (ioring_t){0};
-    ctx->irps = NULL;
+    ctx->process = NULL;
+    list_init(&ctx->active);
+    lock_init(&ctx->lock);
+    atomic_init(&ctx->activeCount, 0);
     ctx->userAddr = NULL;
     ctx->kernelAddr = NULL;
     ctx->pageAmount = 0;
@@ -215,7 +201,7 @@ static status_t ioring_complete(irp_t* irp, void* _ptr)
 {
     UNUSED(_ptr);
 
-    ioring_ctx_t* ctx = irp_get_ctx(irp);
+    ioring_ctx_t* ctx = irp->ctx;
     ioring_commit_sqe(ctx, &irp->sqe, irp->status, irp->result);
 
     if (IS_ERR(irp->status) && !(irp->sqe.flags & IOSQE_HARDLINK))
@@ -235,10 +221,13 @@ static status_t ioring_complete(irp_t* irp, void* _ptr)
         irp_t* next = irp_chain_next(irp);
         if (next != NULL)
         {
-            irp_set_complete(next, ioring_complete, NULL);
             irp_call(next, io_op_dispatch);
         }
     }
+
+    lock_acquire(&ctx->lock);
+    list_remove(&irp->activeEntry);
+    lock_release(&ctx->lock);
 
     return OK;
 }
@@ -261,12 +250,17 @@ static status_t ioring_sqe_pop(ioring_ctx_t* ctx, ioring_notify_ctx_t* notify)
         return ERR(IO, AGAIN);
     }
 
-    irp_t* irp;
-    status_t status = irp_get(ctx->irps, &irp);
-    if (IS_ERR(status))
+    if (atomic_load(&ctx->activeCount) >= ring->centries)
     {
-        return status;
+        return ERR(IO, NOSPACE);
     }
+
+    irp_t* irp = irp_new(ctx->process, ctx);
+    if (irp == NULL)
+    {
+        return ERR(IO, NOMEM);
+    }
+
     irp->sqe = ring->squeue[shead & ring->smask];
     irp->timeout = irp->sqe.timeout;
 
@@ -274,7 +268,7 @@ static status_t ioring_sqe_pop(ioring_ctx_t* ctx, ioring_notify_ctx_t* notify)
 
     if (notify->link != NULL)
     {
-        notify->link->next = irp->index;
+        notify->link->next = irp;
         notify->link = NULL;
     }
     else
@@ -286,6 +280,11 @@ static status_t ioring_sqe_pop(ioring_ctx_t* ctx, ioring_notify_ctx_t* notify)
     {
         notify->link = irp;
     }
+
+    irp_set_complete(irp, ioring_complete, NULL);
+    lock_acquire(&ctx->lock);
+    list_push_back(&ctx->active, &irp->activeEntry);
+    lock_release(&ctx->lock);
 
     return OK;
 }
@@ -328,8 +327,6 @@ static status_t ioring_notify(ioring_ctx_t* ctx, size_t amount, size_t wait, siz
     while (!list_is_empty(&notify.irps))
     {
         irp_t* irp = CONTAINER_OF(list_pop_front(&notify.irps), irp_t, entry);
-
-        irp_set_complete(irp, ioring_complete, NULL);
         irp_call(irp, io_op_dispatch);
     }
 
@@ -406,15 +403,23 @@ SYSCALL_DEFINE(SYS_IORING_TEARDOWN, ioring_id_t id)
         return ERR(IO, NOT_INIT);
     }
 
-    if (ctx->irps != NULL && atomic_load(&ctx->irps->pool.used) != 0)
+    while (atomic_load(&ctx->activeCount) != 0)
     {
-        irp_pool_cancel_all(ctx->irps);
-
-        // Operations that can be cancelled should have been cancelled immediately.
-        if (atomic_load(&ctx->irps->pool.used) != 0)
+        lock_acquire(&ctx->lock);
+        if (list_is_empty(&ctx->active))
         {
-            ioring_release(ctx);
-            return ERR(IO, NOT_CANCELLABLE);
+            lock_release(&ctx->lock);
+            break;
+        }
+        irp_t* irp = CONTAINER_OF(list_first(&ctx->active), irp_t, activeEntry);
+
+        irp_cancel_t handler = irp_cancel_claim(irp);
+        list_remove(&irp->activeEntry);
+        lock_release(&ctx->lock);
+
+        if (handler != NULL)
+        {
+            irp_cancel_finish(irp, handler);
         }
     }
 

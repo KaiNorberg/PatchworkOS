@@ -4,7 +4,7 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/mdl.h>
-#include <kernel/mem/pool.h>
+#include <kernel/mem/cache.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
@@ -29,55 +29,7 @@ PERCPU_DEFINE_CTOR(irp_ctx_t, pcpu_irps)
     lock_init(&ctx->lock);
 }
 
-status_t irp_pool_new(irp_pool_t** out, size_t size, process_t* process, void* ctx)
-{
-    if (out == NULL || size == 0 || process == NULL || size >= POOL_IDX_MAX)
-    {
-        return ERR(IO, INVAL);
-    }
-
-    irp_pool_t* pool = malloc(sizeof(irp_pool_t) + (sizeof(irp_t) * size));
-    if (pool == NULL)
-    {
-        return ERR(IO, NOMEM);
-    }
-
-    pool->ctx = ctx;
-    pool->process = process;
-    pool->size = size;
-    atomic_init(&pool->active, 0);
-    memset(&pool->irps, 0, sizeof(irp_t) * size);
-    for (size_t i = 0; i < size; i++)
-    {
-        irp_t* irp = &pool->irps[i];
-        irp->index = i;
-    }
-
-    pool_init(&pool->pool, pool->irps, size, sizeof(irp_t), offsetof(irp_t, next));
-
-    *out = pool;
-    return OK;
-}
-
-void irp_pool_free(irp_pool_t* pool)
-{
-    assert(pool != NULL);
-    assert(atomic_load(&pool->active) == 0);
-    free(pool);
-}
-
-void irp_pool_cancel_all(irp_pool_t* pool)
-{
-    if (pool == NULL)
-    {
-        return;
-    }
-
-    for (size_t i = 0; i < pool->size; i++)
-    {
-        irp_cancel(&pool->irps[i]);
-    }
-}
+static cache_t cache = CACHE_CREATE(cache, "irp", sizeof(irp_t), 64, NULL, NULL);
 
 static void irp_unwind_stack(irp_t* irp)
 {
@@ -113,7 +65,6 @@ static void irp_unwind_stack(irp_t* irp)
     irp_timeout_remove(irp);
 
     assert(irp->loc == IRP_FRAME_MAX);
-    assert(irp->next == POOL_IDX_MAX);
     assert(irp->cpu == CPU_ID_INVALID);
 
     mdl_t* next = irp->mdl.next;
@@ -123,26 +74,11 @@ static void irp_unwind_stack(irp_t* irp)
     assert(atomic_load(&irp->cancel) == NULL || atomic_load(&irp->cancel) == IRP_CANCELLED);
     atomic_store(&irp->cancel, NULL);
 
-    irp_pool_t* pool = irp_get_pool(irp);
-    pool_free(&pool->pool, irp->index);
+    UNREF(irp->process);
+    irp->process = NULL;
+    irp->ctx = NULL;
 
-    if (atomic_fetch_sub(&pool->active, 1) == 1)
-    {
-        UNREF(pool->process);
-    }
-}
-
-static irp_cancel_t irp_claim_cancellable(irp_t* irp)
-{
-    irp_cancel_t handler = atomic_load(&irp->cancel);
-    while (handler != IRP_CANCELLED && handler != NULL)
-    {
-        if (atomic_compare_exchange_weak(&irp->cancel, &handler, IRP_CANCELLED))
-        {
-            return handler;
-        }
-    }
-    return handler;
+    cache_free(irp);
 }
 
 status_t irp_timeout_add(irp_t* irp, irp_cancel_t cancel)
@@ -249,7 +185,7 @@ void irp_timeouts_check(void)
         irp->deadline = CLOCKS_NEVER;
         irp->cpu = CPU_ID_INVALID;
 
-        irp_cancel_t handler = irp_claim_cancellable(irp);
+        irp_cancel_t handler = irp_cancel_claim(irp);
         lock_release(&ctx->lock);
 
         if (handler != IRP_CANCELLED && handler != NULL)
@@ -265,38 +201,31 @@ void irp_timeouts_check(void)
     lock_release(&ctx->lock);
 }
 
-status_t irp_get(irp_pool_t* pool, irp_t** out)
+irp_t* irp_new(process_t* process, void* ctx)
 {
-    assert(pool != NULL);
+    assert(process != NULL);
 
-    pool_idx_t idx = pool_alloc(&pool->pool);
-    if (idx == POOL_IDX_MAX)
+    irp_t* irp = cache_alloc(&cache);
+    if (irp == NULL)
     {
-        return ERR(IO, NOSPACE);
+        return NULL;
     }
-
-    if (atomic_fetch_add(&pool->active, 1) == 0)
-    {
-        REF(pool->process);
-    }
-
-    irp_t* irp = &pool->irps[idx];
-    assert(irp->index == idx);
 
     list_entry_init(&irp->entry);
     list_entry_init(&irp->timeoutEntry);
+    list_entry_init(&irp->activeEntry);
     atomic_init(&irp->cancel, NULL);
     irp->deadline = CLOCKS_NEVER;
     irp->result = 0;
     mdl_init(&irp->mdl, NULL);
-    irp->next = POOL_IDX_MAX;
+    irp->next = NULL;
     irp->cpu = CPU_ID_INVALID;
     irp->status = OK;
     irp->loc = IRP_FRAME_MAX;
     memset(irp->stack, 0, sizeof(irp->stack));
-
-    *out = irp;
-    return OK;
+    irp->process = REF(process);
+    irp->ctx = ctx;
+    return irp;
 }
 
 status_t irp_get_mdl(irp_t* irp, mdl_t** out)
@@ -305,9 +234,6 @@ status_t irp_get_mdl(irp_t* irp, mdl_t** out)
     {
         return ERR(IO, INVAL);
     }
-
-    process_t* process = irp_get_process(irp);
-    assert(process != NULL);
 
     mdl_t* current = &irp->mdl;
     while (current->amount > 0)
@@ -367,34 +293,20 @@ void irp_complete(irp_t* irp, status_t status)
     {
         return;
     }
-    if (status != OK)
+    if (status != OK && irp->status == OK)
     {
         irp->status = status;
     }
     irp_unwind_stack(irp);
 }
 
-status_t irp_cancel(irp_t* irp)
+void irp_cancel_finish(irp_t* irp, irp_cancel_t handler)
 {
-    assert(irp != NULL);
-
-    irp_cancel_t handler = irp_claim_cancellable(irp);
-    if (handler == IRP_CANCELLED)
-    {
-        return ERR(IO, CANCELLED);
-    }
-
-    if (handler == NULL)
-    {
-        return ERR(IO, NOT_CANCELLABLE);
-    }
-
     irp_timeout_remove(irp);
 
     irp->status = ERR(IO, CANCELLED);
-    status_t status = handler(irp);
+    handler(irp);
     irp_unwind_stack(irp);
-    return status;
 }
 
 status_t irp_read_helper(irp_t* irp, const void* buffer, size_t size)
