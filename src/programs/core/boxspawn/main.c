@@ -140,7 +140,7 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    char waitkey[KEYMAX];
+    char waitkey[FDKEY_MAX];
     if (sscanf(buffer, "foreground %s", waitkey) != 1)
     {
         proc_exit(IOFMT("boxspawn: failed to parse response (%s)", strerror(errno)));

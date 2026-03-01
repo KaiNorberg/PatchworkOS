@@ -1,5 +1,6 @@
 #pragma once
 
+#include <_libstd/MAX_PATH.h>
 #include <alloca.h>
 #include <ctype.h>
 #include <kernel/io/irp.h>
@@ -10,7 +11,7 @@
 #include <sys/status.h>
 
 typedef struct path path_t;
-typedef struct mount binding_t;
+typedef struct binding binding_t;
 typedef struct dentry dentry_t;
 typedef struct namespace namespace_t;
 typedef struct file file_t;
@@ -22,15 +23,8 @@ typedef struct file file_t;
  * @ingroup kernel_fs
  *
  * A path represents a single unique location in the filesystem hierarchy.
- * 
-
  *
- * @{
- */
-// clang-format on
-
-/**
- * @brief Path flags and permissions. * ## Flags
+ * ## Flags
  *
  * Paths can have flags appended at the end, these flags are parsed to determine the mode of the related operation.
  *
@@ -50,14 +44,12 @@ typedef struct file file_t;
  * | `symlink` | `s` | Create a symlink, or fail if the file already exists but is not a symlink. |
  * | `hardlink` | `h` | Create a hardlink, or fail if the file already exists. |
  * | `exclusive` | `e` | Will cause the open to fail if the file already exists. |
- * | `existing` | `E` | Force failure if the file does not exist, even if any creation flags are specified, useful if
- * you want to, for example, ensure you are opening a directory. | | `truncate` | `t` | Truncate the file to zero length
- * if it already exists. | | `nofollow`  | `l` | Do not follow symlinks. | | `private`   | `p` | Any files with this
- * flag will be closed before a process starts executing. Any mounts with this flag will not be copied to a child
- * namespace. | | `propagate`  | `g` | Propagate mounts and unmounts to child namespaces. | | `locked`    | `L` | Forbid
- * unmounting this mount, useful for hiding directories or files. | | `nodotdot` | `N` | Do not allow the usage of `..`
- * on paths opened relative to this file, this is useful for security. Will be inherited by any files opened relative to
- * a file with this flag set. |
+ * | `existing` | `E` | Force failure if the file does not exist, even if any creation flags are specified, useful if you want to, for example, ensure you are opening a directory. | 
+ * | `truncate` | `t` | Truncate the file to zero length if it already exists. | 
+ * | `nofollow`  | `l` | Do not follow symlinks. | 
+ * | `private`   | `p` | Any files with this flag will be closed before a process starts executing. Any mounts with this flag will not be copied to a child namespace. | 
+ * | `propagate`  | `g` | Propagate mounts and unmounts to child namespaces. | 
+ * | `locked`    | `L` | Forbid unmounting this binding, useful for hiding directories or files. |
  *
  * For convenience, a single letter short form is also available as shown above, these single letter forms do not need
  * to be separated by colons, for example `/path/to/file:rwfte` is equivalent to
@@ -110,6 +102,13 @@ typedef struct file file_t;
  * hardlink with any permissions and flags without needing to rely on custom "PatchworkOS extensions".
  *
  * One can as an exercise imagine the potential of a basic "touch" shell utility with this system.
+ *
+ * @{
+ */
+// clang-format on
+
+/**
+ * @brief Path flags and permissions.
  * @enum mode_t
  *
  * We store both flags and permissions in the same enum but permissions are sometimes treated differently to flags.
@@ -132,7 +131,6 @@ typedef enum mode
     MODE_PRIVATE = 1 << 12,
     MODE_PROPAGATE = 1 << 13,
     MODE_LOCKED = 1 << 14,
-    MODE_NODOTDOT = 1 << 15,
     MODE_ALL_PERMS = MODE_READ | MODE_WRITE | MODE_EXECUTE,
 } mode_t;
 
@@ -165,14 +163,14 @@ typedef enum mode
  */
 typedef struct path
 {
-    binding_t* mount;
+    binding_t* binding;
     dentry_t* dentry;
 } path_t;
 
 /**
  * @brief Helper to create an empty path.
  *
- * Its important to always use this as some functions, for example `path_copy()`, will deref the existing mount and
+ * Its important to always use this as some functions, for example `path_copy()`, will deref the existing binding and
  * dentry in the path.
  *
  * @return An empty path.
@@ -180,20 +178,20 @@ typedef struct path
 #define PATH_EMPTY \
     (path_t) \
     { \
-        .mount = NULL, .dentry = NULL \
+        .binding = NULL, .dentry = NULL \
     }
 
 /**
  * @brief Helper to create a path.
  *
- * @param inMount The mount of the path.
+ * @param inBinding The binding of the path.
  * @param inDentry The dentry of the path.
  * @return The created path.
  */
-#define PATH_CREATE(inMount, inDentry) \
+#define PATH_CREATE(inBinding, inDentry) \
     (path_t) \
     { \
-        .mount = REF(inMount), .dentry = REF(inDentry), \
+        .binding = REF(inBinding), .dentry = REF(inDentry), \
     }
 
 /**
@@ -202,7 +200,7 @@ typedef struct path
  * @param path The path to check.
  * @return true if the path is empty, false otherwise.
  */
-#define PATH_IS_EMPTY(path) ((path).mount == NULL && (path).dentry == NULL)
+#define PATH_IS_EMPTY(path) ((path).binding == NULL && (path).dentry == NULL)
 
 /**
  * @brief Check if a path is valid.
@@ -210,27 +208,27 @@ typedef struct path
  * @param path The path to check.
  * @return true if the path is valid, false otherwise.
  */
-#define PATH_IS_VALID(path) ((path) != NULL && (path)->mount != NULL && (path)->dentry != NULL)
+#define PATH_IS_VALID(path) ((path) != NULL && (path)->binding != NULL && (path)->dentry != NULL)
 
 /**
  * @brief Set a path.
  *
- * Will deref the existing mount and dentry in the path if they are not `NULL`.
+ * Will deref the existing binding and dentry in the path if they are not `NULL`.
  *
  * @param path The path to set.
- * @param mount The mount to set.
+ * @param binding The binding to set.
  * @param dentry The dentry to set.
  */
-static inline void path_set(path_t* path, binding_t* mount, dentry_t* dentry)
+static inline void path_set(path_t* path, binding_t* binding, dentry_t* dentry)
 {
     if (dentry != NULL)
     {
         REF(dentry);
     }
 
-    if (mount != NULL)
+    if (binding != NULL)
     {
-        REF(mount);
+        REF(binding);
     }
 
     if (path->dentry != NULL)
@@ -238,32 +236,32 @@ static inline void path_set(path_t* path, binding_t* mount, dentry_t* dentry)
         UNREF(path->dentry);
     }
 
-    if (path->mount != NULL)
+    if (path->binding != NULL)
     {
-        UNREF(path->mount);
+        UNREF(path->binding);
     }
 
     path->dentry = dentry;
-    path->mount = mount;
+    path->binding = binding;
 }
 
 /**
  * @brief Copy a path.
  *
- * Will deref the existing mount and dentry in the destination path if they are not `NULL`.
+ * Will deref the existing binding and dentry in the destination path if they are not `NULL`.
  *
  * @param dest The destination path.
  * @param src The source path.
  */
 static inline void path_copy(path_t* dest, const path_t* src)
 {
-    path_set(dest, src->mount, src->dentry);
+    path_set(dest, src->binding, src->dentry);
 }
 
 /**
  * @brief Put a path.
  *
- * Will deref the mount and dentry in the path if they are not `NULL`.
+ * Will deref the binding and dentry in the path if they are not `NULL`.
  *
  * @param path The path to put.
  */
@@ -275,10 +273,10 @@ static inline void path_put(path_t* path)
         path->dentry = NULL;
     }
 
-    if (path->mount != NULL)
+    if (path->binding != NULL)
     {
-        UNREF(path->mount);
-        path->mount = NULL;
+        UNREF(path->binding);
+        path->binding = NULL;
     }
 }
 
@@ -286,16 +284,15 @@ static inline void path_put(path_t* path)
  * @brief Path walking state.
  * @struct path_state_t
  *
- * @note The `dentry` and `mount` members will only hold references while outside of a RCU read-side critical section.
+ * @note The `dentry` and `binding` members will only hold references while outside of a RCU read-side critical section.
  * For example, during lookups. Within these section there is no need for reference counting, improving performance.
  */
 typedef struct path_state
 {
     dentry_t* dentry;      ///< The current dentry in the walk.
-    binding_t* mount;        ///< The current mount in the walk.
-    char* path;            ///< The full path string buffer, not `NULL` terminated.
-    uint64_t pathLength;   ///< The length of the path string.
-    size_t pathCapacity;   ///< The capacity of the path string buffer.
+    binding_t* binding;        ///< The current binding in the walk.
+    dentry_t* rootDentry; ///< The root dentry.
+    binding_t* rootBinding; ///< The root binding.
     char* ptr;             ///< Pointer to the current component in the path.
     size_t componentLen;   ///< Length of the current component being processed.
     mode_t mode;           ///< Parsed mode from the path.
@@ -303,31 +300,36 @@ typedef struct path_state
     uint32_t symlinkDepth; ///< Current symlink recursion depth.
     dentry_t* lookup;      ///< A reference to the last "looked up" dentry to keep it and its parents alive.
     status_t (*done)(irp_t* irp, struct path_state* state, file_t* file);
-    char linkBuffer[MAX_PATH]; ///< Temporary buffer for reading symlinks.
     char* payload;             ///< The payload string extracted from the path.
+    uint64_t count;   ///< The length of the path string.
+    char path[MAX_PATH]; ///< The full path string buffer, not `NULL` terminated.
+    char linkBuffer[MAX_PATH]; ///< Temporary buffer for reading symlinks.
 } path_state_t;
 
 /**
  * @brief Initialize a path state.
  *
+ * After calling this function the path to walk should be copied to `path_state_t::path` and the length of the path should be set in `path_state_t::count` before calling `path_walk()`.
+ * 
  * @param state The path state to initialize.
  */
-static inline void path_state_init(path_state_t* state, dentry_t* dentry, binding_t* mount, char* path, size_t pathLength,
-    size_t pathCapacity, status_t (*done)(irp_t* irp, struct path_state* state, file_t* file))
+static inline void path_state_init(path_state_t* state, dentry_t* dentry, binding_t* binding, dentry_t* rootDentry, binding_t* rootBinding, status_t (*done)(irp_t* irp, struct path_state* state, file_t* file))
 {
     state->dentry = dentry;
-    state->mount = mount;
-    state->path = path;
-    state->pathLength = pathLength;
-    state->pathCapacity = pathCapacity;
-    state->ptr = path;
+    state->binding = binding;
+    state->rootDentry = rootDentry;
+    state->rootBinding = rootBinding;
+    state->ptr = state->path;
     state->componentLen = 0;
     state->mode = MODE_NONE;
     state->ns = NULL;
     state->symlinkDepth = 0;
     state->lookup = NULL;
-    state->payload = NULL;
     state->done = done;
+    state->payload = NULL;
+    state->count = 0;
+    state->path[0] = '\0';
+    state->linkBuffer[0] = '\0';
 }
 
 /**

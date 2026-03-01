@@ -5,7 +5,6 @@
 #include <kernel/fs/binding.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vnode.h>
-#include <kernel/fs/volume.h>
 #include <kernel/io/irp.h>
 #include <kernel/mem/cache.h>
 #include <kernel/mem/mdl.h>

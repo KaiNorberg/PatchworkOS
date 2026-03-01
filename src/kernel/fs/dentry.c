@@ -98,8 +98,6 @@ static void dentry_free(dentry_t* dentry)
         dentry->vnode = NULL;
     }
 
-    UNREF(dentry->volume);
-    dentry->volume = NULL;
 
     rcu_call(&dentry->rcu, rcu_call_cache_free, dentry);
 }
@@ -115,16 +113,15 @@ static void dentry_ctor(void* ptr)
     dentry->parent = NULL;
     list_entry_init(&dentry->siblingEntry);
     list_init(&dentry->children);
-    dentry->volume = NULL;
     map_entry_init(&dentry->mapEntry);
-    atomic_init(&dentry->mountCount, 0);
+    atomic_init(&dentry->bindings, 0);
     dentry->rcu = (rcu_entry_t){0};
     list_entry_init(&dentry->entry);
 }
 
 static cache_t cache = CACHE_CREATE(cache, "dentry", sizeof(dentry_t), CACHE_LINE, dentry_ctor, NULL);
 
-dentry_t* dentry_new(volume_t* volume, dentry_t* parent, const char* name)
+dentry_t* dentry_new(dentry_t* parent, const char* name)
 {
     dentry_t* dentry = cache_alloc(&cache);
     if (dentry == NULL)
@@ -133,7 +130,6 @@ dentry_t* dentry_new(volume_t* volume, dentry_t* parent, const char* name)
     }
 
     ref_init(&dentry->ref, dentry_free);
-    dentry->volume = REF(volume);
     if (name != NULL)
     {
         strncpy(dentry->name, name, MAX_NAME);

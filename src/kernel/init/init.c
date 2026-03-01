@@ -99,7 +99,6 @@ static void init_finalize(void)
     sysfs_init();
     procfs_init();
     netfs_init();
-    filesystem_expose();
 
     log_expose();
 

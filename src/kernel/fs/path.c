@@ -25,10 +25,10 @@ static path_flag_short_t shortFlags[UINT8_MAX + 1] = {
     ['w'] = {.mode = MODE_WRITE},
     ['x'] = {.mode = MODE_EXECUTE},
     ['a'] = {.mode = MODE_APPEND},
-    ['f'] = {.mode = MODE_CREATE | MODE_FILE},
-    ['d'] = {.mode = MODE_CREATE | MODE_DIRECTORY},
-    ['s'] = {.mode = MODE_CREATE | MODE_SYMLINK},
-    ['h'] = {.mode = MODE_CREATE | MODE_HARDLINK},
+    ['f'] = {.mode = MODE_FILE},
+    ['d'] = {.mode = MODE_DIRECTORY},
+    ['s'] = {.mode = MODE_SYMLINK},
+    ['h'] = {.mode = MODE_HARDLINK},
     ['e'] = {.mode = MODE_EXCLUSIVE},
     ['E'] = {.mode = MODE_EXISTING},
     ['t'] = {.mode = MODE_TRUNCATE},
@@ -50,10 +50,10 @@ static const path_flag_t flags[] = {
     {.mode = MODE_WRITE, .name = "write"},
     {.mode = MODE_EXECUTE, .name = "execute"},
     {.mode = MODE_APPEND, .name = "append"},
-    {.mode = MODE_CREATE | MODE_FILE, .name = "file"},
-    {.mode = MODE_CREATE | MODE_DIRECTORY, .name = "directory"},
-    {.mode = MODE_CREATE | MODE_SYMLINK, .name = "symlink"},
-    {.mode = MODE_CREATE | MODE_HARDLINK, .name = "hardlink"},
+    {.mode = MODE_FILE, .name = "file"},
+    {.mode = MODE_DIRECTORY, .name = "directory"},
+    {.mode = MODE_SYMLINK, .name = "symlink"},
+    {.mode = MODE_HARDLINK, .name = "hardlink"},
     {.mode = MODE_EXCLUSIVE, .name = "exclusive"},
     {.mode = MODE_EXISTING, .name = "existing"},
     {.mode = MODE_TRUNCATE, .name = "truncate"},
@@ -142,6 +142,14 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state);
 static void path_state_free(path_state_t* state)
 {
     UNREF(state->ns);
+    if (state->rootDentry != NULL)
+    {
+        UNREF(state->rootDentry);
+    }
+    if (state->rootBinding != NULL)
+    {
+        UNREF(state->rootBinding);
+    }
     if (state->lookup != NULL)
     {
         UNREF(state->lookup);
@@ -152,7 +160,7 @@ static void path_state_free(path_state_t* state)
 static void path_state_free_acquired(path_state_t* state)
 {
     UNREF(state->dentry);
-    UNREF(state->mount);
+    UNREF(state->binding);
     path_state_free(state);
 }
 
@@ -162,7 +170,7 @@ static inline status_t path_state_acquire(path_state_t* state)
     {
         return ERR(VFS, NOENT);
     }
-    if (REF_TRY(state->mount) == NULL)
+    if (REF_TRY(state->binding) == NULL)
     {
         UNREF(state->dentry);
         return ERR(VFS, NOENT);
@@ -177,11 +185,13 @@ static inline void path_state_release(path_state_t* state)
     rcu_read_lock();
 
     UNREF(state->dentry);
-    UNREF(state->mount);
+    UNREF(state->binding);
 }
 
 static status_t path_dotdot(path_state_t* state)
 {
+    /// @todo Implement system to only allow ".." if the current location can be reached from "root".
+
     status_t status = path_state_acquire(state);
     if (IS_ERR(status))
     {
@@ -191,17 +201,17 @@ static status_t path_dotdot(path_state_t* state)
 
     status = OK;
     uint64_t iter = 0;
-    while (state->dentry == state->mount->source)
+    while (state->dentry == state->binding->source)
     {
-        if (state->mount->parent == NULL || state->mount->target == NULL)
+        if (state->binding->parent == NULL || state->binding->target == NULL)
         {
             break;
         }
 
-        binding_t* nextMount = REF(state->mount->parent);
-        dentry_t* nextDentry = REF(state->mount->target);
-        UNREF(state->mount);
-        state->mount = nextMount;
+        binding_t* nextMount = REF(state->binding->parent);
+        dentry_t* nextDentry = REF(state->binding->target);
+        UNREF(state->binding);
+        state->binding = nextMount;
         UNREF(state->dentry);
         state->dentry = nextDentry;
 
@@ -246,10 +256,10 @@ static status_t path_symlink_complete(irp_t* irp, void* ctx)
 
     char* start = state->ptr - state->componentLen;
     size_t prefixLen = start - state->path;
-    size_t suffixLen = (state->path + state->pathLength) - state->ptr;
+    size_t suffixLen = (state->path + state->count) - state->ptr;
     size_t newLen = prefixLen + linkLen + suffixLen;
 
-    if (newLen > state->pathCapacity)
+    if (newLen > MAX_PATH)
     {
         path_state_free_acquired(state);
         return ERR(VFS, PATHTOOLONG);
@@ -262,18 +272,18 @@ static status_t path_symlink_complete(irp_t* irp, void* ctx)
     {
         state->payload = state->payload - state->componentLen + linkLen;
     }
-    state->pathLength = newLen;
+    state->count = newLen;
 
     if (link[0] == '/')
     {
         state->ptr = state->path;
         path_t temp = {
             .dentry = state->dentry,
-            .mount = state->mount,
+            .binding = state->binding,
         };
         namespace_get_root(state->ns, &temp);
         state->dentry = temp.dentry;
-        state->mount = temp.mount;
+        state->binding = temp.binding;
     }
     else
     {
@@ -373,7 +383,7 @@ static status_t path_walk_lookup(irp_t* irp, path_state_t* state, const char* na
     memcpy(buffer, name, len);
     buffer[len] = '\0';
 
-    dentry_t* newDentry = dentry_new(state->dentry->volume, state->dentry, buffer);
+    dentry_t* newDentry = dentry_new(state->dentry, buffer);
     if (newDentry == NULL)
     {
         path_state_free_acquired(state);
@@ -413,7 +423,7 @@ static status_t path_done(irp_t* irp, path_state_t* state)
     }
     UNREF_DEFER(dentry);
 
-    binding_t* mount = REF_TRY(state->mount);
+    binding_t* mount = REF_TRY(state->binding);
     if (mount == NULL)
     {
         rcu_read_unlock();
@@ -441,10 +451,9 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state)
 {
     if (state->ptr == state->path && state->ptr[0] == '/')
     {
-        path_t root = PATH_EMPTY;
-        namespace_get_root(state->ns, &root);
-        state->dentry = root.dentry;
-        state->mount = root.mount;
+        state->dentry = state->rootDentry;
+        state->binding = state->rootBinding;
+        state->ptr++;
     }
 
     while (true)
@@ -479,13 +488,6 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state)
         }
         if (len == 2 && component[0] == '.' && component[1] == '.')
         {
-            if (state->mode & MODE_NODOTDOT)
-            {
-                rcu_read_unlock();
-                path_state_free(state);
-                return ERR(VFS, DOTDOT);
-            }
-
             status_t status = path_dotdot(state);
             if (IS_ERR(status))
             {
@@ -505,9 +507,9 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state)
             }
         }
 
-        if (atomic_load(&next->mountCount) > 0)
+        if (atomic_load(&next->bindings) > 0)
         {
-            namespace_rcu_traverse(state->ns, &state->mount, &next);
+            namespace_rcu_traverse(state->ns, &state->binding, &next);
         }
 
         state->dentry = next;
@@ -532,7 +534,7 @@ static status_t path_verify(path_state_t* state)
     uint64_t currentNameLength = 0;
     while (state->path[index] != ':' && state->path[index] != '?')
     {
-        if (index >= state->pathLength)
+        if (index >= state->count)
         {
             return OK;
         }
@@ -569,9 +571,9 @@ static status_t path_verify(path_state_t* state)
     if (delimiter == '?')
     {
         state->payload = &state->path[index];
-        if (index < state->pathCapacity)
+        if (index < MAX_PATH)
         {
-            state->path[state->pathLength] = '\0';
+            state->path[state->count] = '\0';
         }
         return OK;
     }
@@ -580,27 +582,27 @@ static status_t path_verify(path_state_t* state)
 
     while (true)
     {
-        while (state->path[index] == ':' && index < state->pathLength)
+        while (state->path[index] == ':' && index < state->count)
         {
             index++;
         }
 
-        if (state->path[index] == '?' || index >= state->pathLength)
+        if (state->path[index] == '?' || index >= state->count)
         {
-            if (index < state->pathLength && state->path[index] == '?')
+            if (index < state->count && state->path[index] == '?')
             {
                 state->path[index] = '\0';
                 state->payload = &state->path[index + 1];
-                if (index < state->pathCapacity)
+                if (index < MAX_PATH)
                 {
-                    state->path[state->pathLength] = '\0';
+                    state->path[state->count] = '\0';
                 }
             }
             return OK;
         }
 
         const char* token = &state->path[index];
-        while (state->path[index] != ':' && state->path[index] != '?' && index < state->pathLength)
+        while (state->path[index] != ':' && state->path[index] != '?' && index < state->count)
         {
             if (!isalpha(state->path[index]))
             {
@@ -609,7 +611,7 @@ static status_t path_verify(path_state_t* state)
             index++;
         }
 
-        if (index >= state->pathLength)
+        if (index >= state->count)
         {
             return OK;
         }
@@ -642,6 +644,9 @@ status_t path_walk(irp_t* irp, path_state_t* state)
         return status;
     }
 
+    state->rootDentry = REF(state->rootDentry);
+    state->rootBinding = REF(state->rootBinding);
+
     rcu_read_lock();
 
     return path_walk_loop(irp, state);
@@ -649,7 +654,7 @@ status_t path_walk(irp_t* irp, path_state_t* state)
 
 status_t path_to_name(const path_t* path, char* pathname, size_t length)
 {
-    if (path == NULL || path->dentry == NULL || path->mount == NULL || pathname == NULL)
+    if (path == NULL || path->dentry == NULL || path->binding == NULL || pathname == NULL)
     {
         return ERR(VFS, INVAL);
     }
@@ -658,7 +663,7 @@ status_t path_to_name(const path_t* path, char* pathname, size_t length)
     *ptr = '\0';
 
     dentry_t* dentry = path->dentry;
-    binding_t* mount = path->mount;
+    binding_t* mount = path->binding;
 
     while (true)
     {

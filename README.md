@@ -98,17 +98,32 @@ The combination of this system and our "everything is a file" philosophy means t
 
 ### Security
 
-In PatchworkOS, there are no Access Control Lists, user IDs or similar mechanisms. Instead, PatchworkOS uses a pseudo-capability security model based on per-process mountpoint namespaces and containerization. This means that there is no global filesystem view, each process has its own view of the filesystem defined by what has been mounted or bound into its namespace.
+In PatchworkOS, there are no Access Control Lists, user IDs or similar mechanisms. Instead, PatchworkOS uses a capability security model based on per-process namespaces and file descriptors. A process can only access files that have either been bound into its namespace or passed to it via file descriptors, and since everything is a file, this applies to practically everything in the system, including devices, IPC mechanisms, etc.
 
-The namespace system allows for a composable, transparent and pseudo-capability security model. Processes can be given access to any combination of files and directories without needing hidden permission bits or similar mechanisms. Since everything is a file, this applies to practically everything in the system, including devices, IPC mechanisms, etc.
+#### The Root Directory and `..`
 
-In most cases this is utilized by creating a process with an empty namespace, mounting a tmpfs instance as its root and then binding the necessary files and directories into the namespace.
+Regarding the `..` operator, which is very dangerous in a capability based system. Consider if we pass a directory to a process, by doing so we are granting it access to that directory and all of its subdirectories. However, if we allow that process to use `..` to access the parent directory, which allows the process access to everything and makes the system pointless.
 
-#### Dotdot
+A tempting solution would be to ban the use of `..` entirely and instead use user-space string parsing to normalize paths (i.e. turning `a/b/..` into `a`). However, this would become very complex when handling paths like `./..` as it would require us to keep track of the current working directory as a string.
 
-Regarding the `..` operator, which you may know is rather dangerous in a capability based system, there is a `nodotdot` flag that can be set when opening a file to prevent the usage of `..` on paths opened relative to that file, the flag will be inherited by any file descriptors opened relative to that file.
+Even if we do figure out those problems, we are still left with the problem of symlinks, which would be very difficult or downright impossible to handle correctly.
 
-This is useful for security as you can pass this file descriptor to another process and be sure that it cannot use `..` to escape the intended directory. While still allowing us to utilize the `..` operator in other parts of the system where it is not a security concern, for example when navigating the filesystem in a terminal, without complex parsing or special cases.
+The solution proposed by PatchworkOS is to allow `..` but only if the process can prove that it already has a capability to reach the parent directory. For example, say we have a directory structure like this:
+
+```
+/
+└── a
+    └── b
+        └── c
+```
+
+Now let's say we have a process that wishes to open the `b` file and that has two file descriptors, one to the `c` file (as in it has the capability to access `c`) and one to the `a` directory (as in it has the capability to access `a`, the contents of `a` and the contents of all subdirectories).
+
+In this case, if we disallow the process from using `..` from `c` to access `b`, we are not meaningfully preventing the process from accessing `b`, since it can just use the `a` file descriptor to access `b` directly. From this perspective, we can consider that using `..` from `c` is merely a move convenient way to access `b`, not that doing so actually grants any new capabilities to the process.
+
+All of this does however hinge on the ability for a process to prove that it has a capability to access the parent directory. The way this is done is closely tied to how PatchworkOS handles the "root directory."
+
+In PatchworkOS there is no global root or even namespace local root. Instead, when a process walks a path it must always specify some file descriptor to be considered the root for that specific operation. This root file descriptor is what's used by a process to prove that it has a capability to access the parent directory, if the process tries to use `..` to access the parent directory, the kernel will check if the root file descriptor can reach that parent directory, if it can, then `..` is allowed, otherwise it is not.
 
 ### Standard Library
 
@@ -136,7 +151,7 @@ Using the synchronous I/O wrappers in PatchworkOS, we would write:
 
 ```c
 fd_t fd;
-iowalk(FDCWD, "/path/to/file:rw", &fd);
+iowalk(FDCWD, "/path/to/file:rw", FDROOT, &fd);
 
 size_t bytesWritten;
 iowrite(fd, IOBUF("Hello, World!", 13), IOCUR, &bytesWritten);
@@ -147,7 +162,7 @@ We first open the file using `iowalk()`, specifying that the path should be trav
 
 > The term "walk" is used instead of "open" since all operations act on file descriptors and the ability to reach files relative to other files is a key part of the security model. As such, performing any operation on a file should be thought of as "walking" to it and then acting upon it, instead of merely "opening" it, after walking to a file we could walk to another file relative to it.
 
-Note that the `FDCWD` constant is no different than standard file descriptors like `STDIN`, `STDOUT` and `STDERR` (called `FDIN`, `FDOUT` and `FDERR` respectively). In PatchworkOS, the current working directory is just a file descriptor like any other; an agreed upon convention that allows other processes to easily inherit it when needed.
+Note that the `FDCWD` and `FDROOT` constants are just standard file descriptors like `STDIN`, `STDOUT` and `STDERR` (called `FDIN`, `FDOUT` and `FDERR` respectively). In PatchworkOS, the current working directory and root directory are just file descriptors like any other; an agreed upon convention that allows other processes to easily inherit them as needed.
 
 Then we write to the file using `iowrite()`, passing the file descriptor, a buffer containing the data to write (the `iowrite()` function actually expects an array of `iovec_t` which the `IOBUF()` macro creates on the stack for convenience) and the offset to write at (in this case `IOCUR` to write at the current offset).
 
@@ -187,8 +202,8 @@ Using the synchronous I/O wrappers in PatchworkOS, we would write:
 fd_t in;
 fd_t out;
 
-iowalk(FDCWD, "/dev/pipe/clone", &in);
-iowalk(FDCWD, "/dev/pipe/clone", &out);
+iowalk(FDCWD, "/dev/pipe/clone", FDROOT, &in);
+iowalk(FDCWD, "/dev/pipe/clone", FDROOT, &out);
 
 proc_t proc;
 const char* argv[] = {"/path/to/program", NULL};
@@ -208,27 +223,27 @@ As a side note, we could optimize the pipe creation by walking to the second pip
 ```c
 fd_t in;
 fd_t out;
-iowalk(FDCWD, "/dev/pipe/clone", &in);
-iowalk(in, ".", &out);
+iowalk(FDCWD, "/dev/pipe/clone", FDROOT, &in);
+iowalk(in, ".", FDROOT, &out);
 ```
 
 ### Mounting a Filesystem
 
-There is no `mount()` system call in PatchworkOS; instead "filesystem files" and a `iobind()` system call are used to mount filesystems.
+There is no `mount()` system call in PatchworkOS; instead "filesystem files" and a `fsbind()` system call are used to mount filesystems.
 
 Filesystem files are exposed by "sysfs" as files with the `FILE_FILESYSTEM` type, for example, `/sys/fs/tmpfs` is the filesystem file for the tmpfs filesystem. Opening this file gives us a file descriptor containing the root of a new instance of that filesystem (for more complex filesystems, for example a disk based one, additional parameters might be needed, these would be passed as the payload to `iowalk()` when opening the filesystem file).
 
-Then we can use `iobind()` to bind the root of the filesystem instance into our desired target:
+Then we can use `fsbind()` to bind the root of the filesystem instance into our desired target:
 
 ```c
 fd_t fs;
 fd_t target;
-iowalk(FDCWD, "/sys/fs/tmpfs", &fs);
-iowalk(FDCWD, "/mnt/tmpfs", &target);
-iobind(target, fs);
+iowalk(FDCWD, "/sys/fs/tmpfs", FDROOT, &fs);
+iowalk(FDCWD, "/mnt/tmpfs", FDROOT, &target);
+fsbind(target, fs);
 ```
 
-> The `iobind()` system call can also be used to bind any file onto any other file. Any bind can be removed using `iounbind()`.
+> The `fsbind()` system call can also be used to bind any file onto any other file. Any bind can be removed using `fsunbind()`.
 
 An interesting side effect of this system is that namespaces do not need to be contiguous, for example, we could open two tmpfs instances and bind the second one inside the first one. Since the second filesystem instance is now referenced by our binding and the first is referenced by the second through that binding, both filesystems will remain even if we close both file descriptors, resulting in our namespace containing our original hierarchy and a second detached hierarchy consisting of the two tmpfs instances.
 

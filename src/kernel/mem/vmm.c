@@ -124,7 +124,7 @@ space_t* vmm_kernel_space_get(void)
     return &kernelSpace;
 }
 
-pml_flags_t vmm_iomem_to_flags(iomap_t mem)
+pml_flags_t vmm_iomap_to_flags(iomap_t mem)
 {
     pml_flags_t pml = 0;
     if (mem & IOMAP_READ)
@@ -713,5 +713,5 @@ SYSCALL_DEFINE(SYS_PROTECT, void* address, size_t length, iomap_t prot)
         return ERR(MMU, FAULT);
     }
 
-    return vmm_protect(space, address, length, vmm_iomem_to_flags(prot));
+    return vmm_protect(space, address, length, vmm_iomap_to_flags(prot));
 }

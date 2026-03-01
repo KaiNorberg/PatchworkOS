@@ -51,7 +51,7 @@ static status_t key_generate(char* buffer, uint64_t size)
     uint64_t hash;
     do
     {
-        assert(size <= KEYMAX);
+        assert(size <= FDKEY_MAX);
         uint8_t bytes[((size - 1) / 4) * 3];
         status_t status = rand_gen(bytes, sizeof(bytes));
         if (IS_ERR(status))
@@ -89,7 +89,7 @@ void key_timer_handler(void)
 
 status_t key_share(char* key, uint64_t size, file_t* file, clock_t timeout)
 {
-    if (key == NULL || size == 0 || size > KEYMAX || file == NULL)
+    if (key == NULL || size == 0 || size > FDKEY_MAX || file == NULL)
     {
         return ERR(VFS, INVAL);
     }
@@ -181,7 +181,7 @@ SYSCALL_DEFINE(SYS_FD_SHARE, fd_t fd, char* key, size_t size, clock_t timeout)
     }
     UNREF_DEFER(file);
 
-    char keyCopy[KEYMAX] = {0};
+    char keyCopy[FDKEY_MAX] = {0};
     status_t status = key_share(keyCopy, size, file, timeout);
     if (IS_ERR(status))
     {
@@ -207,8 +207,8 @@ SYSCALL_DEFINE(SYS_FD_CLAIM, const char* key)
     thread_t* thread = thread_current();
     process_t* process = thread->process;
 
-    char keyCopy[KEYMAX];
-    status_t status = thread_copy_from_user_string(thread, keyCopy, key, KEYMAX);
+    char keyCopy[FDKEY_MAX];
+    status_t status = thread_copy_from_user_string(thread, keyCopy, key, FDKEY_MAX);
     if (IS_ERR(status))
     {
         return status;

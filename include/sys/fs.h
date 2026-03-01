@@ -41,6 +41,7 @@ typedef uint64_t fd_t;      ///< File descriptor type.
 #define FDOUT ((fd_t)1)     ///< Standard output file descriptor.
 #define FDERR ((fd_t)2)     ///< Standard error file descriptor.
 #define FDCWD ((fd_t)3)     ///< Standard current working directory file descriptor.
+#define FDROOT ((fd_t)4)    ///< Standard root file descriptor.
 #define FDNONE ((fd_t) - 1) ///< No file descriptor.
 
 /**

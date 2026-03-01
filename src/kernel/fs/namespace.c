@@ -6,7 +6,6 @@
 #include <kernel/fs/binding.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vfs.h>
-#include <kernel/fs/volume.h>
 #include <kernel/log/log.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/thread.h>
@@ -101,11 +100,6 @@ static void binding_stack_free(namespace_t* ns, binding_stack_t* stack)
     uint64_t hash = binding_hash(stack->parentId, stack->locationId);
     map_remove(&ns->bindingMap, &stack->mapEntry, hash);
 
-    if (&ns->root == stack)
-    {
-        return;
-    }
-
     free(stack);
 }
 
@@ -118,16 +112,6 @@ static binding_stack_t* namespace_get_stack(namespace_t* ns, binding_id_t parent
 
 static status_t namespace_add(namespace_t* ns, binding_t* binding)
 {
-    if (BINDING_IS_ROOT(binding))
-    {
-        status_t status = binding_stack_push(&ns->root, binding);
-        if (IS_ERR(status))
-        {
-            return status;
-        }
-        goto propagate;
-    }
-
     binding_id_t parentId = binding->parent->id;
     dentry_id_t locationId = binding->target->id;
 
@@ -149,7 +133,6 @@ static status_t namespace_add(namespace_t* ns, binding_t* binding)
         return status;
     }
 
-propagate:
     if (binding->mode & MODE_PROPAGATE)
     {
         namespace_t* child;
@@ -175,12 +158,6 @@ static void namespace_remove(namespace_t* ns, binding_t* binding, mode_t mode)
         return;
     }
 
-    if (BINDING_IS_ROOT(binding))
-    {
-        binding_stack_remove(&ns->root, binding);
-        goto propagate;
-    }
-
     binding_id_t parentId = binding->parent->id;
     dentry_id_t locationId = binding->target->id;
 
@@ -195,7 +172,6 @@ static void namespace_remove(namespace_t* ns, binding_t* binding, mode_t mode)
         }
     }
 
-propagate:
     if (mode & MODE_PROPAGATE)
     {
         namespace_t* child;
@@ -250,8 +226,6 @@ namespace_t* namespace_new(namespace_t* parent)
     ns->parent = NULL;
     list_init(&ns->stacks);
     MAP_DEFINE_INIT(ns->bindingMap, binding_map_cmp);
-
-    binding_stack_init(ns, &ns->root, UINT64_MAX, UINT64_MAX);
 
     rwlock_init(&ns->lock);
 
@@ -342,7 +316,7 @@ bool namespace_rcu_traverse(namespace_t* ns, binding_t** binding, dentry_t** den
     bool traversed = false;
     for (uint64_t i = 0; i < NAMESPACE_MAX_TRAVERSE; i++)
     {
-        if (atomic_load(&(*dentry)->bindingCount) == 0)
+        if (atomic_load(&(*dentry)->bindings) == 0)
         {
             return traversed;
         }
@@ -366,12 +340,12 @@ bool namespace_rcu_traverse(namespace_t* ns, binding_t** binding, dentry_t** den
 
 status_t namespace_bind(namespace_t* ns, path_t* target, path_t* source, mode_t mode, binding_t** out)
 {
-    if (ns == NULL || !PATH_IS_VALID(source))
+    if (ns == NULL || !PATH_IS_VALID(target) || !PATH_IS_VALID(source))
     {
         return ERR(VFS, INVAL);
     }
 
-    status_t status = mode_check(&mode, source->mount->mode);
+    status_t status = mode_check(&mode, source->binding->mode);
     if (IS_ERR(status))
     {
         return status;
@@ -384,8 +358,7 @@ status_t namespace_bind(namespace_t* ns, path_t* target, path_t* source, mode_t 
         return ERR(VFS, NOENT);
     }
 
-    binding_t* binding = binding_new(source->dentry->volume, source->dentry, target != NULL ? target->dentry : NULL,
-        target != NULL ? target->mount : NULL, mode);
+    binding_t* binding = binding_new(source->dentry, target->dentry, target->binding, mode);
     if (binding == NULL)
     {
         return ERR(VFS, NOMEM);
@@ -421,66 +394,10 @@ void namespace_unbind(namespace_t* ns, binding_t* binding, mode_t mode)
     namespace_remove(ns, binding, mode);
 }
 
-void namespace_get_root(namespace_t* ns, path_t* out)
-{
-    if (ns == NULL || out == NULL)
-    {
-        path_set(out, NULL, NULL);
-        return;
-    }
-
-    RWLOCK_READ_SCOPE(&ns->lock);
-
-    if (ns->root.count == 0)
-    {
-        path_set(out, NULL, NULL);
-        return;
-    }
-
-    binding_t* bind = ns->root.bindings[ns->root.count - 1];
-    path_set(out, bind, bind->source);
-}
-
-void namespace_rcu_get_root(namespace_t* ns, binding_t** binding, dentry_t** dentry)
-{
-    if (ns == NULL || binding == NULL || dentry == NULL)
-    {
-        if (binding != NULL)
-        {
-            *binding = NULL;
-        }
-        if (dentry != NULL)
-        {
-            *dentry = NULL;
-        }
-        return;
-    }
-
-    RWLOCK_READ_SCOPE(&ns->lock);
-
-    if (ns->root.count == 0)
-    {
-        *binding = NULL;
-        *dentry = NULL;
-        return;
-    }
-
-    binding_t* bind = ns->root.bindings[ns->root.count - 1];
-    *binding = bind;
-    *dentry = bind->source;
-}
-
-SYSCALL_DEFINE(SYS_BIND, const char* target, fd_t source)
+SYSCALL_DEFINE(SYS_FS_BIND, fd_t target, fd_t source)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
-
-    pathname_t targetName;
-    status_t status = thread_copy_from_user_pathname(thread, &targetName, target);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
 
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
@@ -489,14 +406,12 @@ SYSCALL_DEFINE(SYS_BIND, const char* target, fd_t source)
     }
     UNREF_DEFER(ns);
 
-    path_t targetPath = cwd_get(&process->cwd, ns);
-    PATH_DEFER(&targetPath);
-
-    status = path_walk(&targetPath, &targetName, ns);
-    if (IS_ERR(status))
+    file_t* targetFile = file_table_get(&process->files, target);
+    if (targetFile == NULL)
     {
-        return status;
+        return ERR(VFS, BADFD);
     }
+    UNREF_DEFER(targetFile);
 
     file_t* sourceFile = file_table_get(&process->files, source);
     if (sourceFile == NULL)
@@ -505,20 +420,13 @@ SYSCALL_DEFINE(SYS_BIND, const char* target, fd_t source)
     }
     UNREF_DEFER(sourceFile);
 
-    return namespace_bind(ns, &targetPath, &sourceFile->path, targetName.mode, NULL);
+    return namespace_bind(ns, &targetFile->path, &sourceFile->path, sourceFile->mode, NULL);
 }
 
-SYSCALL_DEFINE(SYS_UNMOUNT, const char* target)
+SYSCALL_DEFINE(SYS_FS_UNBIND, fd_t target)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
-
-    pathname_t targetName;
-    status_t status = thread_copy_from_user_pathname(thread, &targetName, target);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
 
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
@@ -527,15 +435,13 @@ SYSCALL_DEFINE(SYS_UNMOUNT, const char* target)
     }
     UNREF_DEFER(ns);
 
-    path_t targetPath = cwd_get(&process->cwd, ns);
-    PATH_DEFER(&targetPath);
-
-    status = path_walk(&targetPath, &targetName, ns);
-    if (IS_ERR(status))
+    file_t* targetFile = file_table_get(&process->files, target);
+    if (targetFile == NULL)
     {
-        return status;
+        return ERR(VFS, BADFD);
     }
+    UNREF_DEFER(targetFile);
 
-    namespace_unmount(ns, targetPath.mount, targetName.mode);
+    namespace_unbind(ns, targetFile->path.binding, targetFile->mode);
     return OK;
 }

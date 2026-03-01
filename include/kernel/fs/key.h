@@ -27,7 +27,7 @@ typedef struct
 {
     list_entry_t entry;
     map_entry_t mapEntry;
-    char key[KEYMAX];
+    char key[FDKEY_MAX];
     file_t* file;
     clock_t expiry;
 } key_entry_t;

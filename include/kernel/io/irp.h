@@ -330,7 +330,7 @@ typedef struct irp_frame
         } write;
         struct
         {
-            iopoll_t events; ///< The events to poll for.
+            ioevents_t events; ///< The events to poll for.
         } poll;
         struct
         {
@@ -778,7 +778,7 @@ static inline void irp_prep_write(irp_t* irp, mdl_t* buffer, ssize_t offset)
  *
  * @see `IRP_MJ_POLL`
  */
-static inline void irp_prep_poll(irp_t* irp, iopoll_t events)
+static inline void irp_prep_poll(irp_t* irp, ioevents_t events)
 {
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);

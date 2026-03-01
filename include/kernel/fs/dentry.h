@@ -110,7 +110,7 @@ typedef struct dentry
     list_entry_t siblingEntry;
     list_t children;
     map_entry_t mapEntry;         ///< Entry in the dentry cache hash map.
-    _Atomic(uint64_t) mountCount; ///< Number of mounts targeting this dentry.
+    _Atomic(uint64_t) bindings; ///< Number of bindings targeting this dentry.
     rcu_entry_t rcu;              ///< RCU entry for deferred cleanup.
     list_entry_t entry;           ///< Made available for use by any other subsystems for convenience.
 } dentry_t;
@@ -120,12 +120,11 @@ typedef struct dentry
  *
  * There is no `dentry_free()` instead use `UNREF()`.
  *
- * @param volume The volume the dentry belongs to.
  * @param parent The parent dentry, can be `NULL`.
  * @param name The name of the dentry, can be `NULL` if `parent` is also `NULL`.
  * @return On success, the new negative dentry. On failure, returns `NULL`.
  */
-dentry_t* dentry_new(volume_t* volume, dentry_t* parent, const char* name);
+dentry_t* dentry_new(dentry_t* parent, const char* name);
 
 /**
  * @brief Remove a dentry from the dentry cache.

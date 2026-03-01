@@ -148,7 +148,7 @@ space_t* vmm_kernel_space_get(void);
  * @param mem The user space I/O memory flags.
  * @return The corresponding page table entry flags.
  */
-pml_flags_t vmm_iomem_to_flags(iomap_t mem);
+pml_flags_t vmm_iomap_to_flags(iomap_t mem);
 
 /**
  * @brief Allocates and maps virtual memory in a given address space.

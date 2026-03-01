@@ -148,7 +148,7 @@ static status_t io_op_map(irp_t* irp)
     }
     UNREF_DEFER(file);
 
-    pml_flags_t pml = vmm_iomem_to_flags(irp->sqe.mem);
+    pml_flags_t pml = vmm_iomap_to_flags(irp->sqe.map);
     irp_prep_mmap(irp, irp->sqe.address, irp->sqe.count, irp->sqe.offset, pml);
     return file_call(file, irp);
 }
@@ -169,29 +169,35 @@ static status_t io_op_walk(irp_t* irp)
         return ERR(IO, INVAL);
     }
 
-    file_t* file = file_table_get(&process->files, irp->sqe.fd);
-    if (file == NULL)
+    file_t* from = file_table_get(&process->files, irp->sqe.fd);
+    if (from == NULL)
     {
         return ERR(IO, BADFD);
     }
-    UNREF_DEFER(file);
+    UNREF_DEFER(from);
 
-    size_t length = sizeof(path_state_t) + MAX_PATH;
-    path_state_t* state = malloc(length);
+    file_t* root = file_table_get(&process->files, irp->sqe.root);
+    if (root == NULL)
+    {
+        return ERR(IO, BADFD);
+    }
+    UNREF_DEFER(root);
+
+    path_state_t* state = malloc(sizeof(path_state_t));
     if (state == NULL)
     {
         return ERR(IO, NOMEM);
     }
-    char* path = (char*)((uintptr_t)state + sizeof(path_state_t));
+    path_state_init(state, from->path.dentry, from->path.binding, root->path.dentry, root->path.binding, io_op_walk_done);
 
-    status_t status = space_copy_out(&process->space, path, irp->sqe.path, irp->sqe.count);
+    status_t status = space_copy_out(&process->space, state->path, irp->sqe.path, irp->sqe.count);
     if (IS_ERR(status))
     {
         free(state);
         return status;
     }
+    state->count = irp->sqe.count;
 
-    path_state_init(state, file->path.dentry, file->path.mount, path, irp->sqe.count, MAX_PATH, io_op_walk_done);
     return path_walk(irp, state);
 }
 

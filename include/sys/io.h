@@ -153,7 +153,7 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
  * @param fd The file descriptor to open the file relative to, or `FDCWD` to open from the current working directory.
  * @param path The path to the file to open, also contains flags @see kernel_fs_path.
  * @param count The length of the path.
- * @param Unused
+ * @param root The file descriptor to use as the root for the walk, or `FDROOT` to use the standard root directory.
  * @param Unused
  * @result The opened file descriptor.
  */
@@ -366,6 +366,7 @@ typedef struct iosqe
     union {
         uint64_t arg3;
         ssize_t offset;
+        fd_t root;
     };
     union {
         uint64_t arg4;
@@ -673,12 +674,13 @@ static inline void ioprep_map(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeo
  * @see `IOOP_WALK`
  */
 static inline void ioprep_walk(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
-    const char* path, size_t count)
+    const char* path, size_t count, fd_t root)
 {
     *iosqe = IOSQE_CREATE(IOOP_WALK, flags, timeout, data);
     iosqe->fd = fd;
     iosqe->path = path;
     iosqe->count = count;
+    iosqe->root = root;
 }
 
 /**
@@ -1072,14 +1074,15 @@ static inline status_t ioprotect(void* address, size_t length, iomap_t map)
  * @param path The path to walk.
  * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout or `CLOCKS_NOW` to fail the operation if it
  * cannot be completed immediately.
+ * @param root The file descriptor to use as the root for the walk, or `FDROOT` to use the standard root directory.
  * @param opened Output pointer for the opened file descriptor.
  * @return An appropriate status value.
  */
-static inline status_t iowalkt(fd_t fd, const char* path, clock_t timeout, fd_t* opened)
+static inline status_t iowalkt(fd_t fd, const char* path, clock_t timeout, fd_t root, fd_t* opened)
 {
     iosqe_t sqe;
     iocqe_t cqe;
-    ioprep_walk(&sqe, IOSQE_NORMAL, timeout, 0, fd, path, strlen(path));
+    ioprep_walk(&sqe, IOSQE_NORMAL, timeout, 0, fd, path, strlen(path), root);
     iosync(&sqe, &cqe);
     *opened = cqe.result;
     return cqe.status;
@@ -1089,13 +1092,14 @@ static inline status_t iowalkt(fd_t fd, const char* path, clock_t timeout, fd_t*
  * @brief Synchronous wrapper for an walk operation.
  *
  * @param fd The file descriptor to start walking from, or `FDCWD` start at the current working directory.
- * @param path The path to walk.
+ * @param path The path to walk. 
+ * @param root The file descriptor to use as the root for the walk, or `FDROOT` to use the standard root directory.
  * @param opened Output pointer for the opened file descriptor.
  * @return An appropriate status value.
  */
-static inline status_t iowalk(fd_t fd, const char* path, fd_t* opened)
+static inline status_t iowalk(fd_t fd, const char* path, fd_t root, fd_t* opened)
 {
-    return iowalkt(fd, path, CLOCKS_NEVER, opened);
+    return iowalkt(fd, path, CLOCKS_NEVER, root, opened);
 }
 
 /**

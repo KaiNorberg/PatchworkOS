@@ -2,7 +2,6 @@
 
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/vnode.h>
-#include <kernel/fs/volume.h>
 
 #include <boot/boot_info.h>
 

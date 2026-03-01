@@ -10,7 +10,6 @@
 #include <kernel/fs/path.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/fs/vnode.h>
-#include <kernel/fs/volume.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/proc/process.h>

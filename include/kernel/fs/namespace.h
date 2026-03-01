@@ -64,7 +64,6 @@ typedef struct namespace
     namespace_t* parent;      ///< The parent namespace, can be `NULL`.
     list_t stacks;            ///< List of `binding_stack_t` in this namespace.
     MAP_DEFINE(bindingMap, 64); ///< Map used to go from source dentries to namespace binding stacks.
-    binding_stack_t root;       ///< The root binding stack.
     rwlock_t lock;
     // clang-format off
 } namespace_t;
@@ -136,25 +135,5 @@ status_t namespace_bind(namespace_t* ns, path_t* target, path_t* source, mode_t 
  * @param mode The mode specifying unbinding behaviour.
  */
 void namespace_unbind(namespace_t* ns, binding_t* binding, mode_t mode);
-
-/**
- * @brief Get the root path of a namespace.
- *
- * @param ns The namespace containing the namespace to get the root of.
- * @param out The output root path, may be a invalid `NULL` path if the namespace is empty.
- */
-void namespace_get_root(namespace_t* ns, path_t* out);
-
-/**
- * @brief Get the root binding of a namespace in an RCU read critical section.
- *
- * @warning Will not increase the reference count of the returned binding, the caller must ensure that the binding is not
- * freed while in use.
- *
- * @param ns The namespace containing the namespace to get the root binding of.
- * @param binding The output root binding, may be `NULL` if the namespace is empty.
- * @param dentry The output root dentry, may be `NULL` if the namespace is empty.
- */
-void namespace_rcu_get_root(namespace_t* ns, binding_t** binding, dentry_t** dentry);
 
 /** @} */
