@@ -63,7 +63,7 @@ static status_t kbd_events_open(irp_t* irp)
         return ERR(IO, EXPECT_FILE);
     }
 
-    kbd_t* kbd = file->vnode->data;
+    kbd_t* kbd = frame->vnode->data;
     assert(kbd != NULL);
 
     kbd_client_t* client = calloc(1, sizeof(kbd_client_t));

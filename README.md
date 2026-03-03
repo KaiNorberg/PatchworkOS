@@ -102,28 +102,38 @@ In PatchworkOS, there are no Access Control Lists, user IDs or similar mechanism
 
 #### The Root Directory and `..`
 
-Regarding the `..` operator, which is very dangerous in a capability based system. Consider if we pass a directory to a process, by doing so we are granting it access to that directory and all of its subdirectories. However, if we allow that process to use `..` to access the parent directory, which allows the process access to everything and makes the system pointless.
+The `..` or dotdot operator is a major security concern in a capability based system. Consider that if we pass a directory to a process that process could use `..` to access the parent directory and then the parent of the parent and so on. This vulnerability would effectively make capability based security meaningless.
 
-A tempting solution would be to ban the use of `..` entirely and instead use user-space string parsing to normalize paths (i.e. turning `a/b/..` into `a`). However, this would become very complex when handling paths like `./..` as it would require us to keep track of the current working directory as a string.
+A tempting solution, used by other capability based systems such as Fuchsia, is to ban the use of `..` entirely and instead use string parsing to normalize paths (i.e. turning `a/b/..` into `a`). There are two primary issues with this solution, relative paths and symlinks.
 
-Even if we do figure out those problems, we are still left with the problem of symlinks, which would be very difficult or downright impossible to handle correctly.
+As an example of a relative path, consider the path `./..`. The issue we encounter is that we may not know what `.` refers to, requiring us to track the current working directory as a string. This is not only complex but also inefficient as we would need to parse the entire path string for every traversal and also start any path traversal from the root directory instead of being able to start from any file descriptor.
 
-The solution proposed by PatchworkOS is to allow `..` but only if the process can prove that it already has a capability to reach the parent directory. For example, say we have a directory structure like this:
+We are still left with the problem of symlinks. Consider the path `a/b/../c`, if `b` is a symlink, and we proceed to normalize this path to `a/c`, we will end up accessing `c` within `a` not within whatever directory the symlink points to, making symlinks pointless.
+
+There are alternative and superior solutions to this problem. However hopefully the point is clear, simply banning `..` is not a good solution due to the complexity and inefficiency it introduces, and the fact that symlinks become difficult to impossible to implement. That's not even mentioning the potential for race conditions when normalizing paths.
+
+The solution proposed by PatchworkOS comes from the realization that `..` is not inherently dangerous. Instead, it is only dangerous when it can be used to grant additional capabilities.
+
+As such we allow `..` if the process can prove that it already has a capability to reach the parent directory. For example, say we have a directory structure as described below.
 
 ```
 /
-└── a
-    └── b
-        └── c
+├── a
+│   ├── b
+│   │   └── c
 ```
 
-Now let's say we have a process that wishes to open the `b` file and that has two file descriptors, one to the `c` file (as in it has the capability to access `c`) and one to the `a` directory (as in it has the capability to access `a`, the contents of `a` and the contents of all subdirectories).
+Now let's say we have a process that wishes to open the `b` directory and that has two file descriptors, one to the `c` file (as in it has the capability to access `c`) and one to the `a` directory (as in it has the capability to access `a`, the contents of `a` and the contents of all subdirectories).
 
-In this case, if we disallow the process from using `..` from `c` to access `b`, we are not meaningfully preventing the process from accessing `b`, since it can just use the `a` file descriptor to access `b` directly. From this perspective, we can consider that using `..` from `c` is merely a move convenient way to access `b`, not that doing so actually grants any new capabilities to the process.
+In this case, if we disallow the process from using `..` from `c` to access `b`, we are not meaningfully preventing the process from accessing `b`, since it can just use the `a` file descriptor to access `b` directly. From this perspective, using `..` from `c` is merely a more convenient way to access `b`, not that doing so actually grants any new capabilities to the process.
+
+However, if the process didn't have a file descriptor to `a` then allowing it to use `..` from `c` would grant additional capabilities and as such should not be allowed.
 
 All of this does however hinge on the ability for a process to prove that it has a capability to access the parent directory. The way this is done is closely tied to how PatchworkOS handles the "root directory."
 
-In PatchworkOS there is no global root or even namespace local root. Instead, when a process walks a path it must always specify some file descriptor to be considered the root for that specific operation. This root file descriptor is what's used by a process to prove that it has a capability to access the parent directory, if the process tries to use `..` to access the parent directory, the kernel will check if the root file descriptor can reach that parent directory, if it can, then `..` is allowed, otherwise it is not.
+In PatchworkOS there is no global root or even namespace local root. Instead, when a process walks a path it must always specify some file descriptor to be considered the root for that specific operation.
+
+This root file descriptor is also what's used by a process to prove that it has a capability to access the parent directory. If the process tries to use `..` to access the parent directory, the kernel will check if the specified root can reach that parent directory, if it can, then `..` acts as expected, otherwise `..` becomes a no-op to replicate expected POSIX-like behavior (e.g `/../../` is equivalent to `/`).
 
 ### Standard Library
 

@@ -115,21 +115,24 @@ static vnode_class_t infoClass = {
     VNODE_HANDLERS([IRP_MJ_READ] = fb_info_read),
 };
 
-static void fb_dir_cleanup(vnode_t* vnode)
+static status_t fb_dir_reclaim(irp_t* irp)
 {
-    fb_t* fb = vnode->data;
+    irp_frame_t* frame = irp_current(irp);
+    fb_t* fb = frame->vnode->data;
+    assert(fb != NULL);
 
-    if (fb->cleanup != NULL)
+    if (fb->reclaim == NULL)
     {
-        fb->cleanup(fb);
+        return ERR(DRIVER, INVAL);
     }
+
+    return fb->reclaim(irp);
 }
 
 static vnode_class_t dirClass = {
     .name = "fb dir",
     .type = VTYPE_DIRECTORY,
-    .cleanup = fb_dir_cleanup,
-    VNODE_DIR_HANDLERS(),
+    VNODE_DIR_HANDLERS([IRP_MJ_RECLAIM] = fb_dir_reclaim),
 };
 
 static vnode_class_t rootClass = {

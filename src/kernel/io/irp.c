@@ -38,27 +38,34 @@ static void irp_unwind_stack(irp_t* irp)
         irp_frame_t* frame = irp_current(irp);
         irp->loc++;
 
+        vnode_t* vnode = frame->vnode;
+        file_t* file = frame->file;
+        uint8_t loc = irp->loc;
+
         status_t status = OK;
         if (frame->complete != NULL)
         {
             status = frame->complete(irp, frame->ctx);
         }
 
+        if (irp->loc >= loc)
+        {
+            frame->vnode = NULL;
+            frame->file = NULL;
+        }
+        
+        if (vnode != NULL)
+        {
+            UNREF(vnode);
+        }
+        if (file != NULL)
+        {
+            UNREF(file);
+        }
+
         if (IS_INFO(status) && (IS_CODE(status, PENDING) || IS_CODE(status, COMPLETE)))
         {
             return;
-        }
-
-        if (frame->vnode != NULL)
-        {
-            UNREF(frame->vnode);
-            frame->vnode = NULL;
-        }
-
-        if (frame->file != NULL)
-        {
-            UNREF(frame->file);
-            frame->file = NULL;
         }
     }
 

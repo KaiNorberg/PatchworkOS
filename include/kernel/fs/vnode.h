@@ -44,26 +44,15 @@ typedef struct vnode_class
 {
     const char* name;                   ///< The name of the class, used for debugging.
     vtype_t type;                   ///< The type of the vnode.
-    void (*close)(file_t* file);        ///< File destructor. @todo Replace with a IRP handler.
     irp_handler_t handlers[IRP_MJ_MAX]; ///< IRP handlers indexed by major function number.
-    /**
-     * @brief Cleanup function called when the vnode is being freed.
-     *
-     * @param vnode The vnode being freed.
-     *
-     * @deprecated Should be replaced as part of the async refactor.
-     */
-    void (*cleanup)(vnode_t* vnode);
     /**
      * @brief Called when the dentry is looked up or retrieved from cache.
      *
      * Used for security by hiding files or directories based on filesystem defined logic.
      *
      * @return `true` if the access should be allowed, `false` otherwise.
-     *
-     * @deprecated Should be replaced as part of the async refactor.
      */
-    bool (*revalidate)(dentry_t* dentry);
+    bool (*access)(dentry_t* dentry);
 } vnode_class_t;
 
 /**
@@ -80,6 +69,7 @@ typedef struct vnode
     vnum_t num; ///< The number of the vnode, should be unique within the volume.
     const vnode_class_t* cls;
     mutex_t mutex;
+    irp_t* reclaim; ///< Pre-allocated IRP used to reclaim the vnode, needed to avoid out of memory errors when reclaiming a vnode.
 } vnode_t;
 
 /**

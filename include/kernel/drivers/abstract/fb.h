@@ -67,7 +67,7 @@ typedef struct fb_info
  * @brief Framebuffer structure.
  * @struct fb_t
  *
- * To implement the handlers which simply take an IRP, the `FB_FROM_IRP` macro can be used to retrieve the `fb_t`
+ * To implement the handlers which simply take an IRP, the `FB_FROM_IRP()` macro can be used to retrieve the `fb_t`
  * structure.
  */
 typedef struct fb
@@ -77,7 +77,7 @@ typedef struct fb
     status_t (*mmap)(irp_t* irp);
     status_t (*read)(irp_t* irp);
     status_t (*write)(irp_t* irp);
-    void (*cleanup)(fb_t* fb);
+    status_t (*reclaim)(irp_t* irp);
     void* data;
     dentry_t* dir;
     list_t files;

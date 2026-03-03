@@ -221,41 +221,62 @@ typedef uint16_t irp_major_t; ///< IRP major function number type.
 
 /**
  * @brief Open operation.
+ * 
+ * Will open the file associated with the frame.
+ * 
  * @return Always `0`.
  */
 #define IRP_MJ_OPEN 6
 
 /**
+ * @brief Close operation.
+ * 
+ * Will close the file associated with the frame.
+ * 
+ * @return Always `0`.
+ */
+#define IRP_MJ_CLOSE 7
+
+/**
  * @brief Lookup operation.
  * @return Always `0`.
  */
-#define IRP_MJ_LOOKUP 7
+#define IRP_MJ_LOOKUP 8
 
 /**
  * @brief Remove operation.
  * @return Always `0`.
  */
-#define IRP_MJ_REMOVE 8
+#define IRP_MJ_REMOVE 9
 
 /**
  * @brief Attribute operation.
  * @return If a get operation, the value of the attribute. If a set operation, always `0`.
  */
-#define IRP_MJ_ATTR 9
+#define IRP_MJ_ATTR 10
 
 /**
  * @brief Query operation.
  * @return Always `0`.
  */
-#define IRP_MJ_QUERY 10
+#define IRP_MJ_QUERY 11
 
 /**
  * @brief Flush operation.
  * @return Always `0`.
  */
-#define IRP_MJ_FLUSH 11
+#define IRP_MJ_FLUSH 12
 
-#define IRP_MJ_MAX 12 ///< The maximum number of major function numbers.
+/**
+ * @brief Reclaim operation.
+ * 
+ * Will perform final cleanup before the vnode associated with the frame is freed.
+ * 
+ * @return Always `0`.
+ */
+#define IRP_MJ_RECLAIM 13
+
+#define IRP_MJ_MAX 14 ///< The maximum number of major function numbers.
 
 typedef uint16_t irp_minor_t; ///< IRP minor function number type.
 #define IRP_MN_NORMAL 0       ///< No special behaviour.
@@ -808,6 +829,21 @@ static inline void irp_prep_open(irp_t* irp, const char* payload)
 }
 
 /**
+ * @brief Prepares the next IRP stack frame for a close operation.
+ *
+ * @see `IRP_MJ_CLOSE`
+ */
+static inline void irp_prep_close(irp_t* irp)
+{
+    irp_frame_t* next = irp_next(irp);
+    assert(next != NULL);
+
+    next->major = IRP_MJ_CLOSE;
+    next->minor = IRP_MN_NORMAL;
+    next->flags = IRP_FLAG_NONE;
+}
+
+/**
  * @brief Prepares the next IRP stack frame for a lookup operation.
  *
  * @see `IRP_MJ_LOOKUP`
@@ -883,6 +919,21 @@ static inline void irp_prep_flush(irp_t* irp)
     assert(next != NULL);
 
     next->major = IRP_MJ_FLUSH;
+    next->minor = IRP_MN_NORMAL;
+    next->flags = IRP_FLAG_NONE;
+}
+
+/**
+ * @brief Prepares the next IRP stack frame for a reclaim operation.
+ *
+ * @see `IRP_MJ_RECLAIM`
+ */
+static inline void irp_prep_reclaim(irp_t* irp)
+{
+    irp_frame_t* next = irp_next(irp);
+    assert(next != NULL);
+
+    next->major = IRP_MJ_RECLAIM;
     next->minor = IRP_MN_NORMAL;
     next->flags = IRP_FLAG_NONE;
 }

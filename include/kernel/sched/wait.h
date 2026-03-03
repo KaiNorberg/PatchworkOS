@@ -177,8 +177,8 @@ typedef struct wait_entry
  */
 typedef struct wait_queue
 {
-    lock_t lock;
     list_t entries; ///< List of wait entries for threads waiting on this queue.
+    lock_t lock;
 } wait_queue_t;
 
 /**

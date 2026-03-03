@@ -23,8 +23,7 @@ typedef struct poll_file poll_file_t;
  * @defgroup kernel_fs_file File
  * @ingroup kernel_fs
  *
- * A file is the underlying type of a file descriptor. Note that internally the kernel does not use file descriptors,
- * they are simply a per-process handle to a file.
+ * A file is the underlying type of a file descriptor, representing a specific location or path within the filesystem.
  *
  * @note Files are distinct from "regular files". A file is simply any object that can be interacted with using standard
  * file operations (read, write, etc.). A regular file is a specific type of file that exists on a filesystem.
@@ -41,12 +40,13 @@ typedef struct poll_file poll_file_t;
  */
 typedef struct file
 {
-    ref_t ref;
-    size_t pos;
-    mode_t mode;
-    vnode_t* vnode;
-    path_t path;
-    void* data;
+    ref_t ref; ///< Reference counting.
+    size_t pos; ///< The current file position.
+    mode_t mode; ///< Specifies permissions and file behaviour.
+    uint8_t _reserved[4];
+    path_t path; ///< The opened path.
+    void* data; ///< Private filesystem data.
+    irp_t* close; ///< Pre-allocated IRP used to close the file, needed to avoid out of memory errors when closing a file.
 } file_t;
 
 /**

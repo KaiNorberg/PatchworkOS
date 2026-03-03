@@ -17,21 +17,24 @@
 
 static void file_free(file_t* file)
 {
-    if (file == NULL)
-    {
-        return;
-    }
+    assert(file != NULL);
 
-    if (file->vnode->cls->close != NULL)
-    {
-        file->vnode->cls->close(file);
-    }
-
-    UNREF(file->vnode);
-    file->vnode = NULL;
     path_put(&file->path);
 
     cache_free(file);
+}
+
+static void file_close(file_t* file)
+{
+    assert(file != NULL);
+
+    // Revive reference
+    ref_init(&file->ref, file_free); 
+
+    irp_prep_close(file->close);
+    file_call(file, file->close);
+
+    UNREF(file);
 }
 
 static cache_t cache = CACHE_CREATE(cache, "file", sizeof(file_t), CACHE_LINE, NULL, NULL);
@@ -44,12 +47,18 @@ file_t* file_new(dentry_t* dentry, binding_t* mount, mode_t mode)
         return NULL;
     }
 
-    ref_init(&file->ref, file_free);
+    ref_init(&file->ref, file_close);
     file->pos = 0;
     file->mode = mode;
-    file->vnode = REF(dentry->vnode);
     file->path = PATH_CREATE(mount, dentry);
     file->data = NULL;
+    file->close = irp_new(process_get_kernel(), NULL);
+    if (file->close == NULL)
+    {
+        file_free(file);
+        return NULL;
+    }
+
     return file;
 }
 
@@ -60,13 +69,20 @@ status_t file_call(file_t* file, irp_t* irp)
 
     irp_handler_t handler = NULL;
 
-    irp_frame_t* frame = irp_next(irp);
-    if (LIKELY(frame->major < IRP_MJ_MAX) && file->vnode->cls->handlers[frame->major] != NULL)
+    if (!DENTRY_IS_POSITIVE(file->path.dentry))
     {
-        handler = file->vnode->cls->handlers[frame->major];
+        return ERR(FS, NOENT);
     }
 
-    frame->vnode = REF(file->vnode);
+    vnode_t* vnode = file->path.dentry->vnode;
+
+    irp_frame_t* frame = irp_next(irp);
+    if (LIKELY(frame->major < IRP_MJ_MAX) && vnode->cls->handlers[frame->major] != NULL)
+    {
+        handler = vnode->cls->handlers[frame->major];
+    }
+
+    frame->vnode = REF(vnode);
     frame->file = REF(file);
 
     if (frame->flags & IRP_FLAG_USE_FILE_POS)

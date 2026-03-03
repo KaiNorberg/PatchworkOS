@@ -10,18 +10,21 @@
 
 static void vnode_free(vnode_t* vnode)
 {
-    if (vnode == NULL)
-    {
-        return;
-    }
-
-    if (vnode->cls->cleanup != NULL)
-    {
-        vnode->cls->cleanup(vnode);
-    }
-    vnode->data = NULL;
-
+    assert(vnode != NULL);
     cache_free(vnode);
+}
+
+static void vnode_reclaim(vnode_t* vnode)
+{
+    assert(vnode != NULL);
+
+    // Revive reference
+    ref_init(&vnode->ref, vnode_free); 
+
+    irp_prep_reclaim(vnode->reclaim);
+    vnode_call(vnode, vnode->reclaim);
+
+    UNREF(vnode);
 }
 
 static void vnode_ctor(void* ptr)
@@ -47,10 +50,16 @@ vnode_t* vnode_new(fsvol_t vol, const vnode_class_t* cls, vnum_t num)
         return NULL;
     }
 
-    ref_init(&vnode->ref, vnode_free);
-    vnode->vol = 0;
-    vnode->num = 0;
+    ref_init(&vnode->ref, vnode_reclaim);
+    vnode->vol = vol;
+    vnode->num = num;
     vnode->cls = cls;
+    vnode->reclaim = irp_new(process_get_kernel(), NULL);
+    if (vnode->reclaim == NULL)
+    {
+        vnode_free(vnode);
+        return NULL;
+    }
     return vnode;
 }
 
