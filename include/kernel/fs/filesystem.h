@@ -44,12 +44,6 @@
  * @note For filesystems that do not support multiple volumes, the clone file may simply return the same root dentry
  * each time.
  *
- * ## Volumes
- *
- * Each volume is represented as a file within the associated filesystems directory with the name being the volume ID.
- *
- * @todo Decide on a format and contents of each volume file.
- *
  * @{
  */
 
@@ -67,8 +61,6 @@ typedef struct filesystem
     {
         dentry_t* dir;   ///< The directory containing this filesystem.
         dentry_t* clone; ///< The clone file within this filesystems directory.
-        list_t volumes;  ///< A list of `dentry_t` representing the volumes of this filesystem.
-        lock_t lock;     ///< Lock protecting the volumes list.
     } internal;
 } filesystem_t;
 
@@ -87,6 +79,13 @@ status_t filesystem_register(filesystem_t* fs);
  * @return An appropriate status value.
  */
 status_t filesystem_unregister(filesystem_t* fs);
+
+/**
+ * @brief Generate a new unique volume ID.
+ *
+ * @return A new unique volume ID.
+ */
+file_volume_t volume_new(void);
 
 /**
  * @brief Helper function for iterating over options passed to a filesystem mount operation.

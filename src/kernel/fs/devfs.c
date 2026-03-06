@@ -36,49 +36,67 @@ static status_t devfs_mount(filesystem_t* fs, dentry_t** out, const char* option
     return OK;
 }
 
-static filesystem_t devfs = {
-    .name = DEVFS_NAME,
-    .mount = devfs_mount,
+static vnode_class_t dirClass = {
+    .name = "devfs dir",
+    .type = FILE_TYPE_DIRECTORY,
+    .handlers = {
+        VNODE_DIR_HANDLERS(),
+    },
 };
 
-static vnode_class_t rootClass = {.name = "devfs root", .type = FILE_TYPE_DIRECTORY, VNODE_DIR_HANDLERS()};
+static status_t devfs_clone_open(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
+    if (file == NULL)
+    {
+        return ERR(FS, EXPECT_FILE);
+    }
+
+    return file_redirect(file, root);
+}
+
+static vnode_class_t cloneClass = {
+    .name = "devfs clone",
+    .type = FILE_TYPE_SYSTEM,
+    .handlers = {
+        VNODE_HANDLERS(),
+        [IRP_MJ_OPEN] = devfs_clone_open,
+    },
+};
+
+static filesystem_t devfs = {
+    .name = DEVFS_NAME,
+    .clone = &cloneClass,
+};
 
 void devfs_init(void)
 {
-    status_t status = filesystem_register(&devfs);
-    if (IS_ERR(status))
-    {
-        panic(NULL, "Failed to register devfs");
-    }
-
-    volume_t* volume = volume_new(&devfs, NULL);
-    if (volume == NULL)
-    {
-        panic(NULL, "Failed to create devfs volume");
-    }
-    UNREF_DEFER(volume);
-
-    vnode_t* vnode = vnode_new(volume, &rootClass);
+    vnode_t* vnode = vnode_new(volume_new(), &dirClass, 0);
     if (vnode == NULL)
     {
         panic(NULL, "Failed to create devfs root vnode");
     }
     UNREF_DEFER(vnode);
 
-    dentry_t* dentry = dentry_new(volume, NULL, NULL);
-    if (dentry == NULL)
+    root = dentry_new(NULL, NULL);
+    if (root == NULL)
     {
         panic(NULL, "Failed to create devfs root dentry");
     }
 
-    dentry_make_positive(dentry, vnode);
-    volume->root = dentry;
-    root = dentry;
+    dentry_make_positive(root, vnode);
+
+    status_t status = filesystem_register(&devfs);
+    if (IS_ERR(status))
+    {
+        panic(NULL, "Failed to register devfs %Y", status);
+    }
 }
 
 dentry_t* devfs_dentry_new(dentry_t* parent, const char* name, const vnode_class_t* cls, void* data)
 {
-    if (name == NULL || cls == NULL)
+    if (name == NULL)
     {
         return NULL;
     }
@@ -88,7 +106,8 @@ dentry_t* devfs_dentry_new(dentry_t* parent, const char* name, const vnode_class
         parent = root;
     }
 
-    assert(parent->volume->fs == &devfs);
+    assert(DENTRY_IS_POSITIVE(parent));
+    assert(parent->vnode->volume == root->vnode->volume);
 
     dentry_t* dentry = dentry_new(parent, name);
     if (dentry == NULL)
@@ -97,9 +116,7 @@ dentry_t* devfs_dentry_new(dentry_t* parent, const char* name, const vnode_class
     }
     UNREF_DEFER(dentry);
 
-    assert(DENTRY_IS_POSITIVE(parent));
-
-    vnode_t* vnode = vnode_new(parent->vnode->volume, cls);
+    vnode_t* vnode = vnode_new(parent->vnode->volume, cls, vnode_hash(parent->vnode->number, name));
     if (vnode == NULL)
     {
         return NULL;
@@ -107,9 +124,9 @@ dentry_t* devfs_dentry_new(dentry_t* parent, const char* name, const vnode_class
     UNREF_DEFER(vnode);
     vnode->data = data;
 
-    dentry_make_positive(dir, vnode);
+    dentry_make_positive(dentry, vnode);
 
-    return REF(dir);
+    return REF(dentry);
 }
 
 bool devfs_dentrys_new(list_t* out, dentry_t* parent, const devfs_desc_t* descs, size_t count)
@@ -119,7 +136,7 @@ bool devfs_dentrys_new(list_t* out, dentry_t* parent, const devfs_desc_t* descs,
         parent = root;
     }
 
-    assert(parent->volume->fs == &devfs);
+    assert(parent->vnode->volume == root->vnode->volume);
 
     list_t createdList = LIST_CREATE(createdList);
 

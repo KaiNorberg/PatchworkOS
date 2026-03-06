@@ -7,7 +7,6 @@
 #include <kernel/cpu/regs.h>
 #include <kernel/cpu/stack_pointer.h>
 #include <kernel/drivers/perf.h>
-#include <kernel/fs/key.h>
 #include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -211,7 +210,6 @@ void interrupt_handler(interrupt_frame_t* frame)
     else if (frame->vector == VECTOR_TIMER)
     {
         timer_ack_eoi(frame);
-        key_timer_handler();
     }
     else if (frame->vector == VECTOR_IPI)
     {

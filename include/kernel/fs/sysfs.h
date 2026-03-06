@@ -25,11 +25,6 @@ typedef struct volume_ops volume_ops_t;
 #define SYSFS_NAME "sysfs"
 
 /**
- * @brief The volume ID reserved for sysfs.
- */
-#define SYSFS_VOL 0
-
-/**
  * @brief Initializes  the system filesystem.
  */
 void sysfs_init(void);

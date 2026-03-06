@@ -41,7 +41,7 @@ static vnode_class_t dirClass = {
     .type = FILE_TYPE_DIRECTORY,
     .handlers = {
         VNODE_DIR_HANDLERS(),
-    }
+    },
 };
 
 static status_t sysfs_clone_open(irp_t* irp)
@@ -72,7 +72,7 @@ static filesystem_t sysfs = {
 
 void sysfs_init(void)
 {
-    vnode_t* vnode = vnode_new(SYSFS_VOL, &dirClass, 0);
+    vnode_t* vnode = vnode_new(volume_new(), &dirClass, 0);
     if (vnode == NULL)
     {
         panic(NULL, "Failed to create sysfs root vnode");
@@ -107,7 +107,7 @@ dentry_t* sysfs_dentry_new(dentry_t* parent, const char* name, const vnode_class
     }
 
     assert(DENTRY_IS_POSITIVE(parent));
-    assert(parent->vnode->volume == SYSFS_VOL);
+    assert(parent->vnode->volume == root->vnode->volume);
 
     dentry_t* dentry = dentry_new(parent, name);
     if (dentry == NULL)
@@ -116,7 +116,7 @@ dentry_t* sysfs_dentry_new(dentry_t* parent, const char* name, const vnode_class
     }
     UNREF_DEFER(dentry);
 
-    vnode_t* vnode = vnode_new(SYSFS_VOL, cls, vnode_hash(parent->vnode->number, name));
+    vnode_t* vnode = vnode_new(parent->vnode->volume, cls, vnode_hash(parent->vnode->number, name));
     if (vnode == NULL)
     {
         return NULL;
@@ -136,7 +136,7 @@ bool sysfs_dentrys_new(list_t* out, dentry_t* parent, const sysfs_desc_t* descs,
         parent = root;
     }
 
-    assert(parent->vnode->volume == SYSFS_VOL);
+    assert(parent->vnode->volume == root->vnode->volume);
 
     list_t createdList = LIST_CREATE(createdList);
 
