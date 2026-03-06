@@ -104,7 +104,7 @@ In PatchworkOS, there are no Access Control Lists, user IDs or similar mechanism
 
 The `..` or dotdot operator is a major security concern in a capability based system. Consider that if we pass a directory to a process that process could use `..` to access the parent directory and then the parent of the parent and so on. This vulnerability would effectively make capability based security meaningless.
 
-A tempting solution, used by other capability based systems such as Fuchsia, is to ban the use of `..` entirely and instead use string parsing to normalize paths (i.e. turning `a/b/..` into `a`). There are two primary issues with this solution, relative paths and symlinks.
+A tempting solution, used by other capability based systems, is to ban the use of `..` entirely and instead use string parsing to normalize paths (i.e. turning `a/b/..` into `a`). There are two primary issues with this solution, relative paths and symlinks.
 
 As an example of a relative path, consider the path `./..`. The issue we encounter is that we may not know what `.` refers to, requiring us to track the current working directory as a string. This is not only complex but also inefficient as we would need to parse the entire path string for every traversal and also start any path traversal from the root directory instead of being able to start from any file descriptor.
 
@@ -161,7 +161,7 @@ Using the synchronous I/O wrappers in PatchworkOS, we would write:
 
 ```c
 fd_t fd;
-iowalk(FDCWD, "/path/to/file:rw", FDROOT, &fd);
+iowalk(FDCWD, FDROOT, "/path/to/file:rw", &fd);
 
 size_t bytesWritten;
 iowrite(fd, IOBUF("Hello, World!", 13), IOCUR, &bytesWritten);
@@ -212,8 +212,8 @@ Using the synchronous I/O wrappers in PatchworkOS, we would write:
 fd_t in;
 fd_t out;
 
-iowalk(FDCWD, "/dev/pipe/clone", FDROOT, &in);
-iowalk(FDCWD, "/dev/pipe/clone", FDROOT, &out);
+iowalk(FDCWD, FDROOT, "/dev/pipe/clone", &in);
+iowalk(FDCWD, FDROOT, "/dev/pipe/clone", &out);
 
 proc_t proc;
 const char* argv[] = {"/path/to/program", NULL};
@@ -233,29 +233,25 @@ As a side note, we could optimize the pipe creation by walking to the second pip
 ```c
 fd_t in;
 fd_t out;
-iowalk(FDCWD, "/dev/pipe/clone", FDROOT, &in);
-iowalk(in, ".", FDROOT, &out);
+iowalk(FDCWD, FDROOT, "/dev/pipe/clone", &in);
+iowalk(in, FDROOT, ".", &out);
 ```
 
 ### Mounting a Filesystem
 
-There is no `mount()` system call in PatchworkOS; instead "filesystem files" and a `fsbind()` system call are used to mount filesystems.
+There is no `mount()` system call in PatchworkOS; instead filesystems are exposed via files which are used in combination with the `fsbind()` function to mount filesystems.
 
-Filesystem files are exposed by "sysfs" as files with the `FILE_FILESYSTEM` type, for example, `/sys/fs/tmpfs` is the filesystem file for the tmpfs filesystem. Opening this file gives us a file descriptor containing the root of a new instance of that filesystem (for more complex filesystems, for example a disk based one, additional parameters might be needed, these would be passed as the payload to `iowalk()` when opening the filesystem file).
+Filesystem files are exposed by "sysfs" as directories, for example, `/sys/fs/tmpfs` is the filesystem directory for the tmpfs filesystem. Within these directories are "clone" files. Opening one of these clone files (for example `/sys/fs/tmpfs/clone`) gives us a file descriptor containing the root of a new instance of that filesystem (for more complex filesystems, for example a disk based one, additional parameters might be needed within the payload specified in `iowalk()` when opening the filesystem file).
 
 Then we can use `fsbind()` to bind the root of the filesystem instance into our desired target:
 
 ```c
 fd_t fs;
 fd_t target;
-iowalk(FDCWD, "/sys/fs/tmpfs", FDROOT, &fs);
-iowalk(FDCWD, "/mnt/tmpfs", FDROOT, &target);
+iowalk(FDCWD, FDROOT, "/sys/fs/tmpfs/clone", &fs);
+iowalk(FDCWD, FDROOT, "/mnt/tmpfs", &target);
 fsbind(target, fs);
 ```
-
-> The `fsbind()` system call can also be used to bind any file onto any other file. Any bind can be removed using `fsunbind()`.
-
-An interesting side effect of this system is that namespaces do not need to be contiguous, for example, we could open two tmpfs instances and bind the second one inside the first one. Since the second filesystem instance is now referenced by our binding and the first is referenced by the second through that binding, both filesystems will remain even if we close both file descriptors, resulting in our namespace containing our original hierarchy and a second detached hierarchy consisting of the two tmpfs instances.
 
 ## Modules
 
@@ -298,10 +294,10 @@ Now we need to add the module to the build system. To do this, just copy an exis
 
 Now, we can build and run PatchworkOS using `make all run`, or we could use `make all` and then flash the generated `bin/PatchworkOS.img` file to a USB drive.
 
-Now to validate that the module is working, you can either watch the boot log and spot the `Hello, World!` message, or you could use `grep` on the `/dev/klog` file in the terminal program like so:
+Now to validate that the module is working, you can either watch the boot log and spot the `Hello, World!` message, or you could use `grep` on the `/sys/klog` file in the terminal program like so:
 
 ```bash
-cat /dev/klog | grep "Hello, World!"
+cat /sys/klog | grep "Hello, World!"
 ```
 
 This should output something like:
@@ -320,7 +316,7 @@ Whatever you want. You can include any kernel header, or even headers from other
 
 This code in the `hello.c` file does a few things. First, it includes the relevant kernel headers.
 
-Second, it defines a `_module_procedure()` function. This function serves as the entry point for the module and will be called by the kernel to notify the module of events, for example the module being loaded or a device attached. On the load event, it will print using the kernels logging system `"Hello, World!"`, resulting in the message being readable from `/dev/klog`.
+Second, it defines a `_module_procedure()` function. This function serves as the entry point for the module and will be called by the kernel to notify the module of events, for example the module being loaded or a device attached. On the load event, it will print using the kernels logging system `"Hello, World!"`, resulting in the message being readable from `/sys/klog`.
 
 Finally, it defines the modules information. This information is, from left to right, the name of the module, the author of the module (that's you), a short description of the module, the module version, the license of the module, and finally a list of "device types", in this case just `BOOT_ALWAYS`, but more could be added by separating them with a semicolon (`;`).
 

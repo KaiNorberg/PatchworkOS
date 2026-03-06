@@ -40,14 +40,24 @@ typedef struct poll_file poll_file_t;
  */
 typedef struct file
 {
-    ref_t ref; ///< Reference counting.
-    size_t pos; ///< The current file position.
+    ref_t ref;   ///< Reference counting.
+    size_t pos;  ///< The current file position.
     mode_t mode; ///< Specifies permissions and file behaviour.
     uint8_t _reserved[4];
     path_t path; ///< The opened path.
-    void* data; ///< Private filesystem data.
-    irp_t* close; ///< Pre-allocated IRP used to close the file, needed to avoid out of memory errors when closing a file.
+    void* data;  ///< Private filesystem data.
+    irp_t*
+        close; ///< Pre-allocated IRP used to close the file, needed to avoid out of memory errors when closing a file.
 } file_t;
+
+/**
+ * @brief Check if a file is of a specific type.
+ *
+ * @param _file The file to check.
+ * @param _type The type to check against.
+ * @return `true` if the file is of the specified type, `false` otherwise.
+ */
+#define FILE_IS_TYPE(_file, _type) (DENTRY_IS_TYPE((_file)->path.dentry, _type))
 
 /**
  * @brief Create a new file structure.
@@ -74,5 +84,18 @@ file_t* file_new(dentry_t* dentry, binding_t* mount, mode_t mode);
  * @return An appropriate status value.
  */
 status_t file_call(file_t* file, irp_t* irp);
+
+/**
+ * @brief Redirect a file to a different path.
+ *
+ * This is primarily used by filesystem clone files,
+ * 
+ * @warning Since a files path is not protected by a lock, this function should only be used when opening the file or when it is guaranteed that no other threads are accessing the file.
+ *
+ * @param file The file to redirect.
+ * @param dentry The new dentry to associate with the file.
+ * @return An appropriate status value.
+ */
+status_t file_redirect(file_t* file, dentry_t* dentry);
 
 /** @} */

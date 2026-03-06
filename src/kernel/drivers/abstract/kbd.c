@@ -50,8 +50,12 @@ static status_t kbd_name_read(irp_t* irp)
 
 static vnode_class_t nameClass = {
     .name = "kbd name",
-    .type = VTYPE_DEVICE,
-    VNODE_HANDLERS([IRP_MJ_READ] = kbd_name_read),
+    .type = FILE_TYPE_DEVICE,
+    .handlers =
+        {
+            VNODE_HANDLERS(),
+            [IRP_MJ_READ] = kbd_name_read,
+        },
 };
 
 static status_t kbd_events_open(irp_t* irp)
@@ -82,22 +86,24 @@ static status_t kbd_events_open(irp_t* irp)
     return OK;
 }
 
-static void kbd_events_close(file_t* file)
+static status_t kbd_events_close(irp_t* irp)
 {
-    kbd_t* kbd = file->vnode->data;
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
+    if (frame->file == NULL)
+    {
+        return ERR(IO, EXPECT_FILE);
+    }
+    kbd_t* kbd = frame->vnode->data;
     assert(kbd != NULL);
 
     kbd_client_t* client = file->data;
-    if (client == NULL)
-    {
-        return;
-    }
-
     lock_acquire(&kbd->lock);
     list_remove(&client->entry);
     lock_release(&kbd->lock);
 
     free(client);
+    return OK;
 }
 
 static status_t kbd_events_read(irp_t* irp)
@@ -149,17 +155,25 @@ static status_t kbd_events_poll(irp_t* irp)
     return irp_delay(irp, &kbd->pending, kbd_cancel);
 }
 
-static vnode_class_t eventsClass = {.name = "kbd events",
-    .type = VTYPE_DEVICE,
-    .close = kbd_events_close,
-    VNODE_HANDLERS([IRP_MJ_OPEN] = kbd_events_open, [IRP_MJ_READ] = kbd_events_read, [IRP_MJ_POLL] = kbd_events_poll)};
+static vnode_class_t eventsClass = {
+    .name = "kbd events",
+    .type = FILE_TYPE_DEVICE,
+    .handlers =
+        {
+            VNODE_HANDLERS(),
+            [IRP_MJ_OPEN] = kbd_events_open,
+            [IRP_MJ_READ] = kbd_events_read,
+            [IRP_MJ_POLL] = kbd_events_poll,
+            [IRP_MJ_CLOSE] = kbd_events_close,
+        },
+};
 
-static void kbd_dir_cleanup(vnode_t* vnode)
+static status_t kbd_dir_reclaim(irp_t* irp)
 {
-    kbd_t* kbd = vnode->data;
+    kbd_t* kbd = irp_current(irp)->vnode->data;
     if (kbd == NULL)
     {
-        return;
+        return OK;
     }
 
     if (!list_is_empty(&kbd->pending))
@@ -170,14 +184,25 @@ static void kbd_dir_cleanup(vnode_t* vnode)
     {
         panic(NULL, "Attempted to free keyboard with clients");
     }
+
+    return OK;
 }
 
-static vnode_class_t dirClass = {.name = "kbd dir",
-    .type = VTYPE_DIRECTORY,
-    .cleanup = kbd_dir_cleanup,
-    VNODE_DIR_HANDLERS()};
+static vnode_class_t dirClass = {
+    .name = "kbd dir",
+    .type = FILE_TYPE_DIRECTORY,
+    .handlers =
+        {
+            VNODE_DIR_HANDLERS(),
+            [IRP_MJ_RECLAIM] = kbd_dir_reclaim,
+        },
+};
 
-static vnode_class_t rootClass = {.name = "kbd root", .type = VTYPE_DIRECTORY, VNODE_DIR_HANDLERS()};
+static vnode_class_t rootClass = {.name = "kbd root",
+    .type = FILE_TYPE_DIRECTORY,
+    .handlers = {
+        VNODE_DIR_HANDLERS(),
+    },};
 
 status_t kbd_register(kbd_t* kbd)
 {

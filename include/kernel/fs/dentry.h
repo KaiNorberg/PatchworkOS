@@ -70,28 +70,13 @@ typedef uint64_t dentry_id_t;
 #define DENTRY_IS_POSITIVE(dentry) (dentry != NULL && (dentry)->vnode != NULL)
 
 /**
- * @brief Check if the vnode associated with a dentry is a regular file.
+ * @brief Check if a dentry is of a specific type.
  *
- * @param dentry The dentry to check.
- * @return true if the dentry is a regular file, false otherwise or if the dentry is negative.
+ * @param _dentry The dentry to check.
+ * @param _type The type to check against.
+ * @return `true` if the dentry is of the specified type, `false` otherwise.
  */
-#define DENTRY_IS_REGULAR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == VTYPE_REGULAR)
-
-/**
- * @brief Check if the vnode associated with a dentry is a directory.
- *
- * @param dentry The dentry to check.
- * @return true if the dentry is a directory, false otherwise or if the dentry is negative.
- */
-#define DENTRY_IS_DIR(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == VTYPE_DIRECTORY)
-
-/**
- * @brief Check if the vnode associated with a dentry is a symbolic link.
- *
- * @param dentry The dentry to check.
- * @return true if the dentry is a symbolic link, false otherwise or if the dentry is negative.
- */
-#define DENTRY_IS_SYMLINK(dentry) (DENTRY_IS_POSITIVE(dentry) && (dentry)->vnode->cls->type == VTYPE_SYMLINK)
+#define DENTRY_IS_TYPE(_dentry, _type) (DENTRY_IS_POSITIVE(_dentry) && (_dentry)->vnode->cls->type == (_type))
 
 /**
  * @brief Directory entry structure.
@@ -109,10 +94,10 @@ typedef struct dentry
     dentry_t* parent;    ///< The parent dentry, will be itself if this is the root dentry, immutable after creation.
     list_entry_t siblingEntry;
     list_t children;
-    map_entry_t mapEntry;         ///< Entry in the dentry cache hash map.
+    map_entry_t mapEntry;       ///< Entry in the dentry cache hash map.
     _Atomic(uint64_t) bindings; ///< Number of bindings targeting this dentry.
-    rcu_entry_t rcu;              ///< RCU entry for deferred cleanup.
-    list_entry_t entry;           ///< Made available for use by any other subsystems for convenience.
+    rcu_entry_t rcu;            ///< RCU entry for deferred cleanup.
+    list_entry_t entry;         ///< Made available for use by any other subsystems for convenience.
 } dentry_t;
 
 /**

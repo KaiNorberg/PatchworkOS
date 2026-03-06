@@ -27,56 +27,12 @@ static status_t fb_name_read(irp_t* irp)
 
 static vnode_class_t nameClass = {
     .name = "fb name",
-    .type = VTYPE_DEVICE,
-    VNODE_HANDLERS([IRP_MJ_READ] = fb_name_read),
-};
-
-static status_t fb_data_read(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    fb_t* fb = frame->vnode->data;
-    assert(fb != NULL);
-
-    if (fb->read == NULL)
-    {
-        return ERR(DRIVER, INVAL);
-    }
-
-    return fb->read(irp);
-}
-
-static status_t fb_data_write(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    fb_t* fb = frame->vnode->data;
-    assert(fb != NULL);
-
-    if (fb->write == NULL)
-    {
-        return ERR(DRIVER, INVAL);
-    }
-
-    return fb->write(irp);
-}
-
-static status_t fb_data_mmap(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    fb_t* fb = frame->vnode->data;
-    assert(fb != NULL);
-
-    if (fb->mmap == NULL)
-    {
-        return ERR(DRIVER, INVAL);
-    }
-
-    return fb->mmap(irp);
-}
-
-static vnode_class_t dataClass = {
-    .name = "fb data",
-    .type = VTYPE_DEVICE,
-    VNODE_HANDLERS([IRP_MJ_READ] = fb_data_read, [IRP_MJ_WRITE] = fb_data_write, [IRP_MJ_MMAP] = fb_data_mmap),
+    .type = FILE_TYPE_DEVICE,
+    .handlers =
+        {
+            VNODE_HANDLERS(),
+            [IRP_MJ_READ] = fb_name_read,
+        },
 };
 
 static status_t fb_info_read(irp_t* irp)
@@ -85,21 +41,8 @@ static status_t fb_info_read(irp_t* irp)
     fb_t* fb = frame->vnode->data;
     assert(fb != NULL);
 
-    if (fb->info == NULL)
-    {
-        return ERR(DRIVER, INVAL);
-    }
-
-    fb_info_t info = {0};
-    status_t status = fb->info(fb, &info);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
     char string[256];
-    int length =
-        snprintf(string, sizeof(string), "%llu %llu %llu %s", info.width, info.height, info.pitch, info.format);
+    int length = snprintf(string, sizeof(string), "%llu %llu %llu %s", fb->width, fb->height, fb->pitch, fb->format);
 
     if (length < 0 || (size_t)length >= sizeof(string))
     {
@@ -111,39 +54,35 @@ static status_t fb_info_read(irp_t* irp)
 
 static vnode_class_t infoClass = {
     .name = "fb info",
-    .type = VTYPE_DEVICE,
-    VNODE_HANDLERS([IRP_MJ_READ] = fb_info_read),
+    .type = FILE_TYPE_DEVICE,
+    .handlers =
+        {
+            VNODE_HANDLERS(),
+            [IRP_MJ_READ] = fb_info_read,
+        },
 };
-
-static status_t fb_dir_reclaim(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    fb_t* fb = frame->vnode->data;
-    assert(fb != NULL);
-
-    if (fb->reclaim == NULL)
-    {
-        return ERR(DRIVER, INVAL);
-    }
-
-    return fb->reclaim(irp);
-}
 
 static vnode_class_t dirClass = {
     .name = "fb dir",
-    .type = VTYPE_DIRECTORY,
-    VNODE_DIR_HANDLERS([IRP_MJ_RECLAIM] = fb_dir_reclaim),
+    .type = FILE_TYPE_DIRECTORY,
+    .handlers =
+        {
+            VNODE_DIR_HANDLERS(),
+        },
 };
 
 static vnode_class_t rootClass = {
     .name = "fb root",
-    .type = VTYPE_DIRECTORY,
-    VNODE_DIR_HANDLERS(),
+    .type = FILE_TYPE_DIRECTORY,
+    .handlers =
+        {
+            VNODE_DIR_HANDLERS(),
+        },
 };
 
 status_t fb_register(fb_t* fb)
 {
-    if (fb == NULL || fb->name == NULL || fb->info == NULL)
+    if (fb == NULL || fb->name == NULL || fb->format == NULL)
     {
         return ERR(DRIVER, INVAL);
     }
@@ -157,38 +96,36 @@ status_t fb_register(fb_t* fb)
         }
     }
 
-    list_init(&fb->files);
-
     char id[MAX_NAME];
     snprintf(id, MAX_NAME, "%llu", atomic_fetch_add(&newId, 1));
 
-    fb->dir = devfs_dentry_new(dir, id, &dirClass, fb);
-    if (fb->dir == NULL)
+    fb->internal.dir = devfs_dentry_new(dir, id, &dirClass, fb);
+    if (fb->internal.dir == NULL)
     {
         return ERR(DRIVER, NOMEM);
     }
 
-    devfs_desc_t files[] = {
-        {
-            .name = "name",
-            .cls = &nameClass,
-            .data = fb,
-        },
-        {
-            .name = "info",
-            .cls = &infoClass,
-            .data = fb,
-        },
-        {
-            .name = "data",
-            .cls = &dataClass,
-            .data = fb,
-        },
-    };
-
-    if (!devfs_dentrys_new(&fb->files, fb->dir, files, ARRAY_SIZE(files)))
+    fb->internal.name = devfs_dentry_new(fb->internal.dir, "name", &nameClass, fb);
+    if (fb->internal.name == NULL)
     {
-        UNREF(fb->dir);
+        UNREF(fb->internal.dir);
+        return ERR(DRIVER, NOMEM);
+    }
+
+    fb->internal.info = devfs_dentry_new(fb->internal.dir, "info", &infoClass, fb);
+    if (fb->internal.info == NULL)
+    {
+        UNREF(fb->internal.dir);
+        UNREF(fb->internal.name);
+        return ERR(DRIVER, NOMEM);
+    }
+
+    fb->internal.data = devfs_dentry_new(fb->internal.dir, "data", fb->data, NULL);
+    if (fb->internal.data == NULL)
+    {
+        UNREF(fb->internal.dir);
+        UNREF(fb->internal.name);
+        UNREF(fb->internal.info);
         return ERR(DRIVER, NOMEM);
     }
 
@@ -203,6 +140,8 @@ void fb_unregister(fb_t* fb)
         return;
     }
 
-    UNREF(fb->dir);
-    devfs_dentrys_free(&fb->files);
+    UNREF(fb->internal.dir);
+    UNREF(fb->internal.name);
+    UNREF(fb->internal.info);
+    UNREF(fb->internal.data);
 }

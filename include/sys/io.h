@@ -150,10 +150,10 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
  *
  * Traverse the filesystem and open a file descriptor to the reached vnode.
  *
- * @param fd The file descriptor to open the file relative to, or `FDCWD` to open from the current working directory.
+ * @param cwd The file descriptor to open the file relative to, or `FDCWD` to open from the current working directory.
+ * @param root The file descriptor to use as the root for the walk, or `FDROOT` to use the standard root directory.
  * @param path The path to the file to open, also contains flags @see kernel_fs_path.
  * @param count The length of the path.
- * @param root The file descriptor to use as the root for the walk, or `FDROOT` to use the standard root directory.
  * @param Unused
  * @result The opened file descriptor.
  */
@@ -188,7 +188,7 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
 /**
  * @brief File attribute operation.
  * @param fd The file descriptor.
- * @param attr The attribute to get or set (e.g., VATTR_GET_SIZE, VATTR_SET_SIZE).
+ * @param attr The attribute to get or set (e.g., FILE_GET_SIZE, FILE_SET_SIZE).
  * @param value The value to set (ignored for getters).
  * @param Unused
  * @param Unused
@@ -199,7 +199,7 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
 /**
  * @brief File query operation.
  * @param fd The file descriptor.
- * @param info Pointer to the `vinfo_t` structure to fill.
+ * @param info Pointer to the `file_info_t` structure to fill.
  * @param Unused
  * @param Unused
  * @param Unused
@@ -258,7 +258,7 @@ typedef uint64_t ioseek_t;           ///< Seek origin type.
 #define IOSEEK_CURRENT ((ioseek_t)1) ///< Seek from the current position.
 #define IOSEEK_END ((ioseek_t)2)     ///< Seek from the end of the file.
 
-typedef uint64_t ioevents_t;    ///< Events type.
+typedef uint64_t ioevents_t;   ///< Events type.
 #define IOEVENT_READ (1 << 0)  ///< File descriptor is ready to be read from.
 #define IOEVENT_WRITE (1 << 1) ///< File descriptor is ready to be written to.
 #define IOEVENT_ERROR (1 << 2) ///< File descriptor caused an error.
@@ -344,6 +344,7 @@ typedef struct iosqe
     union {
         uint64_t arg0;
         fd_t fd;
+        fd_t cwd;
         uintptr_t target;
     };
     union {
@@ -353,20 +354,21 @@ typedef struct iosqe
         iocancel_t cancel;
         iocmd_t command;
         void* address;
-        const char* path;
-        vattr_t attr;
-        vinfo_t* info;
+        file_attr_t attr;
+        file_info_t* info;
+        fd_t root;
     };
     union {
         uint64_t arg2;
         size_t count;
         ioseek_t origin;
         uint64_t value;
+        const char* path;
     };
     union {
         uint64_t arg3;
         ssize_t offset;
-        fd_t root;
+        size_t pathLen;
     };
     union {
         uint64_t arg4;
@@ -458,7 +460,7 @@ typedef struct ioring
  */
 typedef struct iopoll
 {
-    fd_t fd;          ///< The file descriptor to poll.
+    fd_t fd;            ///< The file descriptor to poll.
     ioevents_t events;  ///< The events to wait for.
     ioevents_t revents; ///< The events that occurred.
 } iopoll_t;
@@ -673,14 +675,14 @@ static inline void ioprep_map(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeo
  *
  * @see `IOOP_WALK`
  */
-static inline void ioprep_walk(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
-    const char* path, size_t count, fd_t root)
+static inline void ioprep_walk(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t cwd,
+    fd_t root, const char* path, size_t count)
 {
     *iosqe = IOSQE_CREATE(IOOP_WALK, flags, timeout, data);
-    iosqe->fd = fd;
-    iosqe->path = path;
-    iosqe->count = count;
+    iosqe->cwd = cwd;
     iosqe->root = root;
+    iosqe->path = path;
+    iosqe->pathLen = count;
 }
 
 /**
@@ -711,7 +713,7 @@ static inline void ioprep_remove(iosqe_t* iosqe, iosqe_flags_t flags, clock_t ti
  * @see `IOOP_ATTR`
  */
 static inline void ioprep_attr(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
-    vattr_t attr, uint64_t value)
+    file_attr_t attr, uint64_t value)
 {
     *iosqe = IOSQE_CREATE(IOOP_ATTR, flags, timeout, data);
     iosqe->fd = fd;
@@ -725,7 +727,7 @@ static inline void ioprep_attr(iosqe_t* iosqe, iosqe_flags_t flags, clock_t time
  * @see `IOOP_QUERY`
  */
 static inline void ioprep_query(iosqe_t* iosqe, iosqe_flags_t flags, clock_t timeout, uintptr_t data, fd_t fd,
-    vinfo_t* info)
+    file_info_t* info)
 {
     *iosqe = IOSQE_CREATE(IOOP_QUERY, flags, timeout, data);
     iosqe->fd = fd;
@@ -943,17 +945,17 @@ status_t ioremovep(fd_t fd, const char* path);
  * @param value Pointer to the value to set or retrieve.
  * @return An appropriate status value.
  */
-status_t ioattrp(fd_t fd, const char* path, vattr_t attr, uint64_t* value);
+status_t ioattrp(fd_t fd, const char* path, file_attr_t attr, uint64_t* value);
 
 /**
  * @brief Synchronous wrapper for querying a file directly using a path.
  *
  * @param fd The file descriptor to open the file relative to, or `FDCWD` to open from the current working directory.
  * @param path The path to the file.
- * @param info Pointer to the `vinfo_t` structure to fill.
+ * @param info Pointer to the `file_info_t` structure to fill.
  * @return An appropriate status value.
  */
-status_t ioqueryp(fd_t fd, const char* path, vinfo_t* info);
+status_t ioqueryp(fd_t fd, const char* path, file_info_t* info);
 
 /**
  * @brief Synchronous wrapper for a poll operation.
@@ -1070,19 +1072,19 @@ static inline status_t ioprotect(void* address, size_t length, iomap_t map)
 /**
  * @brief Synchronous wrapper for an walk operation with timeout.
  *
- * @param fd The file descriptor to start walking from, or `FDCWD` start at the current working directory.
+ * @param cwd The file descriptor to start walking from, or `FDCWD` start at the current working directory.
+ * @param root The file descriptor to use as the root for the walk, or `FDROOT` to use the standard root directory.
  * @param path The path to walk.
  * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout or `CLOCKS_NOW` to fail the operation if it
  * cannot be completed immediately.
- * @param root The file descriptor to use as the root for the walk, or `FDROOT` to use the standard root directory.
  * @param opened Output pointer for the opened file descriptor.
  * @return An appropriate status value.
  */
-static inline status_t iowalkt(fd_t fd, const char* path, clock_t timeout, fd_t root, fd_t* opened)
+static inline status_t iowalkt(fd_t cwd, fd_t root, const char* path, clock_t timeout, fd_t* opened)
 {
     iosqe_t sqe;
     iocqe_t cqe;
-    ioprep_walk(&sqe, IOSQE_NORMAL, timeout, 0, fd, path, strlen(path), root);
+    ioprep_walk(&sqe, IOSQE_NORMAL, timeout, 0, cwd, root, path, strlen(path));
     iosync(&sqe, &cqe);
     *opened = cqe.result;
     return cqe.status;
@@ -1091,15 +1093,31 @@ static inline status_t iowalkt(fd_t fd, const char* path, clock_t timeout, fd_t 
 /**
  * @brief Synchronous wrapper for an walk operation.
  *
- * @param fd The file descriptor to start walking from, or `FDCWD` start at the current working directory.
- * @param path The path to walk. 
+ * @param cwd The file descriptor to start walking from, or `FDCWD` start at the current working directory.
  * @param root The file descriptor to use as the root for the walk, or `FDROOT` to use the standard root directory.
+ * @param path The path to walk.
  * @param opened Output pointer for the opened file descriptor.
  * @return An appropriate status value.
  */
-static inline status_t iowalk(fd_t fd, const char* path, fd_t root, fd_t* opened)
+static inline status_t iowalk(fd_t cwd, fd_t root, const char* path, fd_t* opened)
 {
-    return iowalkt(fd, path, CLOCKS_NEVER, root, opened);
+    return iowalkt(cwd, root, path, CLOCKS_NEVER, opened);
+}
+
+/**
+ * @brief Synchronous wrapper for a drop operation with timeout.
+ *
+ * @param fd The file descriptor to drop.
+ * @param timeout Timeout for the operation.
+ * @return An appropriate status value.
+ */
+static inline status_t idropt(fd_t fd, clock_t timeout)
+{
+    iosqe_t sqe;
+    iocqe_t cqe;
+    ioprep_drop(&sqe, IOSQE_NORMAL, timeout, 0, fd);
+    iosync(&sqe, &cqe);
+    return cqe.status;
 }
 
 /**
@@ -1110,21 +1128,17 @@ static inline status_t iowalk(fd_t fd, const char* path, fd_t root, fd_t* opened
  */
 static inline status_t iodrop(fd_t fd)
 {
-    iosqe_t sqe;
-    iocqe_t cqe;
-    ioprep_drop(&sqe, IOSQE_NORMAL, CLOCKS_NEVER, 0, fd);
-    iosync(&sqe, &cqe);
-    return cqe.status;
+    return idropt(fd, CLOCKS_NEVER);
 }
 
 /**
- * @brief Synchronous wrapper for a remove operation.
+ * @brief Synchronous wrapper for a remove operation with timeout.
  *
  * @param fd The file descriptor to remove.
  * @param timeout Timeout for the operation.
  * @return An appropriate status value.
  */
-static inline status_t ioremove(fd_t fd, clock_t timeout)
+static inline status_t ioremovet(fd_t fd, clock_t timeout)
 {
     iosqe_t sqe;
     iocqe_t cqe;
@@ -1134,7 +1148,18 @@ static inline status_t ioremove(fd_t fd, clock_t timeout)
 }
 
 /**
- * @brief Synchronous wrapper for an attribute operation.
+ * @brief Synchronous wrapper for a remove operation.
+ *
+ * @param fd The file descriptor to remove.
+ * @return An appropriate status value.
+ */
+static inline status_t ioremove(fd_t fd)
+{
+    return ioremovet(fd, CLOCKS_NEVER);
+}
+
+/**
+ * @brief Synchronous wrapper for an attribute operation with timeout.
  *
  * @param fd The file descriptor.
  * @param attr The attribute to get or set (e.g., IOATTR_GET_SIZE, IOATTR_SET_SIZE).
@@ -1142,7 +1167,7 @@ static inline status_t ioremove(fd_t fd, clock_t timeout)
  * @param timeout Timeout for the operation.
  * @result The requested value or `0` if setting a value.
  */
-static inline status_t ioattr(fd_t fd, vattr_t attr, uint64_t* value, clock_t timeout)
+static inline status_t ioattrt(fd_t fd, file_attr_t attr, uint64_t* value, clock_t timeout)
 {
     iosqe_t sqe;
     iocqe_t cqe;
@@ -1153,14 +1178,27 @@ static inline status_t ioattr(fd_t fd, vattr_t attr, uint64_t* value, clock_t ti
 }
 
 /**
- * @brief Synchronous wrapper for a query operation.
+ * @brief Synchronous wrapper for an attribute operation.
  *
  * @param fd The file descriptor.
- * @param info Pointer to the `vinfo_t` structure to fill.
+ * @param attr The attribute to get or set (e.g., IOATTR_GET_SIZE, IOATTR_SET_SIZE).
+ * @param value Pointer to the value to set or retrieve.
+ * @result The requested value or `0` if setting a value.
+ */
+static inline status_t ioattr(fd_t fd, file_attr_t attr, uint64_t* value)
+{
+    return ioattrt(fd, attr, value, CLOCKS_NEVER);
+}
+
+/**
+ * @brief Synchronous wrapper for a query operation with timeout.
+ *
+ * @param fd The file descriptor.
+ * @param info Pointer to the `file_info_t` structure to fill.
  * @param timeout Timeout for the operation.
  * @result The status of the operation.
  */
-static inline status_t ioquery(fd_t fd, vinfo_t* info, clock_t timeout)
+static inline status_t ioqueryt(fd_t fd, file_info_t* info, clock_t timeout)
 {
     iosqe_t sqe;
     iocqe_t cqe;
@@ -1170,19 +1208,42 @@ static inline status_t ioquery(fd_t fd, vinfo_t* info, clock_t timeout)
 }
 
 /**
- * @brief Synchronous wrapper for a flush operation.
+ * @brief Synchronous wrapper for a query operation.
+ *
+ * @param fd The file descriptor.
+ * @param info Pointer to the `file_info_t` structure to fill.
+ * @result The status of the operation.
+ */
+static inline status_t ioquery(fd_t fd, file_info_t* info)
+{
+    return ioqueryt(fd, info, CLOCKS_NEVER);
+}
+
+/**
+ * @brief Synchronous wrapper for a flush operation with timeout.
  *
  * @param fd The file descriptor to flush.
  * @param timeout Timeout for the operation.
  * @return An appropriate status value.
  */
-static inline status_t ioflush(fd_t fd, clock_t timeout)
+static inline status_t ioflusht(fd_t fd, clock_t timeout)
 {
     iosqe_t sqe;
     iocqe_t cqe;
     ioprep_flush(&sqe, IOSQE_NORMAL, timeout, 0, fd);
     iosync(&sqe, &cqe);
     return cqe.status;
+}
+
+/**
+ * @brief Synchronous wrapper for a flush operation.
+ *
+ * @param fd The file descriptor to flush.
+ * @return An appropriate status value.
+ */
+static inline status_t ioflush(fd_t fd)
+{
+    return ioflusht(fd, CLOCKS_NEVER);
 }
 
 #endif

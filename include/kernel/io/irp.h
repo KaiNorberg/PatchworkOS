@@ -1,7 +1,7 @@
 #pragma once
 
-#include <kernel/mem/mdl.h>
 #include <kernel/mem/cache.h>
+#include <kernel/mem/mdl.h>
 #include <kernel/sync/lock.h>
 #include <kernel/utils/ref.h>
 
@@ -221,18 +221,18 @@ typedef uint16_t irp_major_t; ///< IRP major function number type.
 
 /**
  * @brief Open operation.
- * 
+ *
  * Will open the file associated with the frame.
- * 
+ *
  * @return Always `0`.
  */
 #define IRP_MJ_OPEN 6
 
 /**
  * @brief Close operation.
- * 
+ *
  * Will close the file associated with the frame.
- * 
+ *
  * @return Always `0`.
  */
 #define IRP_MJ_CLOSE 7
@@ -269,9 +269,9 @@ typedef uint16_t irp_major_t; ///< IRP major function number type.
 
 /**
  * @brief Reclaim operation.
- * 
+ *
  * Will perform final cleanup before the vnode associated with the frame is freed.
- * 
+ *
  * @return Always `0`.
  */
 #define IRP_MJ_RECLAIM 13
@@ -384,12 +384,12 @@ typedef struct irp_frame
         } remove;
         struct
         {
-            vattr_t attr; ///< The attribute to get or set.
-            uint64_t value;   ///< The value to set.
+            file_attr_t attr;   ///< The attribute to get or set.
+            uint64_t value; ///< The value to set.
         } attr;
         struct
         {
-            mdl_t* buffer; ///< The buffer to write the `vinfo_t` into.
+            mdl_t* buffer; ///< The buffer to write the `file_info_t` into.
         } query;
         uint64_t args[IRP_ARGS_MAX]; ///< Generic arguments.
     };
@@ -417,14 +417,14 @@ typedef struct irp
         clock_t timeout;  ///< The timeout of the operation starting from when the IRP is added to a timeout queue.
         clock_t deadline; ///< The time at which the IRP will be removed from a timeout queue.
     };
-    mdl_t mdl;        ///< A preallocated memory descriptor list for use by the IRP.
-    uintptr_t result; ///< The result returned by the last completed frame.
-    status_t status;  ///< The status of the last completed frame.
-    struct irp* next; ///< Pointer to the next IRP in a chain.
-    void* ctx; ///< Allows various subsystems to associate context with an IRP, can be `NULL`.
+    mdl_t mdl;          ///< A preallocated memory descriptor list for use by the IRP.
+    uintptr_t result;   ///< The result returned by the last completed frame.
+    status_t status;    ///< The status of the last completed frame.
+    struct irp* next;   ///< Pointer to the next IRP in a chain.
+    void* ctx;          ///< Allows various subsystems to associate context with an IRP, can be `NULL`.
     process_t* process; ///< The process that owns this IRP.
-    cpu_id_t cpu;     ///< The CPU whose timeout queue the IRP is in.
-    uint8_t loc;      ///< The index of the current frame in the stack.
+    cpu_id_t cpu;       ///< The CPU whose timeout queue the IRP is in.
+    uint8_t loc;        ///< The index of the current frame in the stack.
     uint8_t _reserved[5];
     iosqe_t sqe;                      ///< A copy of the submission queue entry associated with this IRP.
     irp_frame_t stack[IRP_FRAME_MAX]; ///< The frame stack, grows downwards.
@@ -538,7 +538,6 @@ status_t irp_call(irp_t* irp, irp_handler_t func);
  */
 void irp_complete(irp_t* irp, status_t status);
 
-
 /**
  * @brief Set the cancellation callback for an IRP.
  *
@@ -587,10 +586,14 @@ void irp_cancel_finish(irp_t* irp, irp_cancel_t handler);
 /**
  * @brief Claim an IRP for cancellation.
  *
- * After calling this function the `irp_cancel_finish()` function should be called with the returned cancellation callback to finish cancelling the IRP.
- * 
- * The reason for this separation is to prevent deadlocks and certain race conditions while cancelling an IRP. For example, if an IRP is stored in a lock protected list whose lock would be held both while completing the IRP (completion also happens during cancellation) and by the caller performing the cancellation, we would have a deadlock if we had to perform cancellation all at once.
- * 
+ * After calling this function the `irp_cancel_finish()` function should be called with the returned cancellation
+ * callback to finish cancelling the IRP.
+ *
+ * The reason for this separation is to prevent deadlocks and certain race conditions while cancelling an IRP. For
+ * example, if an IRP is stored in a lock protected list whose lock would be held both while completing the IRP
+ * (completion also happens during cancellation) and by the caller performing the cancellation, we would have a deadlock
+ * if we had to perform cancellation all at once.
+ *
  * @param irp The IRP to claim.
  * @return The cancellation callback if successfully claimed, `NULL` otherwise.
  */
@@ -606,7 +609,6 @@ static inline irp_cancel_t irp_cancel_claim(irp_t* irp)
     }
     return NULL;
 }
-
 
 /**
  * @brief Claim an IRP, ensuring that it is not already cancelled or being cancelled.
@@ -880,7 +882,7 @@ static inline void irp_prep_remove(irp_t* irp, dentry_t* dentry)
  *
  * @see `IRP_MJ_ATTR`
  */
-static inline void irp_prep_attr(irp_t* irp, vattr_t attr, uint64_t value)
+static inline void irp_prep_attr(irp_t* irp, file_attr_t attr, uint64_t value)
 {
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);

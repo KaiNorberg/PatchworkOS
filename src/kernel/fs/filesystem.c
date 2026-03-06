@@ -1,10 +1,10 @@
 #include <kernel/fs/filesystem.h>
 
 #include <kernel/cpu/syscall.h>
+#include <kernel/fs/binding.h>
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file_table.h>
 #include <kernel/fs/key.h>
-#include <kernel/fs/binding.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/vfs.h>
@@ -72,9 +72,13 @@ static void volume_cleanup(vnode_t* vnode)
 
 static vnode_class_t volumeClass = {
     .name = "volume file",
-    .type = VTYPE_REGULAR,
+    .type = FILE_TYPE_REGULAR,
     .cleanup = volume_cleanup,
-    VNODE_HANDLERS([IRP_MJ_READ] = volume_read),
+    .handlers =
+        {
+            VNODE_HANDLERS(),
+            [IRP_MJ_READ] = volume_read,
+        },
 };
 
 static status_t filesystem_lookup(vnode_t* dir, dentry_t* dentry)

@@ -85,8 +85,6 @@ static inline status_t fddup(fd_t oldFd, fd_t* newFd)
     return syscall2(SYS_FD_DUP, newFd, oldFd, *newFd);
 }
 
-typedef uint64_t fsvol_t; ///< Filesystem volume id type.
-
 /**
  * @brief System call for binding a source path to a target path.
  *
@@ -110,64 +108,66 @@ static inline status_t fsunbind(fd_t target)
     return syscall1(SYS_FS_UNBIND, NULL, target);
 }
 
-typedef uint64_t vnum_t; ///< Virtual node number type.
+typedef uint64_t file_volume_t; ///< File volume id type, uniquely identifies a filesystem volume.
 
-typedef uint16_t vtype_t;  ///< Virtual node type enum.
-#define VTYPE_UNKNOWN 0    ///< Unknown file type.
-#define VTYPE_REGULAR 1    ///< Regular file.
-#define VTYPE_DIRECTORY 3  ///< Directory.
-#define VTYPE_SYMLINK 4    ///< Symbolic link.
-#define VTYPE_DEVICE 5     ///< Device file.
-#define VTYPE_SYSTEM 6     ///< System file, used for exposing kernel information to user space.
+typedef uint64_t file_number_t; ///< File number type, uniquely identifies a file within its volume.
 
-typedef uint16_t vattr_t; ///< Virtual node attribute operations.
-#define _VATTR_GET(x) (((x) << 1) & ~1)
-#define _VATTR_SET(x) (((x) << 1) | 1)
-#define VATTR_GET_SIZE _VATTR_GET(0)       ///< Get the size of the file.
-#define VATTR_SET_SIZE _VATTR_SET(0)       ///< Set the size of the file.
-#define VATTR_GET_BLOCKS _VATTR_GET(1)     ///< Get the number of blocks allocated.
-#define VATTR_GET_BLOCK_SIZE _VATTR_GET(2) ///< Get the block size.
-#define VATTR_GET_MAX_SIZE _VATTR_GET(3)   ///< Get the maximum file size.
-#define VATTR_GET_ATIME _VATTR_GET(4)      ///< Get the access time.
-#define VATTR_SET_ATIME _VATTR_SET(4)      ///< Set the access time.
-#define VATTR_GET_MTIME _VATTR_GET(5)      ///< Get the modification time.
-#define VATTR_SET_MTIME _VATTR_SET(5)      ///< Set the modification time.
-#define VATTR_GET_CTIME _VATTR_GET(6)      ///< Get the change time.
-#define VATTR_SET_CTIME _VATTR_SET(6)      ///< Set the change time.
-#define VATTR_GET_BTIME _VATTR_GET(7)      ///< Get the birth time.
-#define VATTR_SET_BTIME _VATTR_SET(7)      ///< Set the birth time.
-#define VATTR_GET_NUM _VATTR_GET(8)        ///< Get the file number.
-#define VATTR_GET_VOL _VATTR_GET(9)        ///< Get the volume ID.
-#define VATTR_GET_NLINK _VATTR_GET(10)     ///< Get the number of hard links.
-#define VATTR_GET_TYPE _VATTR_GET(11)      ///< Get the file type.
+typedef uint16_t file_type_t; ///< File type enum.
+#define FILE_TYPE_UNKNOWN 0   ///< Unknown file type.
+#define FILE_TYPE_REGULAR 1   ///< Regular file.
+#define FILE_TYPE_DIRECTORY 3 ///< Directory.
+#define FILE_TYPE_SYMLINK 4   ///< Symbolic link.
+#define FILE_TYPE_DEVICE 5    ///< Device file.
+#define FILE_TYPE_SYSTEM 6    ///< System file, used for exposing kernel information to user space.
 
-#define VATTR_IS_SET(attr) ((attr) & 1)
-#define VATTR_IS_GET(attr) (!((attr) & 1))
+typedef uint16_t file_attr_t; ///< File attribute operations.
+#define _FILE_GET(x) (((x) << 1) & ~1)
+#define _FILE_SET(x) (((x) << 1) | 1)
+#define FILE_GET_SIZE _FILE_GET(0)       ///< Get the size of the file.
+#define FILE_SET_SIZE _FILE_SET(0)       ///< Set the size of the file.
+#define FILE_GET_BLOCKS _FILE_GET(1)     ///< Get the number of blocks allocated.
+#define FILE_GET_BLOCK_SIZE _FILE_GET(2) ///< Get the block size.
+#define FILE_GET_MAX_SIZE _FILE_GET(3)   ///< Get the maximum file size.
+#define FILE_GET_ATIME _FILE_GET(4)      ///< Get the access time.
+#define FILE_SET_ATIME _FILE_SET(4)      ///< Set the access time.
+#define FILE_GET_MTIME _FILE_GET(5)      ///< Get the modification time.
+#define FILE_SET_MTIME _FILE_SET(5)      ///< Set the modification time.
+#define FILE_GET_CTIME _FILE_GET(6)      ///< Get the change time.
+#define FILE_SET_CTIME _FILE_SET(6)      ///< Set the change time.
+#define FILE_GET_BTIME _FILE_GET(7)      ///< Get the birth time.
+#define FILE_SET_BTIME _FILE_SET(7)      ///< Set the birth time.
+#define FILE_GET_NUMBER _FILE_GET(8)        ///< Get the file number.
+#define FILE_GET_VOLUME _FILE_GET(9)        ///< Get the volume ID.
+#define FILE_GET_NLINK _FILE_GET(10)     ///< Get the number of hard links.
+#define FILE_GET_TYPE _FILE_GET(11)      ///< Get the file type.
 
-typedef uint64_t vmask_t;         ///< Bitmask of which fields are valid within a `vinfo_t` structure.
-#define VMASK_SIZE (1 << 0)       ///< File size is valid.
-#define VMASK_BLOCKS (1 << 1)     ///< Blocks allocated is valid.
-#define VMASK_BLOCK_SIZE (1 << 2) ///< Block size is valid.
-#define VMASK_MAX_SIZE (1 << 3)   ///< Maximum file size is valid.
-#define VMASK_ATIME (1 << 4)      ///< Access time is valid.
-#define VMASK_MTIME (1 << 5)      ///< Modification time is valid.
-#define VMASK_CTIME (1 << 6)      ///< Change time is valid.
-#define VMASK_BTIME (1 << 7)      ///< Birth/Creation time is valid.
-#define VMASK_NUM (1 << 8)        ///< File number is valid.
-#define VMASK_VOL (1 << 9)        ///< Volume ID is valid.
-#define VMASK_NLINK (1 << 10)     ///< Number of hard links is valid.
-#define VMASK_FLAGS (1 << 11)     ///< File flags are valid.
-#define VMASK_TYPE (1 << 12)      ///< File type is valid.
-#define VMASK_NAME (1 << 13)      ///< File name is valid.
-#define VMASK_MODE (1 << 14)      ///< File mode is valid.
+#define FILE_ATTR_IS_SET(attr) ((attr) & 1)
+#define FILE_ATTR_IS_GET(attr) (!((attr) & 1))
+
+typedef uint64_t file_mask_t;         ///< Bitmask of which fields are valid within a `file_info_t` structure.
+#define FILE_MASK_SIZE (1 << 0)       ///< File size is valid.
+#define FILE_MASK_BLOCKS (1 << 1)     ///< Blocks allocated is valid.
+#define FILE_MASK_BLOCK_SIZE (1 << 2) ///< Block size is valid.
+#define FILE_MASK_MAX_SIZE (1 << 3)   ///< Maximum file size is valid.
+#define FILE_MASK_ATIME (1 << 4)      ///< Access time is valid.
+#define FILE_MASK_MTIME (1 << 5)      ///< Modification time is valid.
+#define FILE_MASK_CTIME (1 << 6)      ///< Change time is valid.
+#define FILE_MASK_BTIME (1 << 7)      ///< Birth/Creation time is valid.
+#define FILE_MASK_NUMBER (1 << 8)        ///< File number is valid.
+#define FILE_MASK_VOLUME (1 << 9)        ///< Volume ID is valid.
+#define FILE_MASK_NLINK (1 << 10)     ///< Number of hard links is valid.
+#define FILE_MASK_FLAGS (1 << 11)     ///< File flags are valid.
+#define FILE_MASK_TYPE (1 << 12)      ///< File type is valid.
+#define FILE_MASK_NAME (1 << 13)      ///< File name is valid.
+#define FILE_MASK_MODE (1 << 14)      ///< File mode is valid.
 
 /**
- * @brief Virtual node information structure.
- * @struct vinfo_t
+ * @brief File information structure.
+ * @struct file_info_t
  */
-typedef struct vinfo
+typedef struct file_info
 {
-    vmask_t mask;   ///< Bitmask of which fields are valid.
+    file_mask_t mask;        ///< Bitmask of which fields are valid.
     size_t size;         ///< File size in bytes.
     size_t blocks;       ///< Blocks allocated.
     size_t blockSize;    ///< Block size in bytes.
@@ -176,17 +176,17 @@ typedef struct vinfo
     clock_t mtime;       ///< Modification time (ns).
     clock_t ctime;       ///< Change time (ns).
     clock_t btime;       ///< Birth/Creation time (ns).
-    vnum_t num;        ///< File number, depends on the file system, for example, inode number in ext4.
-    fsvol_t vol;        ///< Volume ID.
+    file_number_t number;          ///< File number.
+    file_volume_t volume;         ///< Volume ID.
     uint32_t nlink;      ///< Number of hard links.
-    vtype_t type;    ///< File type.
+    file_type_t type;        ///< File type.
     char name[MAX_PATH]; ///< File name.
     char mode[MAX_NAME]; ///< File mode represented by their short-hand.
     uint8_t _reserved[123];
-} vinfo_t;
+} file_info_t;
 
 #ifdef static_assert
-static_assert(sizeof(vinfo_t) == 512, "vinfo_t is not 512 bytes");
+static_assert(sizeof(file_info_t) == 512, "file_info_t is not 512 bytes");
 #endif
 
 /** @} */

@@ -1,9 +1,9 @@
 #include <kernel/fs/devfs.h>
 
+#include <kernel/fs/binding.h>
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/filesystem.h>
-#include <kernel/fs/binding.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vfs.h>
@@ -41,7 +41,7 @@ static filesystem_t devfs = {
     .mount = devfs_mount,
 };
 
-static vnode_class_t rootClass = {.name = "devfs root", .type = VTYPE_DIRECTORY, VNODE_DIR_HANDLERS()};
+static vnode_class_t rootClass = {.name = "devfs root", .type = FILE_TYPE_DIRECTORY, VNODE_DIR_HANDLERS()};
 
 void devfs_init(void)
 {
@@ -90,14 +90,16 @@ dentry_t* devfs_dentry_new(dentry_t* parent, const char* name, const vnode_class
 
     assert(parent->volume->fs == &devfs);
 
-    dentry_t* dir = dentry_new(parent->volume, parent, name);
-    if (dir == NULL)
+    dentry_t* dentry = dentry_new(parent, name);
+    if (dentry == NULL)
     {
         return NULL;
     }
-    UNREF_DEFER(dir);
+    UNREF_DEFER(dentry);
 
-    vnode_t* vnode = vnode_new(parent->volume, cls);
+    assert(DENTRY_IS_POSITIVE(parent));
+
+    vnode_t* vnode = vnode_new(parent->vnode->volume, cls);
     if (vnode == NULL)
     {
         return NULL;

@@ -1,4 +1,4 @@
-#include <kernel/fs/devfs.h>
+#include <kernel/fs/sysfs.h>
 #include <kernel/fs/file.h>
 #include <kernel/io/irp.h>
 #include <kernel/log/log.h>
@@ -78,8 +78,13 @@ static status_t klog_write(irp_t* irp)
 
 static vnode_class_t klogClass = {
     .name = "klog",
-    .type = VTYPE_DEVICE,
-    VNODE_HANDLERS([IRP_MJ_READ] = klog_read, [IRP_MJ_WRITE] = klog_write),
+    .type = FILE_TYPE_DEVICE,
+    .handlers =
+        {
+            VNODE_HANDLERS(),
+            [IRP_MJ_READ] = klog_read,
+            [IRP_MJ_WRITE] = klog_write,
+        },
 };
 
 static void log_splash(void)
@@ -120,7 +125,7 @@ void log_expose(void)
         return;
     }
 
-    klog = devfs_dentry_new(NULL, "klog", &klogClass, NULL);
+    klog = sysfs_dentry_new(NULL, "klog", &klogClass, NULL);
     if (klog == NULL)
     {
         return;

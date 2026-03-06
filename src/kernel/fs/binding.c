@@ -14,7 +14,7 @@ static void binding_free(binding_t* binding)
 
     if (binding->target != NULL)
     {
-        atomic_fetch_sub_explicit(&binding->target->bindingCount, 1, memory_order_relaxed);
+        atomic_fetch_sub_explicit(&binding->target->bindings, 1, memory_order_relaxed);
         UNREF(binding->target);
     }
 
@@ -31,9 +31,9 @@ static void binding_free(binding_t* binding)
     rcu_call(&binding->rcu, rcu_call_free, binding);
 }
 
-binding_t* binding_new(volume_t* volume, dentry_t* source, dentry_t* target, binding_t* parent, mode_t mode)
+binding_t* binding_new(dentry_t* source, dentry_t* target, binding_t* parent, mode_t mode)
 {
-    if (volume == NULL || source == NULL || (target != NULL && parent == NULL))
+    if (source == NULL || (target != NULL && parent == NULL))
     {
         return NULL;
     }
@@ -50,13 +50,12 @@ binding_t* binding_new(volume_t* volume, dentry_t* source, dentry_t* target, bin
     if (target != NULL)
     {
         binding->target = REF(target);
-        atomic_fetch_add_explicit(&target->bindingCount, 1, memory_order_relaxed);
+        atomic_fetch_add_explicit(&target->bindings, 1, memory_order_relaxed);
     }
     else
     {
         binding->target = NULL;
     }
-    binding->volume = REF(volume);
     binding->parent = parent != NULL ? REF(parent) : NULL;
     binding->mode = mode;
 

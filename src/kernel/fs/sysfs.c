@@ -1,9 +1,9 @@
 #include <kernel/fs/sysfs.h>
 
+#include <kernel/fs/binding.h>
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/filesystem.h>
-#include <kernel/fs/binding.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vfs.h>
@@ -36,81 +36,62 @@ static status_t sysfs_mount(filesystem_t* fs, dentry_t** out, const char* option
     return OK;
 }
 
-static filesystem_t sysfs = {
-    .name = SYSFS_NAME,
-    .mount = sysfs_mount,
+static vnode_class_t dirClass = {
+    .name = "sysfs dir",
+    .type = FILE_TYPE_DIRECTORY,
+    .handlers = {
+        VNODE_DIR_HANDLERS(),
+    }
 };
 
-static vnode_class_t rootClass = {
-    .name = "devfs root",
-    .type = VNODE_DIR,
-    .iterate = dentry_generic_iterate,
+static status_t sysfs_clone_open(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
+    if (file == NULL)
+    {
+        return ERR(FS, EXPECT_FILE);
+    }
+
+    return file_redirect(file, root);
+}
+
+static vnode_class_t cloneClass = {
+    .name = "sysfs clone",
+    .type = FILE_TYPE_SYSTEM,
+    .handlers = {
+        VNODE_HANDLERS(),
+        [IRP_MJ_OPEN] = sysfs_clone_open,
+    },
+};
+
+static filesystem_t sysfs = {
+    .name = SYSFS_NAME,
+    .clone = &cloneClass,
 };
 
 void sysfs_init(void)
 {
-    status_t status = filesystem_register(&sysfs);
-    if (IS_ERR(status))
-    {
-        panic(NULL, "Failed to register sysfs");
-    }
-
-    volume_t* volume = volume_new(&sysfs, NULL);
-    if (volume == NULL)
-    {
-        panic(NULL, "Failed to create sysfs volume");
-    }
-    UNREF_DEFER(volume);
-
-    vnode_t* vnode = vnode_new(volume, &rootClass);
+    vnode_t* vnode = vnode_new(SYSFS_VOL, &dirClass, 0);
     if (vnode == NULL)
     {
         panic(NULL, "Failed to create sysfs root vnode");
     }
     UNREF_DEFER(vnode);
 
-    dentry_t* dentry = dentry_new(volume, NULL, NULL);
-    if (dentry == NULL)
+    root = dentry_new(NULL, NULL);
+    if (root == NULL)
     {
         panic(NULL, "Failed to create sysfs root dentry");
     }
 
-    dentry_make_positive(dentry, vnode);
-    volume->root = dentry;
-    root = dentry;
+    dentry_make_positive(root, vnode);
 
-    process_t* process = process_current();
-    assert(process != NULL);
-
-    namespace_t* ns = process_get_ns(process);
-    if (ns == NULL)
-    {
-        panic(NULL, "Failed to get process namespace");
-    }
-    UNREF_DEFER(ns);
-
-    path_t target = cwd_get(&process->cwd, ns);
-    PATH_DEFER(&target);
-
-    pathname_t pathname;
-    status = pathname_init(&pathname, "/sys");
+    status_t status = filesystem_register(&sysfs);
     if (IS_ERR(status))
     {
-        panic(NULL, "Failed to init pathname for /sys");
+        panic(NULL, "Failed to register sysfs %Y", status);
     }
-
-    status = path_walk(&target, &pathname, ns);
-    if (IS_ERR(status))
-    {
-        panic(NULL, "Failed to walk to /sys");
-    }
-
-    status = namespace_mount(ns, &target, &sysfs, NULL, MODE_PROPAGATE | MODE_ALL_PERMS, NULL, NULL);
-    if (IS_ERR(status))
-    {
-        panic(NULL, "Failed to mount sysfs");
-    }
-    LOG_INFO("sysfs mounted to '/sys'\n");
 }
 
 dentry_t* sysfs_dentry_new(dentry_t* parent, const char* name, const vnode_class_t* cls, void* data)
@@ -125,16 +106,17 @@ dentry_t* sysfs_dentry_new(dentry_t* parent, const char* name, const vnode_class
         parent = root;
     }
 
-    assert(parent->volume->fs == &sysfs);
+    assert(DENTRY_IS_POSITIVE(parent));
+    assert(parent->vnode->volume == SYSFS_VOL);
 
-    dentry_t* dentry = dentry_new(parent->volume, parent, name);
+    dentry_t* dentry = dentry_new(parent, name);
     if (dentry == NULL)
     {
         return NULL;
     }
     UNREF_DEFER(dentry);
 
-    vnode_t* vnode = vnode_new(parent->volume, cls);
+    vnode_t* vnode = vnode_new(SYSFS_VOL, cls, vnode_hash(parent->vnode->number, name));
     if (vnode == NULL)
     {
         return NULL;
@@ -154,7 +136,7 @@ bool sysfs_dentrys_new(list_t* out, dentry_t* parent, const sysfs_desc_t* descs,
         parent = root;
     }
 
-    assert(parent->volume->fs == &sysfs);
+    assert(parent->vnode->volume == SYSFS_VOL);
 
     list_t createdList = LIST_CREATE(createdList);
 

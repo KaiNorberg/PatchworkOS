@@ -25,12 +25,12 @@ typedef struct volume_ops volume_ops_t;
 #define SYSFS_NAME "sysfs"
 
 /**
- * @brief Initializes the sysfs and mount an instance at `/sys`.
- *
- * The System Filesystem is one of the few filesystem that will be mounted automatically by the kernel, this is
- * necessary as otherwise user space would be unable to access the `fs` sysfs directory and thus unable to mount any
- * filesystem.
- *
+ * @brief The volume ID reserved for sysfs.
+ */
+#define SYSFS_VOL 0
+
+/**
+ * @brief Initializes  the system filesystem.
  */
 void sysfs_init(void);
 
@@ -51,9 +51,9 @@ dentry_t* sysfs_dentry_new(dentry_t* parent, const char* name, const vnode_class
  */
 typedef struct sysfs_desc
 {
-    const char* name;         ///< Name of the dentry.
+    const char* name;    ///< Name of the dentry.
     const vnode_class_t* cls; ///< Class to assign to the vnode of the created dentry.
-    void* data;               ///< Private data to store in the vnode of the dentry.
+    void* data;          ///< Private data to store in the vnode of the dentry.
 } sysfs_desc_t;
 
 /**

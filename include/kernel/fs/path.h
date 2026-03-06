@@ -289,31 +289,33 @@ static inline void path_put(path_t* path)
  */
 typedef struct path_state
 {
-    dentry_t* dentry;      ///< The current dentry in the walk.
-    binding_t* binding;        ///< The current binding in the walk.
-    dentry_t* rootDentry; ///< The root dentry.
+    dentry_t* dentry;       ///< The current dentry in the walk.
+    binding_t* binding;     ///< The current binding in the walk.
+    dentry_t* rootDentry;   ///< The root dentry.
     binding_t* rootBinding; ///< The root binding.
-    char* ptr;             ///< Pointer to the current component in the path.
-    size_t componentLen;   ///< Length of the current component being processed.
-    mode_t mode;           ///< Parsed mode from the path.
-    namespace_t* ns;       ///< The namespace for the walk.
-    uint32_t symlinkDepth; ///< Current symlink recursion depth.
-    dentry_t* lookup;      ///< A reference to the last "looked up" dentry to keep it and its parents alive.
+    char* ptr;              ///< Pointer to the current component in the path.
+    size_t componentLen;    ///< Length of the current component being processed.
+    mode_t mode;            ///< Parsed mode from the path.
+    namespace_t* ns;        ///< The namespace for the walk.
+    uint32_t symlinkDepth;  ///< Current symlink recursion depth.
+    dentry_t* lookup;       ///< A reference to the last "looked up" dentry to keep it and its parents alive.
     status_t (*done)(irp_t* irp, struct path_state* state, file_t* file);
     char* payload;             ///< The payload string extracted from the path.
-    uint64_t count;   ///< The length of the path string.
-    char path[MAX_PATH]; ///< The full path string buffer, not `NULL` terminated.
+    uint64_t count;            ///< The length of the path string.
+    char path[MAX_PATH];       ///< The full path string buffer, not `NULL` terminated.
     char linkBuffer[MAX_PATH]; ///< Temporary buffer for reading symlinks.
 } path_state_t;
 
 /**
  * @brief Initialize a path state.
  *
- * After calling this function the path to walk should be copied to `path_state_t::path` and the length of the path should be set in `path_state_t::count` before calling `path_walk()`.
- * 
+ * After calling this function the path to walk should be copied to `path_state_t::path` and the length of the path
+ * should be set in `path_state_t::count` before calling `path_walk()`.
+ *
  * @param state The path state to initialize.
  */
-static inline void path_state_init(path_state_t* state, dentry_t* dentry, binding_t* binding, dentry_t* rootDentry, binding_t* rootBinding, status_t (*done)(irp_t* irp, struct path_state* state, file_t* file))
+static inline void path_state_init(path_state_t* state, dentry_t* dentry, binding_t* binding, dentry_t* rootDentry,
+    binding_t* rootBinding, status_t (*done)(irp_t* irp, struct path_state* state, file_t* file))
 {
     state->dentry = dentry;
     state->binding = binding;

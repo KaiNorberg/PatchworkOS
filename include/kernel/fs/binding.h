@@ -17,7 +17,8 @@ typedef struct dentry dentry_t;
  * @defgroup kernel_fs_binding Binding
  * @ingroup kernel_fs
  *
- * A binding represents a link between two locations within the filesystem hierarchy, causing one location to appear at the other.
+ * A binding represents a link between two locations within the filesystem hierarchy, causing one location to appear at
+ * the other.
  *
  * @{
  */
@@ -38,18 +39,18 @@ typedef uint64_t binding_id_t;
 /**
  * @brief Binding structure.
  * @struct binding_t
- * 
+ *
  * Analogous to a "vfsmount" in Linux.
  */
 typedef struct binding
 {
     ref_t ref;
     binding_id_t id;
-    dentry_t* source; ///< The dentry to appear at the target, usually the root of the bound filesystem.
-    dentry_t* target; ///< The dentry which the source is bound to, can be `NULL` for the root filesystem.
-    binding_t* parent;  ///< The parent binding, can be `NULL` for the root filesystem.
-    mode_t mode;      ///< Specifies the maximum permissions for this binding.
-    rcu_entry_t rcu;  ///< RCU entry for deferred cleanup.
+    dentry_t* source;  ///< The dentry to appear at the target, usually the root of the bound filesystem.
+    dentry_t* target;  ///< The dentry which the source is bound to, can be `NULL` for the root filesystem.
+    binding_t* parent; ///< The parent binding, can be `NULL` for the root filesystem.
+    mode_t mode;       ///< Specifies the maximum permissions for this binding.
+    rcu_entry_t rcu;   ///< RCU entry for deferred cleanup.
 } binding_t;
 
 /**

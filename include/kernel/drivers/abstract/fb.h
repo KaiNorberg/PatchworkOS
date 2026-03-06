@@ -2,6 +2,7 @@
 
 #include <_libstd/MAX_PATH.h>
 #include <kernel/fs/devfs.h>
+#include <kernel/fs/vnode.h>
 #include <kernel/mem/vmm.h>
 
 #include <stdint.h>
@@ -56,37 +57,30 @@ typedef struct fb_info
 } fb_info_t;
 
 /**
- * @brief Macro to retrieve the framebuffer associated with an IRP.
- *
- * @param _irp The IRP to retrieve the framebuffer from.
- * @return The framebuffer.
- */
-#define FB_FROM_IRP(_irp) ((fb_t*)(_irp)->file->data)
-
-/**
  * @brief Framebuffer structure.
  * @struct fb_t
- *
- * To implement the handlers which simply take an IRP, the `FB_FROM_IRP()` macro can be used to retrieve the `fb_t`
- * structure.
  */
 typedef struct fb
 {
-    char* name;
-    status_t (*info)(fb_t* fb, fb_info_t* info);
-    status_t (*mmap)(irp_t* irp);
-    status_t (*read)(irp_t* irp);
-    status_t (*write)(irp_t* irp);
-    status_t (*reclaim)(irp_t* irp);
-    void* data;
-    dentry_t* dir;
-    list_t files;
+    char* name;    ///< The name of the framebuffer.
+    size_t width;  ///< The width in pixels.
+    size_t height; ///< The height in pixels.
+    size_t pitch;  ///< The number of bytes per line.
+    char* format;  ///< Specifies the format of the framebuffer.
+    const vnode_class_t* data; ///< The class to use for the framebuffers data file.
+    struct
+    {
+        dentry_t* dir;
+        dentry_t* name;
+        dentry_t* info;
+        dentry_t* data;
+    } internal;
 } fb_t;
 
 /**
  * @brief Register a new framebuffer.
  *
- * @param fb Pointer to the framebuffer structure to initialize.
+ * @param fb Pointer to the framebuffer to register.
  * @return An appropriate status value.
  */
 status_t fb_register(fb_t* fb);

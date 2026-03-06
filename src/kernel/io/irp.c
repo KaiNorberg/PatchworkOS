@@ -3,8 +3,8 @@
 #include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
-#include <kernel/mem/mdl.h>
 #include <kernel/mem/cache.h>
+#include <kernel/mem/mdl.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
@@ -53,7 +53,7 @@ static void irp_unwind_stack(irp_t* irp)
             frame->vnode = NULL;
             frame->file = NULL;
         }
-        
+
         if (vnode != NULL)
         {
             UNREF(vnode);

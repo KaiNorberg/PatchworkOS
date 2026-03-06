@@ -98,7 +98,6 @@ static void dentry_free(dentry_t* dentry)
         dentry->vnode = NULL;
     }
 
-
     rcu_call(&dentry->rcu, rcu_call_cache_free, dentry);
 }
 
@@ -188,7 +187,7 @@ dentry_t* dentry_rcu_get(const dentry_t* parent, const char* name, size_t length
 
     if (DENTRY_IS_POSITIVE(dentry))
     {
-        if (dentry->vnode->cls->revalidate != NULL && !dentry->vnode->cls->revalidate(dentry))
+        if (dentry->vnode->cls->access != NULL && !dentry->vnode->cls->access(dentry))
         {
             UNREF(dentry);
             return NULL;

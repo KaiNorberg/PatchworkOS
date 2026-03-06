@@ -43,7 +43,7 @@ typedef enum
 void log_init(void);
 
 /**
- * @brief Expose kernel logs via the `/dev/klog` file.
+ * @brief Expose kernel logs via the `/sys/klog` file.
  */
 void log_expose(void);
 

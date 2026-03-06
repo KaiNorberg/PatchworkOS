@@ -59,10 +59,10 @@ typedef struct binding_stack
 typedef struct namespace
 {
     ref_t ref;
-    list_entry_t entry;       ///< The entry for the parent's children list.
-    list_t children;          ///< List of child namespaces.
-    namespace_t* parent;      ///< The parent namespace, can be `NULL`.
-    list_t stacks;            ///< List of `binding_stack_t` in this namespace.
+    list_entry_t entry;         ///< The entry for the parent's children list.
+    list_t children;            ///< List of child namespaces.
+    namespace_t* parent;        ///< The parent namespace, can be `NULL`.
+    list_t stacks;              ///< List of `binding_stack_t` in this namespace.
     MAP_DEFINE(bindingMap, 64); ///< Map used to go from source dentries to namespace binding stacks.
     rwlock_t lock;
     // clang-format off
@@ -119,7 +119,7 @@ bool namespace_rcu_traverse(namespace_t* ns, binding_t** binding, dentry_t** den
  * @brief Bind a source path to a target path in a namespace.
  *
  * @param ns The namespace containing the namespace to bind in.
- * @param target The target path to bind to, can be `NULL` to bind to root.
+ * @param target The target path to bind to.
  * @param source The source path to bind from, could be either a file or directory and from any filesystem.
  * @param mode The mode specifying permissions and binding behaviour.
  * @param out Output pointer to store the new binding, can be `NULL`.

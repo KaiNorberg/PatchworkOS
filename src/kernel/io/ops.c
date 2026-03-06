@@ -172,12 +172,12 @@ static status_t io_op_walk_done(irp_t* irp, struct path_state* state, file_t* fi
 
 static status_t io_op_walk(irp_t* irp)
 {
-    if (irp->sqe.path == NULL || irp->sqe.count >= MAX_PATH)
+    if (irp->sqe.path == NULL || irp->sqe.pathLen >= MAX_PATH)
     {
         return ERR(IO, INVAL);
     }
 
-    file_t* from = file_table_get(&irp->process->files, irp->sqe.fd);
+    file_t* from = file_table_get(&irp->process->files, irp->sqe.cwd);
     if (from == NULL)
     {
         return ERR(IO, BADFD);
@@ -196,15 +196,16 @@ static status_t io_op_walk(irp_t* irp)
     {
         return ERR(IO, NOMEM);
     }
-    path_state_init(state, from->path.dentry, from->path.binding, root->path.dentry, root->path.binding, io_op_walk_done);
+    path_state_init(state, from->path.dentry, from->path.binding, root->path.dentry, root->path.binding,
+        io_op_walk_done);
 
-    status_t status = space_copy_out(&irp->process->space, state->path, irp->sqe.path, irp->sqe.count);
+    status_t status = space_copy_out(&irp->process->space, state->path, irp->sqe.path, irp->sqe.pathLen);
     if (IS_ERR(status))
     {
         free(state);
         return status;
     }
-    state->count = irp->sqe.count;
+    state->count = irp->sqe.pathLen;
 
     return path_walk(irp, state);
 }
@@ -262,7 +263,7 @@ static status_t io_op_query(irp_t* irp)
         return status;
     }
 
-    status = mdl_add(mdl, &irp->process->space, irp->sqe.info, sizeof(vinfo_t));
+    status = mdl_add(mdl, &irp->process->space, irp->sqe.info, sizeof(file_info_t));
     if (IS_ERR(status))
     {
         return status;

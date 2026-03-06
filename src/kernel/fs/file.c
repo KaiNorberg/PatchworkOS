@@ -1,8 +1,8 @@
 #include <kernel/fs/file.h>
 
+#include <kernel/fs/binding.h>
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file_table.h>
-#include <kernel/fs/binding.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vnode.h>
 #include <kernel/io/irp.h>
@@ -29,7 +29,7 @@ static void file_close(file_t* file)
     assert(file != NULL);
 
     // Revive reference
-    ref_init(&file->ref, file_free); 
+    ref_init(&file->ref, file_free);
 
     irp_prep_close(file->close);
     file_call(file, file->close);
@@ -101,4 +101,29 @@ status_t file_call(file_t* file, irp_t* irp)
     }
 
     return irp_call(irp, handler);
+}
+
+status_t file_redirect(file_t* file, dentry_t* dentry)
+{
+    if (file == NULL || dentry == NULL)
+    {
+        return ERR(FS, INVAL);
+    }
+
+    if (!DENTRY_IS_POSITIVE(dentry))
+    {
+        return ERR(FS, NOENT);
+    }
+
+    binding_t* binding = binding_new(dentry, NULL, NULL, file->mode);
+    if (binding == NULL)
+    {
+        return ERR(MEM, NOMEM);
+    }
+    UNREF_DEFER(binding);
+
+    path_put(&file->path);
+    file->path = PATH_CREATE(binding, dentry);
+
+    return OK;
 }

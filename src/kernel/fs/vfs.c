@@ -2,12 +2,12 @@
 #include <kernel/fs/vfs.h>
 
 #include <kernel/cpu/syscall.h>
+#include <kernel/fs/binding.h>
 #include <kernel/fs/cwd.h>
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file_table.h>
 #include <kernel/fs/key.h>
-#include <kernel/fs/binding.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vnode.h>
 #include <kernel/io/io.h>

@@ -1,9 +1,9 @@
 #pragma once
 
+#include <kernel/fs/binding.h>
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file.h>
-#include <kernel/fs/binding.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vnode.h>
 #include <kernel/proc/process.h>
@@ -34,7 +34,7 @@
  * ## clone
  *
  * A special file that when opened creates a new opened instance of the filesystem, usually called a volume, with the
- * opened file being of type `VTYPE_DIRECTORY` and storing the root of this volume.
+ * opened file being of type `FILE_TYPE_DIRECTORY` and storing the root of this volume.
  *
  * After opening this file, the returned file can be bound to complete a traditional mount operation or used directly.
  *
@@ -56,25 +56,37 @@
 /**
  * @brief Filesystem structure, represents a filesystem type, e.g. fat32, tmpfs, devfs, etc.
  * @struct filesystem_t
+ * 
+ * The provided class should implement a `IRP_MJ_OPEN` handler that creates a new volume.
  */
 typedef struct filesystem
 {
-    dentry_t* dir;   ///< The directory containing this filesystem.
-    dentry_t* clone; ///< The clone file within this filesystems directory.
-    list_t volumes;  ///< A list of `dentry_t` representing the volumes of this filesystem.
-    lock_t lock;     ///< Lock protecting the volumes list.
+    const char* name; ///< The name of the filesystem.
+    const vnode_class_t* clone; ///< The class to use for the filesystems clone file.
+    struct
+    {
+        dentry_t* dir;   ///< The directory containing this filesystem.
+        dentry_t* clone; ///< The clone file within this filesystems directory.
+        list_t volumes;  ///< A list of `dentry_t` representing the volumes of this filesystem.
+        lock_t lock;     ///< Lock protecting the volumes list.
+    } internal;
 } filesystem_t;
 
 /**
  * @brief Register a new filesystem.
  *
- * The provided class should implement a `IRP_MJ_OPEN` handler that creates a new volume.
- *
- * @param name The name of the filesystem.
- * @param cls The vnode class to use for the filesystems clone file.
- * @return On success, the new filesystem. On failure, `NULL`.
+ * @param fs The filesystem structure to register.
+ * @return An appropriate status value.
  */
-filesystem_t* filesystem_register(const char* name, const vnode_class_t* cls);
+status_t filesystem_register(filesystem_t* fs);
+
+/**
+ * @brief Unregister a filesystem.
+ *
+ * @param fs The filesystem structure to unregister.
+ * @return An appropriate status value.
+ */
+status_t filesystem_unregister(filesystem_t* fs);
 
 /**
  * @brief Helper function for iterating over options passed to a filesystem mount operation.

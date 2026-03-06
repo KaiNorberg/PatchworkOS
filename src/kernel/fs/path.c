@@ -36,7 +36,6 @@ static path_flag_short_t shortFlags[UINT8_MAX + 1] = {
     ['p'] = {.mode = MODE_PRIVATE},
     ['g'] = {.mode = MODE_PROPAGATE},
     ['L'] = {.mode = MODE_LOCKED},
-    ['N'] = {.mode = MODE_NODOTDOT},
 };
 
 typedef struct path_flag
@@ -61,7 +60,6 @@ static const path_flag_t flags[] = {
     {.mode = MODE_PRIVATE, .name = "private"},
     {.mode = MODE_PROPAGATE, .name = "propagate"},
     {.mode = MODE_LOCKED, .name = "locked"},
-    {.mode = MODE_NODOTDOT, .name = "nodotdot"},
 };
 
 static mode_t path_flag_to_mode(const char* flag, size_t length)

@@ -1,6 +1,6 @@
 #include <sys/io.h>
 
-status_t ioattrp(fd_t fd, const char* path, vattr_t attr, uint64_t* value)
+status_t ioattrp(fd_t fd, const char* path, file_attr_t attr, uint64_t* value)
 {
     if (value == NULL)
     {

@@ -48,9 +48,15 @@ static status_t mouse_name_read(irp_t* irp)
     return irp_read_helper(irp, mouse->name, length);
 }
 
-static vnode_class_t nameClass = {.name = "mouse name",
-    .type = VTYPE_DEVICE,
-    VNODE_HANDLERS([IRP_MJ_READ] = mouse_name_read)};
+static vnode_class_t nameClass = {
+    .name = "mouse name",
+    .type = FILE_TYPE_DEVICE,
+    .handlers =
+        {
+            VNODE_HANDLERS(),
+            [IRP_MJ_READ] = mouse_name_read,
+        },
+};
 
 static status_t mouse_events_open(irp_t* irp)
 {
@@ -61,7 +67,7 @@ static status_t mouse_events_open(irp_t* irp)
         return ERR(IO, EXPECT_FILE);
     }
 
-    mouse_t* mouse = file->vnode->data;
+    mouse_t* mouse = frame->vnode->data;
     assert(mouse != NULL);
 
     mouse_client_t* client = calloc(1, sizeof(mouse_client_t));
@@ -80,22 +86,27 @@ static status_t mouse_events_open(irp_t* irp)
     return OK;
 }
 
-static void mouse_events_close(file_t* file)
+static status_t mouse_events_close(irp_t* irp)
 {
-    mouse_t* mouse = file->vnode->data;
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
+    if (frame->file == NULL)
+    {
+        return ERR(IO, EXPECT_FILE);
+    }
+    mouse_t* mouse = frame->vnode->data;
     assert(mouse != NULL);
 
     mouse_client_t* client = file->data;
-    if (client == NULL)
+    if (client != NULL)
     {
-        return;
+        lock_acquire(&mouse->lock);
+        list_remove(&client->entry);
+        lock_release(&mouse->lock);
+
+        free(client);
     }
-
-    lock_acquire(&mouse->lock);
-    list_remove(&client->entry);
-    lock_release(&mouse->lock);
-
-    free(client);
+    return OK;
 }
 
 static status_t mouse_events_read(irp_t* irp)
@@ -147,18 +158,25 @@ static status_t mouse_events_poll(irp_t* irp)
     return irp_delay(irp, &mouse->pending, mouse_cancel);
 }
 
-static vnode_class_t eventsClass = {.name = "mouse events",
-    .type = VTYPE_DEVICE,
-    .close = mouse_events_close,
-    VNODE_HANDLERS([IRP_MJ_OPEN] = mouse_events_open, [IRP_MJ_READ] = mouse_events_read,
-        [IRP_MJ_POLL] = mouse_events_poll)};
+static vnode_class_t eventsClass = {
+    .name = "mouse events",
+    .type = FILE_TYPE_DEVICE,
+    .handlers =
+        {
+            VNODE_HANDLERS(),
+            [IRP_MJ_OPEN] = mouse_events_open,
+            [IRP_MJ_READ] = mouse_events_read,
+            [IRP_MJ_POLL] = mouse_events_poll,
+            [IRP_MJ_CLOSE] = mouse_events_close,
+        },
+};
 
-static void mouse_dir_cleanup(vnode_t* vnode)
+static status_t mouse_dir_reclaim(irp_t* irp)
 {
-    mouse_t* mouse = vnode->data;
+    mouse_t* mouse = irp_current(irp)->vnode->data;
     if (mouse == NULL)
     {
-        return;
+        return OK;
     }
 
     if (!list_is_empty(&mouse->pending))
@@ -169,14 +187,27 @@ static void mouse_dir_cleanup(vnode_t* vnode)
     {
         panic(NULL, "Attempted to free mouse with clients");
     }
+
+    return OK;
 }
 
-static vnode_class_t dirClass = {.name = "mouse dir",
-    .type = VTYPE_DIRECTORY,
-    .cleanup = mouse_dir_cleanup,
-    VNODE_DIR_HANDLERS()};
+static vnode_class_t dirClass = {
+    .name = "mouse dir",
+    .type = FILE_TYPE_DIRECTORY,
+    .handlers =
+        {
+            VNODE_DIR_HANDLERS(),
+            [IRP_MJ_RECLAIM] = mouse_dir_reclaim,
+        },
+};
 
-static vnode_class_t rootClass = {.name = "mouse root", .type = VTYPE_DIRECTORY, VNODE_DIR_HANDLERS()};
+static vnode_class_t rootClass = {
+    .name = "mouse root",
+    .type = FILE_TYPE_DIRECTORY,
+    .handlers = {
+        VNODE_DIR_HANDLERS(),
+    },
+};
 
 status_t mouse_register(mouse_t* mouse)
 {

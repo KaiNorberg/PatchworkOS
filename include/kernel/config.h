@@ -158,7 +158,7 @@
  * @brief Kernel log buffer size configuration.
  * @def CONFIG_LOG_KLOG_BUFFER_SIZE
  *
- * The `CONFIG_LOG_KLOG_BUFFER_SIZE` constant defines the size of the buffer used for the `/dev/klog` file.
+ * The `CONFIG_LOG_KLOG_BUFFER_SIZE` constant defines the size of the buffer used for the `/sys/klog` file.
  *
  */
 #define CONFIG_KLOG_SIZE 0x4000

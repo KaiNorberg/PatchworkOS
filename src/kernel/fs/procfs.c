@@ -1,11 +1,11 @@
 #include <_libstd/MAX_NAME.h>
 #include <kernel/fs/procfs.h>
 
+#include <kernel/fs/binding.h>
 #include <kernel/fs/ctl.h>
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/filesystem.h>
-#include <kernel/fs/binding.h>
 #include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vfs.h>
