@@ -37,8 +37,6 @@ typedef enum
     SYS_UNMAP,
     SYS_PROTECT,
     SYS_FD_DUP,
-    SYS_FD_SHARE,
-    SYS_FD_CLAIM,
     SYS_FS_BIND,
     SYS_FS_UNBIND,
     SYS_NOTE_SET,

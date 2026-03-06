@@ -45,34 +45,6 @@ typedef uint64_t fd_t;      ///< File descriptor type.
 #define FDNONE ((fd_t) - 1) ///< No file descriptor.
 
 /**
- * @brief System call for sharing a file descriptor with another process.
- *
- * @param fd The file descriptor to share.
- * @param key Output buffer to store the generated key.
- * @param size The size of the output buffer.
- * @param timeout The time until the shared file descriptor expires. If `CLOCKS_NEVER`, it never expires.
- * @return An appropriate status value.
- */
-static inline status_t fdshare(fd_t fd, char* key, size_t size, clock_t timeout)
-{
-    return syscall4(SYS_FD_SHARE, NULL, fd, (uintptr_t)key, size, timeout);
-}
-
-/**
- * @brief System call for claiming a shared file descriptor.
- *
- * After claiming a shared file descriptor, the key is no longer valid and cannot be used again.
- *
- * @param out Output pointer to store the claimed file descriptor.
- * @param key The key identifying the shared file descriptor.
- * @return An appropriate status value.
- */
-static inline status_t fdclaim(fd_t* out, const char* key)
-{
-    return syscall1(SYS_FD_CLAIM, out, (uintptr_t)key);
-}
-
-/**
  * @brief System call for duplicating file descriptors.
  *
  * @param oldFd The open file descriptor to duplicate.
