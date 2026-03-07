@@ -17,7 +17,7 @@
 #include <sys/math.h>
 #include <sys/proc.h>
 
-static dentry_t* dir = NULL;
+static dentry_t* root = NULL;
 
 static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
@@ -26,14 +26,14 @@ static status_t kbd_cancel(irp_t* irp)
     irp_frame_t* frame = irp_current(irp);
     kbd_t* kbd = frame->vnode->data;
 
-    lock_acquire(&kbd->lock);
+    lock_acquire(&kbd->internal.lock);
 
     if (list_contains(&irp->entry))
     {
         list_remove(&irp->entry);
     }
 
-    lock_release(&kbd->lock);
+    lock_release(&kbd->internal.lock);
 
     return OK;
 }
@@ -78,9 +78,9 @@ static status_t kbd_events_open(irp_t* irp)
     list_entry_init(&client->entry);
     fifo_init(&client->fifo, client->buffer, sizeof(client->buffer));
 
-    lock_acquire(&kbd->lock);
-    list_push_back(&kbd->clients, &client->entry);
-    lock_release(&kbd->lock);
+    lock_acquire(&kbd->internal.lock);
+    list_push_back(&kbd->internal.clients, &client->entry);
+    lock_release(&kbd->internal.lock);
 
     file->data = client;
     return OK;
@@ -98,9 +98,9 @@ static status_t kbd_events_close(irp_t* irp)
     assert(kbd != NULL);
 
     kbd_client_t* client = file->data;
-    lock_acquire(&kbd->lock);
+    lock_acquire(&kbd->internal.lock);
     list_remove(&client->entry);
-    lock_release(&kbd->lock);
+    lock_release(&kbd->internal.lock);
 
     free(client);
     return OK;
@@ -120,11 +120,11 @@ static status_t kbd_events_read(irp_t* irp)
     kbd_client_t* client = frame->file->data;
     assert(client != NULL);
 
-    LOCK_SCOPE(&kbd->lock);
+    LOCK_SCOPE(&kbd->internal.lock);
 
     if (fifo_bytes_readable(&client->fifo) == 0)
     {
-        return irp_delay(irp, &kbd->pending, kbd_cancel);
+        return irp_delay(irp, &kbd->internal.pending, kbd_cancel);
     }
 
     return fifo_read_mdl(&client->fifo, frame->read.buffer, 0, &irp->result);
@@ -144,7 +144,7 @@ static status_t kbd_events_poll(irp_t* irp)
     kbd_client_t* client = frame->file->data;
     assert(client != NULL);
 
-    LOCK_SCOPE(&kbd->lock);
+    LOCK_SCOPE(&kbd->internal.lock);
 
     if (fifo_bytes_readable(&client->fifo) > 0)
     {
@@ -152,7 +152,7 @@ static status_t kbd_events_poll(irp_t* irp)
         return OK;
     }
 
-    return irp_delay(irp, &kbd->pending, kbd_cancel);
+    return irp_delay(irp, &kbd->internal.pending, kbd_cancel);
 }
 
 static vnode_class_t eventsClass = {
@@ -176,11 +176,11 @@ static status_t kbd_dir_reclaim(irp_t* irp)
         return OK;
     }
 
-    if (!list_is_empty(&kbd->pending))
+    if (!list_is_empty(&kbd->internal.pending))
     {
         panic(NULL, "Attempted to free keyboard with pending IRPs");
     }
-    if (!list_is_empty(&kbd->clients))
+    if (!list_is_empty(&kbd->internal.clients))
     {
         panic(NULL, "Attempted to free keyboard with clients");
     }
@@ -198,11 +198,14 @@ static vnode_class_t dirClass = {
         },
 };
 
-static vnode_class_t rootClass = {.name = "kbd root",
+static vnode_class_t rootClass = {
+    .name = "kbd root",
     .type = FILE_TYPE_DIRECTORY,
-    .handlers = {
-        VNODE_DIR_HANDLERS(),
-    },};
+    .handlers =
+        {
+            VNODE_DIR_HANDLERS(),
+        },
+};
 
 status_t kbd_register(kbd_t* kbd)
 {
@@ -211,20 +214,20 @@ status_t kbd_register(kbd_t* kbd)
         return ERR(DRIVER, INVAL);
     }
 
-    if (dir == NULL)
+    if (root == NULL)
     {
-        dir = devfs_dentry_new(NULL, "kbd", &rootClass, NULL);
-        if (dir == NULL)
+        root = devfs_dentry_new(NULL, "kbd", &rootClass, NULL);
+        if (root == NULL)
         {
             return ERR(DRIVER, NOMEM);
         }
     }
 
-    list_init(&kbd->pending);
-    list_init(&kbd->clients);
-    lock_init(&kbd->lock);
-    kbd->dir = NULL;
-    list_init(&kbd->files);
+    list_init(&kbd->internal.pending);
+    list_init(&kbd->internal.clients);
+    lock_init(&kbd->internal.lock);
+    kbd->internal.dir = NULL;
+    list_init(&kbd->internal.files);
 
     char id[MAX_NAME];
     if (snprintf(id, MAX_NAME, "%llu", atomic_fetch_add(&newId, 1)) < 0)
@@ -232,8 +235,8 @@ status_t kbd_register(kbd_t* kbd)
         return ERR(DRIVER, IMPL);
     }
 
-    kbd->dir = devfs_dentry_new(dir, id, &dirClass, kbd);
-    if (kbd->dir == NULL)
+    kbd->internal.dir = devfs_dentry_new(root, id, &dirClass, kbd);
+    if (kbd->internal.dir == NULL)
     {
         return ERR(DRIVER, NOMEM);
     }
@@ -250,9 +253,9 @@ status_t kbd_register(kbd_t* kbd)
             .data = kbd,
         },
     };
-    if (!devfs_dentrys_new(&kbd->files, kbd->dir, files, ARRAY_SIZE(files)))
+    if (!devfs_dentrys_new(&kbd->internal.files, kbd->internal.dir, files, ARRAY_SIZE(files)))
     {
-        UNREF(kbd->dir);
+        UNREF(kbd->internal.dir);
         return ERR(DRIVER, NOMEM);
     }
 
@@ -266,8 +269,8 @@ void kbd_unregister(kbd_t* kbd)
         return;
     }
 
-    UNREF(kbd->dir);
-    devfs_dentrys_free(&kbd->files);
+    UNREF(kbd->internal.dir);
+    devfs_dentrys_free(&kbd->internal.files);
 }
 
 static void kbd_broadcast(kbd_t* kbd, const char* string, size_t length)
@@ -275,17 +278,17 @@ static void kbd_broadcast(kbd_t* kbd, const char* string, size_t length)
     list_t pending = LIST_CREATE(pending);
 
     {
-        LOCK_SCOPE(&kbd->lock);
+        LOCK_SCOPE(&kbd->internal.lock);
 
         kbd_client_t* client;
-        LIST_FOR_EACH(client, &kbd->clients, entry)
+        LIST_FOR_EACH(client, &kbd->internal.clients, entry)
         {
             if (fifo_bytes_writeable(&client->fifo) >= length)
             {
                 fifo_write(&client->fifo, string, length, NULL);
             }
         }
-        irp_claim_list(&pending, &kbd->pending);
+        irp_claim_list(&pending, &kbd->internal.pending);
     }
 
     while (!list_is_empty(&pending))

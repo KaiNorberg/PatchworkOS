@@ -98,7 +98,9 @@ The combination of this system and our "everything is a file" philosophy means t
 
 ### Security
 
-In PatchworkOS, there are no Access Control Lists, user IDs or similar mechanisms. Instead, PatchworkOS uses a capability security model based on per-process namespaces and file descriptors. A process can only access files that have either been bound into its namespace or passed to it via file descriptors, and since everything is a file, this applies to practically everything in the system, including devices, IPC mechanisms, etc.
+In PatchworkOS, there are no Access Control Lists, user IDs or similar mechanisms. Instead, PatchworkOS uses a capability security model based on per-process namespaces and file descriptors.
+
+A process can only access files that have either been bound into its namespace or passed to it via file descriptors, and since everything is a file, this applies to practically everything in the system, including devices, IPC mechanisms, etc.
 
 #### The Root Directory and `..`
 

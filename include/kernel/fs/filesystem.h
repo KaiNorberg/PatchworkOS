@@ -50,12 +50,12 @@
 /**
  * @brief Filesystem structure, represents a filesystem type, e.g. fat32, tmpfs, devfs, etc.
  * @struct filesystem_t
- * 
+ *
  * The provided class should implement a `IRP_MJ_OPEN` handler that creates a new volume.
  */
 typedef struct filesystem
 {
-    const char* name; ///< The name of the filesystem.
+    const char* name;           ///< The name of the filesystem.
     const vnode_class_t* clone; ///< The class to use for the filesystems clone file.
     struct
     {

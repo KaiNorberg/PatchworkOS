@@ -384,8 +384,8 @@ typedef struct irp_frame
         } remove;
         struct
         {
-            file_attr_t attr;   ///< The attribute to get or set.
-            uint64_t value; ///< The value to set.
+            file_attr_t attr; ///< The attribute to get or set.
+            uint64_t value;   ///< The value to set.
         } attr;
         struct
         {

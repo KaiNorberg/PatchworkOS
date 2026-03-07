@@ -67,11 +67,14 @@ typedef struct kbd_client
 typedef struct kbd
 {
     const char* name;
-    list_t pending; ///< List of pending IRPs.
-    list_t clients;
-    lock_t lock;
-    dentry_t* dir;
-    list_t files;
+    struct
+    {
+        list_t pending; ///< List of pending IRPs.
+        list_t clients;
+        lock_t lock;
+        dentry_t* dir;
+        list_t files;
+    } internal;
 } kbd_t;
 
 /**

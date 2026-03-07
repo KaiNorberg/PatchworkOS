@@ -79,9 +79,8 @@ static void dentry_free(dentry_t* dentry)
 {
     dentry_map_remove(dentry);
 
-    if (!DENTRY_IS_ROOT(dentry))
+    if (dentry->parent != NULL)
     {
-        assert(dentry->parent != NULL);
         assert(dentry->parent->vnode != NULL);
 
         mutex_acquire(&dentry->parent->vnode->mutex);
@@ -138,7 +137,7 @@ dentry_t* dentry_new(dentry_t* parent, const char* name)
     {
         dentry->name[0] = '\0';
     }
-    dentry->parent = parent != NULL ? REF(parent) : dentry;
+    dentry->parent = parent != NULL ? REF(parent) : NULL;
 
     if (!dentry_map_add(dentry))
     {
@@ -212,7 +211,7 @@ void dentry_make_positive(dentry_t* dentry, vnode_t* vnode)
     }
 
     dentry->vnode = REF(vnode);
-    if (!DENTRY_IS_ROOT(dentry))
+    if (dentry->parent != NULL)
     {
         list_push_back(&dentry->parent->children, &dentry->siblingEntry);
     }

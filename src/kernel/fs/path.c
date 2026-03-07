@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/fs.h>
 
 typedef struct path_flag_short
 {
@@ -188,50 +189,59 @@ static inline void path_state_release(path_state_t* state)
 
 static status_t path_dotdot(path_state_t* state)
 {
-    /// @todo Implement system to only allow ".." if the current location can be reached from "root".
+    dentry_t* dentry = state->dentry;
+    binding_t* binding = state->binding;
 
-    status_t status = path_state_acquire(state);
-    if (IS_ERR(status))
+    while (dentry == binding->source)
     {
-        path_state_free(state);
-        return status;
+        if (binding->parent == NULL)
+        {
+            return OK;
+        }
+        dentry = binding->target;
+        binding = binding->parent;
     }
 
-    status = OK;
-    uint64_t iter = 0;
-    while (state->dentry == state->binding->source)
+    if (dentry == state->rootDentry && binding == state->rootBinding)
     {
-        if (state->binding->parent == NULL || state->binding->target == NULL)
+        return OK;
+    }
+
+    dentry_t* parent = dentry->parent;
+    if (parent == NULL)
+    {
+        return OK;
+    }
+
+    dentry_t* check = parent;
+    binding_t* checkBinding = binding;
+    while (true)
+    {
+        if (check == state->rootDentry && checkBinding == state->rootBinding)
         {
-            break;
+            state->dentry = parent;
+            state->binding = binding;
+            return OK;
         }
 
-        binding_t* nextMount = REF(state->binding->parent);
-        dentry_t* nextDentry = REF(state->binding->target);
-        UNREF(state->binding);
-        state->binding = nextMount;
-        UNREF(state->dentry);
-        state->dentry = nextDentry;
-
-        iter++;
-        if (iter >= PATH_MAX_DOTDOT)
+        if (check == checkBinding->source)
         {
-            status = ERR(VFS, LOOP);
-            break;
+            if (checkBinding->parent == NULL)
+            {
+                return OK;
+            }
+            check = checkBinding->target;
+            checkBinding = checkBinding->parent;
+            continue;
         }
-    }
 
-    dentry_t* parent = REF(state->dentry->parent);
-    UNREF(state->dentry);
-    state->dentry = parent;
+        if (check->parent == NULL)
+        {
+            return OK;
+        }
 
-    if (IS_ERR(status))
-    {
-        path_state_free_acquired(state);
-        return status;
+        check = check->parent;
     }
-    path_state_release(state);
-    return status;
 }
 
 static status_t path_symlink_complete(irp_t* irp, void* ctx)
@@ -257,7 +267,7 @@ static status_t path_symlink_complete(irp_t* irp, void* ctx)
     size_t suffixLen = (state->path + state->count) - state->ptr;
     size_t newLen = prefixLen + linkLen + suffixLen;
 
-    if (newLen > MAX_PATH)
+    if (newLen >= MAX_PATH)
     {
         path_state_free_acquired(state);
         return ERR(VFS, PATHTOOLONG);
@@ -275,13 +285,8 @@ static status_t path_symlink_complete(irp_t* irp, void* ctx)
     if (link[0] == '/')
     {
         state->ptr = state->path;
-        path_t temp = {
-            .dentry = state->dentry,
-            .binding = state->binding,
-        };
-        namespace_get_root(state->ns, &temp);
-        state->dentry = temp.dentry;
-        state->binding = temp.binding;
+        state->dentry = state->rootDentry;
+        state->binding = state->rootBinding;
     }
     else
     {
@@ -343,7 +348,7 @@ static status_t path_lookup_complete(irp_t* irp, void* ctx)
 
     state->dentry = state->lookup;
 
-    if (DENTRY_IS_SYMLINK(state->dentry) && !(state->mode & MODE_NOFOLLOW))
+    if (DENTRY_IS_TYPE(state->dentry, FILE_TYPE_SYMLINK) && !(state->mode & MODE_NOFOLLOW))
     {
         status_t status = path_symlink(irp, state, state->dentry);
         if (IS_ERR(status))
@@ -365,7 +370,7 @@ static status_t path_walk_lookup(irp_t* irp, path_state_t* state, const char* na
         return status;
     }
 
-    if (!DENTRY_IS_DIR(state->dentry))
+    if (!DENTRY_IS_TYPE(state->dentry, FILE_TYPE_DIRECTORY))
     {
         path_state_free_acquired(state);
         return ERR(VFS, NOTDIR);
@@ -461,7 +466,7 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state)
             state->ptr++;
         }
 
-        if (*state->ptr == '\0' || *state->ptr == ':')
+        if (*state->ptr == '\0')
         {
             return path_done(irp, state);
         }
@@ -504,17 +509,19 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state)
                 return status;
             }
         }
-
-        if (atomic_load(&next->bindings) > 0)
+        else
         {
-            namespace_rcu_traverse(state->ns, &state->binding, &next);
+            state->dentry = next;
         }
 
-        state->dentry = next;
-
-        if (DENTRY_IS_SYMLINK(next) && !(state->mode & MODE_NOFOLLOW))
+        if (atomic_load(&state->dentry->bindings) > 0)
         {
-            status_t status = path_symlink(irp, state, next);
+            namespace_rcu_traverse(state->ns, &state->binding, &state->dentry);
+        }
+
+        if (DENTRY_IS_TYPE(next, FILE_TYPE_SYMLINK) && !(state->mode & MODE_NOFOLLOW))
+        {
+            status_t status = path_symlink(irp, state, state->dentry);
             if (IS_ERR(status))
             {
                 return status;
@@ -569,7 +576,7 @@ static status_t path_verify(path_state_t* state)
     if (delimiter == '?')
     {
         state->payload = &state->path[index];
-        if (index < MAX_PATH)
+        if (state->count < MAX_PATH)
         {
             state->path[state->count] = '\0';
         }
@@ -591,7 +598,7 @@ static status_t path_verify(path_state_t* state)
             {
                 state->path[index] = '\0';
                 state->payload = &state->path[index + 1];
-                if (index < MAX_PATH)
+                if (state->count < MAX_PATH)
                 {
                     state->path[state->count] = '\0';
                 }
@@ -632,7 +639,7 @@ status_t path_walk(irp_t* irp, path_state_t* state)
 {
     if (state->ns == NULL)
     {
-        state->ns = process_get_ns(irp_get_process(irp));
+        state->ns = process_get_ns(irp->process);
     }
 
     status_t status = path_verify(state);

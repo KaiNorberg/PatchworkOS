@@ -89,8 +89,9 @@ status_t file_call(file_t* file, irp_t* irp);
  * @brief Redirect a file to a different path.
  *
  * This is primarily used by filesystem clone files,
- * 
- * @warning Since a files path is not protected by a lock, this function should only be used when opening the file or when it is guaranteed that no other threads are accessing the file.
+ *
+ * @warning Since a files path is not protected by a lock, this function should only be used when opening the file or
+ * when it is guaranteed that no other threads are accessing the file.
  *
  * @param file The file to redirect.
  * @param dentry The new dentry to associate with the file.

@@ -1,5 +1,5 @@
-#include <kernel/fs/sysfs.h>
 #include <kernel/fs/file.h>
+#include <kernel/fs/sysfs.h>
 #include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 

@@ -52,16 +52,6 @@ typedef struct vnode vnode_t;
 typedef uint64_t dentry_id_t;
 
 /**
- * @brief Macro to check if a dentry is the root entry in its filesystem.
- *
- * A dentry is considered the root if its parent is itself.
- *
- * @param dentry The dentry to check.
- * @return true if the dentry is the root, false otherwise.
- */
-#define DENTRY_IS_ROOT(dentry) ((dentry)->parent == (dentry))
-
-/**
  * @brief Check if a dentry is positive.
  *
  * @param dentry The dentry to check.
@@ -91,7 +81,7 @@ typedef struct dentry
     dentry_id_t id;
     char name[MAX_NAME]; ///< The name of the dentry, immutable after creation.
     vnode_t* vnode;      ///< Will be `NULL` if the dentry is negative, once positive it will never be modified.
-    dentry_t* parent;    ///< The parent dentry, will be itself if this is the root dentry, immutable after creation.
+    dentry_t* parent;    ///< The parent dentry, can be `NULL`, immutable after creation.
     list_entry_t siblingEntry;
     list_t children;
     map_entry_t mapEntry;       ///< Entry in the dentry cache hash map.

@@ -46,9 +46,9 @@ dentry_t* sysfs_dentry_new(dentry_t* parent, const char* name, const vnode_class
  */
 typedef struct sysfs_desc
 {
-    const char* name;    ///< Name of the dentry.
+    const char* name;         ///< Name of the dentry.
     const vnode_class_t* cls; ///< Class to assign to the vnode of the created dentry.
-    void* data;          ///< Private data to store in the vnode of the dentry.
+    void* data;               ///< Private data to store in the vnode of the dentry.
 } sysfs_desc_t;
 
 /**

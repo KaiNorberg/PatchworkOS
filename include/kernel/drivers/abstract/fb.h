@@ -45,28 +45,16 @@ typedef struct fb fb_t;
  */
 
 /**
- * @brief Framebuffer information.
- * @struct fb_info_t
- */
-typedef struct fb_info
-{
-    size_t width;
-    size_t height;
-    size_t pitch;
-    char format[MAX_PATH];
-} fb_info_t;
-
-/**
  * @brief Framebuffer structure.
  * @struct fb_t
  */
 typedef struct fb
 {
-    char* name;    ///< The name of the framebuffer.
-    size_t width;  ///< The width in pixels.
-    size_t height; ///< The height in pixels.
-    size_t pitch;  ///< The number of bytes per line.
-    char* format;  ///< Specifies the format of the framebuffer.
+    char* name;                ///< The name of the framebuffer.
+    size_t width;              ///< The width in pixels.
+    size_t height;             ///< The height in pixels.
+    size_t pitch;              ///< The number of bytes per line.
+    char* format;              ///< Specifies the format of the framebuffer.
     const vnode_class_t* data; ///< The class to use for the framebuffers data file.
     struct
     {

@@ -225,7 +225,7 @@ static status_t io_op_remove(irp_t* irp)
     UNREF_DEFER(file);
 
     dentry_t* dentry = file->path.dentry;
-    if (DENTRY_IS_ROOT(dentry))
+    if (dentry->parent == NULL)
     {
         return ERR(IO, BUSY);
     }

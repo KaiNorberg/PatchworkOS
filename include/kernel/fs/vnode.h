@@ -42,7 +42,7 @@ typedef struct dentry dentry_t;
 typedef struct vnode_class
 {
     const char* name;                   ///< The name of the class, used for debugging.
-    file_type_t type;                       ///< The type of the vnode.
+    file_type_t type;                   ///< The type of the vnode.
     irp_handler_t handlers[IRP_MJ_MAX]; ///< IRP handlers indexed by major function number.
     /**
      * @brief Called when the dentry is looked up or retrieved from cache.
@@ -63,9 +63,9 @@ typedef struct vnode_class
 typedef struct vnode
 {
     ref_t ref;
-    void* data;  ///< Filesystem defined data.
+    void* data;           ///< Filesystem defined data.
     file_volume_t volume; ///< The id of the volume the vnode belongs to.
-    file_number_t number;  ///< The number of the vnode, should be unique within the volume.
+    file_number_t number; ///< The number of the vnode, should be unique within the volume.
     const vnode_class_t* cls;
     mutex_t mutex;
     irp_t* reclaim; ///< Pre-allocated IRP used to reclaim the vnode, needed to avoid out of memory errors when

@@ -13,7 +13,7 @@
 
 static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
-static dentry_t* dir = NULL;
+static dentry_t* root = NULL;
 
 static status_t fb_name_read(irp_t* irp)
 {
@@ -87,10 +87,10 @@ status_t fb_register(fb_t* fb)
         return ERR(DRIVER, INVAL);
     }
 
-    if (dir == NULL)
+    if (root == NULL)
     {
-        dir = devfs_dentry_new(NULL, "fb", &dirClass, NULL);
-        if (dir == NULL)
+        root = devfs_dentry_new(NULL, "fb", &rootClass, NULL);
+        if (root == NULL)
         {
             return ERR(DRIVER, NOMEM);
         }
@@ -99,7 +99,7 @@ status_t fb_register(fb_t* fb)
     char id[MAX_NAME];
     snprintf(id, MAX_NAME, "%llu", atomic_fetch_add(&newId, 1));
 
-    fb->internal.dir = devfs_dentry_new(dir, id, &dirClass, fb);
+    fb->internal.dir = devfs_dentry_new(root, id, &dirClass, fb);
     if (fb->internal.dir == NULL)
     {
         return ERR(DRIVER, NOMEM);

@@ -39,9 +39,10 @@ static status_t devfs_mount(filesystem_t* fs, dentry_t** out, const char* option
 static vnode_class_t dirClass = {
     .name = "devfs dir",
     .type = FILE_TYPE_DIRECTORY,
-    .handlers = {
-        VNODE_DIR_HANDLERS(),
-    },
+    .handlers =
+        {
+            VNODE_DIR_HANDLERS(),
+        },
 };
 
 static status_t devfs_clone_open(irp_t* irp)
@@ -59,10 +60,11 @@ static status_t devfs_clone_open(irp_t* irp)
 static vnode_class_t cloneClass = {
     .name = "devfs clone",
     .type = FILE_TYPE_SYSTEM,
-    .handlers = {
-        VNODE_HANDLERS(),
-        [IRP_MJ_OPEN] = devfs_clone_open,
-    },
+    .handlers =
+        {
+            VNODE_HANDLERS(),
+            [IRP_MJ_OPEN] = devfs_clone_open,
+        },
 };
 
 static filesystem_t devfs = {
