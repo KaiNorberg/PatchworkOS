@@ -1,5 +1,4 @@
 #include <kernel/cpu/cpu.h>
-#include <kernel/fs/namespace.h>
 #include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>

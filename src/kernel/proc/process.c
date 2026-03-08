@@ -4,7 +4,6 @@
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file.h>
-#include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/io/io.h>
@@ -65,8 +64,6 @@ static void process_ctor(void* ptr)
     memset_s(process->result.buffer, PROCESS_RESULT_MAX, 0, PROCESS_RESULT_MAX);
     lock_init(&process->result.lock);
     process->space = (space_t){0};
-    process->nspace = NULL;
-    lock_init(&process->nspaceLock);
     process->files = (file_table_t){0};
     process->sync = (sync_ctl_t){0};
     process->perf = (perf_process_ctx_t){0};
@@ -111,10 +108,6 @@ static void process_free(process_t* process)
 
     group_member_deinit(&process->group);
     file_table_deinit(&process->files);
-    if (process->nspace != NULL)
-    {
-        UNREF(process->nspace);
-    }
     space_deinit(&process->space);
     sync_ctl_deinit(&process->sync);
     for (uint64_t i = 0; i < ARRAY_SIZE(process->rings); i++)
@@ -127,9 +120,9 @@ static void process_free(process_t* process)
     rcu_call(&process->rcu, rcu_call_cache_free, process);
 }
 
-status_t process_new(process_t** out, proc_prio_t priority, group_member_t* group, namespace_t* ns)
+status_t process_new(process_t** out, proc_prio_t priority, group_member_t* group)
 {
-    if (out == NULL || ns == NULL)
+    if (out == NULL)
     {
         return ERR(PROC, INVAL);
     }
@@ -153,7 +146,6 @@ status_t process_new(process_t** out, proc_prio_t priority, group_member_t* grou
         return status;
     }
 
-    process->nspace = REF(ns);
     file_table_init(&process->files);
     sync_ctl_init(&process->sync);
     perf_process_ctx_init(&process->perf);
@@ -202,30 +194,6 @@ process_t* process_get(proc_t id)
     return REF_TRY(CONTAINER_OF(entry, process_t, mapEntry));
 }
 
-namespace_t* process_get_ns(process_t* process)
-{
-    assert(process != NULL);
-
-    lock_acquire(&process->nspaceLock);
-    namespace_t* ns = process->nspace != NULL ? REF(process->nspace) : NULL;
-    lock_release(&process->nspaceLock);
-
-    return ns;
-}
-
-void process_set_ns(process_t* process, namespace_t* ns)
-{
-    if (process == NULL || ns == NULL)
-    {
-        return;
-    }
-
-    lock_acquire(&process->nspaceLock);
-    UNREF(process->nspace);
-    process->nspace = REF(ns);
-    lock_release(&process->nspaceLock);
-}
-
 void process_kill(process_t* process, const char* result)
 {
     if (atomic_fetch_or(&process->flags, PROCESS_DYING) & PROCESS_DYING)
@@ -258,11 +226,6 @@ void process_kill(process_t* process, const char* result)
     // Anything that another process could be waiting on must be cleaned up here.
 
     file_table_drop_all(&process->files);
-
-    lock_acquire(&process->nspaceLock);
-    UNREF(process->nspace);
-    process->nspace = NULL;
-    lock_release(&process->nspaceLock);
 
     group_remove(&process->group);
 
@@ -385,16 +348,10 @@ process_t* process_get_kernel(void)
 {
     if (kernelProcess == NULL)
     {
-        namespace_t* ns = namespace_new(NULL);
-        if (ns == NULL)
+        status_t status = process_new(&kernelProcess, PROC_PRIO_MAX, NULL);
+        if (IS_ERR(status))
         {
-            panic(NULL, "Failed to create kernel namespace");
-        }
-        UNREF_DEFER(ns);
-
-        if (IS_ERR(process_new(&kernelProcess, PROC_PRIO_MAX, NULL, ns)))
-        {
-            panic(NULL, "Failed to create kernel process");
+            panic(NULL, "Failed to create kernel process %Y", status);
         }
         LOG_INFO("kernel process initialized with pid=%d\n", kernelProcess->id);
     }

@@ -13,7 +13,6 @@
 typedef struct path path_t;
 typedef struct binding binding_t;
 typedef struct dentry dentry_t;
-typedef struct namespace namespace_t;
 typedef struct file file_t;
 
 // clang-format off
@@ -48,7 +47,6 @@ typedef struct file file_t;
  * | `truncate` | `t` | Truncate the file to zero length if it already exists. | 
  * | `nofollow`  | `l` | Do not follow symlinks. | 
  * | `private`   | `p` | Any files with this flag will be closed before a process starts executing. Any mounts with this flag will not be copied to a child namespace. | 
- * | `propagate`  | `g` | Propagate mounts and unmounts to child namespaces. | 
  * | `locked`    | `L` | Forbid unmounting this binding, useful for hiding directories or files. |
  *
  * For convenience, a single letter short form is also available as shown above, these single letter forms do not need
@@ -129,7 +127,6 @@ typedef enum mode
     MODE_TRUNCATE = 1 << 10,
     MODE_NOFOLLOW = 1 << 11,
     MODE_PRIVATE = 1 << 12,
-    MODE_PROPAGATE = 1 << 13,
     MODE_LOCKED = 1 << 14,
     MODE_ALL_PERMS = MODE_READ | MODE_WRITE | MODE_EXECUTE,
 } mode_t;
@@ -291,12 +288,10 @@ typedef struct path_state
 {
     dentry_t* dentry;       ///< The current dentry in the walk.
     binding_t* binding;     ///< The current binding in the walk.
-    dentry_t* rootDentry;   ///< The root dentry.
-    binding_t* rootBinding; ///< The root binding.
+    file_t* root;           ///< The root file, specifies the root path and bindings.
     char* ptr;              ///< Pointer to the current component in the path.
     size_t componentLen;    ///< Length of the current component being processed.
     mode_t mode;            ///< Parsed mode from the path.
-    namespace_t* ns;        ///< The namespace for the walk.
     uint32_t symlinkDepth;  ///< Current symlink recursion depth.
     dentry_t* lookup;       ///< A reference to the last "looked up" dentry to keep it and its parents alive.
     status_t (*done)(irp_t* irp, struct path_state* state, file_t* file);
@@ -314,17 +309,14 @@ typedef struct path_state
  *
  * @param state The path state to initialize.
  */
-static inline void path_state_init(path_state_t* state, dentry_t* dentry, binding_t* binding, dentry_t* rootDentry,
-    binding_t* rootBinding, status_t (*done)(irp_t* irp, struct path_state* state, file_t* file))
+static inline void path_state_init(path_state_t* state, dentry_t* dentry, binding_t* binding, file_t* root, status_t (*done)(irp_t* irp, struct path_state* state, file_t* file))
 {
     state->dentry = dentry;
     state->binding = binding;
-    state->rootDentry = rootDentry;
-    state->rootBinding = rootBinding;
+    state->root = REF(root);
     state->ptr = state->path;
     state->componentLen = 0;
     state->mode = MODE_NONE;
-    state->ns = NULL;
     state->symlinkDepth = 0;
     state->lookup = NULL;
     state->done = done;

@@ -3,7 +3,6 @@
 #include <kernel/drivers/perf.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file_table.h>
-#include <kernel/fs/namespace.h>
 #include <kernel/io/ioring.h>
 #include <kernel/ipc/note.h>
 #include <kernel/mem/space.h>
@@ -84,8 +83,6 @@ typedef struct process
     _Atomic(proc_prio_t) priority;
     process_result_t result;
     space_t space;
-    namespace_t* nspace;
-    lock_t nspaceLock;
     file_table_t files;
     sync_ctl_t sync;
     perf_process_ctx_t perf;
@@ -119,10 +116,9 @@ extern list_t _processes;
  * @param out Output pointer to store the new process.
  * @param priority The priority of the new process.
  * @param group A member of the group to add the new process to, or `NULL` to create a new group for the process.
- * @param ns The namespace to use for the new process.
  * @return An appropriate status value.
  */
-status_t process_new(process_t** out, proc_prio_t priority, group_member_t* group, namespace_t* ns);
+status_t process_new(process_t** out, proc_prio_t priority, group_member_t* group);
 
 /**
  * @brief Retrieves the process of the currently running thread.
@@ -160,24 +156,6 @@ static inline process_t* process_current_unsafe(void)
  * @return A reference to the process with the specified ID or `NULL` if no such process exists.
  */
 process_t* process_get(proc_t id);
-
-/**
- * @brief Gets the namespace of a process.
- *
- * It is the responsibility of the caller to `UNREF()` the returned namespace.
- *
- * @param process The process to get the namespace of.
- * @return A reference to the namespace of the process, or `NULL` if the process is dying.
- */
-namespace_t* process_get_ns(process_t* process);
-
-/**
- * @brief Sets the namespace of a process.
- *
- * @param process The process to set the namespace of.
- * @param ns The new namespace for the process.
- */
-void process_set_ns(process_t* process, namespace_t* ns);
 
 /**
  * @brief Kills a process, pushing it to the reaper.

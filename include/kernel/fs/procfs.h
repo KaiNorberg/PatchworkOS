@@ -3,7 +3,6 @@
 #include <kernel/drivers/perf.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file_table.h>
-#include <kernel/fs/namespace.h>
 #include <kernel/ipc/note.h>
 #include <kernel/mem/space.h>
 #include <kernel/proc/group.h>
@@ -24,20 +23,14 @@
  * Each process has its own directory whose name is the process ID and for convenience,
  * `/self` is a dynamic symbolic link to the current process's directory.
  *
- * Unlike traditional UNIX systems, security is implemented such that a process can access all files of all processes
- * that it could propagate mounts to, meaning any processes in its namespace or in child namespaces. If a process cant
- * propagate mounts to a another process then certain entries will appear to not exist. This is implemented using the
- * "revalidate()" dentry operation.
+ * Unlike traditional UNIX systems, a process can only see its own proc directory and the proc directories of its
+ * children. It is however possible for a process to pass a file descriptor to its own proc directory to another
+ * process, allowing it to be controlled by that process.
  *
- * @see kernel_fs_namespace
+ * @note Anytime a file descriptor is referred to it is from the perspective of the target process unless stated
+ * otherwise.
  *
- * Included below is a list of all entries found in each processes directory. All entries with restricted visibility
- * will be marked with `(restricted)`.
- *
- * @note Anytime a file descriptor is referred to it is from the perspective of the target process unless otherwise
- * stated.
- *
- * ## prio (restricted)
+ * ## prio
  *
  * A readable and writable file that contains the scheduling priority of the process.
  *
@@ -57,20 +50,20 @@
  * %s\0%s\0...%s\0
  * ```
  *
- * ## note (restricted)
+ * ## note
  *
  * A writable file that sends notes to the process. Writing to this file will enqueue that data as a
  * note in the note queue of one of the process's threads.
  *
  * @see kernel_ipc_note
  *
- * ## notegroup (restricted)
+ * ## notegroup
  *
  * A writeable file that sends notes to every process in the group of the target process.
  *
  * @see kernel_ipc_note
  *
- * ## group (restricted)
+ * ## group
  *
  * Opening this file returns a file descriptor referring to the group. This file descriptor can be used with the
  * `setgroup` command in the `ctl` file to switch groups.
@@ -109,12 +102,12 @@
  * %llu %llu %llu %llu %llu
  * ```
  *
- * ## ns (restricted)
+ * ## ns
  *
  * Opening this file returns a file descriptor referring to the namespace. This file descriptor can be used with the
  * `setns` command in the `ctl` file to switch namespaces.
  *
- * ## ctl (restricted)
+ * ## ctl
  *
  * A writable file that can be used to control certain aspects of the process, such as closing file descriptors.
  *
@@ -135,35 +128,14 @@
  *
  * Duplicates the specified old file descriptor to the new file descriptor in the process.
  *
- * ### bind <target> <source>
- *
- * Bind a source path from the writing process to a target path in the processes namespace.
- *
- * Path flags for controlling the bind behaviour should to be specified in the target path.
- *
- * @see kernel_fs_path for information on path flags.
- *
- * ### mount <mountpoint> <fs> [options]
- *
- * Mounts a filesystem at the specified mountpoint in the process's namespace, optionally with filesystem defined
- * options.
- *
- * The filesystem should be specified as a path to a directory in the `fs` sysfs directory.
- *
- * @see kernel_fs_path for information on path flags.
- *
- * ### touch <path>
- *
- * Open the specified path in the process and immediately close it.
- *
  * ### start
  *
  * Starts the process if it was previously suspended.
  *
- * ### kill [status]
+ * ### kill [result]
  *
- * Sends a kill note to all threads in the process, effectively terminating it. The optional status will be set as the
- * processes exit status.
+ * Sends a kill note to all threads in the process, effectively terminating it. The optional result will be set as the
+ * processes exit result.
  *
  * ### setns <fd>
  *
@@ -177,7 +149,7 @@
  *
  * The file descriptor must be one that was opened from `/[pid]/group`.
  *
- * ## env (restricted)
+ * ## env
  *
  * A directory that contains the environment variables of the process. Each environment variable is represented as a
  * readable and writable file whose name is the name of the variable and whose content is the value of the variable.

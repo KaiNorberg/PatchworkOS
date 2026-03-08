@@ -1,25 +1,22 @@
-#include <_libstd/MAX_NAME.h>
-#include <kernel/fs/procfs.h>
-
 #include <kernel/fs/binding.h>
 #include <kernel/fs/ctl.h>
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/filesystem.h>
-#include <kernel/fs/namespace.h>
 #include <kernel/fs/path.h>
+#include <kernel/fs/procfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/fs/vnode.h>
+#include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sync/lock.h>
+#include <kernel/sync/rcu.h>
 
 #include <assert.h>
-#include <kernel/io/irp.h>
-#include <kernel/sync/rcu.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,7 +25,7 @@
 #include <sys/list.h>
 #include <sys/status.h>
 
-static bool procfs_revalidate_hide(dentry_t* dentry)
+static bool procfs_access_hide(dentry_t* dentry)
 {
     process_t* current = process_current();
     assert(current != NULL);
@@ -85,91 +82,16 @@ static status_t procfs_prio_write(irp_t* irp)
     return OK;
 }
 
-static vnode_class_t prioClass = {.name = "procfs prio",
-    .type = VNODE_REGULAR,
-    .revalidate = procfs_revalidate_hide,
-    .handlers = {
-        [IRP_MJ_READ] = procfs_prio_read,
-        [IRP_MJ_WRITE] = procfs_prio_write,
-    }};
-
-static status_t procfs_cwd_read(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    process_t* process = frame->vnode->data;
-
-    namespace_t* ns = process_get_ns(process);
-    UNREF_DEFER(ns);
-
-    path_t cwd = cwd_get(&process->cwd, ns);
-    PATH_DEFER(&cwd);
-
-    pathname_t cwdName;
-    status_t status = path_to_name(&cwd, &cwdName);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
-    size_t length = strlen(cwdName.string);
-    return mdl_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, cwdName.string, length);
-}
-
-static status_t procfs_cwd_write(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    process_t* process = frame->vnode->data;
-
-    char cwdStr[MAX_PATH];
-    size_t bytesWritten;
-    status_t status = mdl_copy_out(frame->write.buffer, SIZE_MAX, 0, &bytesWritten, cwdStr, MAX_PATH - 1);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-    cwdStr[bytesWritten] = '\0';
-
-    pathname_t cwdPathname;
-    status = pathname_init(&cwdPathname, cwdStr);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
-    namespace_t* ns = process_get_ns(process);
-    UNREF_DEFER(ns);
-
-    path_t path = cwd_get(&process->cwd, ns);
-    PATH_DEFER(&path);
-
-    status = path_walk(&path, &cwdPathname, ns);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
-    if (!DENTRY_IS_POSITIVE(path.dentry))
-    {
-        return ERR(FS, NOENT);
-    }
-
-    if (!DENTRY_IS_DIR(path.dentry))
-    {
-        return ERR(FS, NOTDIR);
-    }
-
-    cwd_set(&process->cwd, &path);
-    irp->result = bytesWritten;
-    return OK;
-}
-
-static vnode_class_t cwdClass = {.name = "procfs cwd",
-    .type = VNODE_REGULAR,
-    .revalidate = procfs_revalidate_hide,
-    .handlers = {
-        [IRP_MJ_READ] = procfs_cwd_read,
-        [IRP_MJ_WRITE] = procfs_cwd_write,
-    }};
+static vnode_class_t prioClass = {
+    .name = "procfs prio",
+    .type = FILE_TYPE_SYSTEM,
+    .access = procfs_access_hide,
+    .handlers =
+        {
+            [IRP_MJ_READ] = procfs_prio_read,
+            [IRP_MJ_WRITE] = procfs_prio_write,
+        },
+};
 
 static status_t procfs_cmdline_read(irp_t* irp)
 {
@@ -214,7 +136,7 @@ static status_t procfs_cmdline_read(irp_t* irp)
 }
 
 static vnode_class_t cmdlineClass = {.name = "procfs cmdline",
-    .type = VNODE_REGULAR,
+    .type = FILE_TYPE_SYSTEM,
     .handlers = {
         [IRP_MJ_READ] = procfs_cmdline_read,
     }};
@@ -264,8 +186,8 @@ static status_t procfs_note_write(irp_t* irp)
 }
 
 static vnode_class_t noteClass = {.name = "procfs note",
-    .type = VNODE_REGULAR,
-    .revalidate = procfs_revalidate_hide,
+    .type = FILE_TYPE_SYSTEM,
+    .access = procfs_access_hide,
     .handlers = {
         [IRP_MJ_WRITE] = procfs_note_write,
     }};
@@ -306,16 +228,21 @@ static status_t procfs_notegroup_write(irp_t* irp)
     return OK;
 }
 
-static vnode_class_t notegroupClass = {.name = "procfs notegroup",
-    .type = VNODE_REGULAR,
-    .revalidate = procfs_revalidate_hide,
-    .handlers = {
-        [IRP_MJ_WRITE] = procfs_notegroup_write,
-    }};
+static vnode_class_t notegroupClass = {
+    .name = "procfs notegroup",
+    .type = FILE_TYPE_SYSTEM,
+    .access = procfs_access_hide,
+    .handlers =
+        {
+            [IRP_MJ_WRITE] = procfs_notegroup_write,
+        },
+};
 
-static status_t procfs_group_open(file_t* file)
+static status_t procfs_group_open(irp_t* irp)
 {
-    process_t* process = file->vnode->data;
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
+    process_t* process = frame->vnode->data;
 
     group_t* group = group_get(&process->group);
     if (group == NULL)
@@ -327,24 +254,30 @@ static status_t procfs_group_open(file_t* file)
     return OK;
 }
 
-static void procfs_group_close(file_t* file)
+static status_t procfs_group_close(irp_t* irp)
 {
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
     group_t* group = file->data;
     if (group == NULL)
     {
-        return;
+        return OK;
     }
 
     UNREF(group);
     file->data = NULL;
+    return OK;
 }
 
 static vnode_class_t groupClass = {
     .name = "procfs group",
-    .type = VNODE_REGULAR,
-    .revalidate = procfs_revalidate_hide,
-    .open = procfs_group_open,
-    .close = procfs_group_close,
+    .type = FILE_TYPE_SYSTEM,
+    .access = procfs_access_hide,
+    .handlers =
+        {
+            [IRP_MJ_OPEN] = procfs_group_open,
+            [IRP_MJ_CLOSE] = procfs_group_close,
+        },
 };
 
 static status_t procfs_pid_read(irp_t* irp)
@@ -358,7 +291,7 @@ static status_t procfs_pid_read(irp_t* irp)
 }
 
 static vnode_class_t pidClass = {.name = "procfs pid",
-    .type = VNODE_REGULAR,
+    .type = FILE_TYPE_SYSTEM,
     .handlers = {
         [IRP_MJ_READ] = procfs_pid_read,
     }};
@@ -412,7 +345,7 @@ static status_t procfs_wait_poll(irp_t* irp)
 }
 
 static vnode_class_t waitClass = {.name = "procfs wait",
-    .type = VNODE_REGULAR,
+    .type = FILE_TYPE_SYSTEM,
     .handlers = {
         [IRP_MJ_READ] = procfs_wait_read,
         [IRP_MJ_POLL] = procfs_wait_poll,
@@ -446,16 +379,18 @@ static status_t procfs_perf_read(irp_t* irp)
 
 static vnode_class_t perfClass = {
     .name = "procfs perf",
-    .type = VNODE_REGULAR,
+    .type = FILE_TYPE_SYSTEM,
     .handlers =
         {
             [IRP_MJ_READ] = procfs_perf_read,
         },
 };
 
-static status_t procfs_ns_open(file_t* file)
+static status_t procfs_ns_open(irp_t* irp)
 {
-    process_t* process = file->vnode->data;
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
+    process_t* process = frame->vnode->data;
 
     namespace_t* ns = process_get_ns(process);
     if (ns == NULL)
@@ -467,23 +402,29 @@ static status_t procfs_ns_open(file_t* file)
     return OK;
 }
 
-static void procfs_ns_close(file_t* file)
+static status_t procfs_ns_close(irp_t* irp)
 {
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
     if (file->data == NULL)
     {
-        return;
+        return OK;
     }
 
     UNREF(file->data);
     file->data = NULL;
+    return OK;
 }
 
 static vnode_class_t nsClass = {
     .name = "procfs ns",
-    .type = VNODE_REGULAR,
-    .revalidate = procfs_revalidate_hide,
-    .open = procfs_ns_open,
-    .close = procfs_ns_close,
+    .type = FILE_TYPE_SYSTEM,
+    .access = procfs_access_hide,
+    .handlers =
+        {
+            [IRP_MJ_OPEN] = procfs_ns_open,
+            [IRP_MJ_CLOSE] = procfs_ns_close,
+        },
 };
 
 static status_t procfs_ctl_control(irp_t* irp)
@@ -497,7 +438,8 @@ static status_t procfs_ctl_control(irp_t* irp)
     {
     case IOCMD('c', 'l', 'o', 's', 'e'):
     {
-        fd_t fd1, fd2;
+        fd_t fd1;
+        fd_t fd2;
         int count = sscanf(args, "%lld %lld", &fd1, &fd2);
         if (count == 1)
         {
@@ -512,128 +454,13 @@ static status_t procfs_ctl_control(irp_t* irp)
     }
     case IOCMD('d', 'u', 'p'):
     {
-        fd_t oldFd, newFd;
+        fd_t oldFd;
+        fd_t newFd;
         if (sscanf(args, "%lld %lld", &oldFd, &newFd) != 2)
         {
             return ERR(FS, INVAL);
         }
         return file_table_dup(&process->files, oldFd, &newFd);
-    }
-    case IOCMD('b', 'i', 'n', 'd'):
-    {
-        char targetStr[MAX_PATH];
-        char sourceStr[MAX_PATH];
-        if (sscanf(args, "%s %s", targetStr, sourceStr) != 2)
-        {
-            return ERR(FS, INVAL);
-        }
-
-        process_t* writing = process_current();
-        pathname_t targetName;
-        status_t status = pathname_init(&targetName, targetStr);
-        if (IS_ERR(status))
-        {
-            return status;
-        }
-
-        namespace_t* processNs = process_get_ns(process);
-        if (processNs == NULL)
-        {
-            return ERR(FS, DYING);
-        }
-        UNREF_DEFER(processNs);
-
-        path_t target = cwd_get(&process->cwd, processNs);
-        PATH_DEFER(&target);
-
-        status = path_walk(&target, &targetName, processNs);
-        if (IS_ERR(status))
-        {
-            return status;
-        }
-
-        pathname_t sourceName;
-        status = pathname_init(&sourceName, sourceStr);
-        if (IS_ERR(status))
-        {
-            return status;
-        }
-
-        namespace_t* writingNs = process_get_ns(writing);
-        if (writingNs == NULL)
-        {
-            return ERR(FS, DYING);
-        }
-        UNREF_DEFER(writingNs);
-
-        path_t source = cwd_get(&writing->cwd, writingNs);
-        PATH_DEFER(&source);
-
-        status = path_walk(&source, &sourceName, writingNs);
-        if (IS_ERR(status))
-        {
-            return status;
-        }
-
-        return namespace_bind(processNs, &target, &source, targetName.mode, NULL);
-    }
-    case IOCMD('m', 'o', 'u', 'n', 't'):
-    {
-        char mountStr[MAX_PATH];
-        char fsStr[MAX_PATH];
-        char optionsStr[MAX_PATH];
-        int count = sscanf(args, "%s %s %s", mountStr, fsStr, optionsStr);
-        if (count < 2)
-        {
-            return ERR(FS, INVAL);
-        }
-
-        process_t* writing = process_current();
-        pathname_t mountname;
-        status_t status = pathname_init(&mountname, mountStr);
-        if (IS_ERR(status))
-        {
-            return status;
-        }
-
-        namespace_t* ns = process_get_ns(process);
-        UNREF_DEFER(ns);
-
-        path_t mountpath = cwd_get(&process->cwd, ns);
-        PATH_DEFER(&mountpath);
-
-        status = path_walk(&mountpath, &mountname, ns);
-        if (IS_ERR(status))
-        {
-            return status;
-        }
-
-        filesystem_t* fs = filesystem_get_by_path(fsStr, writing);
-        if (fs == NULL)
-        {
-            return ERR(FS, NOFS);
-        }
-
-        const char* options = (count == 3) ? optionsStr : NULL;
-        return namespace_mount(ns, &mountpath, fs, options, mountname.mode, NULL, NULL);
-    }
-    case IOCMD('u', 'n', 'm', 'o', 'u', 'n', 't'):
-    {
-        pathname_t pathname;
-        status_t status = pathname_init(&pathname, args);
-        if (IS_ERR(status))
-        {
-            return status;
-        }
-
-        file_t* touch;
-        status = vfs_open(&touch, &pathname, process);
-        if (IS_ERR(status))
-        {
-            return status;
-        }
-        UNREF(touch);
-        return OK;
     }
     case IOCMD('s', 't', 'a', 'r', 't'):
     {
@@ -666,7 +493,7 @@ static status_t procfs_ctl_control(irp_t* irp)
         }
         UNREF_DEFER(nsFile);
 
-        if (nsFile->vnode->cls != &nsClass)
+        if (nsFile->path.dentry->vnode->cls != &nsClass)
         {
             return ERR(FS, INVAL);
         }
@@ -695,7 +522,7 @@ static status_t procfs_ctl_control(irp_t* irp)
         }
         UNREF_DEFER(groupFile);
 
-        if (groupFile->vnode->cls != &groupClass)
+        if (groupFile->path.dentry->vnode->cls != &groupClass)
         {
             return ERR(FS, INVAL);
         }
@@ -709,32 +536,14 @@ static status_t procfs_ctl_control(irp_t* irp)
         group_add(target, &process->group);
         return OK;
     }
-    case IOCMD('t', 'o', 'u', 'c', 'h'):
-    {
-        pathname_t pathname;
-        status_t status = pathname_init(&pathname, args);
-        if (IS_ERR(status))
-        {
-            return status;
-        }
-
-        file_t* touch;
-        status = vfs_open(&touch, &pathname, process);
-        if (IS_ERR(status))
-        {
-            return status;
-        }
-        UNREF(touch);
-        return OK;
-    }
     default:
         return ERR(FS, INVAL_CTL);
     }
 }
 
 static vnode_class_t ctlClass = {.name = "procfs ctl",
-    .type = VNODE_REGULAR,
-    .revalidate = procfs_revalidate_hide,
+    .type = FILE_TYPE_SYSTEM,
+    .access = procfs_access_hide,
     .handlers = {
         [IRP_MJ_WRITE] = ctl_generic_write,
         [IRP_MJ_CONTROL] = procfs_ctl_control,
@@ -783,7 +592,7 @@ static status_t procfs_env_write(irp_t* irp)
 }
 
 static vnode_class_t envFileClass = {.name = "procfs env file",
-    .type = VNODE_REGULAR,
+    .type = FILE_TYPE_SYSTEM,
     .handlers = {
         [IRP_MJ_READ] = procfs_env_read,
         [IRP_MJ_WRITE] = procfs_env_write,
@@ -867,7 +676,7 @@ static status_t procfs_env_iterate(dentry_t* dentry, dir_ctx_t* ctx)
             continue;
         }
 
-        if (!ctx->emit(ctx, process->env.vars[i].key, VNODE_REGULAR))
+        if (!ctx->emit(ctx, process->env.vars[i].key, FILE_TYPE_SYSTEM))
         {
             return OK;
         }
@@ -879,7 +688,7 @@ static status_t procfs_env_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 static vnode_class_t envDirClass = {
     .name = "procfs env dir",
     .type = VNODE_DIR,
-    .revalidate = procfs_revalidate_hide,
+    .access = procfs_access_hide,
     .lookup = procfs_env_lookup,
     .create = procfs_env_create,
     .remove = procfs_env_remove,
@@ -989,7 +798,7 @@ static status_t procfs_pid_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 
     for (size_t i = 0; i < ARRAY_SIZE(pidEntries); i++)
     {
-        if (pidEntries[i].cls->revalidate == procfs_revalidate_hide)
+        if (pidEntries[i].cls->access == procfs_access_hide)
         {
             namespace_t* currentNs = process_get_ns(current);
             UNREF_DEFER(currentNs);

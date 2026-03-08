@@ -20,6 +20,7 @@ static void file_free(file_t* file)
     assert(file != NULL);
 
     path_put(&file->path);
+    binding_table_deinit(&file->bindings);
 
     cache_free(file);
 }
@@ -58,6 +59,7 @@ file_t* file_new(dentry_t* dentry, binding_t* mount, mode_t mode)
         file_free(file);
         return NULL;
     }
+    binding_table_init(&file->bindings);
 
     return file;
 }

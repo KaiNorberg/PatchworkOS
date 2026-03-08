@@ -1,10 +1,10 @@
 #include <_libstd/MAX_PATH.h>
 #include <ctype.h>
+#include <kernel/fs/binding_table.h>
 #include <kernel/fs/path.h>
 
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file.h>
-#include <kernel/fs/namespace.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -35,7 +35,6 @@ static path_flag_short_t shortFlags[UINT8_MAX + 1] = {
     ['t'] = {.mode = MODE_TRUNCATE},
     ['l'] = {.mode = MODE_NOFOLLOW},
     ['p'] = {.mode = MODE_PRIVATE},
-    ['g'] = {.mode = MODE_PROPAGATE},
     ['L'] = {.mode = MODE_LOCKED},
 };
 
@@ -59,7 +58,6 @@ static const path_flag_t flags[] = {
     {.mode = MODE_TRUNCATE, .name = "truncate"},
     {.mode = MODE_NOFOLLOW, .name = "nofollow"},
     {.mode = MODE_PRIVATE, .name = "private"},
-    {.mode = MODE_PROPAGATE, .name = "propagate"},
     {.mode = MODE_LOCKED, .name = "locked"},
 };
 
@@ -140,15 +138,7 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state);
 
 static void path_state_free(path_state_t* state)
 {
-    UNREF(state->ns);
-    if (state->rootDentry != NULL)
-    {
-        UNREF(state->rootDentry);
-    }
-    if (state->rootBinding != NULL)
-    {
-        UNREF(state->rootBinding);
-    }
+    UNREF(state->root);
     if (state->lookup != NULL)
     {
         UNREF(state->lookup);
@@ -202,7 +192,7 @@ static status_t path_dotdot(path_state_t* state)
         binding = binding->parent;
     }
 
-    if (dentry == state->rootDentry && binding == state->rootBinding)
+    if (dentry == state->root->path.dentry && binding == state->root->path.binding)
     {
         return OK;
     }
@@ -217,7 +207,7 @@ static status_t path_dotdot(path_state_t* state)
     binding_t* checkBinding = binding;
     while (true)
     {
-        if (check == state->rootDentry && checkBinding == state->rootBinding)
+        if (check == state->root->path.dentry && checkBinding == state->root->path.binding)
         {
             state->dentry = parent;
             state->binding = binding;
@@ -285,8 +275,8 @@ static status_t path_symlink_complete(irp_t* irp, void* ctx)
     if (link[0] == '/')
     {
         state->ptr = state->path;
-        state->dentry = state->rootDentry;
-        state->binding = state->rootBinding;
+        state->dentry = state->root->path.dentry;
+        state->binding = state->root->path.binding;
     }
     else
     {
@@ -454,8 +444,8 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state)
 {
     if (state->ptr == state->path && state->ptr[0] == '/')
     {
-        state->dentry = state->rootDentry;
-        state->binding = state->rootBinding;
+        state->dentry = state->root->path.dentry;
+        state->binding = state->root->path.binding;
         state->ptr++;
     }
 
@@ -516,7 +506,7 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state)
 
         if (atomic_load(&state->dentry->bindings) > 0)
         {
-            namespace_rcu_traverse(state->ns, &state->binding, &state->dentry);
+            binding_table_rcu_traverse(&state->root->bindings, &state->binding, &state->dentry);
         }
 
         if (DENTRY_IS_TYPE(next, FILE_TYPE_SYMLINK) && !(state->mode & MODE_NOFOLLOW))
@@ -637,20 +627,12 @@ static status_t path_verify(path_state_t* state)
 
 status_t path_walk(irp_t* irp, path_state_t* state)
 {
-    if (state->ns == NULL)
-    {
-        state->ns = process_get_ns(irp->process);
-    }
-
     status_t status = path_verify(state);
     if (IS_ERR(status))
     {
         path_state_free(state);
         return status;
     }
-
-    state->rootDentry = REF(state->rootDentry);
-    state->rootBinding = REF(state->rootBinding);
 
     rcu_read_lock();
 

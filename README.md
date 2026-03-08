@@ -98,11 +98,11 @@ The combination of this system and our "everything is a file" philosophy means t
 
 ### Security
 
-In PatchworkOS, there are no Access Control Lists, user IDs or similar mechanisms. Instead, PatchworkOS uses a capability security model based on per-process namespaces and file descriptors.
+In PatchworkOS, there are no Access Control Lists, user IDs or similar mechanisms. Instead, PatchworkOS uses a capability security model based on file descriptors.
 
-A process can only access files that have either been bound into its namespace or passed to it via file descriptors, and since everything is a file, this applies to practically everything in the system, including devices, IPC mechanisms, etc.
+A process can only access files that have been passed to it via file descriptors, and since everything is a file, this applies to practically everything in the system, including devices, IPC mechanisms, etc.
 
-#### The Root Directory and `..`
+#### The `..` Operator
 
 The `..` or dotdot operator is a major security concern in a capability based system. Consider that if we pass a directory to a process that process could use `..` to access the parent directory and then the parent of the parent and so on. This vulnerability would effectively make capability based security meaningless.
 
@@ -133,9 +133,17 @@ However, if the process didn't have a file descriptor to `a` then allowing it to
 
 All of this does however hinge on the ability for a process to prove that it has a capability to access the parent directory. The way this is done is closely tied to how PatchworkOS handles the "root directory."
 
-In PatchworkOS there is no global root or even namespace local root. Instead, when a process walks a path it must always specify some file descriptor to be considered the root for that specific operation.
+#### The Root Directory
 
-This root file descriptor is also what's used by a process to prove that it has a capability to access the parent directory. If the process tries to use `..` to access the parent directory, the kernel will check if the specified root can reach that parent directory, if it can, then `..` acts as expected, otherwise `..` becomes a no-op to replicate expected POSIX-like behavior (e.g `/../../` is equivalent to `/`).
+In PatchworkOS there is no global root or even local root. Instead, when a process walks a path it must always specify some file descriptor to be considered the root for that specific operation.
+
+This root file descriptor has three purposes. First, it is used to implement paths starting with `/`, letting paths start from the root file descriptor.
+
+Second, it is used by a process to provide the proof discussed in the `..` section. If the process tries to use `..` to access the parent directory, the kernel will check if the specified root can reach that parent directory, if it can, then `..` acts as expected, otherwise `..` becomes a no-op to replicate expected POSIX-like behavior (e.g `/../../` is equivalent to `/`).
+
+Finally, the root file descriptor stores bindings. Within PatchworkOS, there is no namespace or per-process mountpoints. Instead, each file object stores a table of bindings. These bindings act as one would expect within POSIX, allowing a file to appear at a different path than its actual location within the filesystem hierarchy. When a bind is performed, that bind will only apply when walking paths from the file object whose binding table the bind was added to.
+
+In this system one can consider binding a file to be nothing more than a convenient way to pass multiple capabilities (file descriptors) within a single file descriptor, by binding paths within its binding table. It does also allow all the expected benefits of bindings or mounts from POSIX-like systems but from a different perspective.
 
 ### Standard Library
 
@@ -252,7 +260,7 @@ fd_t fs;
 fd_t target;
 iowalk(FDCWD, FDROOT, "/sys/fs/tmpfs/clone", &fs);
 iowalk(FDCWD, FDROOT, "/mnt/tmpfs", &target);
-fsbind(target, fs);
+fsbind(FDROOT, target, fs);
 ```
 
 ## Modules
@@ -411,14 +419,14 @@ Of course, it gets way, way worse than this, but hopefully this clarifies why th
 
 ### File System
 
-- Vnode and dentry based VFS with RCU traversal, hardlinks, symlinks, per-process namespaces, etc.
+- Vnode and dentry based VFS with RCU traversal, hardlinks, symlinks, etc.
 - Custom [Framebuffer BitMaP](https://github.com/KaiNorberg/fbmp) (.fbmp) image format, allows for faster loading by removing the need for parsing.
 - Custom [Grayscale Raster Font](https://github.com/KaiNorberg/grf) (.grf) font format, allows for antialiasing and kerning without complex vector graphics.
 
 ### User Space
 
 - Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg).
-- Capability based containerization security model using per-process mountpoint namespaces. See [Security](#security) for more info.
+- Capability security model. See [Security](#security) for more info.
 - Note that currently a heavy focus has been placed on the kernel and low-level stuff, so user space is quite small... for now.
 
 ---
@@ -525,7 +533,6 @@ Currently untested on Intel hardware (broke student, no access to hardware). Let
 
 ### Notable Future Plans
 
-- Improve `share()` and `claim()` security by specifying a target PID when sharing.
 - Port LUA and use it for dynamic system configuration.
 - Driver support, for example USB.
 

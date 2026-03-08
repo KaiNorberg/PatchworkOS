@@ -1,6 +1,4 @@
-#include <kernel/fs/namespace.h>
 #include <kernel/init/init.h>
-
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/idt.h>
@@ -160,28 +158,9 @@ static inline void init_process_spawn(void)
 {
     LOG_INFO("spawning init process\n");
 
-    namespace_t* kernelNs = process_get_ns(process_get_kernel());
-    if (kernelNs == NULL)
-    {
-        panic(NULL, "Failed to get kernel namespace");
-    }
-    UNREF_DEFER(kernelNs);
-
-    namespace_t* rootNs = namespace_new(kernelNs);
-    if (rootNs == NULL)
-    {
-        panic(NULL, "Failed to create root namespace");
-    }
-    UNREF_DEFER(rootNs);
-
-    status_t status = namespace_copy(rootNs, kernelNs);
-    if (IS_ERR(status))
-    {
-        panic(NULL, "Failed to copy kernel namespace to root namespace");
-    }
 
     process_t* initProcess;
-    status = process_new(&initProcess, PROC_PRIO_MAX_USER, NULL, rootNs);
+    status = process_new(&initProcess, PROC_PRIO_MAX_USER, NULL);
     if (IS_ERR(status))
     {
         panic(NULL, "Failed to create init process");

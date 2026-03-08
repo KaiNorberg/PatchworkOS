@@ -63,14 +63,13 @@ typedef uint64_t proc_flags_t;
 #define PROC_FDOUT (1 << 2) ///< Inherit the parent's standard output file descriptor.
 #define PROC_FDERR (1 << 3) ///< Inherit the parent's standard error file descriptor.
 #define PROC_FDCWD (1 << 4) ///< Inherit the parent's current working directory file descriptor.
-#define PROC_IOALL (PROC_FDIN | PROC_FDOUT | PROC_FDERR | PROC_FDCWD) ///< Inherit all standard file descriptors.
-#define PROC_FD (1 << 5)                                              ///< Inherit the parent's file descriptors.
-#define PROC_ENV (1 << 6)                                             ///< Inherit the parent's environment variables.
-#define PROC_GROUP (1 << 7)                                           ///< Inherit the parent's process group.
-#define PROC_NS (1 << 8)                                              ///< Inherit the parent's namespace.
-#define PROC_NS_COPY (1 << 9)                                         ///< Create a new copy of the parent's namespace.
-#define PROC_PRIO (1 << 10)                                           ///< Inherit the parent's scheduling priority.
-#define PROC_ALL (PROC_FD | PROC_ENV | PROC_GROUP | PROC_NS | PROC_PRIO) ///< Inherit all resources.
+#define PROC_FDROOT (1 << 5)
+#define PROC_IOALL (PROC_FDIN | PROC_FDOUT | PROC_FDERR | PROC_FDCWD | PROC_FDROOT) ///< Inherit all standard file descriptors.
+#define PROC_FD (1 << 6)                                              ///< Inherit the parent's file descriptors.
+#define PROC_ENV (1 << 7)                                             ///< Inherit the parent's environment variables.
+#define PROC_GROUP (1 << 8)                                           ///< Inherit the parent's process group.
+#define PROC_PRIO (1 << 9)                                           ///< Inherit the parent's scheduling priority.
+#define PROC_ALL (PROC_FD | PROC_ENV | PROC_GROUP | PROC_PRIO) ///< Inherit all resources.
 
 /**
  * @brief System call for creating new processes.

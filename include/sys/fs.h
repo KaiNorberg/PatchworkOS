@@ -60,24 +60,26 @@ static inline status_t fddup(fd_t oldFd, fd_t* newFd)
 /**
  * @brief System call for binding a source path to a target path.
  *
+ * @param root The file descriptor containing the binding table to add the bind to.
  * @param target The file descriptor to the target location where the source will appear.
  * @param source The file descriptor to the source location.
  * @return An appropriate status value.
  */
-static inline status_t fsbind(fd_t target, fd_t source)
+static inline status_t fsbind(fd_t root, fd_t target, fd_t source)
 {
-    return syscall2(SYS_FS_BIND, NULL, target, source);
+    return syscall3(SYS_FS_BIND, NULL, root, target, source);
 }
 
 /**
  * @brief System call for unbinding a path.
  *
+ * @param root The file descriptor containing the binding table to remove the bind from.
  * @param target The file descriptor to the target location to unbind.
  * @return An appropriate status value.
  */
-static inline status_t fsunbind(fd_t target)
+static inline status_t fsunbind(fd_t root, fd_t target)
 {
-    return syscall1(SYS_FS_UNBIND, NULL, target);
+    return syscall2(SYS_FS_UNBIND, NULL, root, target);
 }
 
 typedef uint64_t file_volume_t; ///< File volume id type, uniquely identifies a filesystem volume.
