@@ -356,7 +356,7 @@ typedef int128_t lag_t;
 /**
  * @brief The maximum weight a thread can have.
  */
-#define SCHED_WEIGHT_MAX (PROC_PRIO_MAX + SCHED_WEIGHT_BASE)
+#define SCHED_WEIGHT_MAX (PRIO_MAX + SCHED_WEIGHT_BASE)
 
 /**
  * @brief Base weight added to all threads.

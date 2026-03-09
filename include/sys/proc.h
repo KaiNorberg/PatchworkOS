@@ -4,6 +4,9 @@
 #include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
+#include <alloca.h>
+#include <sys/fs.h>
 #include <sys/syscall.h>
 
 #if defined(__cplusplus)
@@ -35,20 +38,20 @@ typedef __UINT64_TYPE__ proc_t;
 
 /**
  * @brief Scheduler priority type.
- * @typedef proc_prio_t
+ * @typedef prio_t
  *
  */
-typedef uint8_t proc_prio_t;
+typedef uint8_t prio_t;
 
-#define PROC_PRIO_MAX 63      ///< The maximum priority value, inclusive.
-#define PROC_PRIO_MAX_USER 31 ///< The maximum priority user space is allowed to specify, inclusive.
-#define PROC_PRIO_MIN 0       ///< The minimum priority value.
+#define PRIO_MAX 63      ///< The maximum priority value, inclusive.
+#define PRIO_MAX_USER 31 ///< The maximum priority user space is allowed to specify, inclusive.
+#define PRIO_MIN 0       ///< The minimum priority value.
 
 /**
  * @brief Process creation behaviour flags.
  */
 typedef uint64_t proc_flags_t;
-#define PROC_EMPTY 0 ///< Default behaviour, the child process inherits no resources from the parent process.
+#define PROC_DEFAULT 0 ///< Default behaviour, the child process inherits no resources from the parent process.
 /**
  * Starts the created process in a suspended state. The process will not begin executing until a "start" note is
  * received.
@@ -59,30 +62,75 @@ typedef uint64_t proc_flags_t;
  * @see kernel_fs_procfs
  */
 #define PROC_SUSPEND (1 << 0)
-#define PROC_FDIN (1 << 1)  ///< Inherit the parent's standard input file descriptor.
-#define PROC_FDOUT (1 << 2) ///< Inherit the parent's standard output file descriptor.
-#define PROC_FDERR (1 << 3) ///< Inherit the parent's standard error file descriptor.
-#define PROC_FDCWD (1 << 4) ///< Inherit the parent's current working directory file descriptor.
-#define PROC_FDROOT (1 << 5)
-#define PROC_IOALL \
-    (PROC_FDIN | PROC_FDOUT | PROC_FDERR | PROC_FDCWD | PROC_FDROOT) ///< Inherit all standard file descriptors.
-#define PROC_FD (1 << 6)                                             ///< Inherit the parent's file descriptors.
-#define PROC_ENV (1 << 7)                                            ///< Inherit the parent's environment variables.
-#define PROC_GROUP (1 << 8)                                          ///< Inherit the parent's process group.
-#define PROC_PRIO (1 << 9)                                           ///< Inherit the parent's scheduling priority.
-#define PROC_ALL (PROC_FD | PROC_ENV | PROC_GROUP | PROC_PRIO)       ///< Inherit all resources.
+#define PROC_GROUP (1 << 1)                                          ///< Inherit the parent's process group.
+#define PROC_DETACHED (1 << 2)                                       ///< Do not return a file descriptor to the child process.
+
+/**
+ * @brief File descriptor mapping for process creation.
+ * @struct proc_fd_t
+ */
+typedef struct proc_fd
+{
+    fd_t parent; ///< The file descriptor in the parent process.
+    fd_t child;  ///< The desired file descriptor index in the child process.
+} proc_fd_t;
+
+/**
+ * @brief Process arguments structure.
+ * @struct proc_args_t
+ * 
+ * @note We choose to use a single buffer of a specified length to reduce the risk for vulnerabilities when copying the arguments in the kernel.
+ */
+typedef struct proc_args
+{
+    const char* buf; ///< A null deliminated string of arguments.
+    size_t len;
+} proc_args_t;
+
+/**
+ * @brief Helper macro for creating a process arguments buffer.
+ *
+ * @param ... A list of strings to be used as arguments.
+ */
+#define PROC_ARGS(...) \
+    ({ \
+        const char* _argv[] = {__VA_ARGS__}; \
+        size_t _argc = sizeof(_argv) / sizeof(_argv[0]); \
+        size_t _len = 0; \
+        for (size_t _i = 0; _i < _argc; _i++) \
+        { \
+            _len += strlen(_argv[_i]) + 1; \
+        } \
+        char* _buf = alloca(_len); \
+        char* _ptr = _buf; \
+        for (size_t _i = 0; _i < _argc; _i++) \
+        { \
+            size_t _l = strlen(_argv[_i]); \
+            memcpy(_ptr, _argv[_i], _l); \
+            _ptr[_l] = '\0'; \
+            _ptr += _l + 1; \
+        } \
+        (proc_args_t){.buf = _buf, .len = _len}; \
+    })
 
 /**
  * @brief System call for creating new processes.
  *
- * @param argv A NULL-terminated array of strings, where `argv[0]` is the filepath to the desired executable.
- * @param flags Creation behaviour flags.
- * @param proc Optional ouput pointer for the childs identifier.
+ * @param args The arguments for the new process.
+ * @param fds An array of file descriptor mappings.
+ * @param count The number of mappings in the array.
+ * @param priority The priority of the new process.
+ * @param flags Creation behaviour flags. 
+ * @param proc Optional output pointer for a file descriptor to the root of the childs proc directory.
  * @return An appropriate status value.
  */
-static inline status_t proc_create(const char** argv, proc_flags_t flags, proc_t* proc)
+static inline status_t proc_create(proc_args_t args, const proc_fd_t* fds, size_t count, prio_t priority, proc_flags_t flags, fd_t* proc)
 {
-    return syscall2(SYS_PROC_CREATE, proc, (uint64_t)argv, flags);
+    if (proc == NULL)
+    {
+        flags |= PROC_DETACHED;
+    }
+    return syscall6(SYS_PROC_CREATE, (uint64_t*)proc, (uint64_t)args.buf, args.len, (uint64_t)fds, count, priority, flags);
 }
 
 /**

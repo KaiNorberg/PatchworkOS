@@ -46,7 +46,7 @@ static status_t procfs_prio_read(irp_t* irp)
     irp_frame_t* frame = irp_current(irp);
     process_t* process = frame->vnode->data;
 
-    proc_prio_t priority = atomic_load(&process->priority);
+    prio_t priority = atomic_load(&process->priority);
 
     char prioStr[MAX_NAME];
     uint32_t length = snprintf(prioStr, MAX_NAME, "%llu", priority);
@@ -72,7 +72,7 @@ static status_t procfs_prio_write(irp_t* irp)
     {
         return ERR(FS, INVAL);
     }
-    if (prio > PROC_PRIO_MAX_USER)
+    if (prio > PRIO_MAX_USER)
     {
         return ERR(FS, ACCESS);
     }

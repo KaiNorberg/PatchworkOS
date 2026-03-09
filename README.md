@@ -225,16 +225,14 @@ fd_t out;
 iowalk(FDCWD, FDROOT, "/dev/pipe/clone", &in);
 iowalk(FDCWD, FDROOT, "/dev/pipe/clone", &out);
 
+proc_fd_t fds = {{.parent = in, .child = 0}, {.parent = out, .child = 1}};
 fd_t proc;
-iowalk(FDCWD, FDROOT, "/proc/clone", &proc);
-iostorep(proc, "ctl", IOFMT("give %llu 0; give %llu 1; start /path/to/program", in, out));
+proc_create(PROC_ARGS("/path/to/program"), &fds, ARRAY_SIZE(fds), PRIO_MAX_USER, PROC_DEFAULT, &proc);
 ```
 
 We first create two pipes by opening the special file `/dev/pipe/clone` twice.
 
-Then we create a new process using the `proc/clone` special file which gives us a file descriptor to a directory representing the new process. This new process will be completly empty, with no resources inherited from the parent process.
-
-Finally, we use `iostorep()` to write a series of commands to the process's control file taking advantage of the `IOFMT()` helper to allocate a formatted string on the stack. These commands are then parsed and executed by the kernel, allowing us to set up the process's standard I/O and then start it.
+Then we create a new process using the `proc_create()` function. This function takes in several arguments, first it takes in a `proc_args_t` structure containing the command line arguments for the process which we use the `PROC_ARGS()` helper to construct. The second argument is an array of `proc_fd_t` structures allowing us to pass file descriptors to the child, where each `proc_fd_t` structure contains a parent file descriptor and a child file descriptor. The third argument is the size of this array which we use the `ARRAY_SIZE()` helper to compute. The fourth and fifth arguments are the process's priority and flags, and the sixth argument is an optional pointer to the root of the childs proc directory.
 
 As a side note, we could optimize the pipe creation by walking to the second pipe relative to the first one. This optimization can be applied any time we wish to open the same file multiple times:
 
@@ -248,6 +246,20 @@ iowalk(in, FDROOT, ".", &out);
 ### Environment Variables
 
 Environment variables are typically a set of key-value pairs that provide a simple way to configure programs. Intuitively from a everything is a file perspective, the concept of environment variables map cleanly to a directory containing files, where the name of the file is the key and its contents are the value. As such, environment variables are provided via another standard file descriptor, `FDENV`. The directory that `FDENV` points to could either be a real directory, allowing the user to easily manage environment variables via the filesystem, or one could create a tmpfs instace and use that as the `FDENV` directory.
+
+### Notes/Signals
+
+Notes are PatchworkOS's equivalent to POSIX signals which asynchronously send strings to processes.
+
+In POSIX, if a page fault were to occur in a process running in some from of shell, we would usually receive a `SIGSEGV`, which is not very helpful. The core limitation is that signals are just integers, so we can't receive any additional information.
+
+In PatchworkOS, a note is a string where the first word of the string is the note type and the rest is arbitrary data. As such, a page fault note might look like:
+
+```bash
+shell: pagefault at 0x40013b due to stack overflow at 0x7ffffff9af18
+```
+
+All that happened is that the shell printed the exit status of the process, which is also a string and in this case is set to the note that killed the process. This is much more useful, as we can know the exact address and the reason for the fault.
 
 ### Mounting a Filesystem
 

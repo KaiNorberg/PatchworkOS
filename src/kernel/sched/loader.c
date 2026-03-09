@@ -17,24 +17,6 @@
 #include <sys/math.h>
 #include <sys/proc.h>
 
-static void loader_strv_free(char** array, uint64_t amount)
-{
-    if (array == NULL)
-    {
-        return;
-    }
-
-    for (uint64_t i = 0; i < amount; i++)
-    {
-        if (array[i] == NULL)
-        {
-            continue;
-        }
-        free(array[i]);
-    }
-    free((void*)array);
-}
-
 void loader_exec(void)
 {
     thread_t* thread = thread_current();
@@ -45,7 +27,7 @@ void loader_exec(void)
 
     uintptr_t* addrs = NULL;
 
-    status_t status = vfs_open(&file, NULL, process->argv[0], process);
+    status_t status = vfs_open(&file, NULL, process->args, process);
     if (IS_ERR(status))
     {
         goto cleanup;
@@ -104,30 +86,41 @@ void loader_exec(void)
 
     char* rsp = (char*)thread->userStack.top;
 
-    addrs = malloc(sizeof(uintptr_t) * process->argc);
+    uint64_t argc = 0;
+    for (size_t i = 0; i < process->argsLen; i++)
+    {
+        if (process->args[i] == '\0')
+        {
+            argc++;
+        }
+    }
+
+    addrs = malloc(sizeof(uintptr_t) * argc);
     if (addrs == NULL)
     {
         status = ERR(SCHED, NOMEM);
         goto cleanup;
     }
 
-    for (int64_t i = (int64_t)process->argc - 1; i >= 0; i--)
+    rsp -= process->argsLen;
+    memcpy(rsp, process->args, process->argsLen);
+
+    size_t offset = 0;
+    for (uint64_t i = 0; i < argc; i++)
     {
-        size_t len = strlen(process->argv[i]) + 1;
-        rsp -= len;
-        memcpy(rsp, process->argv[i], len);
-        addrs[i] = (uintptr_t)rsp;
+        addrs[i] = (uintptr_t)rsp + offset;
+        offset += strlen(process->args + offset) + 1;
     }
 
     rsp = (char*)ROUND_DOWN((uintptr_t)rsp, 8);
 
-    rsp -= (process->argc + 1) * sizeof(char*);
+    rsp -= (argc + 1) * sizeof(char*);
     uintptr_t* argvStack = (uintptr_t*)rsp;
-    for (uint64_t i = 0; i < process->argc; i++)
+    for (uint64_t i = 0; i < argc; i++)
     {
         argvStack[i] = addrs[i];
     }
-    argvStack[process->argc] = 0;
+    argvStack[argc] = 0;
 
     // Disable interrupts, they will be enabled when we jump to user space.
     ASM("cli");
@@ -135,7 +128,7 @@ void loader_exec(void)
     memset(&thread->frame, 0, sizeof(interrupt_frame_t));
     thread->frame.rsp = ROUND_DOWN((uintptr_t)rsp - sizeof(uint64_t), 16);
     thread->frame.rip = elf.header->e_entry;
-    thread->frame.rdi = process->argc;
+    thread->frame.rdi = argc;
     thread->frame.rsi = (uintptr_t)rsp;
     thread->frame.cs = GDT_CS_RING3;
     thread->frame.ss = GDT_SS_RING3;
@@ -175,9 +168,9 @@ static void loader_entry(void)
     loader_exec();
 }
 
-SYSCALL_DEFINE(SYS_PROC_CREATE, const char** argv, proc_flags_t flags)
+SYSCALL_DEFINE(SYS_PROC_CREATE, fd_t* proc, const char* args, size_t argsLen, const proc_fd_t* fds, size_t count, prio_t priority, proc_flags_t flags)
 {
-    if (argv == NULL)
+    if (args == NULL || argsLen == 0)
     {
         return ERR(SCHED, INVAL);
     }
@@ -187,41 +180,8 @@ SYSCALL_DEFINE(SYS_PROC_CREATE, const char** argv, proc_flags_t flags)
     process_t* process = thread->process;
     assert(process != NULL);
 
-    namespace_t* ns = process_get_ns(process);
-    if (ns == NULL)
-    {
-        return ERR(VFS, DYING);
-    }
-    UNREF_DEFER(ns);
-
-    namespace_t* childNs;
-    if (flags & PROC_NS)
-    {
-        childNs = REF(ns);
-    }
-    else
-    {
-        childNs = namespace_new(ns);
-        if (childNs == NULL)
-        {
-            return ERR(SCHED, NOMEM);
-        }
-
-        if (flags & PROC_NS_COPY)
-        {
-            status_t status = namespace_copy(childNs, ns);
-            if (IS_ERR(status))
-            {
-                UNREF(childNs);
-                return status;
-            }
-        }
-    }
-    UNREF_DEFER(childNs);
-
     process_t* child;
-    status_t status = process_new(&child, (flags & PROC_PRIO) ? atomic_load(&process->priority) : PROC_PRIO_MIN,
-        (flags & PROC_GROUP) ? &process->group : NULL, childNs);
+    status_t status = process_new(&child, priority, (flags & PROC_GROUP) ? &process->group : NULL);
     if (IS_ERR(status))
     {
         return status;
@@ -235,24 +195,23 @@ SYSCALL_DEFINE(SYS_PROC_CREATE, const char** argv, proc_flags_t flags)
         return status;
     }
 
-    char** argvCopy = NULL;
-    uint64_t argc = 0;
-    status = thread_copy_from_user_string_array(thread, argv, &argvCopy, &argc);
+    char* argsCopy = malloc(argsLen);
+    if (argsCopy == NULL)
+    {
+        return ERR(SCHED, NOMEM);
+    }
+
+    status = space_copy_in(&process->space, argsCopy, args, argsLen);
     if (IS_ERR(status))
     {
+        free(argsCopy);
         return status;
     }
 
-    if (argc == 0 || argvCopy[0] == NULL)
-    {
-        loader_strv_free(argvCopy, argc);
-        return ERR(SCHED, INVAL);
-    }
-
-    status = process_set_cmdline(child, argvCopy, argc);
+    status = process_set_cmdline(child, argsCopy, argsLen);
+    free(argsCopy);
     if (IS_ERR(status))
     {
-        loader_strv_free(argvCopy, argc);
         return status;
     }
 
@@ -261,38 +220,36 @@ SYSCALL_DEFINE(SYS_PROC_CREATE, const char** argv, proc_flags_t flags)
         atomic_fetch_or(&child->flags, PROCESS_SUSPENDED);
     }
 
-    if (flags & PROC_FD)
+    if (count > 0 && fds != NULL)
     {
-        file_table_copy(&child->files, &process->files, 0, CONFIG_MAX_FD);
-    }
-    else
-    {
-        if (flags & PROC_FDIN)
+        proc_fd_t* fdsCopy = malloc(sizeof(proc_fd_t) * count);
+        if (fdsCopy == NULL)
         {
-            file_table_copy(&child->files, &process->files, FDIN, FDIN + 1);
+            return ERR(SCHED, NOMEM);
         }
-        if (flags & PROC_FDOUT)
-        {
-            file_table_copy(&child->files, &process->files, FDOUT, FDOUT + 1);
-        }
-        if (flags & PROC_FDERR)
-        {
-            file_table_copy(&child->files, &process->files, FDERR, FDERR + 1);
-        }
-        if (flags & PROC_FDCWD)
-        {
-            file_table_copy(&child->files, &process->files, FDCWD, FDCWD + 1);
-        }
-    }
 
-    if (flags & PROC_ENV)
-    {
-        status = env_copy(&child->env, &process->env);
+        status = space_copy_in(&process->space, fdsCopy, fds, sizeof(proc_fd_t) * count);
         if (IS_ERR(status))
         {
-            loader_strv_free(argvCopy, argc);
+            free(fdsCopy);
             return status;
         }
+
+        for (size_t i = 0; i < count; i++)
+        {
+            file_t* file = file_table_get(&process->files, fdsCopy[i].parent);
+            if (file != NULL)
+            {
+                file_table_set(&child->files, fdsCopy[i].child, file);
+                UNREF(file);
+            }
+        }
+        free(fdsCopy);
+    }
+
+    if (!(flags & PROC_DETACHED))
+    {
+        /// @todo Reimplement procfs.
     }
 
     // Call loader_exec()

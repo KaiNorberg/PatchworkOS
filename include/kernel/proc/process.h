@@ -6,7 +6,6 @@
 #include <kernel/io/ioring.h>
 #include <kernel/ipc/note.h>
 #include <kernel/mem/space.h>
-#include <kernel/proc/env.h>
 #include <kernel/proc/group.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
@@ -80,7 +79,7 @@ typedef struct process
     map_entry_t mapEntry;
     list_entry_t zombieEntry;
     proc_t id;
-    _Atomic(proc_prio_t) priority;
+    _Atomic(prio_t) priority;
     process_result_t result;
     space_t space;
     file_table_t files;
@@ -93,10 +92,9 @@ typedef struct process
     lock_t dyingIrpsLock;
     _Atomic(process_flags_t) flags;
     process_threads_t threads;
-    env_t env;
     clock_t start;
-    char** argv;
-    uint64_t argc;
+    char* args;
+    size_t argsLen;
     group_member_t group;
     rcu_entry_t rcu;
 } process_t;
@@ -118,7 +116,7 @@ extern list_t _processes;
  * @param group A member of the group to add the new process to, or `NULL` to create a new group for the process.
  * @return An appropriate status value.
  */
-status_t process_new(process_t** out, proc_prio_t priority, group_member_t* group);
+status_t process_new(process_t** out, prio_t priority, group_member_t* group);
 
 /**
  * @brief Retrieves the process of the currently running thread.
@@ -227,11 +225,11 @@ static inline uint64_t process_rcu_thread_count(process_t* process)
  * This value is only used for the `/proc/[pid]/cmdline` file.
  *
  * @param process The process to set the cmdline for.
- * @param argv The array of argument strings.
- * @param argc The number of arguments.
+ * @param args The arguments buffer.
+ * @param len The length of the arguments buffer.
  * @return An appropriate status value.
  */
-status_t process_set_cmdline(process_t* process, char** argv, uint64_t argc);
+status_t process_set_cmdline(process_t* process, const char* args, size_t len);
 
 /**
  * @brief Checks if a process has a thread with the specified thread ID.

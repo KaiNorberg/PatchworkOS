@@ -76,10 +76,9 @@ static void process_ctor(void* ptr)
     list_init(&process->threads.list);
     process->threads.count = 0;
     lock_init(&process->threads.lock);
-    env_init(&process->env);
     process->start = 0;
-    process->argv = NULL;
-    process->argc = 0;
+    process->args = NULL;
+    process->argsLen = 0;
     process->group = (group_member_t){0};
     process->rcu = (rcu_entry_t){0};
 }
@@ -92,18 +91,9 @@ static void process_free(process_t* process)
 
     assert(list_is_empty(&process->threads.list));
 
-    if (process->argv != NULL)
+    if (process->args != NULL)
     {
-        for (uint64_t i = 0; i < process->argc; i++)
-        {
-            if (process->argv[i] != NULL)
-            {
-                free(process->argv[i]);
-            }
-        }
-        free((void*)process->argv);
-        process->argv = NULL;
-        process->argc = 0;
+        free(process->args);
     }
 
     group_member_deinit(&process->group);
@@ -115,12 +105,11 @@ static void process_free(process_t* process)
         ioring_ctx_deinit(&process->rings[i]);
     }
     wait_queue_deinit(&process->suspendQueue);
-    env_deinit(&process->env);
 
     rcu_call(&process->rcu, rcu_call_cache_free, process);
 }
 
-status_t process_new(process_t** out, proc_prio_t priority, group_member_t* group)
+status_t process_new(process_t** out, prio_t priority, group_member_t* group)
 {
     if (out == NULL)
     {
@@ -158,10 +147,9 @@ status_t process_new(process_t** out, proc_prio_t priority, group_member_t* grou
     atomic_store(&process->flags, PROCESS_NONE);
     atomic_store(&process->threads.newTid, 0);
     lock_init(&process->threads.lock);
-    env_init(&process->env);
     process->start = clock_uptime();
-    process->argv = NULL;
-    process->argc = 0;
+    process->args = NULL;
+    process->argsLen = 0;
 
     status = group_member_init(&process->group, group);
     if (IS_ERR(status))
@@ -267,63 +255,33 @@ void process_remove(process_t* process)
     UNREF(process);
 }
 
-status_t process_set_cmdline(process_t* process, char** argv, uint64_t argc)
+status_t process_set_cmdline(process_t* process, const char* args, size_t len)
 {
     if (process == NULL)
     {
         return ERR(PROC, INVAL);
     }
 
-    if (argv == NULL || argc == 0)
+    if (args == NULL || len == 0)
     {
-        process->argv = NULL;
-        process->argc = 0;
+        process->args = NULL;
+        process->argsLen = 0;
         return OK;
     }
 
-    char** newArgv = malloc(sizeof(char*) * (argc + 1));
-    if (newArgv == NULL)
+    char* newArgs = malloc(len);
+    if (newArgs == NULL)
     {
         return ERR(PROC, NOMEM);
     }
+    memcpy(newArgs, args, len);
 
-    uint64_t i = 0;
-    for (; i < argc; i++)
+    if (process->args != NULL)
     {
-        if (argv[i] == NULL)
-        {
-            break;
-        }
-        size_t len = strlen(argv[i]) + 1;
-        newArgv[i] = malloc(len);
-        if (newArgv[i] == NULL)
-        {
-            for (uint64_t j = 0; j < i; j++)
-            {
-                free(newArgv[j]);
-            }
-            free(newArgv);
-            return ERR(PROC, NOMEM);
-        }
-        memcpy(newArgv[i], argv[i], len);
+        free(process->args);
     }
-    newArgv[i] = NULL;
-
-    uint64_t newArgc = i;
-    if (process->argv != NULL)
-    {
-        for (uint64_t j = 0; j < process->argc; j++)
-        {
-            if (process->argv[j] != NULL)
-            {
-                free(process->argv[j]);
-            }
-        }
-        free(process->argv);
-    }
-
-    process->argv = newArgv;
-    process->argc = newArgc;
+    process->args = newArgs;
+    process->argsLen = len;
 
     return OK;
 }
@@ -348,7 +306,7 @@ process_t* process_get_kernel(void)
 {
     if (kernelProcess == NULL)
     {
-        status_t status = process_new(&kernelProcess, PROC_PRIO_MAX, NULL);
+        status_t status = process_new(&kernelProcess, PRIO_MAX, NULL);
         if (IS_ERR(status))
         {
             panic(NULL, "Failed to create kernel process %Y", status);
