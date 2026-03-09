@@ -1,4 +1,3 @@
-#include <kernel/init/init.h>
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/idt.h>
@@ -13,6 +12,7 @@
 #include <kernel/fs/tmpfs.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/init/boot_info.h>
+#include <kernel/init/init.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/log/screen.h>
@@ -157,7 +157,6 @@ static void init_finalize(void)
 static inline void init_process_spawn(void)
 {
     LOG_INFO("spawning init process\n");
-
 
     process_t* initProcess;
     status = process_new(&initProcess, PROC_PRIO_MAX_USER, NULL);

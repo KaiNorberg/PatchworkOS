@@ -41,12 +41,12 @@ typedef struct poll_file poll_file_t;
  */
 typedef struct file
 {
-    ref_t ref;    ///< Reference counting.
-    mode_t mode;  ///< Specifies permissions and file behaviour.
-    size_t pos;   ///< The current file position.
-    path_t path;  ///< The opened path.
-    void* data;   ///< Private filesystem data.
-    irp_t* close; ///< Pre-allocated IRP used to to avoid out of memory errors when closing a file.
+    ref_t ref;                ///< Reference counting.
+    mode_t mode;              ///< Specifies permissions and file behaviour.
+    size_t pos;               ///< The current file position.
+    path_t path;              ///< The opened path.
+    void* data;               ///< Private filesystem data.
+    irp_t* close;             ///< Pre-allocated IRP used to to avoid out of memory errors when closing a file.
     binding_table_t bindings; ///< Binding table for this file.
 } file_t;
 

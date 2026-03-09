@@ -36,12 +36,14 @@ extern "C"
 #define FDKEY_256 45  ///< The size of a buffer needed to hold a 256-bit key.
 #define FDKEY_512 89  ///< The size of a buffer needed to hold a 512-bit key.
 
-typedef uint64_t fd_t;      ///< File descriptor type.
-#define FDIN ((fd_t)0)      ///< Standard input file descriptor.
-#define FDOUT ((fd_t)1)     ///< Standard output file descriptor.
-#define FDERR ((fd_t)2)     ///< Standard error file descriptor.
-#define FDCWD ((fd_t)3)     ///< Standard current working directory file descriptor.
-#define FDROOT ((fd_t)4)    ///< Standard root file descriptor.
+typedef uint64_t fd_t;   ///< File descriptor type.
+#define FDIN ((fd_t)0)   ///< Standard input file descriptor.
+#define FDOUT ((fd_t)1)  ///< Standard output file descriptor.
+#define FDERR ((fd_t)2)  ///< Standard error file descriptor.
+#define FDCWD ((fd_t)3)  ///< Standard current working directory file descriptor.
+#define FDROOT ((fd_t)4) ///< Standard root file descriptor.
+#define FDENV \
+    ((fd_t)5) ///< Standard environment file descriptor, should be a directory containing environment variables.
 #define FDNONE ((fd_t) - 1) ///< No file descriptor.
 
 /**

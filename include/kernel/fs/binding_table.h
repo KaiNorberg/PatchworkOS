@@ -54,7 +54,7 @@ typedef struct binding_stack
 
 /**
  * @brief Size of the binding map hash table.
- * 
+ *
  * @note This size was choosen such that the size of a `file_t` is a power of two.
  */
 #define BINDING_MAP_SIZE 49
@@ -65,7 +65,7 @@ typedef struct binding_stack
  */
 typedef struct binding_table
 {
-    list_t stacks; ///< List of binding stacks for fast iteration.
+    list_t stacks;                            ///< List of binding stacks for fast iteration.
     MAP_DEFINE(bindingMap, BINDING_MAP_SIZE); ///< Map used to go from source dentries to binding stacks.
     rwlock_t lock;
 } binding_table_t;
@@ -79,7 +79,7 @@ void binding_table_init(binding_table_t* table);
 
 /**
  * @brief Deinitialize a binding table.
- * 
+ *
  * @param table The binding table to deinitialize.
  */
 void binding_table_deinit(binding_table_t* table);

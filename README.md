@@ -178,7 +178,7 @@ iowrite(fd, IOBUF("Hello, World!", 13), IOCUR, &bytesWritten);
 iodrop(fd);
 ```
 
-We first open the file using `iowalk()`, specifying that the path should be traversed starting from the current working directory (`FDCWD`) and that we want "read and write access" (`:rw`).
+We first open the file using `iowalk()`, specifying that the path should be traversed starting from the current working directory (`FDCWD`) and that we want "read and write access" (`:rw`). We could also specify a payload after a `?` symbol, which would be a raw string passed to the underlying filesystem.
 
 > The term "walk" is used instead of "open" since all operations act on file descriptors and the ability to reach files relative to other files is a key part of the security model. As such, performing any operation on a file should be thought of as "walking" to it and then acting upon it, instead of merely "opening" it, after walking to a file we could walk to another file relative to it.
 
@@ -225,16 +225,14 @@ fd_t out;
 iowalk(FDCWD, FDROOT, "/dev/pipe/clone", &in);
 iowalk(FDCWD, FDROOT, "/dev/pipe/clone", &out);
 
-proc_t proc;
-const char* argv[] = {"/path/to/program", NULL};
-proc_create(&argv, PROC_SUSPENDED, &proc);
-
-iostorep(FDCWD, IOFMT("/proc/%llu/ctl", proc), IOFMT("dup %llu 0; dup %llu 1; close %llu; close %llu; start", in, out, in, out));
+fd_t proc;
+iowalk(FDCWD, FDROOT, "/proc/clone", &proc);
+iostorep(proc, "ctl", IOFMT("give %llu 0; give %llu 1; start /path/to/program", in, out));
 ```
 
 We first create two pipes by opening the special file `/dev/pipe/clone` twice.
 
-Then we create a new process in a suspended state, this means that the process is created but is stuck blocking before it can load its executable, allowing us to set up its standard I/O before it starts executing.
+Then we create a new process using the `proc/clone` special file which gives us a file descriptor to a directory representing the new process. This new process will be completly empty, with no resources inherited from the parent process.
 
 Finally, we use `iostorep()` to write a series of commands to the process's control file taking advantage of the `IOFMT()` helper to allocate a formatted string on the stack. These commands are then parsed and executed by the kernel, allowing us to set up the process's standard I/O and then start it.
 
@@ -246,6 +244,10 @@ fd_t out;
 iowalk(FDCWD, FDROOT, "/dev/pipe/clone", &in);
 iowalk(in, FDROOT, ".", &out);
 ```
+
+### Environment Variables
+
+Environment variables are typically a set of key-value pairs that provide a simple way to configure programs. Intuitively from a everything is a file perspective, the concept of environment variables map cleanly to a directory containing files, where the name of the file is the key and its contents are the value. As such, environment variables are provided via another standard file descriptor, `FDENV`. The directory that `FDENV` points to could either be a real directory, allowing the user to easily manage environment variables via the filesystem, or one could create a tmpfs instace and use that as the `FDENV` directory.
 
 ### Mounting a Filesystem
 
