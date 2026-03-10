@@ -1,16 +1,11 @@
 #include <sys/io.h>
 
-status_t ioqueryp(fd_t cwd, fd_t root, const char* path, file_info_t* info)
+status_t ioreadp(fd_t cwd, fd_t root, const char* path, const iovec_t* vector, size_t count, ssize_t offset, size_t* bytesRead)
 {
-    if (info == NULL)
-    {
-        return ERR(LIBSTD, INVAL);
-    }
-
     iowalkq(cwd, root, path, 0);
     iolink(IOREG0, IOLINK_SOFT);
 
-    ioqueryq(FDNONE, info, 0);
+    ioreadq(FDNONE, vector, count, offset, 0);
     iouse(IOARG0, IOREG0);
     iolink(IOREG_NONE, IOLINK_SOFT);
 
@@ -26,6 +21,14 @@ status_t ioqueryp(fd_t cwd, fd_t root, const char* path, file_info_t* info)
         if (IS_ERR(status))
         {
             return status;
+        }
+        
+        if (cqe.op == IOOP_READ)
+        {
+            if (bytesRead != NULL)
+            {
+                *bytesRead = cqe.result;
+            }
         }
 
         if (!IS_ERR(cqe.status))

@@ -40,7 +40,6 @@ static void _populate_std_descriptors(void)
 void _user_init(void)
 {
     _threading_init();
-    _io_init();
     _populate_std_descriptors();
     _exit_stack_init();
     _files_init();

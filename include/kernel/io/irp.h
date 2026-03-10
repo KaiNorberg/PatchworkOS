@@ -174,7 +174,7 @@ typedef struct irp irp_t;
  *
  * Each operation is expected to place its result into the generic `irp_t::result` field.
  *
- * @see kernel_io_ioring for the ring system.
+ * @see kernel_io_ioring_get for the ring system.
  * @see [Wikipedia](https://en.wikipedia.org/wiki/I/O_request_packet) for more information about IRPs.
  * @see [Microsoft _IRP](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_irp) for information
  * on how Windows NT implements IRPs.

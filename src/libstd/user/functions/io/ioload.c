@@ -3,7 +3,7 @@
 
 #define IOLOAD_CHUNK_SIZE 4096
 
-status_t ioload(fd_t fd, clock_t timeout, char** out, size_t* outLen)
+status_t ioload(fd_t fd, char** out, size_t* outLen)
 {
     if (out == NULL)
     {
@@ -35,7 +35,7 @@ status_t ioload(fd_t fd, clock_t timeout, char** out, size_t* outLen)
         }
 
         size_t bytesRead = 0;
-        status = ioread(fd, IOBUF(buffer + size, capacity - size), IOCUR, timeout, &bytesRead);
+        status = ioread(fd, IOBUF(buffer + size, capacity - size), IOCUR, &bytesRead);
 
         if (IS_ERR(status))
         {

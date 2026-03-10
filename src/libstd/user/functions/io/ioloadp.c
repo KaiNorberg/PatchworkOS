@@ -1,17 +1,17 @@
 #include <sys/io.h>
 
-status_t ioloadp(fd_t fd, const char* path, char** out, size_t* outLen)
+status_t ioloadp(fd_t cwd, fd_t root, const char* path, char** out, size_t* outLen)
 {
     fd_t file;
-    status_t status = iowalk(fd, path, NULL, 0, CLOCKS_NEVER, &file);
+    status_t status = iowalk(cwd, root, path, &file);
     if (IS_ERR(status))
     {
         return status;
     }
 
-    status = ioload(file, CLOCKS_NEVER, out, outLen);
+    status = ioload(file, out, outLen);
 
-    iodrop(file, CLOCKS_NEVER);
+    iodrop(file);
 
     return status;
 }

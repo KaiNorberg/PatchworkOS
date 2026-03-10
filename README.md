@@ -171,14 +171,14 @@ Using the synchronous I/O wrappers in PatchworkOS, we would write:
 
 ```c
 fd_t fd;
-iowalk(FDCWD, FDROOT, "/path/to/file:rw", &fd);
+iowalk(IOPATH("/path/to/file:rw"), &fd);
 
 size_t bytesWritten;
 iowrite(fd, IOBUF("Hello, World!", 13), IOCUR, &bytesWritten);
 iodrop(fd);
 ```
 
-We first open the file using `iowalk()`, specifying that the path should be traversed starting from the current working directory (`FDCWD`) and that we want "read and write access" (`:rw`). We could also specify a payload after a `?` symbol, which would be a raw string passed to the underlying filesystem.
+We first open the file using `iowalk()`, using the `IOPATH()` macro to specify the path. This macro expands to `FDCWD, FDROOT, "/path/to/file:rw"`, specifying the default current working directory and root directory. Within the path we specify "read and write access" (`:rw`). We could also specify a payload after a `?` symbol, which would be a raw string passed to the underlying filesystem.
 
 > The term "walk" is used instead of "open" since all operations act on file descriptors and the ability to reach files relative to other files is a key part of the security model. As such, performing any operation on a file should be thought of as "walking" to it and then acting upon it, instead of merely "opening" it, after walking to a file we could walk to another file relative to it.
 
@@ -190,7 +190,7 @@ Finally, we close the file using `iodrop()`.
 
 > The term "drop" is used instead of "close" to cleanly differentiate between closing a file and closing a file descriptor. We only use the terms "open" and "close" when referring to the underlying file (`file_t`), while using terms such as "grab" and "drop" when referring to file descriptors (`fd_t`).
 
-Additionally, the `iowritet()`, `ioreadt()` and `iowalkt()` functions are provided that expect an additional `clock_t timeout` argument.
+The `iowritet()`, `ioreadt()` and `iowalkt()` functions are also provided that expect an additional `clock_t timeout` argument. There is also an event loop based abstraction around the I/O Ring itself provided via functions with the `q` suffix.
 
 ### Process Creation
 
@@ -222,8 +222,8 @@ Using the synchronous I/O wrappers in PatchworkOS, we would write:
 fd_t in;
 fd_t out;
 
-iowalk(FDCWD, FDROOT, "/dev/pipe/clone", &in);
-iowalk(FDCWD, FDROOT, "/dev/pipe/clone", &out);
+iowalk(IOPATH("/dev/pipe/clone"), &in);
+iowalk(IOPATH("/dev/pipe/clone"), &out);
 
 proc_fd_t fds = {{.parent = in, .child = 0}, {.parent = out, .child = 1}};
 fd_t proc;
@@ -239,7 +239,7 @@ As a side note, we could optimize the pipe creation by walking to the second pip
 ```c
 fd_t in;
 fd_t out;
-iowalk(FDCWD, FDROOT, "/dev/pipe/clone", &in);
+iowalk(IOPATH("/dev/pipe/clone"), &in);
 iowalk(in, FDROOT, ".", &out);
 ```
 
@@ -272,8 +272,8 @@ Then we can use `fsbind()` to bind the root of the filesystem instance into our 
 ```c
 fd_t fs;
 fd_t target;
-iowalk(FDCWD, FDROOT, "/sys/fs/tmpfs/clone", &fs);
-iowalk(FDCWD, FDROOT, "/mnt/tmpfs", &target);
+iowalk(IOPATH("/sys/fs/tmpfs/clone"), &fs);
+iowalk(IOPATH("/mnt/tmpfs"), &target);
 fsbind(FDROOT, target, fs);
 ```
 

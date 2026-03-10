@@ -13,7 +13,7 @@
 
 /**
  * @brief Kernel-side I/O ring interface.
- * @defgroup kernel_io_ioring Kernel-side I/O Ring Interface
+ * @defgroup kernel_io_ioring_get Kernel-side I/O Ring Interface
  * @ingroup kernel_io
  *
  * The I/O ring provides the core of all interfaces in PatchworkOS, where user-space submits Submission Queue Entries

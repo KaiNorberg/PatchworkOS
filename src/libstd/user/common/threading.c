@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <sys/arch.h>
 #include <sys/syscall.h>
+#include <sys/io.h>
 
 static _thread_t thread0;
 
@@ -59,6 +60,7 @@ static void _thread_init(_thread_t* thread)
     thread->err = EOK;
     thread->func = NULL;
     thread->arg = NULL;
+    thread->ring = NULL;
 }
 
 void _threading_init(void)
@@ -122,6 +124,11 @@ _thread_t* _thread_new(thrd_start_t func, void* arg)
 void _thread_free(_thread_t* thread)
 {
     _thread_remove(thread);
+    if (thread->ring != NULL)
+    {
+        ioring_teardown(thread->ring);
+        free(thread->ring);
+    }
     if (thread != &thread0)
     {
         free(thread);
