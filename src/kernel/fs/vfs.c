@@ -1,13 +1,10 @@
-#include <_libstd/MAX_PATH.h>
 #include <kernel/fs/vfs.h>
 
 #include <kernel/cpu/syscall.h>
 #include <kernel/fs/binding.h>
-#include <kernel/fs/cwd.h>
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/file_table.h>
-#include <kernel/fs/key.h>
 #include <kernel/fs/path.h>
 #include <kernel/fs/vnode.h>
 #include <kernel/io/io.h>
@@ -35,138 +32,6 @@
 #include <sys/fs.h>
 #include <sys/list.h>
 
-static status_t vfs_create(path_t* path, const pathname_t* pathname, namespace_t* ns)
-{
-    path_t parent = PATH_EMPTY;
-    path_t target = PATH_EMPTY;
-    status_t status = path_walk_parent_and_child(path, &parent, &target, pathname, ns);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
-    PATH_DEFER(&parent);
-    PATH_DEFER(&target);
-
-    if (!DENTRY_IS_POSITIVE(parent.dentry))
-    {
-        return ERR(VFS, NOENT);
-    }
-
-    vnode_t* dir = parent.dentry->vnode;
-    if (dir->cls == NULL || dir->cls->create == NULL)
-    {
-        return ERR(VFS, PERM);
-    }
-
-    MUTEX_SCOPE(&dir->mutex);
-
-    if (DENTRY_IS_POSITIVE(target.dentry))
-    {
-        if (pathname->mode & MODE_EXCLUSIVE)
-        {
-            return ERR(VFS, EXIST);
-        }
-
-        path_copy(path, &target);
-        return OK;
-    }
-
-    if (!(parent.mount->mode & MODE_WRITE))
-    {
-        return ERR(VFS, ACCESS);
-    }
-
-    assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-    status = dir->cls->create(dir, target.dentry, pathname->mode);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
-    path_copy(path, &target);
-    return OK;
-}
-
-static status_t vfs_open_lookup(path_t* path, const pathname_t* pathname, namespace_t* namespace)
-{
-    if (pathname->mode & MODE_CREATE)
-    {
-        return vfs_create(path, pathname, namespace);
-    }
-
-    return path_walk(path, pathname, namespace);
-}
-
-status_t vfs_open(file_t** out, const path_t* from, const pathname_t* pathname, process_t* process)
-{
-    if (out == NULL || pathname == NULL || process == NULL)
-    {
-        return ERR(VFS, INVAL);
-    }
-
-    namespace_t* ns = process_get_ns(process);
-    if (ns == NULL)
-    {
-        return ERR(VFS, DYING);
-    }
-    UNREF_DEFER(ns);
-
-    path_t path;
-    if (from != NULL)
-    {
-        path = PATH_CREATE(from->mount, from->dentry);
-    }
-    else
-    {
-        path = cwd_get(&process->cwd, ns);
-    }
-    PATH_DEFER(&path);
-
-    status_t status = vfs_open_lookup(&path, pathname, ns);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
-    mode_t mode = pathname->mode;
-    status = mode_check(&mode, path.mount->mode);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
-    if (!DENTRY_IS_POSITIVE(path.dentry))
-    {
-        return ERR(VFS, NOENT);
-    }
-
-    file_t* file = file_new(&path, mode);
-    if (file == NULL)
-    {
-        return ERR(VFS, NOMEM);
-    }
-
-    if (pathname->mode & MODE_TRUNCATE && file->vnode->cls->type == VNODE_REGULAR)
-    {
-        vnode_truncate(file->vnode);
-    }
-
-    if (file->vnode->cls->open != NULL)
-    {
-        assert(rflags_read() & RFLAGS_INTERRUPT_ENABLE);
-        status = file->vnode->cls->open(file);
-        if (IS_ERR(status))
-        {
-            UNREF(file);
-            return status;
-        }
-    }
-
-    *out = file;
-    return OK;
-}
-
 typedef struct
 {
     wait_queue_t wait;
@@ -182,6 +47,77 @@ static status_t vfs_sync_complete(irp_t* irp, void* _ctx)
     ctx->result = irp->result;
     atomic_store(&ctx->done, true);
     wait_unblock(&ctx->wait, WAIT_ALL, OK);
+    return OK;
+}
+
+static status_t vfs_open_done(irp_t* irp, path_state_t* state, file_t* file)
+{
+    UNUSED(state);
+
+    irp->result = (uintptr_t)file;
+    return OK;
+}
+
+status_t vfs_open(file_t** out, const path_t* from, const char* pathname, process_t* process)
+{
+    if (out == NULL || pathname == NULL || process == NULL)
+    {
+        return ERR(VFS, INVAL);
+    }
+
+    file_t* root = file_table_get(&process->files, FDROOT);
+    if (root == NULL)
+    {
+        return ERR(VFS, BADFD);
+    }
+    UNREF_DEFER(root);
+
+    size_t len = strlen(pathname);
+    if (len >= MAX_PATH)
+    {
+        return ERR(VFS, PATHTOOLONG);
+    }
+
+    path_state_t* state = malloc(sizeof(path_state_t));
+    if (state == NULL)
+    {
+        return ERR(VFS, NOMEM);
+    }
+
+    path_state_init(state, from->dentry, from->binding, root, vfs_open_done);
+
+    memcpy(state->path, pathname, len + 1);
+    state->count = len;
+
+    irp_t* irp = irp_new(process, NULL);
+    if (irp == NULL)
+    {
+        free(state);
+        return ERR(VFS, NOMEM);
+    }
+
+    vfs_sync_ctx_t ctx;
+    wait_queue_init(&ctx.wait);
+    atomic_init(&ctx.done, false);
+
+    irp_set_complete(irp, vfs_sync_complete, &ctx);
+
+    status_t status = path_walk(irp, state);
+    if (IS_ERR(status))
+    {
+        irp_complete(irp, status);
+        return status;
+    }
+
+    WAIT_BLOCK(&ctx.wait, atomic_load(&ctx.done));
+
+    status = ctx.status;
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+
+    *out = (file_t*)ctx.result;
     return OK;
 }
 
@@ -211,35 +147,24 @@ status_t vfs_read(file_t* file, void* buffer, size_t count, size_t* out)
         return ERR(VFS, BADFD);
     }
 
-    irp_pool_t* pool = NULL;
-    status_t status = irp_pool_new(&pool, 4, process_current(), NULL);
-    if (IS_ERR(status))
+    irp_t* irp = irp_new(process_current(), NULL);
+    if (irp == NULL)
     {
-        return status;
-    }
-
-    irp_t* irp = NULL;
-    status = irp_get(pool, &irp);
-    if (IS_ERR(status))
-    {
-        irp_pool_free(pool);
-        return status;
+        return ERR(VFS, NOMEM);
     }
 
     mdl_t* mdl;
-    status = irp_get_mdl(irp, &mdl);
+    status_t status = irp_get_mdl(irp, &mdl);
     if (IS_ERR(status))
     {
         irp_complete(irp, status);
-        irp_pool_free(pool);
         return status;
     }
 
-    status = mdl_add(mdl, &irp_get_process(irp)->space, buffer, count);
+    status = mdl_add(mdl, &irp->process->space, buffer, count);
     if (IS_ERR(status))
     {
         irp_complete(irp, status);
-        irp_pool_free(pool);
         return status;
     }
 
@@ -265,35 +190,24 @@ status_t vfs_write(file_t* file, const void* buffer, size_t count, size_t* out)
         return ERR(VFS, BADFD);
     }
 
-    irp_pool_t* pool = NULL;
-    status_t status = irp_pool_new(&pool, 4, process_current(), NULL);
-    if (IS_ERR(status))
+    irp_t* irp = irp_new(process_current(), NULL);
+    if (irp == NULL)
     {
-        return status;
-    }
-
-    irp_t* irp = NULL;
-    status = irp_get(pool, &irp);
-    if (IS_ERR(status))
-    {
-        irp_pool_free(pool);
-        return status;
+        return ERR(VFS, NOMEM);
     }
 
     mdl_t* mdl;
-    status = irp_get_mdl(irp, &mdl);
+    status_t status = irp_get_mdl(irp, &mdl);
     if (IS_ERR(status))
     {
         irp_complete(irp, status);
-        irp_pool_free(pool);
         return status;
     }
 
-    status = mdl_add(mdl, &irp_get_process(irp)->space, buffer, count);
+    status = mdl_add(mdl, &irp->process->space, buffer, count);
     if (IS_ERR(status))
     {
         irp_complete(irp, status);
-        irp_pool_free(pool);
         return status;
     }
 
@@ -314,24 +228,15 @@ status_t vfs_seek(file_t* file, ssize_t offset, ioseek_t origin, size_t* out)
         return ERR(VFS, INVAL);
     }
 
-    irp_pool_t* pool = NULL;
-    status_t status = irp_pool_new(&pool, 4, process_current(), NULL);
-    if (IS_ERR(status))
+    irp_t* irp = irp_new(process_current(), NULL);
+    if (irp == NULL)
     {
-        return status;
-    }
-
-    irp_t* irp = NULL;
-    status = irp_get(pool, &irp);
-    if (IS_ERR(status))
-    {
-        irp_pool_free(pool);
-        return status;
+        return ERR(VFS, NOMEM);
     }
 
     irp_prep_seek(irp, offset, origin);
     uint64_t result = 0;
-    status = vfs_run_sync(irp, file, &result);
+    status_t status = vfs_run_sync(irp, file, &result);
     if (out != NULL)
     {
         *out = result;

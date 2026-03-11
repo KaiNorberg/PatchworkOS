@@ -485,7 +485,7 @@ static status_t procfs_root_lookup(irp_t* irp)
             continue;
         }
 
-        file_number_t number = (i << 1) | (process->id << 8) + 1;
+        file_number_t number = ((i << 1) | (process->id << 8)) + 1;
         vnode_t* vnode = vnode_new(frame->vnode->volume, rootEntries[i].cls, number);
         if (vnode == NULL)
         {

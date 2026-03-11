@@ -40,6 +40,15 @@ static vnode_class_t rootClass = {
         },
 };
 
+static vnode_class_t dirClass = {
+    .name = "fs dir",
+    .type = FILE_TYPE_DIRECTORY,
+    .handlers =
+        {
+            VNODE_DIR_HANDLERS(),
+        },
+};
+
 status_t filesystem_register(filesystem_t* fs)
 {
     if (fs == NULL || fs->name == NULL || fs->clone == NULL)
@@ -49,14 +58,56 @@ status_t filesystem_register(filesystem_t* fs)
 
     if (root == NULL)
     {
-        root = devfs_dentry_new(NULL, "fs", &rootClass, fs);
+        root = sysfs_dentry_new(NULL, "fs", &rootClass, NULL);
         if (root == NULL)
         {
             return ERR(FS, NOMEM);
         }
     }
 
-    fs->interna
+    fs->internal.dir = sysfs_dentry_new(root, fs->name, &dirClass, fs);
+    if (fs->internal.dir == NULL)
+    {
+        return ERR(FS, NOMEM);
+    }
+
+    fs->internal.clone = sysfs_dentry_new(fs->internal.dir, "clone", fs->clone, fs);
+    if (fs->internal.clone == NULL)
+    {
+        UNREF(fs->internal.dir);
+        fs->internal.dir = NULL;
+        return ERR(FS, NOMEM);
+    }
+
+    return OK;
+}
+
+status_t filesystem_unregister(filesystem_t* fs)
+{
+    if (fs == NULL)
+    {
+        return ERR(FS, INVAL);
+    }
+
+    if (fs->internal.clone != NULL)
+    {
+        UNREF(fs->internal.clone);
+        fs->internal.clone = NULL;
+    }
+
+    if (fs->internal.dir != NULL)
+    {
+        UNREF(fs->internal.dir);
+        fs->internal.dir = NULL;
+    }
+
+    return OK;
+}
+
+file_volume_t volume_new(void)
+{
+    static _Atomic(file_volume_t) nextId = ATOMIC_VAR_INIT(1);
+    return atomic_fetch_add(&nextId, 1);
 }
 
 bool options_next(const char** iter, char* buffer, size_t size, char** key, char** value)

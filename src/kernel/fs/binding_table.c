@@ -159,7 +159,7 @@ static void binding_table_remove(binding_table_t* table, binding_t* binding)
     }
 }
 
-static void binding_table_free(binding_table_t* table)
+void binding_table_deinit(binding_table_t* table)
 {
     if (table == NULL)
     {
@@ -175,23 +175,13 @@ static void binding_table_free(binding_table_t* table)
     }
 
     rwlock_write_release(&table->lock);
-
-    free(table);
 }
 
-binding_table_t* binding_table_new(void)
+void binding_table_init(binding_table_t* table)
 {
-    binding_table_t* table = malloc(sizeof(binding_table_t));
-    if (table == NULL)
-    {
-        return NULL;
-    }
     list_init(&table->stacks);
     MAP_DEFINE_INIT(table->bindingMap, binding_map_cmp);
-
     rwlock_init(&table->lock);
-
-    return table;
 }
 
 status_t binding_table_copy(binding_table_t* dest, binding_table_t* src)

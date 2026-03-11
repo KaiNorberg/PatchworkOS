@@ -33,7 +33,7 @@
  * @brief Open a file relative to another path.
  *
  * @param out Output pointer for the opened file.
- * @param from The path to open the file relative to, or `NULL` to start from root.
+ * @param from The path to open the file relative to.
  * @param pathname The pathname of the file to open.
  * @param process The process opening the file.
  * @return An appropriate status value.

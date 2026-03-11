@@ -508,15 +508,14 @@ static status_t ramfs_load_file(tmpfs_volume_t* volume, dentry_t* parent, const 
     }
     UNREF_DEFER(vnode);
 
-    tmpfs_vnode_t* tvnode = VNODE_GET(vnode, tmpfs_vnode_t);
-    tvnode->size = in->size;
-    tvnode->capacity = in->size;
-    tvnode->buffer = malloc(in->size);
-    if (tvnode->buffer == NULL)
+    vnode->size = in->size;
+    vnode->capacity = in->size;
+    vnode->buffer = malloc(in->size);
+    if (vnode->buffer == NULL)
     {
         return ERR(FS, NOMEM);
     }
-    memcpy(tvnode->buffer, in->data, in->size);
+    memcpy(vnode->buffer, in->data, in->size);
 
     dentry_make_positive(dentry, &vnode->vnode);
 

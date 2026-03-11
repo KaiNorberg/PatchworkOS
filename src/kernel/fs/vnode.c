@@ -174,7 +174,7 @@ file_number_t vnode_hash(file_number_t parent, const char* name)
         hash *= prime;
     }
 
-    for (size_t i = 0; i < name[i] != '\0'; i++)
+    for (size_t i = 0; name[i] != '\0'; i++)
     {
         hash ^= (uint8_t)name[i];
         hash *= prime;
