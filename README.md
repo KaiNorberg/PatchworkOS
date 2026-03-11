@@ -66,7 +66,7 @@ Will this project ever reach its goals? Probably not, but that’s not the point
 
 ## Philosophy
 
-There are a few concepts that form the core of PatchworkOS, "everything is a file", asynchronous I/O and capability based security.
+There are a few concepts that form the core of PatchworkOS, "everything is a file", asynchronous I/O, capability based security and others.
 
 ### Everything is a File
 
@@ -144,6 +144,16 @@ Second, it is used by a process to provide the proof discussed in the `..` secti
 Finally, the root file descriptor stores bindings. Within PatchworkOS, there is no namespace or per-process mountpoints. Instead, each file object stores a table of bindings. These bindings act as one would expect within POSIX, allowing a file to appear at a different path than its actual location within the filesystem hierarchy. When a bind is performed, that bind will only apply when walking paths from the file object whose binding table the bind was added to.
 
 In this system one can consider binding a file to be nothing more than a convenient way to pass multiple capabilities (file descriptors) within a single file descriptor, by binding paths within its binding table. It does also allow all the expected benefits of bindings or mounts from POSIX-like systems but from a different perspective.
+
+### Threads, Processes and Jobs
+
+There are three structures related to execution in PatchworkOS: threads, processes, and jobs. 
+
+A thread is the smallest unit of execution, representing a single flow of control within a process. 
+
+A process is a collection of threads that share resources such the address space and file descriptors.
+
+A job is a collection of processes, this structure allows notes to be sent to all processes in the job and is also used for security within procfs.
 
 ### Standard Library
 
