@@ -2,8 +2,8 @@
 
 #include <stdlib.h>
 #include <sys/arch.h>
-#include <sys/syscall.h>
 #include <sys/io.h>
+#include <sys/syscall.h>
 
 static _thread_t thread0;
 

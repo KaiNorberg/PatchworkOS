@@ -35,8 +35,8 @@ static void reaper_thread(void* arg)
         {
             process_t* process = CONTAINER_OF(list_pop_front(&zombies), process_t, zombieEntry);
 
-            RCU_READ_SCOPE();
-            if (process_rcu_thread_count(process) > 0)
+            LOCK_SCOPE(&process->threads.lock);
+            if (process->threads.count > 0)
             {
                 list_push_back(&zombies, &process->zombieEntry);
                 continue;

@@ -754,7 +754,7 @@ static inline void ioprep_flush(iosqe_t* iosqe, iosqe_flags_t flags, clock_t tim
 
 /**
  * @brief Internal helper to get the I/O ring for the current thread.
- * 
+ *
  * @return The I/O ring for the current thread.
  */
 ioring_t* _ioring_get(void);
@@ -883,7 +883,8 @@ static inline void ioreadq(fd_t fd, const iovec_t* vector, size_t count, ssize_t
  * @param timeout The timeout for the operation.
  * @param data User data to associate with the operation.
  */
-static inline void ioreadqt(fd_t fd, const iovec_t* vector, size_t count, ssize_t offset, clock_t timeout, uint64_t data)
+static inline void ioreadqt(fd_t fd, const iovec_t* vector, size_t count, ssize_t offset, clock_t timeout,
+    uint64_t data)
 {
     ioring_t* ring = _ioring_get();
     iosqe_t* sqe = _iosqe_get(ring);
@@ -918,7 +919,8 @@ static inline void iowriteq(fd_t fd, const iovec_t* vector, size_t count, ssize_
  * @param timeout The timeout for the operation.
  * @param data User data to associate with the operation.
  */
-static inline void iowriteqt(fd_t fd, const iovec_t* vector, size_t count, ssize_t offset, clock_t timeout, uint64_t data)
+static inline void iowriteqt(fd_t fd, const iovec_t* vector, size_t count, ssize_t offset, clock_t timeout,
+    uint64_t data)
 {
     ioring_t* ring = _ioring_get();
     iosqe_t* sqe = _iosqe_get(ring);
@@ -1396,7 +1398,8 @@ status_t iostore(fd_t fd, const char* in, size_t* bytesWritten);
  * @param bytesRead Output pointer for the number of bytes read.
  * @return An appropriate status value.
  */
-status_t ioreadp(fd_t cwd, fd_t root, const char* path, const iovec_t* vector, size_t count, ssize_t offset, size_t* bytesRead);
+status_t ioreadp(fd_t cwd, fd_t root, const char* path, const iovec_t* vector, size_t count, ssize_t offset,
+    size_t* bytesRead);
 
 /**
  * @brief Synchronous wrapper for writing to a file directly using a path.
@@ -1413,7 +1416,8 @@ status_t ioreadp(fd_t cwd, fd_t root, const char* path, const iovec_t* vector, s
  * @param bytesWritten Output pointer for the number of bytes written.
  * @return An appropriate status value.
  */
-status_t iowritep(fd_t cwd, fd_t root, const char* path, const iovec_t* vector, size_t count, ssize_t offset, size_t* bytesWritten);
+status_t iowritep(fd_t cwd, fd_t root, const char* path, const iovec_t* vector, size_t count, ssize_t offset,
+    size_t* bytesWritten);
 
 /**
  * @brief Synchronous wrapper for reading a file directly into a null-terminated string using a path.

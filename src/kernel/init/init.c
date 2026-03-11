@@ -20,7 +20,7 @@
 #include <kernel/mem/vmm.h>
 #include <kernel/module/module.h>
 #include <kernel/module/symbol.h>
-#include <kernel/proc/group.h>
+#include <kernel/proc/job.h>
 #include <kernel/proc/process.h>
 #include <kernel/proc/reaper.h>
 #include <kernel/sched/loader.h>
@@ -159,7 +159,7 @@ static inline void init_process_spawn(void)
     LOG_INFO("spawning init process\n");
 
     process_t* initProcess;
-    status = process_new(&initProcess, PRIO_MAX_USER, NULL);
+    status_t status = process_new(&initProcess, PRIO_MAX_USER, NULL);
     if (IS_ERR(status))
     {
         panic(NULL, "Failed to create init process");
@@ -173,8 +173,8 @@ static inline void init_process_spawn(void)
         panic(NULL, "Failed to create init thread");
     }
 
-    char* argv[] = {"/sbin/init", NULL};
-    status = process_set_cmdline(initProcess, argv, 1);
+    char* args = "/sbin/init";
+    status = process_set_cmdline(initProcess, args, strlen(args));
     if (IS_ERR(status))
     {
         panic(NULL, "Failed to set init process cmdline");

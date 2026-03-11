@@ -11,6 +11,7 @@
 #include <kernel/sched/thread.h>
 
 #include <kernel/sched/wait.h>
+#include <kernel/utils/ref.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/elf.h>
@@ -168,7 +169,8 @@ static void loader_entry(void)
     loader_exec();
 }
 
-SYSCALL_DEFINE(SYS_PROC_CREATE, fd_t* proc, const char* args, size_t argsLen, const proc_fd_t* fds, size_t count, prio_t priority, proc_flags_t flags)
+SYSCALL_DEFINE(SYS_PROC_CREATE, const char* args, size_t argsLen, const proc_fd_t* fds, size_t count, prio_t priority,
+    proc_flags_t flags)
 {
     if (args == NULL || argsLen == 0)
     {
@@ -180,8 +182,34 @@ SYSCALL_DEFINE(SYS_PROC_CREATE, fd_t* proc, const char* args, size_t argsLen, co
     process_t* process = thread->process;
     assert(process != NULL);
 
+    job_t* job;
+    if (flags & PROC_INHERIT_JOB)
+    {
+        job = job_get(&process->job);
+        if (job == NULL)
+        {
+            return ERR(SCHED, INVAL);
+        }
+    }
+    else
+    {
+        job_t* parent = job_get(&process->job);
+        if (parent == NULL)
+        {
+            return ERR(SCHED, INVAL);
+        }
+        UNREF_DEFER(parent);
+
+        status_t status = job_new(&job, parent);
+        if (IS_ERR(status))
+        {
+            return status;
+        }
+    }
+    UNREF_DEFER(job);
+
     process_t* child;
-    status_t status = process_new(&child, priority, (flags & PROC_GROUP) ? &process->group : NULL);
+    status_t status = process_new(&child, priority, job);
     if (IS_ERR(status))
     {
         return status;
@@ -245,11 +273,6 @@ SYSCALL_DEFINE(SYS_PROC_CREATE, fd_t* proc, const char* args, size_t argsLen, co
             }
         }
         free(fdsCopy);
-    }
-
-    if (!(flags & PROC_DETACHED))
-    {
-        /// @todo Reimplement procfs.
     }
 
     // Call loader_exec()

@@ -80,7 +80,6 @@ typedef struct thread
     note_queue_t notes;
     syscall_ctx_t syscall;
     perf_thread_ctx_t perf;
-    rcu_entry_t rcu;
     uintptr_t fsBase; ///< The FS base address for the thread.
     /**
      * The threads interrupt frame is used to save the values in the CPU registers such that the scheduler can continue

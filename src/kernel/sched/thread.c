@@ -36,7 +36,6 @@ static void thread_ctor(void* ptr)
     thread->notes = (note_queue_t){0};
     thread->syscall = (syscall_ctx_t){0};
     thread->perf = (perf_thread_ctx_t){0};
-    thread->rcu = (rcu_entry_t){0};
     thread->fsBase = 0;
     memset_s(&thread->frame, sizeof(interrupt_frame_t), 0, sizeof(interrupt_frame_t));
 }
@@ -112,7 +111,7 @@ void thread_free(thread_t* thread)
 
     simd_ctx_deinit(&thread->simd);
 
-    rcu_call(&thread->rcu, rcu_call_cache_free, thread);
+    cache_free(thread);
 }
 
 status_t thread_kernel_create(thread_kernel_entry_t entry, void* arg, thrd_t* out)

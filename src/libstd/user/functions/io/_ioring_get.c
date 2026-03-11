@@ -2,8 +2,8 @@
 
 #include <stdlib.h>
 #include <sys/fs.h>
-#include <sys/proc.h>
 #include <sys/io.h>
+#include <sys/proc.h>
 #include <threads.h>
 
 ioring_t* _ioring_get(void)

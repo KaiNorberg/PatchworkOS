@@ -16,7 +16,7 @@ status_t ioremovep(fd_t cwd, fd_t root, const char* path)
     iocqe_t cqe = {0};
 
     for (int i = 0; i < 3; i++)
-    {   
+    {
         status = iowait(&cqe);
         if (IS_ERR(status))
         {

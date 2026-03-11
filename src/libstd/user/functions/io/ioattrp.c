@@ -21,7 +21,7 @@ status_t ioattrp(fd_t cwd, fd_t root, const char* path, file_attr_t attr, uint64
     iocqe_t cqe = {0};
 
     for (int i = 0; i < 3; i++)
-    {   
+    {
         status = iowait(&cqe);
         if (IS_ERR(status))
         {
@@ -32,7 +32,7 @@ status_t ioattrp(fd_t cwd, fd_t root, const char* path, file_attr_t attr, uint64
         {
             *value = cqe.result;
         }
-        
+
         if (!IS_ERR(cqe.status))
         {
             status = cqe.status;

@@ -6,7 +6,7 @@
 #include <kernel/io/ioring.h>
 #include <kernel/ipc/note.h>
 #include <kernel/mem/space.h>
-#include <kernel/proc/group.h>
+#include <kernel/proc/job.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/wait.h>
@@ -95,7 +95,7 @@ typedef struct process
     clock_t start;
     char* args;
     size_t argsLen;
-    group_member_t group;
+    job_member_t job;
     rcu_entry_t rcu;
 } process_t;
 
@@ -113,10 +113,10 @@ extern list_t _processes;
  *
  * @param out Output pointer to store the new process.
  * @param priority The priority of the new process.
- * @param group A member of the group to add the new process to, or `NULL` to create a new group for the process.
+ * @param job The job to add the new process to.
  * @return An appropriate status value.
  */
-status_t process_new(process_t** out, prio_t priority, group_member_t* group);
+status_t process_new(process_t** out, prio_t priority, job_t* job);
 
 /**
  * @brief Retrieves the process of the currently running thread.
@@ -173,32 +173,6 @@ void process_kill(process_t* process, const char* result);
  * @param process The process to remove.
  */
 void process_remove(process_t* process);
-
-/**
- * @brief Gets the first thread of a process.
- *
- * @warning Must be used within a RCU read-side critical section.
- *
- * @param process The process to get the first thread of.
- * @return The first thread of the process, or `NULL` if the process has no threads.
- */
-static inline thread_t* process_rcu_first_thread(process_t* process)
-{
-    return CONTAINER_OF_SAFE(list_first(&process->threads.list), thread_t, processEntry);
-}
-
-/**
- * @brief Gets the amount of threads in a process.
- *
- * @warning Must be used within a RCU read-side critical section.
- *
- * @param process The process to get the thread amount of.
- * @return The amount of threads in the process.
- */
-static inline uint64_t process_rcu_thread_count(process_t* process)
-{
-    return process->threads.count;
-}
 
 /**
  * @brief Macro to iterate over all threads in a process.

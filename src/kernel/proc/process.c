@@ -11,7 +11,7 @@
 #include <kernel/log/panic.h>
 #include <kernel/mem/cache.h>
 #include <kernel/mem/vmm.h>
-#include <kernel/proc/group.h>
+#include <kernel/proc/job.h>
 #include <kernel/proc/process.h>
 #include <kernel/proc/reaper.h>
 #include <kernel/sched/clock.h>
@@ -79,7 +79,7 @@ static void process_ctor(void* ptr)
     process->start = 0;
     process->args = NULL;
     process->argsLen = 0;
-    process->group = (group_member_t){0};
+    process->job = (job_member_t){0};
     process->rcu = (rcu_entry_t){0};
 }
 
@@ -96,7 +96,7 @@ static void process_free(process_t* process)
         free(process->args);
     }
 
-    group_member_deinit(&process->group);
+    job_member_deinit(&process->job);
     file_table_deinit(&process->files);
     space_deinit(&process->space);
     sync_ctl_deinit(&process->sync);
@@ -109,9 +109,9 @@ static void process_free(process_t* process)
     rcu_call(&process->rcu, rcu_call_cache_free, process);
 }
 
-status_t process_new(process_t** out, prio_t priority, group_member_t* group)
+status_t process_new(process_t** out, prio_t priority, job_t* job)
 {
-    if (out == NULL)
+    if (out == NULL || job == NULL)
     {
         return ERR(PROC, INVAL);
     }
@@ -151,12 +151,8 @@ status_t process_new(process_t** out, prio_t priority, group_member_t* group)
     process->args = NULL;
     process->argsLen = 0;
 
-    status = group_member_init(&process->group, group);
-    if (IS_ERR(status))
-    {
-        process_free(process);
-        return status;
-    }
+    job_member_init(&process->job);
+    job_join(job, &process->job);
 
     lock_acquire(&processesLock);
     map_insert(&pidMap, &process->mapEntry, hash_uint64(process->id));
@@ -215,7 +211,7 @@ void process_kill(process_t* process, const char* result)
 
     file_table_drop_all(&process->files);
 
-    group_remove(&process->group);
+    job_leave(&process->job);
 
     lock_acquire(&process->dyingIrpsLock);
     while (!list_is_empty(&process->dyingIrps))

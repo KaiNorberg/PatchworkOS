@@ -25,21 +25,7 @@
 #include <sys/list.h>
 #include <sys/status.h>
 
-static bool procfs_access_hide(dentry_t* dentry)
-{
-    process_t* current = process_current();
-    assert(current != NULL);
-    process_t* process = dentry->vnode->data;
-    assert(process != NULL);
-
-    namespace_t* currentNs = process_get_ns(current);
-    UNREF_DEFER(currentNs);
-
-    namespace_t* processNs = process_get_ns(process);
-    UNREF_DEFER(processNs);
-
-    return namespace_accessible(currentNs, processNs);
-}
+static dentry_t* root = NULL;
 
 static status_t procfs_prio_read(irp_t* irp)
 {
@@ -85,9 +71,9 @@ static status_t procfs_prio_write(irp_t* irp)
 static vnode_class_t prioClass = {
     .name = "procfs prio",
     .type = FILE_TYPE_SYSTEM,
-    .access = procfs_access_hide,
     .handlers =
         {
+            VNODE_HANDLERS(),
             [IRP_MJ_READ] = procfs_prio_read,
             [IRP_MJ_WRITE] = procfs_prio_write,
         },
@@ -98,48 +84,24 @@ static status_t procfs_cmdline_read(irp_t* irp)
     irp_frame_t* frame = irp_current(irp);
     process_t* process = frame->vnode->data;
 
-    if (process->argv == NULL || process->argc == 0)
+    if (process->args == NULL || process->argsLen == 0)
     {
         irp->result = 0;
         return OK;
     }
 
-    size_t totalSize = 0;
-    for (uint64_t i = 0; i < process->argc; i++)
-    {
-        totalSize += strlen(process->argv[i]) + 1;
-    }
-
-    if (totalSize == 0)
-    {
-        irp->result = 0;
-        return OK;
-    }
-
-    char* cmdline = malloc(totalSize);
-    if (cmdline == NULL)
-    {
-        return ERR(FS, NOMEM);
-    }
-
-    char* dest = cmdline;
-    for (uint64_t i = 0; i < process->argc; i++)
-    {
-        uint64_t len = strlen(process->argv[i]) + 1;
-        memcpy(dest, process->argv[i], len);
-        dest += len;
-    }
-
-    status_t status = mdl_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, cmdline, totalSize);
-    free(cmdline);
-    return status;
+    return mdl_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, process->args, process->argsLen);
 }
 
-static vnode_class_t cmdlineClass = {.name = "procfs cmdline",
+static vnode_class_t cmdlineClass = {
+    .name = "procfs cmdline",
     .type = FILE_TYPE_SYSTEM,
-    .handlers = {
-        [IRP_MJ_READ] = procfs_cmdline_read,
-    }};
+    .handlers =
+        {
+            VNODE_HANDLERS(),
+            [IRP_MJ_READ] = procfs_cmdline_read,
+        },
+};
 
 static status_t procfs_note_write(irp_t* irp)
 {
@@ -166,117 +128,15 @@ static status_t procfs_note_write(irp_t* irp)
         return status;
     }
     string[bytesWritten] = '\0';
-
-    RCU_READ_SCOPE();
-
-    thread_t* thread = process_rcu_first_thread(process);
-    if (thread == NULL)
-    {
-        return ERR(FS, INVAL);
-    }
-
-    status = thread_send_note(thread, string);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
-    irp->result = bytesWritten;
-    return OK;
 }
 
-static vnode_class_t noteClass = {.name = "procfs note",
+static vnode_class_t noteClass = {
+    .name = "procfs note",
     .type = FILE_TYPE_SYSTEM,
-    .access = procfs_access_hide,
-    .handlers = {
-        [IRP_MJ_WRITE] = procfs_note_write,
-    }};
-
-static status_t procfs_notegroup_write(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    process_t* process = frame->vnode->data;
-
-    size_t count = mdl_size(frame->write.buffer);
-    if (count == 0)
-    {
-        irp->result = 0;
-        return OK;
-    }
-
-    if (count >= NOTE_MAX)
-    {
-        return ERR(FS, INVAL);
-    }
-
-    char string[NOTE_MAX];
-    size_t bytesWritten;
-    status_t status = mdl_copy_out(frame->write.buffer, SIZE_MAX, 0, &bytesWritten, string, NOTE_MAX - 1);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-    string[bytesWritten] = '\0';
-
-    status = group_send_note(&process->group, string);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
-    irp->result = bytesWritten;
-    return OK;
-}
-
-static vnode_class_t notegroupClass = {
-    .name = "procfs notegroup",
-    .type = FILE_TYPE_SYSTEM,
-    .access = procfs_access_hide,
     .handlers =
         {
-            [IRP_MJ_WRITE] = procfs_notegroup_write,
-        },
-};
-
-static status_t procfs_group_open(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    file_t* file = frame->file;
-    process_t* process = frame->vnode->data;
-
-    group_t* group = group_get(&process->group);
-    if (group == NULL)
-    {
-        return ERR(FS, NOGROUP);
-    }
-
-    file->data = group;
-    return OK;
-}
-
-static status_t procfs_group_close(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    file_t* file = frame->file;
-    group_t* group = file->data;
-    if (group == NULL)
-    {
-        return OK;
-    }
-
-    UNREF(group);
-    file->data = NULL;
-    return OK;
-}
-
-static vnode_class_t groupClass = {
-    .name = "procfs group",
-    .type = FILE_TYPE_SYSTEM,
-    .access = procfs_access_hide,
-    .handlers =
-        {
-            [IRP_MJ_OPEN] = procfs_group_open,
-            [IRP_MJ_CLOSE] = procfs_group_close,
+            VNODE_HANDLERS(),
+            [IRP_MJ_WRITE] = procfs_note_write,
         },
 };
 
@@ -293,6 +153,7 @@ static status_t procfs_pid_read(irp_t* irp)
 static vnode_class_t pidClass = {.name = "procfs pid",
     .type = FILE_TYPE_SYSTEM,
     .handlers = {
+        VNODE_HANDLERS(),
         [IRP_MJ_READ] = procfs_pid_read,
     }};
 
@@ -347,6 +208,7 @@ static status_t procfs_wait_poll(irp_t* irp)
 static vnode_class_t waitClass = {.name = "procfs wait",
     .type = FILE_TYPE_SYSTEM,
     .handlers = {
+        VNODE_HANDLERS(),
         [IRP_MJ_READ] = procfs_wait_read,
         [IRP_MJ_POLL] = procfs_wait_poll,
     }};
@@ -357,9 +219,9 @@ static status_t procfs_perf_read(irp_t* irp)
     process_t* process = frame->vnode->data;
     size_t userPages = space_user_page_count(&process->space);
 
-    RCU_READ_SCOPE();
-
-    size_t threadCount = process_rcu_thread_count(process);
+    lock_acquire(&process->threads.lock);
+    size_t threadCount = process->threads.count;
+    lock_release(&process->threads.lock);
 
     clock_t userClocks = atomic_load(&process->perf.userClocks);
     clock_t kernelClocks = atomic_load(&process->perf.kernelClocks);
@@ -382,48 +244,8 @@ static vnode_class_t perfClass = {
     .type = FILE_TYPE_SYSTEM,
     .handlers =
         {
+            VNODE_HANDLERS(),
             [IRP_MJ_READ] = procfs_perf_read,
-        },
-};
-
-static status_t procfs_ns_open(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    file_t* file = frame->file;
-    process_t* process = frame->vnode->data;
-
-    namespace_t* ns = process_get_ns(process);
-    if (ns == NULL)
-    {
-        return ERR(FS, NOENT);
-    }
-
-    file->data = ns;
-    return OK;
-}
-
-static status_t procfs_ns_close(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    file_t* file = frame->file;
-    if (file->data == NULL)
-    {
-        return OK;
-    }
-
-    UNREF(file->data);
-    file->data = NULL;
-    return OK;
-}
-
-static vnode_class_t nsClass = {
-    .name = "procfs ns",
-    .type = FILE_TYPE_SYSTEM,
-    .access = procfs_access_hide,
-    .handlers =
-        {
-            [IRP_MJ_OPEN] = procfs_ns_open,
-            [IRP_MJ_CLOSE] = procfs_ns_close,
         },
 };
 
@@ -478,247 +300,20 @@ static status_t procfs_ctl_control(irp_t* irp)
         process_kill(process, args);
         return OK;
     }
-    case IOCMD('s', 'e', 't', 'n', 's'):
-    {
-        fd_t fd;
-        if (sscanf(args, "%lld", &fd) != 1)
-        {
-            return ERR(FS, INVAL);
-        }
-
-        file_t* nsFile = file_table_get(&process->files, fd);
-        if (nsFile == NULL)
-        {
-            return ERR(FS, BADFD);
-        }
-        UNREF_DEFER(nsFile);
-
-        if (nsFile->path.dentry->vnode->cls != &nsClass)
-        {
-            return ERR(FS, INVAL);
-        }
-
-        namespace_t* ns = nsFile->data;
-        if (ns == NULL)
-        {
-            return ERR(FS, INVAL);
-        }
-
-        process_set_ns(process, ns);
-        return OK;
-    }
-    case IOCMD('s', 'e', 't', 'g', 'r', 'o', 'u', 'p'):
-    {
-        fd_t fd;
-        if (sscanf(args, "%lld", &fd) != 1)
-        {
-            return ERR(FS, INVAL);
-        }
-
-        file_t* groupFile = file_table_get(&process->files, fd);
-        if (groupFile == NULL)
-        {
-            return ERR(FS, BADFD);
-        }
-        UNREF_DEFER(groupFile);
-
-        if (groupFile->path.dentry->vnode->cls != &groupClass)
-        {
-            return ERR(FS, INVAL);
-        }
-
-        group_t* target = groupFile->data;
-        if (target == NULL)
-        {
-            return ERR(FS, INVAL);
-        }
-
-        group_add(target, &process->group);
-        return OK;
-    }
     default:
         return ERR(FS, INVAL_CTL);
     }
 }
 
-static vnode_class_t ctlClass = {.name = "procfs ctl",
+static vnode_class_t ctlClass = {
+    .name = "procfs ctl",
     .type = FILE_TYPE_SYSTEM,
-    .access = procfs_access_hide,
-    .handlers = {
-        [IRP_MJ_WRITE] = ctl_generic_write,
-        [IRP_MJ_CONTROL] = procfs_ctl_control,
-    }};
-
-static status_t procfs_env_read(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    process_t* process = frame->vnode->data;
-    file_t* file = frame->file;
-
-    const char* value = env_get(&process->env, file->path.dentry->name);
-    if (value == NULL)
-    {
-        irp->result = 0;
-        return OK;
-    }
-
-    size_t length = strlen(value);
-    return mdl_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, value, length);
-}
-
-static status_t procfs_env_write(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    process_t* process = frame->vnode->data;
-    file_t* file = frame->file;
-
-    char value[MAX_NAME];
-    size_t bytesWritten;
-    status_t status = mdl_copy_out(frame->write.buffer, SIZE_MAX, 0, &bytesWritten, value, MAX_NAME - 1);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-    value[bytesWritten] = '\0';
-
-    status = env_set(&process->env, file->path.dentry->name, value);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
-    irp->result = bytesWritten;
-    return OK;
-}
-
-static vnode_class_t envFileClass = {.name = "procfs env file",
-    .type = FILE_TYPE_SYSTEM,
-    .handlers = {
-        [IRP_MJ_READ] = procfs_env_read,
-        [IRP_MJ_WRITE] = procfs_env_write,
-    }};
-
-static status_t procfs_env_lookup(vnode_t* dir, dentry_t* target)
-{
-    process_t* process = dir->data;
-    assert(process != NULL);
-
-    if (env_get(&process->env, target->name) == NULL)
-    {
-        return INFO(FS, NEGATIVE);
-    }
-
-    vnode_t* vnode = vnode_new(dir->volume, &envFileClass);
-    if (vnode == NULL)
-    {
-        return ERR(FS, NOMEM);
-    }
-    UNREF_DEFER(vnode);
-    vnode->data = process; // No reference
-
-    dentry_make_positive(target, vnode);
-
-    return OK;
-}
-
-static status_t procfs_env_create(vnode_t* dir, dentry_t* target, mode_t mode)
-{
-    if (mode & MODE_DIRECTORY)
-    {
-        return ERR(FS, INVAL);
-    }
-
-    process_t* process = dir->data;
-    assert(process != NULL);
-
-    status_t status = env_set(&process->env, target->name, "");
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
-    vnode_t* vnode = vnode_new(dir->volume, &envFileClass);
-    if (vnode == NULL)
-    {
-        return ERR(FS, NOMEM);
-    }
-    UNREF_DEFER(vnode);
-    vnode->data = process; // No reference
-
-    dentry_make_positive(target, vnode);
-    return OK;
-}
-
-static status_t procfs_env_remove(vnode_t* dir, dentry_t* target)
-{
-    process_t* process = dir->data;
-    assert(process != NULL);
-
-    return env_unset(&process->env, target->name);
-}
-
-static status_t procfs_env_iterate(dentry_t* dentry, dir_ctx_t* ctx)
-{
-    if (!dentry_iterate_dots(dentry, ctx))
-    {
-        return OK;
-    }
-
-    process_t* process = dentry->vnode->data;
-    assert(process != NULL);
-
-    MUTEX_SCOPE(&process->env.mutex);
-
-    for (size_t i = 0; i < process->env.count; i++)
-    {
-        if (ctx->index++ < ctx->pos)
+    .handlers =
         {
-            continue;
-        }
-
-        if (!ctx->emit(ctx, process->env.vars[i].key, FILE_TYPE_SYSTEM))
-        {
-            return OK;
-        }
-    }
-
-    return OK;
-}
-
-static vnode_class_t envDirClass = {
-    .name = "procfs env dir",
-    .type = VNODE_DIR,
-    .access = procfs_access_hide,
-    .lookup = procfs_env_lookup,
-    .create = procfs_env_create,
-    .remove = procfs_env_remove,
-    .iterate = procfs_env_iterate,
-};
-
-static status_t procfs_self_readlink(vnode_t* vnode, char* buffer, size_t size, size_t* bytesRead)
-{
-    UNUSED(vnode);
-
-    process_t* process = process_current();
-    int ret = snprintf(buffer, size, "%llu", process->id);
-    if (ret < 0)
-    {
-        return ERR(FS, IMPL);
-    }
-
-    if ((size_t)ret >= size)
-    {
-        return ERR(FS, NAMETOOLONG);
-    }
-
-    *bytesRead = ret;
-    return OK;
-}
-
-static vnode_class_t selfClass = {
-    .name = "procfs self",
-    .type = VNODE_SYMLINK,
-    .readlink = procfs_self_readlink,
+            VNODE_HANDLERS(),
+            [IRP_MJ_WRITE] = ctl_generic_write,
+            [IRP_MJ_CONTROL] = procfs_ctl_control,
+        },
 };
 
 typedef struct
@@ -727,38 +322,33 @@ typedef struct
     vnode_class_t* cls;
 } procfs_entry_t;
 
-static const procfs_entry_t pidEntries[] = {
+static const procfs_entry_t dirEntries[] = {
     {"prio", &prioClass},
-    {"cwd", &cwdClass},
     {"cmdline", &cmdlineClass},
     {"note", &noteClass},
-    {"notegroup", &notegroupClass},
-    {"group", &groupClass},
     {"pid", &pidClass},
     {"wait", &waitClass},
     {"perf", &perfClass},
-    {"ns", &nsClass},
     {"ctl", &ctlClass},
-    {"env", &envDirClass},
 };
 
-static const procfs_entry_t procEntries[] = {
-    {"self", &selfClass},
-};
-
-static status_t procfs_pid_lookup(vnode_t* dir, dentry_t* target)
+static status_t procfs_dir_lookup(irp_t* irp)
 {
-    process_t* process = dir->data;
+    irp_frame_t* frame = irp_current(irp);
+    process_t* process = frame->vnode->data;
     assert(process != NULL);
 
-    for (size_t i = 0; i < ARRAY_SIZE(pidEntries); i++)
+    dentry_t* target = frame->lookup.dentry;
+
+    for (size_t i = 0; i < ARRAY_SIZE(dirEntries); i++)
     {
-        if (strcmp(target->name, pidEntries[i].name) != 0)
+        if (strcmp(target->name, dirEntries[i].name) != 0)
         {
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dir->volume, pidEntries[i].cls);
+        file_number_t number = (i << 1) | (process->id << 8);
+        vnode_t* vnode = vnode_new(frame->vnode->volume, dirEntries[i].cls, number);
         if (vnode == NULL)
         {
             return ERR(FS, NOMEM);
@@ -773,77 +363,111 @@ static status_t procfs_pid_lookup(vnode_t* dir, dentry_t* target)
     return INFO(FS, NEGATIVE);
 }
 
-static void procfs_pid_cleanup(vnode_t* vnode)
+static status_t procfs_dir_read(irp_t* irp)
 {
-    process_t* process = vnode->data;
-    if (process == NULL)
-    {
-        return;
-    }
-
-    UNREF(process);
-    vnode->data = NULL;
-}
-
-static status_t procfs_pid_iterate(dentry_t* dentry, dir_ctx_t* ctx)
-{
-    if (!dentry_iterate_dots(dentry, ctx))
-    {
-        return OK;
-    }
-
-    process_t* current = process_current();
-    process_t* process = dentry->vnode->data;
+    irp_frame_t* frame = irp_current(irp);
+    process_t* process = frame->vnode->data;
     assert(process != NULL);
 
-    for (size_t i = 0; i < ARRAY_SIZE(pidEntries); i++)
+    diremit_t emit;
+    diremit_begin(&emit, irp);
+
+    for (size_t i = 0; i < ARRAY_SIZE(dirEntries); i++)
     {
-        if (pidEntries[i].cls->access == procfs_access_hide)
+        if (!diremit(&emit, dirEntries[i].name))
         {
-            namespace_t* currentNs = process_get_ns(current);
-            UNREF_DEFER(currentNs);
-
-            namespace_t* processNs = process_get_ns(process);
-            UNREF_DEFER(processNs);
-
-            if (!namespace_accessible(currentNs, processNs))
-            {
-                continue;
-            }
-        }
-
-        if (ctx->index++ < ctx->pos)
-        {
-            continue;
-        }
-
-        if (!ctx->emit(ctx, pidEntries[i].name, pidEntries[i].cls->type))
-        {
-            return OK;
+            break;
         }
     }
 
     return OK;
 }
 
-static vnode_class_t pidDirClass = {
-    .name = "procfs pid dir",
-    .type = VNODE_DIR,
-    .lookup = procfs_pid_lookup,
-    .cleanup = procfs_pid_cleanup,
-    .iterate = procfs_pid_iterate,
+static status_t procfs_dir_reclaim(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    process_t* process = frame->vnode->data;
+    assert(process != NULL);
+
+    UNREF(process);
+    frame->vnode->data = NULL;
+    return OK;
+}
+
+static bool procfs_dir_access(dentry_t* dentry)
+{
+    process_t* current = process_current();
+    assert(current != NULL);
+    process_t* process = dentry->vnode->data;
+    assert(process != NULL);
+
+    job_t* currentJob = job_get(&current->job);
+    UNREF_DEFER(currentJob);
+
+    job_t* processJob = job_get(&process->job);
+    UNREF_DEFER(processJob);
+
+    return job_is_accessible(currentJob, processJob);
+}
+
+static vnode_class_t dirClass = {
+    .name = "procfs dir",
+    .type = FILE_TYPE_DIRECTORY,
+    .access = procfs_dir_access,
+    .handlers =
+        {
+            VNODE_DIR_HANDLERS(),
+            [IRP_MJ_LOOKUP] = procfs_dir_lookup,
+            [IRP_MJ_READ] = procfs_dir_read,
+            [IRP_MJ_RECLAIM] = procfs_dir_reclaim,
+        },
 };
 
-static status_t procfs_lookup(vnode_t* dir, dentry_t* target)
+static status_t procfs_self_read(irp_t* irp)
 {
-    for (size_t i = 0; i < ARRAY_SIZE(procEntries); i++)
+    irp_frame_t* frame = irp_current(irp);
+
+    char pidStr[MAX_NAME];
+    int ret = snprintf(pidStr, ARRAY_SIZE(pidStr), "%llu", irp->process->id);
+    if (ret < 0)
     {
-        if (strcmp(target->name, procEntries[i].name) != 0)
+        return ERR(FS, IMPL);
+    }
+
+    return mdl_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, pidStr, ret);
+}
+
+static vnode_class_t selfClass = {
+    .name = "procfs self",
+    .type = FILE_TYPE_SYMLINK,
+    .handlers =
+        {
+            VNODE_HANDLERS(),
+            [IRP_MJ_READ] = procfs_self_read,
+        },
+};
+
+static const procfs_entry_t rootEntries[] = {
+    {"self", &selfClass},
+};
+
+static status_t procfs_root_lookup(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    process_t* process = frame->vnode->data;
+    assert(process != NULL);
+
+    dentry_t* target = frame->lookup.dentry;
+
+    for (size_t i = 0; i < ARRAY_SIZE(rootEntries); i++)
+    {
+        if (strcmp(target->name, rootEntries[i].name) != 0)
         {
             continue;
         }
 
-        vnode_t* vnode = vnode_new(dir->volume, procEntries[i].cls);
+        file_number_t number = (i << 1) | (process->id << 8) + 1;
+        vnode_t* vnode = vnode_new(frame->vnode->volume, rootEntries[i].cls, number);
         if (vnode == NULL)
         {
             return ERR(FS, NOMEM);
@@ -860,14 +484,15 @@ static status_t procfs_lookup(vnode_t* dir, dentry_t* target)
         return INFO(FS, NEGATIVE);
     }
 
-    process_t* process = process_get(pid);
-    if (process == NULL)
+    process_t* check = process_get(pid);
+    if (check == NULL)
     {
         return INFO(FS, NEGATIVE);
     }
-    UNREF_DEFER(process);
+    UNREF_DEFER(check);
 
-    vnode_t* vnode = vnode_new(dir->volume, &pidDirClass);
+    file_number_t number = pid;
+    vnode_t* vnode = vnode_new(frame->vnode->volume, &dirClass, number);
     if (vnode == NULL)
     {
         return ERR(FS, NOMEM);
@@ -879,23 +504,18 @@ static status_t procfs_lookup(vnode_t* dir, dentry_t* target)
     return OK;
 }
 
-static status_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
+static status_t procfs_root_read(irp_t* irp)
 {
-    if (!dentry_iterate_dots(dentry, ctx))
-    {
-        return OK;
-    }
+    irp_frame_t* frame = irp_current(irp);
 
-    for (size_t i = 0; i < ARRAY_SIZE(procEntries); i++)
-    {
-        if (ctx->index++ < ctx->pos)
-        {
-            continue;
-        }
+    diremit_t emit;
+    diremit_begin(&emit, irp);
 
-        if (!ctx->emit(ctx, procEntries[i].name, procEntries[i].cls->type))
+    for (size_t i = 0; i < ARRAY_SIZE(rootEntries); i++)
+    {
+        if (!diremit(&emit, rootEntries[i].name))
         {
-            return OK;
+            break;
         }
     }
 
@@ -904,16 +524,11 @@ static status_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
     process_t* process;
     PROCESS_RCU_FOR_EACH(process)
     {
-        if (ctx->index++ < ctx->pos)
-        {
-            continue;
-        }
-
         char name[MAX_NAME];
         snprintf(name, sizeof(name), "%llu", process->id);
-        if (!ctx->emit(ctx, name, VNODE_DIR))
+        if (!diremit(&emit, name))
         {
-            return OK;
+            break;
         }
     }
 
@@ -922,56 +537,62 @@ static status_t procfs_iterate(dentry_t* dentry, dir_ctx_t* ctx)
 
 static vnode_class_t rootClass = {
     .name = "procfs root",
-    .type = VNODE_DIR,
-    .lookup = procfs_lookup,
-    .iterate = procfs_iterate,
+    .type = FILE_TYPE_DIRECTORY,
+    .handlers =
+        {
+            VNODE_DIR_HANDLERS(),
+            [IRP_MJ_LOOKUP] = procfs_root_lookup,
+            [IRP_MJ_READ] = procfs_root_read,
+        },
 };
 
-static status_t procfs_mount(filesystem_t* fs, dentry_t** out, const char* options, void* data)
+static status_t procfs_clone_open(irp_t* irp)
 {
-    UNUSED(data);
-
-    if (options != NULL)
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
+    if (file == NULL)
     {
-        return ERR(FS, INVAL);
+        return ERR(FS, EXPECT_FILE);
     }
 
-    volume_t* volume = volume_new(fs, NULL);
-    if (volume == NULL)
-    {
-        return ERR(FS, NOMEM);
-    }
-    UNREF_DEFER(volume);
-
-    vnode_t* vnode = vnode_new(volume, &rootClass);
-    if (vnode == NULL)
-    {
-        return ERR(FS, NOMEM);
-    }
-    UNREF_DEFER(vnode);
-
-    dentry_t* dentry = dentry_new(volume, NULL, NULL);
-    if (dentry == NULL)
-    {
-        return ERR(FS, NOMEM);
-    }
-
-    dentry_make_positive(dentry, vnode);
-
-    volume->root = dentry;
-    *out = volume->root;
-    return OK;
+    return file_redirect(file, root);
 }
+
+static vnode_class_t cloneClass = {
+    .name = "procfs clone",
+    .type = FILE_TYPE_SYSTEM,
+    .handlers =
+        {
+            VNODE_HANDLERS(),
+            [IRP_MJ_OPEN] = procfs_clone_open,
+        },
+};
 
 static filesystem_t procfs = {
     .name = PROCFS_NAME,
-    .mount = procfs_mount,
+    .clone = &cloneClass,
 };
 
 void procfs_init(void)
 {
-    if (IS_ERR(filesystem_register(&procfs)))
+    vnode_t* vnode = vnode_new(volume_new(), &dirClass, 0);
+    if (vnode == NULL)
     {
-        panic(NULL, "Failed to register procfs filesystem");
+        panic(NULL, "Failed to create procfs root vnode");
+    }
+    UNREF_DEFER(vnode);
+
+    root = dentry_new(NULL, NULL);
+    if (root == NULL)
+    {
+        panic(NULL, "Failed to create procfs root dentry");
+    }
+
+    dentry_make_positive(root, vnode);
+
+    status_t status = filesystem_register(&procfs);
+    if (IS_ERR(status))
+    {
+        panic(NULL, "Failed to register procfs filesystem %Y", status);
     }
 }

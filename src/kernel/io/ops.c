@@ -196,8 +196,7 @@ static status_t io_op_walk(irp_t* irp)
     {
         return ERR(IO, NOMEM);
     }
-    path_state_init(state, from->path.dentry, from->path.binding, root->path.dentry, root->path.binding,
-        io_op_walk_done);
+    path_state_init(state, from->path.dentry, from->path.binding, root, io_op_walk_done);
 
     status_t status = space_copy_out(&irp->process->space, state->path, irp->sqe.path, irp->sqe.pathLen);
     if (IS_ERR(status))

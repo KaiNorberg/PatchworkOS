@@ -5,7 +5,7 @@
 #include <kernel/fs/file_table.h>
 #include <kernel/ipc/note.h>
 #include <kernel/mem/space.h>
-#include <kernel/proc/group.h>
+#include <kernel/proc/job.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/sync.h>
@@ -20,11 +20,11 @@
  *
  * The "procfs" filesystem is used to expose process information and control interfaces to user space.
  *
- * Each process has its own directory whose name is the process ID and for convenience,
+ * Each process has its own directory whose name is its process ID and for convenience,
  * `/self` is a dynamic symbolic link to the current process's directory.
  *
- * Unlike traditional UNIX systems, a process can only see its own proc directory and the proc directories of its
- * children. It is however possible for a process to pass a file descriptor to its own proc directory to another
+ * Unlike traditional UNIX systems, a process can only see the .proc directories of processes within its own job or
+ * child jobs. It is however possible for a process to pass a file descriptor to its own proc directory to another
  * process, allowing it to be controlled by that process.
  *
  * @note Anytime a file descriptor is referred to it is from the perspective of the target process unless stated
@@ -55,18 +55,9 @@
  * A writable file that sends notes to the process. Writing to this file will enqueue that data as a
  * note in the note queue of one of the process's threads.
  *
- * @see kernel_ipc_note
- *
- * ## notegroup
- *
- * A writeable file that sends notes to every process in the group of the target process.
+ * If the target process is the leader of its job, the note will be sent to all processes in the job.
  *
  * @see kernel_ipc_note
- *
- * ## group
- *
- * Opening this file returns a file descriptor referring to the group. This file descriptor can be used with the
- * `setgroup` command in the `ctl` file to switch groups.
  *
  * ## pid
  *
@@ -102,11 +93,6 @@
  * %llu %llu %llu %llu %llu
  * ```
  *
- * ## ns
- *
- * Opening this file returns a file descriptor referring to the namespace. This file descriptor can be used with the
- * `setns` command in the `ctl` file to switch namespaces.
- *
  * ## ctl
  *
  * A writable file that can be used to control certain aspects of the process, such as closing file descriptors.
@@ -136,26 +122,6 @@
  *
  * Sends a kill note to all threads in the process, effectively terminating it. The optional result will be set as the
  * processes exit result.
- *
- * ### setns <fd>
- *
- * Sets the namespace of the process to the one referred to by the file descriptor.
- *
- * The file descriptor must be one that was opened from `/[pid]/ns`.
- *
- * ### setgroup <fd>
- *
- * Sets the group of the process to the one referred to by the file descriptor.
- *
- * The file descriptor must be one that was opened from `/[pid]/group`.
- *
- * ## env
- *
- * A directory that contains the environment variables of the process. Each environment variable is represented as a
- * readable and writable file whose name is the name of the variable and whose content is the value of the variable.
- *
- * To add or modify an environment variable, create or write to a file with the name of the variable. To remove an
- * environment variable, delete the corresponding file.
  *
  * @{
  */

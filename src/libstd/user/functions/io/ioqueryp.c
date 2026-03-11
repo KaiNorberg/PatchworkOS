@@ -21,7 +21,7 @@ status_t ioqueryp(fd_t cwd, fd_t root, const char* path, file_info_t* info)
     iocqe_t cqe = {0};
 
     for (int i = 0; i < 3; i++)
-    {   
+    {
         status = iowait(&cqe);
         if (IS_ERR(status))
         {
