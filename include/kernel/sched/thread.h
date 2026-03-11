@@ -86,6 +86,7 @@ typedef struct thread
      * executing the thread later on.
      */
     interrupt_frame_t frame;
+    rcu_entry_t rcu;
 } thread_t;
 
 /**

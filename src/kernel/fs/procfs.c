@@ -128,6 +128,25 @@ static status_t procfs_note_write(irp_t* irp)
         return status;
     }
     string[bytesWritten] = '\0';
+
+    job_t* job = job_get(&process->job);
+    if (job == NULL)
+    {
+        return ERR(FS, DYING);
+    }
+    UNREF_DEFER(job);
+
+    if (job_is_leader(job, &process->job))
+    {
+        job_send_note(job, string);
+    }
+    else
+    {
+        process_send_note(process, string);
+    }
+
+    irp->result = bytesWritten;
+    return OK;
 }
 
 static vnode_class_t noteClass = {

@@ -171,3 +171,31 @@ bool job_is_accessible(job_t* job, job_t* target)
 
     return false;
 }
+
+bool job_is_leader(job_t* job, job_member_t* member)
+{
+    if (job == NULL || member == NULL)
+    {
+        return false;
+    }
+
+    LOCK_SCOPE(&job->lock);
+    return job->leader == member;
+}
+
+void job_send_note(job_t* job, const char* note)
+{
+    if (job == NULL || note == NULL)
+    {
+        return;
+    }
+
+    LOCK_SCOPE(&job->lock);
+
+    job_member_t* member;
+    LIST_FOR_EACH(member, &job->members, entry)
+    {
+        process_t* process = CONTAINER_OF(member, process_t, job);
+        process_send_note(process, note);
+    }
+}

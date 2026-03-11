@@ -26,15 +26,16 @@ static path_flag_short_t shortFlags[UINT8_MAX + 1] = {
     ['w'] = {.mode = MODE_WRITE},
     ['x'] = {.mode = MODE_EXECUTE},
     ['a'] = {.mode = MODE_APPEND},
-    ['f'] = {.mode = MODE_FILE},
-    ['d'] = {.mode = MODE_DIRECTORY},
-    ['s'] = {.mode = MODE_SYMLINK},
-    ['h'] = {.mode = MODE_HARDLINK},
+    ['c'] = {.mode = MODE_CREATE},
+    ['d'] = {.mode = MODE_DIRECTORY | MODE_CREATE},
+    ['s'] = {.mode = MODE_SYMLINK | MODE_CREATE},
+    ['h'] = {.mode = MODE_HARDLINK | MODE_CREATE},
     ['e'] = {.mode = MODE_EXCLUSIVE},
     ['E'] = {.mode = MODE_EXISTING},
     ['t'] = {.mode = MODE_TRUNCATE},
     ['l'] = {.mode = MODE_NOFOLLOW},
-    ['p'] = {.mode = MODE_PRIVATE},
+    ['p'] = {.mode = MODE_PARENTS},
+    ['P'] = {.mode = MODE_PRIVATE},
     ['L'] = {.mode = MODE_LOCKED},
 };
 
@@ -49,15 +50,16 @@ static const path_flag_t flags[] = {
     {.mode = MODE_WRITE, .name = "write"},
     {.mode = MODE_EXECUTE, .name = "execute"},
     {.mode = MODE_APPEND, .name = "append"},
-    {.mode = MODE_FILE, .name = "file"},
-    {.mode = MODE_DIRECTORY, .name = "directory"},
-    {.mode = MODE_SYMLINK, .name = "symlink"},
-    {.mode = MODE_HARDLINK, .name = "hardlink"},
+    {.mode = MODE_CREATE, .name = "create"},
+    {.mode = MODE_DIRECTORY | MODE_CREATE, .name = "directory"},
+    {.mode = MODE_SYMLINK | MODE_CREATE, .name = "symlink"},
+    {.mode = MODE_HARDLINK | MODE_CREATE, .name = "hardlink"},
     {.mode = MODE_EXCLUSIVE, .name = "exclusive"},
     {.mode = MODE_EXISTING, .name = "existing"},
     {.mode = MODE_TRUNCATE, .name = "truncate"},
     {.mode = MODE_NOFOLLOW, .name = "nofollow"},
     {.mode = MODE_PRIVATE, .name = "private"},
+    {.mode = MODE_PARENTS, .name = "parents"},
     {.mode = MODE_LOCKED, .name = "locked"},
 };
 
@@ -324,12 +326,60 @@ static status_t path_symlink(irp_t* irp, path_state_t* state, dentry_t* symlink)
     return vnode_call(symlink->vnode, irp);
 }
 
-static status_t path_lookup_complete(irp_t* irp, void* ctx)
+static status_t path_create_complete(irp_t* irp, void* ctx)
 {
     path_state_t* state = ctx;
 
     if (IS_ERR(irp->status))
     {
+        path_state_free(state);
+        return OK;
+    }
+
+    path_state_release(state);
+
+    state->dentry = state->lookup;
+    return path_walk_loop(irp, state);
+}
+
+static status_t path_lookup_complete(irp_t* irp, void* ctx)
+{
+    path_state_t* state = ctx;
+
+    if (!IS_ERR(irp->status) && !DENTRY_IS_POSITIVE(state->lookup))
+    {
+        irp->status = ERR(VFS, NOENT);
+    }
+
+    if (IS_ERR(irp->status))
+    {
+        char* ptr = state->ptr;
+        while (*ptr == '/')
+        {
+            ptr++;
+        }
+        bool isEnd = (*ptr == '\0' || *ptr == ':' || *ptr == '?');
+
+        if (IS_CODE(irp->status, NOENT))
+        {
+            if (isEnd && (state->mode & MODE_CREATE) && !(state->mode & MODE_EXISTING))
+            {
+                state->mode &= ~MODE_EXCLUSIVE;
+                irp->status = OK;
+                irp_prep_create(irp, state->lookup, state->mode, state->payload);
+                irp_set_complete(irp, path_create_complete, state);
+                return vnode_call(state->dentry->vnode, irp);
+            }
+
+            if (!isEnd && (state->mode & MODE_PARENTS))
+            {
+                irp->status = OK;
+                irp_prep_create(irp, state->lookup, MODE_DIRECTORY | MODE_CREATE, NULL);
+                irp_set_complete(irp, path_create_complete, state);
+                return vnode_call(state->dentry->vnode, irp);
+            }
+        }
+
         path_state_free(state);
         return OK;
     }
@@ -425,6 +475,13 @@ static status_t path_done(irp_t* irp, path_state_t* state)
     }
     UNREF_DEFER(mount);
 
+    if (state->mode & MODE_EXCLUSIVE)
+    {
+        rcu_read_unlock();
+        path_state_free(state);
+        return ERR(VFS, EXIST);
+    }
+
     rcu_read_unlock();
 
     file_t* file = file_new(dentry, mount, state->mode);
@@ -493,16 +550,10 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state)
         dentry_t* next = dentry_rcu_get(state->dentry, component, len);
         if (next == NULL)
         {
-            status_t status = path_walk_lookup(irp, state, component, len);
-            if (IS_ERR(status))
-            {
-                return status;
-            }
+            return path_walk_lookup(irp, state, component, len);
         }
-        else
-        {
-            state->dentry = next;
-        }
+
+        state->dentry = next;
 
         if (atomic_load(&state->dentry->bindings) > 0)
         {
@@ -511,11 +562,7 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state)
 
         if (DENTRY_IS_TYPE(next, FILE_TYPE_SYMLINK) && !(state->mode & MODE_NOFOLLOW))
         {
-            status_t status = path_symlink(irp, state, state->dentry);
-            if (IS_ERR(status))
-            {
-                return status;
-            }
+            return path_symlink(irp, state, state->dentry);
         }
     }
 }

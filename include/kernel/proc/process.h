@@ -206,6 +206,17 @@ void process_remove(process_t* process);
 status_t process_set_cmdline(process_t* process, const char* args, size_t len);
 
 /**
+ * @brief Sends a note to a process.
+ *
+ * The note will be delivered to one of the process's threads.
+ *
+ * @param process The destination process.
+ * @param note The note string to send.
+ * @return An appropriate status value.
+ */
+status_t process_send_note(process_t* process, const char* note);
+
+/**
  * @brief Checks if a process has a thread with the specified thread ID.
  *
  * @param process The process to check.

@@ -23,7 +23,7 @@
  * Each process has its own directory whose name is its process ID and for convenience,
  * `/self` is a dynamic symbolic link to the current process's directory.
  *
- * Unlike traditional UNIX systems, a process can only see the .proc directories of processes within its own job or
+ * Unlike traditional UNIX systems, a process can only see the proc directories of processes within its own job or
  * child jobs. It is however possible for a process to pass a file descriptor to its own proc directory to another
  * process, allowing it to be controlled by that process.
  *

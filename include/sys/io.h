@@ -148,7 +148,7 @@ typedef uint32_t ioop_t; ///< I/O operation code type.
 /**
  * @brief Walk operation.
  *
- * Traverse the filesystem and open a file descriptor to the reached vnode.
+ * Traverse the filesystem and open a file descriptor to the reached location.
  *
  * @param cwd The file descriptor to open the file relative to, or `FDCWD` to open from the current working directory.
  * @param root The file descriptor to use as the root for the walk, or `FDROOT` to use the standard root directory.

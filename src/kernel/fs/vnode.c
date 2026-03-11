@@ -27,15 +27,7 @@ static void vnode_reclaim(vnode_t* vnode)
     UNREF(vnode);
 }
 
-static void vnode_ctor(void* ptr)
-{
-    vnode_t* vnode = (vnode_t*)ptr;
-
-    vnode->data = NULL;
-    mutex_init(&vnode->mutex);
-}
-
-static cache_t cache = CACHE_CREATE(cache, "vnode", sizeof(vnode_t), CACHE_LINE, vnode_ctor, NULL);
+static cache_t cache = CACHE_CREATE(cache, "vnode", sizeof(vnode_t), CACHE_LINE, NULL, NULL);
 
 vnode_t* vnode_new(file_volume_t volume, const vnode_class_t* cls, file_number_t number)
 {
@@ -44,11 +36,14 @@ vnode_t* vnode_new(file_volume_t volume, const vnode_class_t* cls, file_number_t
         return NULL;
     }
 
-    vnode_t* vnode = cache_alloc(&cache);
+    vnode_t* vnode = cache_alloc(cls->cache != NULL ? cls->cache : &cache);
     if (vnode == NULL)
     {
         return NULL;
     }
+
+    vnode->data = NULL;
+    mutex_init(&vnode->mutex);
 
     ref_init(&vnode->ref, vnode_reclaim);
     vnode->volume = volume;
@@ -89,19 +84,15 @@ status_t vnode_generic_attr(irp_t* irp)
 
     switch (frame->attr.attr)
     {
-    case FILE_GET_TYPE:
-        irp->result = vnode->cls->type;
-        return OK;
     case FILE_GET_VOLUME:
         irp->result = vnode->volume;
         return OK;
     case FILE_GET_NUMBER:
-        if (frame->file != NULL)
-        {
-            irp->result = vnode->number;
-            return OK;
-        }
-        return ERR(FS, EXPECT_FILE);
+        irp->result = vnode->number;
+        return OK;
+    case FILE_GET_TYPE:
+        irp->result = vnode->cls->type;
+        return OK;
     default:
         return ERR(FS, INVAL);
     }

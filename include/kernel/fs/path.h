@@ -1,15 +1,15 @@
 #pragma once
 
-#include <_libstd/MAX_PATH.h>
+#include <kernel/utils/ref.h>
+
 #include <alloca.h>
 #include <ctype.h>
-#include <kernel/io/irp.h>
-#include <kernel/utils/ref.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/fs.h>
 #include <sys/status.h>
 
+typedef struct irp irp_t;
 typedef struct path path_t;
 typedef struct binding binding_t;
 typedef struct dentry dentry_t;
@@ -34,19 +34,20 @@ typedef struct file file_t;
  *
  * | Flag | Short | Description |
  * |------|-------|-------------|
- * | `read` | `r` | Open with read permissions. |
- * | `write` | `w` | Open with write permissions. |
- * | `execute` | `x` | Open with execute permissions. |
- * | `append` | `a` | Any data written to the file will be appended to the end. |
- * | `file` | `f` | Create a regular file, or fail if the file already exists but is not a regular file. |
+ * | `read`      | `r` | Open with read permissions. |
+ * | `write`     | `w` | Open with write permissions. |
+ * | `execute`   | `x` | Open with execute permissions. |
+ * | `append`    | `a` | Any data written to the file will be appended to the end. |
+ * | `create`      | `c` | Create a regular file, or fail if the file already exists but is not a regular file. |
  * | `directory` | `d` | Create a directory, or fail if the file already exists but is not a directory. |
- * | `symlink` | `s` | Create a symlink, or fail if the file already exists but is not a symlink. |
- * | `hardlink` | `h` | Create a hardlink, or fail if the file already exists. |
+ * | `symlink`   | `s` | Create a symlink, or fail if the file already exists but is not a symlink. |
+ * | `hardlink`  | `h` | Create a hardlink, or fail if the file already exists. |
  * | `exclusive` | `e` | Will cause the open to fail if the file already exists. |
- * | `existing` | `E` | Force failure if the file does not exist, even if any creation flags are specified, useful if you want to, for example, ensure you are opening a directory. | 
- * | `truncate` | `t` | Truncate the file to zero length if it already exists. | 
+ * | `existing`  | `E` | Force failure if the file does not exist even if any creation flags are specified, useful if you want to, for example, ensure you are opening a directory. | 
+ * | `truncate`  | `t` | Truncate the file to zero length if it already exists. | 
  * | `nofollow`  | `l` | Do not follow symlinks. | 
- * | `private`   | `p` | Any files with this flag will be closed before a process starts executing. Any mounts with this flag will not be copied to a child namespace. | 
+ * | `private`   | `P` | Any files with this flag will be closed before a process starts executing. Any mounts with this flag will not be copied to a child namespace. | 
+ * | `parents`   | `p` | Create parent directories if they do not exist. |
  * | `locked`    | `L` | Forbid unmounting this binding, useful for hiding directories or files. |
  *
  * For convenience, a single letter short form is also available as shown above, these single letter forms do not need
@@ -114,20 +115,24 @@ typedef struct file file_t;
 typedef enum mode
 {
     MODE_NONE = 0,
-    MODE_READ = 1 << 0,
-    MODE_WRITE = 1 << 1,
-    MODE_EXECUTE = 1 << 2,
-    MODE_APPEND = 1 << 3,
-    MODE_FILE = 1 << 4,
-    MODE_DIRECTORY = 1 << 5,
-    MODE_SYMLINK = 1 << 6,
-    MODE_HARDLINK = 1 << 7,
-    MODE_EXCLUSIVE = 1 << 8,
-    MODE_EXISTING = 1 << 9,
-    MODE_TRUNCATE = 1 << 10,
-    MODE_NOFOLLOW = 1 << 11,
-    MODE_PRIVATE = 1 << 12,
-    MODE_LOCKED = 1 << 14,
+    MODE_READ = 1 << 0, ///< Handled by the VFS.
+    MODE_WRITE = 1 << 1, ///< Handled by the VFS.
+    MODE_EXECUTE = 1 << 2, ///< Handled by the VFS.
+    MODE_APPEND = 1 << 3, ///< Should be implemented by the filesystem.
+    /**
+     * Handled by the VFS, if `MODE_DIRECTORY`, `MODE_SYMLINK` and `MODE_HARDLINK` are not specified, then a `IRP_MJ_CREATE` handler should create a regular file.
+     */
+    MODE_CREATE = 1 << 4,
+    MODE_DIRECTORY = 1 << 5, ///< Specifies what to create in a `IRP_MJ_CREATE` handler.
+    MODE_SYMLINK = 1 << 6, ///< Specifies what to create in a `IRP_MJ_CREATE` handler.
+    MODE_HARDLINK = 1 << 7, ///< Specifies what to create in a `IRP_MJ_CREATE` handler.
+    MODE_EXCLUSIVE = 1 << 8, ///< Handled by the VFS.
+    MODE_EXISTING = 1 << 9, ///< Handled by the VFS.
+    MODE_TRUNCATE = 1 << 10, ///< Should be implemented by the filesystem.
+    MODE_NOFOLLOW = 1 << 11, ///< Handled by the VFS.
+    MODE_PRIVATE = 1 << 12, ///< Handled by the VFS.
+    MODE_PARENTS = 1 << 13, ///< Handled by the VFS.
+    MODE_LOCKED = 1 << 14, ///< Handled by the VFS.
     MODE_ALL_PERMS = MODE_READ | MODE_WRITE | MODE_EXECUTE,
 } mode_t;
 

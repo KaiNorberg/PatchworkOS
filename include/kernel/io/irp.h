@@ -4,6 +4,7 @@
 #include <kernel/mem/mdl.h>
 #include <kernel/sync/lock.h>
 #include <kernel/utils/ref.h>
+#include <kernel/fs/path.h>
 
 #include <assert.h>
 #include <stdatomic.h>
@@ -239,6 +240,9 @@ typedef uint16_t irp_major_t; ///< IRP major function number type.
 
 /**
  * @brief Lookup operation.
+ *
+ * If the entry is found, the handler must make the dentry positive using `dentry_make_positive()`.
+ *
  * @return Always `0`.
  */
 #define IRP_MJ_LOOKUP 8
@@ -276,7 +280,13 @@ typedef uint16_t irp_major_t; ///< IRP major function number type.
  */
 #define IRP_MJ_RECLAIM 13
 
-#define IRP_MJ_MAX 14 ///< The maximum number of major function numbers.
+/**
+ * @brief Create operation.
+ * @return Always `0`.
+ */
+#define IRP_MJ_CREATE 14
+
+#define IRP_MJ_MAX 15 ///< The maximum number of major function numbers.
 
 typedef uint16_t irp_minor_t; ///< IRP minor function number type.
 #define IRP_MN_NORMAL 0       ///< No special behaviour.
@@ -391,6 +401,12 @@ typedef struct irp_frame
         {
             mdl_t* buffer; ///< The buffer to write the `file_info_t` into.
         } query;
+        struct
+        {
+            dentry_t* dentry;    ///< The dentry to create.
+            mode_t mode;         ///< The mode of the new file.
+            const char* payload; ///< The payload from the path.
+        } create;
         uint64_t args[IRP_ARGS_MAX]; ///< Generic arguments.
     };
 } irp_frame_t;
@@ -702,6 +718,15 @@ status_t irp_read_helper(irp_t* irp, const void* buffer, size_t size);
 status_t irp_write_helper(irp_t* irp, void* buffer, size_t size);
 
 /**
+ * @brief Helper function for implementing a seek operation.
+ *
+ * @param irp The IRP.
+ * @param size The size of the file.
+ * @return An appropriate status value.
+ */
+status_t irp_seek_helper(irp_t* irp, size_t size);
+
+/**
  * @brief Prepares the next IRP stack frame for a read operation.
  *
  * @see `IRP_MJ_READ`
@@ -938,6 +963,24 @@ static inline void irp_prep_reclaim(irp_t* irp)
     next->major = IRP_MJ_RECLAIM;
     next->minor = IRP_MN_NORMAL;
     next->flags = IRP_FLAG_NONE;
+}
+
+/**
+ * @brief Prepares the next IRP stack frame for a create operation.
+ *
+ * @see `IRP_MJ_CREATE`
+ */
+static inline void irp_prep_create(irp_t* irp, dentry_t* dentry, mode_t mode, const char* payload)
+{
+    irp_frame_t* next = irp_next(irp);
+    assert(next != NULL);
+
+    next->major = IRP_MJ_CREATE;
+    next->minor = IRP_MN_NORMAL;
+    next->flags = IRP_FLAG_NONE;
+    next->create.dentry = dentry;
+    next->create.mode = mode;
+    next->create.payload = payload;
 }
 
 /** @} */

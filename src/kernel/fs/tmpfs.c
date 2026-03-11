@@ -16,6 +16,7 @@
 #include <kernel/sync/lock.h>
 #include <kernel/sync/mutex.h>
 #include <kernel/utils/ref.h>
+#include <kernel/sched/clock.h>
 
 #include <assert.h>
 #include <stdlib.h>
@@ -25,428 +26,634 @@
 #include <sys/math.h>
 #include <sys/status.h>
 
-static bool initialized = false;
+static cache_t cache = CACHE_CREATE(cache, "tmpfs_vnode", sizeof(tmpfs_vnode_t), CACHE_LINE, NULL, NULL);
 
-static status_t tmpfs_read(irp_t* irp);
-static status_t tmpfs_write(irp_t* irp);
-static status_t tmpfs_seek(irp_t* irp);
-static void tmpfs_truncate(vnode_t* vnode);
+static status_t tmpfs_regular_open(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    if (frame->file == NULL)
+    {
+        return ERR(FS, EXPECT_FILE);
+    }
 
-static void tmpfs_vnode_cleanup(vnode_t* vnode);
+    if (frame->file->mode & MODE_TRUNCATE)
+    {
+        tmpfs_vnode_t* vnode = VNODE_GET(frame->vnode, tmpfs_vnode_t);
+        MUTEX_SCOPE(&vnode->vnode.mutex);
+        vnode->size = 0;
+        vnode->mtime = vnode->ctime = clock_epoch();
+    }
 
-static vnode_class_t fileClass = {
-    .name = "tmpfs file",
-    .type = VNODE_REGULAR,
-    .truncate = tmpfs_truncate,
-    .cleanup = tmpfs_vnode_cleanup,
+    return OK;
+}
+
+static status_t tmpfs_regular_read(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    tmpfs_vnode_t* vnode = VNODE_GET(frame->vnode, tmpfs_vnode_t);
+    
+    MUTEX_SCOPE(&vnode->vnode.mutex);
+
+    vnode->atime = clock_epoch();
+
+    return irp_read_helper(irp, vnode->buffer, vnode->size);
+}
+
+static status_t tmpfs_regular_write(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    tmpfs_vnode_t* vnode = VNODE_GET(frame->vnode, tmpfs_vnode_t);
+
+    MUTEX_SCOPE(&vnode->vnode.mutex);
+
+    if (frame->file->mode & MODE_APPEND)
+    {
+        *frame->write.offset = vnode->size;
+    }
+
+    size_t required = *frame->write.offset + mdl_size(frame->write.buffer);
+    if (required > vnode->capacity)
+    {
+        size_t newCapacity = MAX(vnode->capacity * 2, required);
+        void* newData = realloc(vnode->buffer, newCapacity);
+        if (newData == NULL)
+        {
+            return ERR(FS, NOMEM);
+        }
+        memset((uint8_t*)newData + vnode->size, 0, newCapacity - vnode->size);
+        vnode->buffer = newData;
+        vnode->capacity = newCapacity;
+    }
+
+    if (required > vnode->size)
+    {
+        vnode->size = required;
+    }
+
+    vnode->mtime = vnode->ctime = clock_epoch();
+
+    return irp_write_helper(irp, vnode->buffer, vnode->size);
+}   
+
+static status_t tmpfs_regular_seek(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    tmpfs_vnode_t* vnode = VNODE_GET(frame->vnode, tmpfs_vnode_t);
+
+    MUTEX_SCOPE(&vnode->vnode.mutex);
+
+    return irp_seek_helper(irp, vnode->size);
+}
+
+static status_t tmpfs_regular_attr(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    tmpfs_vnode_t* vnode = VNODE_GET(frame->vnode, tmpfs_vnode_t);
+
+    MUTEX_SCOPE(&vnode->vnode.mutex);
+
+    switch (frame->attr.attr)
+    {
+    case FILE_GET_SIZE:
+        irp->result = vnode->size;
+        return OK;
+    case FILE_SET_SIZE:
+        vnode->size = frame->attr.value;
+        vnode->mtime = vnode->ctime = clock_epoch();
+        return OK;
+    case FILE_GET_ATIME:
+        irp->result = vnode->atime;
+        return OK;
+    case FILE_SET_ATIME:
+        vnode->atime = frame->attr.value;
+        return OK;
+    case FILE_GET_MTIME:
+        irp->result = vnode->mtime;
+        return OK;
+    case FILE_SET_MTIME:
+        vnode->mtime = frame->attr.value;
+        return OK;
+    case FILE_GET_CTIME:
+        irp->result = vnode->ctime;
+        return OK; 
+    case FILE_SET_CTIME:
+        vnode->ctime = frame->attr.value;
+        return OK;
+    case FILE_GET_BTIME:
+        irp->result = vnode->btime;
+        return OK;
+    case FILE_SET_BTIME:
+        vnode->btime = frame->attr.value;
+        return OK;
+    case FILE_GET_NLINK:
+        irp->result = vnode->nlink;
+        return OK;
+    case FILE_GET_NUMBER:
+        irp->result = vnode->vnode.number;
+        return OK;
+    case FILE_GET_VOLUME:
+        irp->result = vnode->vnode.volume;
+        return OK;
+    case FILE_GET_TYPE:
+        irp->result = vnode->vnode.cls->type;
+        return OK;
+    default:
+        return ERR(FS, INVAL);
+    }
+}
+
+static status_t tmpfs_regular_query(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    tmpfs_vnode_t* vnode = VNODE_GET(frame->vnode, tmpfs_vnode_t);
+
+    file_info_t info = {0};
+
+    MUTEX_SCOPE(&vnode->vnode.mutex);
+
+    info.size = vnode->size;
+    info.mask |= FILE_MASK_SIZE;
+
+    info.atime = vnode->atime;
+    info.mask |= FILE_MASK_ATIME;
+
+    info.mtime = vnode->mtime;
+    info.mask |= FILE_MASK_MTIME;
+
+    info.ctime = vnode->ctime;
+    info.mask |= FILE_MASK_CTIME;
+
+    info.btime = vnode->btime;
+    info.mask |= FILE_MASK_BTIME;
+
+    info.nlink = vnode->nlink;
+    info.mask |= FILE_MASK_NLINK;
+
+    info.type = vnode->vnode.cls->type;
+    info.mask |= FILE_MASK_TYPE;
+
+    info.volume = vnode->vnode.volume;
+    info.mask |= FILE_MASK_VOLUME;
+
+    info.number = vnode->vnode.number;
+    info.mask |= FILE_MASK_NUMBER;
+
+    return mdl_copy_in(frame->query.buffer, sizeof(file_info_t), 0, &irp->result, &info, sizeof(file_info_t));
+}
+
+static status_t tmpfs_regular_reclaim(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    tmpfs_vnode_t* vnode = VNODE_GET(frame->vnode, tmpfs_vnode_t);
+
+    MUTEX_SCOPE(&vnode->vnode.mutex);
+
+    free(vnode->buffer);
+    vnode->buffer = NULL;
+    vnode->size = 0;
+    vnode->capacity = 0;
+
+    if (&vnode->vnode == vnode->volume->rootVnode)
+    {
+        UNREF(vnode->volume);
+    }
+
+    return OK;
+}
+
+static vnode_class_t regularClass = {
+    .name = "tmpfs regular",
+    .type = FILE_TYPE_REGULAR,
+    .cache = &cache,
     .handlers =
         {
-            [IRP_MJ_READ] = tmpfs_read,
-            [IRP_MJ_WRITE] = tmpfs_write,
-            [IRP_MJ_SEEK] = tmpfs_seek,
+            VNODE_HANDLERS(),
+            [IRP_MJ_OPEN] = tmpfs_regular_open,
+            [IRP_MJ_READ] = tmpfs_regular_read,
+            [IRP_MJ_WRITE] = tmpfs_regular_write,
+            [IRP_MJ_SEEK] = tmpfs_regular_seek,
+            [IRP_MJ_ATTR] = tmpfs_regular_attr,
+            [IRP_MJ_QUERY] = tmpfs_regular_query,
+            [IRP_MJ_RECLAIM] = tmpfs_regular_reclaim,
         },
 };
 
-static status_t tmpfs_create(vnode_t* dir, dentry_t* target, mode_t mode);
-static status_t tmpfs_link(vnode_t* dir, dentry_t* old, dentry_t* target);
-static status_t tmpfs_symlink(vnode_t* dir, dentry_t* target, const char* dest);
+static status_t tmpfs_dir_create(irp_t* irp);
+static status_t tmpfs_dir_remove(irp_t* irp);
 
 static vnode_class_t dirClass = {
     .name = "tmpfs dir",
-    .type = VNODE_DIR,
-    .create = tmpfs_create,
-    .link = tmpfs_link,
-    .symlink = tmpfs_symlink,
-    .cleanup = tmpfs_vnode_cleanup,
-    .iterate = dentry_generic_iterate,
+    .type = FILE_TYPE_DIRECTORY,
+    .cache = &cache,
+    .handlers =
+        {
+            VNODE_DIR_HANDLERS(),
+            [IRP_MJ_CREATE] = tmpfs_dir_create,
+            [IRP_MJ_REMOVE] = tmpfs_dir_remove,
+            [IRP_MJ_RECLAIM] = tmpfs_regular_reclaim,
+        },
 };
-
-static status_t tmpfs_readlink(vnode_t* vnode, char* buffer, size_t count, size_t* bytesRead);
 
 static vnode_class_t symlinkClass = {
     .name = "tmpfs symlink",
-    .type = VNODE_SYMLINK,
-    .readlink = tmpfs_readlink,
-    .cleanup = tmpfs_vnode_cleanup,
+    .type = FILE_TYPE_SYMLINK,
+    .handlers =
+        {
+            VNODE_HANDLERS(),
+            [IRP_MJ_OPEN] = tmpfs_regular_open,
+            [IRP_MJ_READ] = tmpfs_regular_read,
+            [IRP_MJ_WRITE] = tmpfs_regular_write,
+            [IRP_MJ_SEEK] = tmpfs_regular_seek,
+            [IRP_MJ_ATTR] = tmpfs_regular_attr,
+            [IRP_MJ_QUERY] = tmpfs_regular_query,
+            [IRP_MJ_RECLAIM] = tmpfs_regular_reclaim,
+        },
 };
 
-static vnode_t* tmpfs_vnode_new(volume_t* volume, const vnode_class_t* cls, void* buffer, uint64_t size)
+static tmpfs_vnode_t* tmpfs_vnode_create(tmpfs_volume_t* volume, const vnode_class_t* cls, file_number_t number)
 {
-    vnode_t* vnode = vnode_new(volume, cls);
+    vnode_t* vnode = vnode_new(volume->id, cls, number);
     if (vnode == NULL)
     {
         return NULL;
     }
 
-    if (buffer != NULL)
+    tmpfs_vnode_t* tvnode = VNODE_GET(vnode, tmpfs_vnode_t);
+    tvnode->volume = volume; // No ref, volume is kept alive by the root.
+    tvnode->buffer = NULL;
+    tvnode->size = 0;
+    tvnode->capacity = 0;
+    tvnode->atime = tvnode->mtime = tvnode->ctime = tvnode->btime = clock_epoch();
+    tvnode->nlink = 1;
+
+    return tvnode;
+}
+
+static status_t tmpfs_dir_create(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    tmpfs_vnode_t* dir = VNODE_GET(frame->vnode, tmpfs_vnode_t);
+    dentry_t* target = frame->create.dentry;
+
+    MUTEX_SCOPE(&dir->vnode.mutex);
+
+    if (DENTRY_IS_POSITIVE(target))
     {
-        vnode->data = malloc(size);
-        if (vnode->data == NULL)
+        return ERR(FS, EXIST);
+    }
+
+    const vnode_class_t* cls;
+    if (frame->create.mode & MODE_DIRECTORY)
+    {
+        cls = &dirClass;
+    }
+    else if (frame->create.mode & MODE_SYMLINK)
+    {
+        cls = &symlinkClass;
+    }
+    else if (frame->create.mode & MODE_HARDLINK)
+    {
+        fd_t link;
+        if (sscanf(frame->create.payload, "%lld", &link) != 1)
         {
-            UNREF(vnode);
-            return NULL;
+            return ERR(FS, INVAL);
         }
-        memcpy(vnode->data, buffer, size);
-        vnode->size = size;
+
+        file_t* file = file_table_get(&irp->process->files, link);
+        if (file == NULL)
+        {
+            return ERR(FS, INVAL);
+        }
+
+        if (file->path.dentry->vnode->cls != &regularClass)
+        {
+            return ERR(FS, INVAL);
+        }
+
+        tmpfs_vnode_t* vnode = VNODE_GET(file->path.dentry->vnode, tmpfs_vnode_t);
+        MUTEX_SCOPE(&vnode->vnode.mutex);
+        vnode->nlink++;
+
+        dentry_make_positive(target, file->path.dentry->vnode);
+
+        lock_acquire(&dir->volume->lock);
+        list_push_back(&dir->volume->dentries, &target->entry);
+        REF(target);
+        lock_release(&dir->volume->lock);
+
+        return OK;
     }
     else
     {
-        vnode->data = NULL;
-        vnode->size = 0;
+        cls = &regularClass;
     }
 
-    return vnode;
-}
-
-static void tmpfs_dentry_add(dentry_t* dentry)
-{
-    tmpfs_volume_data_t* volume = dentry->volume->data;
-
-    lock_acquire(&volume->lock);
-    list_push_back(&volume->dentries, &dentry->entry);
-    REF(dentry);
-    lock_release(&volume->lock);
-}
-
-static void tmpfs_dentry_remove(dentry_t* dentry)
-{
-    tmpfs_volume_data_t* volume = dentry->volume->data;
-
-    lock_acquire(&volume->lock);
-    list_remove(&dentry->entry);
-    UNREF(dentry);
-    lock_release(&volume->lock);
-
-    dentry_remove(dentry);
-}
-
-static status_t tmpfs_read(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-
-    mutex_acquire(&frame->vnode->mutex);
-    status_t status = irp_read_helper(irp, frame->vnode->data, frame->vnode->size);
-    mutex_release(&frame->vnode->mutex);
-
-    return status;
-}
-
-static status_t tmpfs_write(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-
-    MUTEX_SCOPE(&frame->vnode->mutex);
-
-    size_t required = *frame->write.offset + mdl_size(frame->write.buffer);
-    if (required > frame->vnode->size)
+    tmpfs_vnode_t* vnode = 
+        tmpfs_vnode_create(dir->volume, cls, vnode_hash(dir->vnode.number, target->name));
+    if (vnode == NULL)
     {
-        void* newData = realloc(frame->vnode->data, required);
-        if (newData == NULL)
+        return ERR(FS, NOMEM);
+    }
+    UNREF_DEFER(vnode);
+
+    if (frame->create.mode & MODE_SYMLINK)
+    {
+        vnode->size = strlen(frame->create.payload);
+        vnode->buffer = strdup(frame->create.payload);
+        if (vnode->buffer == NULL)
         {
+            UNREF(vnode->volume);
             return ERR(FS, NOMEM);
         }
-        memset((uint8_t*)newData + frame->vnode->size, 0, required - frame->vnode->size);
-        frame->vnode->data = newData;
-        frame->vnode->size = required;
+        vnode->capacity = vnode->size;
     }
 
-    return irp_write_helper(irp, frame->vnode->data, frame->vnode->size);
-}
+    dentry_make_positive(target, &vnode->vnode);
 
-static status_t tmpfs_seek(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    file_t* file = frame->file;
+    lock_acquire(&dir->volume->lock);
+    list_push_back(&dir->volume->dentries, &target->entry);
+    REF(target);
+    lock_release(&dir->volume->lock);
 
-    MUTEX_SCOPE(&file->vnode->mutex);
-
-    size_t pos;
-    switch (frame->seek.origin)
-    {
-    case IOSEEK_START:
-        pos = frame->seek.offset;
-        break;
-    case IOSEEK_CUR:
-        pos = file->pos + frame->seek.offset;
-        break;
-    case IOSEEK_END:
-        pos = file->vnode->size + frame->seek.offset;
-        break;
-    default:
-        return ERR(FS, INVAL);
-    }
-
-    file->pos = pos;
-    irp->result = pos;
+    dir->mtime = dir->ctime = clock_epoch();
 
     return OK;
 }
 
-static void tmpfs_truncate(vnode_t* vnode)
+static status_t tmpfs_dir_remove(irp_t* irp)
 {
-    MUTEX_SCOPE(&vnode->mutex);
+    irp_frame_t* frame = irp_current(irp);    
+    dentry_t* target = frame->remove.dentry;
+    tmpfs_vnode_t* dir = VNODE_GET(frame->vnode, tmpfs_vnode_t);
 
-    if (vnode->data != NULL)
-    {
-        free(vnode->data);
-        vnode->data = NULL;
-    }
-    vnode->size = 0;
-}
+    MUTEX_SCOPE(&dir->vnode.mutex);
 
-static status_t tmpfs_create(vnode_t* dir, dentry_t* target, mode_t mode)
-{
-    MUTEX_SCOPE(&dir->mutex);
-
-    vnode_t* vnode = tmpfs_vnode_new(dir->volume, mode & MODE_DIRECTORY ? &dirClass : &fileClass, NULL, 0);
-    if (vnode == NULL)
-    {
-        return ERR(FS, NOMEM);
-    }
-    UNREF_DEFER(vnode);
-
-    dentry_make_positive(target, vnode);
-    tmpfs_dentry_add(target);
-
-    return OK;
-}
-
-static status_t tmpfs_link(vnode_t* dir, dentry_t* old, dentry_t* target)
-{
-    MUTEX_SCOPE(&dir->mutex);
-
-    dentry_make_positive(target, old->vnode);
-    tmpfs_dentry_add(target);
-
-    return OK;
-}
-
-static status_t tmpfs_symlink(vnode_t* dir, dentry_t* target, const char* dest)
-{
-    MUTEX_SCOPE(&dir->mutex);
-
-    vnode_t* vnode = tmpfs_vnode_new(dir->volume, &symlinkClass, (void*)dest, strlen(dest));
-    if (vnode == NULL)
-    {
-        return ERR(FS, NOMEM);
-    }
-    UNREF_DEFER(vnode);
-
-    dentry_make_positive(target, vnode);
-    tmpfs_dentry_add(target);
-
-    return OK;
-}
-
-static status_t tmpfs_remove(vnode_t* dir, dentry_t* target)
-{
-    MUTEX_SCOPE(&dir->mutex);
-
-    if (target->vnode->cls->type == VNODE_REGULAR || target->vnode->cls->type == VNODE_SYMLINK)
-    {
-        tmpfs_dentry_remove(target);
-    }
-    else if (target->vnode->cls->type == VNODE_DIR)
+    if (DENTRY_IS_TYPE(target, FILE_TYPE_DIRECTORY))
     {
         if (!list_is_empty(&target->children))
         {
             return ERR(FS, NOTEMPTY);
         }
-
-        tmpfs_dentry_remove(target);
     }
+
+    MUTEX_SCOPE(&target->vnode->mutex);
+
+    tmpfs_vnode_t* targetVnode = VNODE_GET(target->vnode, tmpfs_vnode_t);
+    dentry_remove(target);
+    targetVnode->nlink--;
+
+    lock_acquire(&dir->volume->lock);
+    list_remove(&target->entry);
+    UNREF(target);
+    lock_release(&dir->volume->lock);
+
+    dir->mtime = dir->ctime = clock_epoch();
 
     return OK;
 }
 
-static status_t tmpfs_readlink(vnode_t* vnode, char* buffer, size_t count, size_t* bytesRead)
+static void tmpfs_volume_free(tmpfs_volume_t* volume)
 {
-    MUTEX_SCOPE(&vnode->mutex);
-
-    if (vnode->data == NULL)
+    while (!list_is_empty(&volume->dentries))
     {
-        return ERR(FS, INVAL);
+        dentry_t* dentry = CONTAINER_OF(list_pop_front(&volume->dentries), dentry_t, entry);
+        UNREF(dentry);
     }
-
-    uint64_t copySize = MIN(count, vnode->size);
-    memcpy(buffer, vnode->data, copySize);
-    *bytesRead = copySize;
-    return OK;
+    free(volume);
 }
 
-static void tmpfs_vnode_cleanup(vnode_t* vnode)
+static tmpfs_volume_t* tmpfs_volume_new(void)
 {
-    if (vnode->data != NULL)
+    tmpfs_volume_t* volume = malloc(sizeof(tmpfs_volume_t));
+    if (volume == NULL)
     {
-        free(vnode->data);
-        vnode->data = NULL;
-        vnode->size = 0;
+        return NULL;
     }
+
+    ref_init(&volume->ref, tmpfs_volume_free);
+    volume->id = volume_new();
+    volume->rootVnode = NULL;
+    list_init(&volume->dentries);
+    lock_init(&volume->lock);
+    return volume;
 }
 
-static void tmpfs_volume_cleanup(volume_t* volume)
+static status_t tmpfs_clone_open(irp_t* irp)
 {
-    UNUSED(volume);
-
-    panic(NULL, "tmpfs unmounted\n");
-}
-
-static volume_ops_t volumeOps = {
-    .cleanup = tmpfs_volume_cleanup,
-};
-
-static dentry_t* tmpfs_load_file(volume_t* volume, dentry_t* parent, const char* name, const boot_file_t* in)
-{
-    dentry_t* dentry = dentry_new(volume, parent, name);
-    if (dentry == NULL)
+    irp_frame_t* frame = irp_current(irp);
+    if (frame->file == NULL)
     {
-        panic(NULL, "Failed to create tmpfs file dentry");
-    }
-    UNREF_DEFER(dentry);
-
-    tmpfs_dentry_add(dentry);
-
-    vnode_t* vnode = tmpfs_vnode_new(volume, &fileClass, in->data, in->size);
-    if (vnode == NULL)
-    {
-        panic(NULL, "Failed to create tmpfs file vnode");
-    }
-    UNREF_DEFER(vnode);
-
-    dentry_make_positive(dentry, vnode);
-
-    return REF(dentry);
-}
-
-static dentry_t* tmpfs_load_dir(volume_t* volume, dentry_t* parent, const char* name, const boot_dir_t* in)
-{
-    tmpfs_volume_data_t* superData = volume->data;
-
-    dentry_t* dentry = dentry_new(volume, parent, name);
-    if (dentry == NULL)
-    {
-        panic(NULL, "Failed to create tmpfs dentry");
-    }
-    UNREF_DEFER(dentry);
-
-    vnode_t* vnode = tmpfs_vnode_new(volume, &dirClass, NULL, 0);
-    if (vnode == NULL)
-    {
-        panic(NULL, "Failed to create tmpfs vnode");
-    }
-    UNREF_DEFER(vnode);
-
-    tmpfs_dentry_add(dentry);
-    dentry_make_positive(dentry, vnode);
-
-    boot_file_t* file;
-    LIST_FOR_EACH(file, &in->files, entry)
-    {
-        UNREF(tmpfs_load_file(volume, dentry, file->name, file));
+        return ERR(FS, EXPECT_FILE);
     }
 
-    boot_dir_t* child;
-    LIST_FOR_EACH(child, &in->children, entry)
-    {
-        UNREF(tmpfs_load_dir(volume, dentry, child->name, child));
-    }
-
-    return REF(dentry);
-}
-
-static status_t tmpfs_mount(filesystem_t* fs, dentry_t** out, const char* options, void* data)
-{
-    UNUSED(data);
-
-    if (options != NULL)
-    {
-        return ERR(FS, INVAL);
-    }
-
-    volume_t* volume = volume_new(fs, &volumeOps);
+    tmpfs_volume_t* volume = tmpfs_volume_new();
     if (volume == NULL)
     {
         return ERR(FS, NOMEM);
     }
     UNREF_DEFER(volume);
 
-    tmpfs_volume_data_t* tmpfsData = malloc(sizeof(tmpfs_volume_data_t));
-    if (tmpfsData == NULL)
+    dentry_t* root = dentry_new(NULL, NULL);
+    if (root == NULL)
     {
         return ERR(FS, NOMEM);
     }
-    list_init(&tmpfsData->dentries);
-    lock_init(&tmpfsData->lock);
-    volume->data = tmpfsData;
+    UNREF_DEFER(root);
 
-    if (!initialized)
-    {
-        boot_info_t* bootInfo = boot_info_get();
-        const boot_disk_t* disk = &bootInfo->disk;
-
-        dentry_t* root = tmpfs_load_dir(volume, NULL, NULL, disk->root);
-        if (root == NULL)
-        {
-            return ERR(FS, NOMEM);
-        }
-
-        volume->root = root;
-        *out = REF(volume->root);
-        return OK;
-    }
-
-    dentry_t* dentry = dentry_new(volume, NULL, NULL);
-    if (dentry == NULL)
-    {
-        return ERR(FS, NOMEM);
-    }
-    UNREF_DEFER(dentry);
-
-    vnode_t* vnode = tmpfs_vnode_new(volume, &dirClass, NULL, 0);
+    tmpfs_vnode_t* vnode = tmpfs_vnode_create(volume, &dirClass, 0);
     if (vnode == NULL)
     {
         return ERR(FS, NOMEM);
     }
     UNREF_DEFER(vnode);
 
-    tmpfs_dentry_add(dentry);
-    dentry_make_positive(dentry, vnode);
+    volume->rootVnode = &vnode->vnode;
+    REF(volume); // Kept alive by root vnode
 
-    volume->root = dentry;
-    *out = REF(volume->root);
-    return OK;
+    dentry_make_positive(root, &vnode->vnode);
+
+    return file_redirect(frame->file, root);
 }
+
+static vnode_class_t cloneClass = {
+    .name = "tmpfs clone",
+    .type = FILE_TYPE_SYSTEM,
+    .handlers =
+        {
+            VNODE_HANDLERS(),
+            [IRP_MJ_OPEN] = tmpfs_clone_open,
+        },
+};
 
 static filesystem_t tmpfs = {
     .name = TMPFS_NAME,
-    .mount = tmpfs_mount,
+    .clone = &cloneClass,
 };
+
+static dentry_t* ramfsRoot = NULL;
+
+static status_t ramfs_load_file(tmpfs_volume_t* volume, dentry_t* parent, const char* name, const boot_file_t* in)
+{
+    dentry_t* dentry = dentry_new(parent, name);
+    if (dentry == NULL)
+    {
+        return ERR(FS, NOMEM);
+    }
+    UNREF_DEFER(dentry);
+
+    tmpfs_vnode_t* vnode = tmpfs_vnode_create(volume, &regularClass, vnode_hash(parent->vnode->number, name));
+    if (vnode == NULL)
+    {
+        return ERR(FS, NOMEM);
+    }
+    UNREF_DEFER(vnode);
+
+    tmpfs_vnode_t* tvnode = VNODE_GET(vnode, tmpfs_vnode_t);
+    tvnode->size = in->size;
+    tvnode->capacity = in->size;
+    tvnode->buffer = malloc(in->size);
+    if (tvnode->buffer == NULL)
+    {
+        return ERR(FS, NOMEM);
+    }
+    memcpy(tvnode->buffer, in->data, in->size);
+
+    dentry_make_positive(dentry, &vnode->vnode);
+
+    lock_acquire(&volume->lock);
+    list_push_back(&volume->dentries, &dentry->entry);
+    REF(dentry);
+    lock_release(&volume->lock);
+
+    return OK;
+}
+
+static status_t ramfs_load_dir(tmpfs_volume_t* volume, dentry_t* parent, const char* name, const boot_dir_t* in)
+{
+    dentry_t* dentry;
+    if (parent == NULL)
+    {
+        dentry = dentry_new(NULL, NULL);
+    }
+    else
+    {
+        dentry = dentry_new(parent, name);
+    }
+    if (dentry == NULL)
+    {
+        return ERR(FS, NOMEM);
+    }
+    UNREF_DEFER(dentry);
+
+    file_number_t number = parent == NULL ? 0 : vnode_hash(parent->vnode->number, name);
+    tmpfs_vnode_t* vnode = tmpfs_vnode_create(volume, &dirClass, number);
+    if (vnode == NULL)
+    {
+        return ERR(FS, NOMEM);
+    }
+    UNREF_DEFER(vnode);
+
+    dentry_make_positive(dentry, &vnode->vnode);
+
+    if (parent != NULL)
+    {
+        lock_acquire(&volume->lock);
+        list_push_back(&volume->dentries, &dentry->entry);
+        REF(dentry);
+        lock_release(&volume->lock);
+    }
+    else
+    {
+        volume->rootVnode = &vnode->vnode;
+        REF(volume);
+    }
+
+    boot_file_t* file;
+    LIST_FOR_EACH(file, &in->files, entry)
+    {
+        status_t status = ramfs_load_file(volume, dentry, file->name, file);
+        if (IS_ERR(status))
+        {
+            return status;
+        }
+    }
+
+    boot_dir_t* child;
+    LIST_FOR_EACH(child, &in->children, entry)
+    {
+        status_t status = ramfs_load_dir(volume, dentry, child->name, child);
+        if (IS_ERR(status))
+        {
+            return status;
+        }
+    }
+
+    if (parent == NULL)
+    {
+        ramfsRoot = REF(dentry);
+    }
+
+    return OK;
+}
+
+static status_t ramfs_clone_open(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    if (frame->file == NULL)
+    {
+        return ERR(FS, EXPECT_FILE);
+    }
+
+    return file_redirect(frame->file, ramfsRoot);
+}
+
+static vnode_class_t ramfsCloneClass = {
+    .name = "ramfs clone",
+    .type = FILE_TYPE_SYSTEM,
+    .handlers =
+        {
+            VNODE_HANDLERS(),
+            [IRP_MJ_OPEN] = ramfs_clone_open,
+        },
+};
+
+static filesystem_t ramfs = {
+    .name = "ramfs",
+    .clone = &ramfsCloneClass,
+};
+
+static void ramfs_init(void)
+{
+    tmpfs_volume_t* volume = tmpfs_volume_new();
+    if (volume == NULL)
+    {
+        panic(NULL, "Failed to create ramfs volume");
+    }
+    UNREF_DEFER(volume);
+
+    boot_info_t* bootInfo = boot_info_get();
+    const boot_disk_t* disk = &bootInfo->disk;
+
+    status_t status = ramfs_load_dir(volume, NULL, NULL, disk->root);
+    if (IS_ERR(status))
+    {
+        panic(NULL, "Failed to load ramfs %Y", status);
+    }
+
+    status = filesystem_register(&ramfs);
+    if (IS_ERR(status))
+    {
+        panic(NULL, "Failed to register ramfs %Y", status);
+    }
+}
 
 void tmpfs_init(void)
 {
-    LOG_INFO("registering tmpfs\n");
-    if (IS_ERR(filesystem_register(&tmpfs)))
-    {
-        panic(NULL, "Failed to register tmpfs");
-    }
-    LOG_INFO("mounting tmpfs\n");
-
-    process_t* process = process_current();
-    assert(process != NULL);
-
-    namespace_t* ns = process_get_ns(process);
-    if (ns == NULL)
-    {
-        panic(NULL, "Failed to get process namespace");
-    }
-    UNREF_DEFER(ns);
-
-    status_t status = namespace_mount(ns, NULL, &tmpfs, NULL, MODE_PROPAGATE | MODE_ALL_PERMS, NULL, NULL);
+    status_t status = filesystem_register(&tmpfs);
     if (IS_ERR(status))
     {
-        panic(NULL, "Failed to mount tmpfs");
+        panic(NULL, "Failed to register tmpfs %Y", status);
     }
-    LOG_INFO("tmpfs initialized\n");
 
-    initialized = true;
+    ramfs_init();
 }

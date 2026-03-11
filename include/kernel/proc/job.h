@@ -118,4 +118,21 @@ void job_leave(job_member_t* member);
  */
 bool job_is_accessible(job_t* job, job_t* target);
 
+/**
+ * @brief Checks if a job member is the leader of its job.
+ *
+ * @param job The job to check.
+ * @param member The job member to check.
+ * @return `true` if the member is the leader, `false` otherwise.
+ */
+bool job_is_leader(job_t* job, job_member_t* member);
+
+/**
+ * @brief Sends a note to all processes in a job.
+ *
+ * @param job The job to send the note to.
+ * @param note The note string to send.
+ */
+void job_send_note(job_t* job, const char* note);
+
 /** @} */

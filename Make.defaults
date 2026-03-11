@@ -28,6 +28,7 @@ CFLAGS := \
 	-Wno-unused-but-set-parameter \
 	-Wno-unused-command-line-argument \
 	-Wno-initializer-overrides \
+	-Wno-override-init \
 	-isystem include \
 	-Ilib \
 	-I$(SRCDIR) \

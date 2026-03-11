@@ -112,9 +112,9 @@ typedef uint16_t file_attr_t; ///< File attribute operations.
 #define FILE_SET_CTIME _FILE_SET(6)      ///< Set the change time.
 #define FILE_GET_BTIME _FILE_GET(7)      ///< Get the birth time.
 #define FILE_SET_BTIME _FILE_SET(7)      ///< Set the birth time.
-#define FILE_GET_NUMBER _FILE_GET(8)     ///< Get the file number.
-#define FILE_GET_VOLUME _FILE_GET(9)     ///< Get the volume ID.
-#define FILE_GET_NLINK _FILE_GET(10)     ///< Get the number of hard links.
+#define FILE_GET_NLINK _FILE_GET(8)     ///< Get the number of hard links.
+#define FILE_GET_NUMBER _FILE_GET(9)     ///< Get the file number.
+#define FILE_GET_VOLUME _FILE_GET(10)     ///< Get the volume ID.
 #define FILE_GET_TYPE _FILE_GET(11)      ///< Get the file type.
 
 #define FILE_ATTR_IS_SET(attr) ((attr) & 1)
@@ -129,13 +129,12 @@ typedef uint64_t file_mask_t;         ///< Bitmask of which fields are valid wit
 #define FILE_MASK_MTIME (1 << 5)      ///< Modification time is valid.
 #define FILE_MASK_CTIME (1 << 6)      ///< Change time is valid.
 #define FILE_MASK_BTIME (1 << 7)      ///< Birth/Creation time is valid.
-#define FILE_MASK_NUMBER (1 << 8)     ///< File number is valid.
-#define FILE_MASK_VOLUME (1 << 9)     ///< Volume ID is valid.
-#define FILE_MASK_NLINK (1 << 10)     ///< Number of hard links is valid.
-#define FILE_MASK_FLAGS (1 << 11)     ///< File flags are valid.
-#define FILE_MASK_TYPE (1 << 12)      ///< File type is valid.
-#define FILE_MASK_NAME (1 << 13)      ///< File name is valid.
-#define FILE_MASK_MODE (1 << 14)      ///< File mode is valid.
+#define FILE_MASK_NLINK (1 << 8)     ///< Number of hard links is valid.
+#define FILE_MASK_NUMBER (1 << 9)     ///< File number is valid.
+#define FILE_MASK_VOLUME (1 << 10)     ///< Volume ID is valid.
+#define FILE_MASK_TYPE (1 << 11)      ///< File type is valid.
+#define FILE_MASK_NAME (1 << 12)      ///< File name is valid.
+#define FILE_MASK_MODE (1 << 13)      ///< File mode is valid.
 
 /**
  * @brief File information structure.
@@ -148,13 +147,13 @@ typedef struct file_info
     size_t blocks;        ///< Blocks allocated.
     size_t blockSize;     ///< Block size in bytes.
     size_t maxSize;       ///< Maximum file size.
-    clock_t atime;        ///< Access time (ns).
-    clock_t mtime;        ///< Modification time (ns).
-    clock_t ctime;        ///< Change time (ns).
-    clock_t btime;        ///< Birth/Creation time (ns).
+    time_t atime;        ///< Access time.
+    time_t mtime;        ///< Modification time.
+    time_t ctime;        ///< Change time.
+    time_t btime;        ///< Birth/Creation time.
+    uint32_t nlink;       ///< Number of hard links.
     file_number_t number; ///< File number.
     file_volume_t volume; ///< Volume ID.
-    uint32_t nlink;       ///< Number of hard links.
     file_type_t type;     ///< File type.
     char name[MAX_PATH];  ///< File name.
     char mode[MAX_NAME];  ///< File mode represented by their short-hand.

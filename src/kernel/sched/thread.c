@@ -99,12 +99,9 @@ status_t thread_new(thread_t** out, process_t* process)
     return OK;
 }
 
-void thread_free(thread_t* thread)
+static void thread_rcu_free(void* arg)
 {
-    lock_acquire(&thread->process->threads.lock);
-    thread->process->threads.count--;
-    list_remove_rcu(&thread->processEntry);
-    lock_release(&thread->process->threads.lock);
+    thread_t* thread = (thread_t*)arg;
 
     UNREF(thread->process);
     thread->process = NULL;
@@ -112,6 +109,16 @@ void thread_free(thread_t* thread)
     simd_ctx_deinit(&thread->simd);
 
     cache_free(thread);
+}
+
+void thread_free(thread_t* thread)
+{
+    lock_acquire(&thread->process->threads.lock);
+    thread->process->threads.count--;
+    list_remove_rcu(&thread->processEntry);
+    lock_release(&thread->process->threads.lock);
+
+    rcu_call(&thread->rcu, thread_rcu_free, thread);
 }
 
 status_t thread_kernel_create(thread_kernel_entry_t entry, void* arg, thrd_t* out)

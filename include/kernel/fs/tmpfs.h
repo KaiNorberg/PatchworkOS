@@ -24,16 +24,38 @@
 #define TMPFS_NAME "tmpfs"
 
 /**
- * @brief Volume private data for tmpfs.
+ * @brief Volume data for tmpfs.
+ * @struct tmpfs_volume_t
  */
 typedef struct
 {
+    ref_t ref;
+    file_volume_t id;
+    vnode_t* rootVnode;
     list_t dentries; // We store all dentries in here to keep them in memory.
     lock_t lock;
-} tmpfs_volume_data_t;
+} tmpfs_volume_t;
 
 /**
- * @brief Registers the tmpfs filesystem and mounts an instance of it containing the boot ram disk as root.
+ * @brief Vnode data for tmpfs.
+ * @struct tmpfs_vnode_t
+ */
+typedef struct
+{
+    vnode_t vnode;
+    void* buffer;
+    size_t size;
+    size_t capacity;
+    tmpfs_volume_t* volume;
+    time_t atime;
+    time_t mtime;
+    time_t ctime;
+    time_t btime;
+    uint64_t nlink;
+} tmpfs_vnode_t;
+
+/**
+ * @brief Registers the tmpfs filesystem and the ramfs filesystem for the bootloaders ram disk.
  */
 void tmpfs_init(void);
 

@@ -282,6 +282,28 @@ status_t process_set_cmdline(process_t* process, const char* args, size_t len)
     return OK;
 }
 
+status_t process_send_note(process_t* process, const char* note)
+{
+    if (process == NULL || note == NULL)
+    {
+        return ERR(PROC, INVAL);
+    }
+
+    RCU_READ_SCOPE();
+
+    thread_t* thread;
+    PROCESS_RCU_THREAD_FOR_EACH(thread, process)
+    {
+        status_t status = thread_send_note(thread, note);
+        if (!IS_ERR(status))
+        {
+            return OK;
+        }
+    }
+
+    return ERR(PROC, DYING);
+}
+
 bool process_has_thread(process_t* process, thrd_t tid)
 {
     RCU_READ_SCOPE();

@@ -1,4 +1,5 @@
 #include <kernel/cpu/cpu.h>
+#include <kernel/fs/file.h>
 #include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -364,5 +365,75 @@ status_t irp_write_helper(irp_t* irp, void* buffer, size_t size)
     }
 
     *frame->write.offset += irp->result;
+    return OK;
+}
+
+status_t irp_seek_helper(irp_t* irp, size_t size)
+{
+    assert(irp != NULL);
+
+    irp_frame_t* frame = irp_current(irp);
+    assert(frame->major == IRP_MJ_SEEK);
+
+    file_t* file = frame->file;
+    if (file == NULL)
+    {
+        return ERR(IO, INVAL);
+    }
+
+    size_t newPos;
+    ssize_t offset = frame->seek.offset;
+
+    switch (frame->seek.origin)
+    {
+    case IOSEEK_START:
+        if (offset < 0)
+        {
+            return ERR(IO, INVAL);
+        }
+        newPos = (size_t)offset;
+        break;
+    case IOSEEK_CURRENT:
+        if (offset >= 0)
+        {
+            if (file->pos > SIZE_MAX - (size_t)offset)
+            {
+                return ERR(IO, OVERFLOW);
+            }
+            newPos = file->pos + (size_t)offset;
+        }
+        else
+        {
+            if (file->pos < (size_t)(-offset))
+            {
+                return ERR(IO, INVAL);
+            }
+            newPos = file->pos - (size_t)(-offset);
+        }
+        break;
+    case IOSEEK_END:
+        if (offset >= 0)
+        {
+            if (size > SIZE_MAX - (size_t)offset)
+            {
+                return ERR(IO, OVERFLOW);
+            }
+            newPos = size + (size_t)offset;
+        }
+        else
+        {
+            if (size < (size_t)(-offset))
+            {
+                return ERR(IO, INVAL);
+            }
+            newPos = size - (size_t)(-offset);
+        }
+        break;
+    default:
+        return ERR(IO, INVAL);
+    }
+
+    file->pos = newPos;
+    irp->result = newPos;
     return OK;
 }
