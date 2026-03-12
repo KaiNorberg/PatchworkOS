@@ -324,7 +324,15 @@ process_t* process_get_kernel(void)
 {
     if (kernelProcess == NULL)
     {
-        status_t status = process_new(&kernelProcess, PRIO_MAX, NULL);
+        job_t* job;
+        status_t status = job_new(&job, NULL);
+        if (IS_ERR(status))
+        {
+            panic(NULL, "Failed to create kernel job %Y", status);
+        }
+        UNREF_DEFER(job);
+
+        status = process_new(&kernelProcess, PRIO_MAX, job);
         if (IS_ERR(status))
         {
             panic(NULL, "Failed to create kernel process %Y", status);
