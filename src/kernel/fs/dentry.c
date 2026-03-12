@@ -45,6 +45,11 @@ static uint64_t dentry_hash(dentry_id_t parentId, const char* name, size_t lengt
 
 static bool dentry_map_add(dentry_t* dentry)
 {
+    if (dentry->parent == NULL)
+    {
+        return true;
+    }
+
     size_t length = strlen(dentry->name);
     uint64_t hash = dentry_hash(dentry->parent->id, dentry->name, length);
     dentry_key_t key = {.parent = dentry->parent, .name = dentry->name, .length = length};
@@ -68,6 +73,11 @@ static bool dentry_map_add(dentry_t* dentry)
 
 static void dentry_map_remove(dentry_t* dentry)
 {
+    if (dentry->parent == NULL)
+    {
+        return;
+    }
+
     uint64_t hash = dentry_hash(dentry->parent->id, dentry->name, strlen(dentry->name));
 
     seqlock_write_acquire(&lock);
