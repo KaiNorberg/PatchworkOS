@@ -6,29 +6,20 @@
 
 int system(const char* command)
 {
-    const char* argv[] = {"/bin/shell", command, NULL};
     proc_t shell;
-    status_t status = proc_create(argv, PROC_DEFAULT, &shell);
+    status_t status = proc_create(PROC_ARGS("/bin/shell", command), NULL, 0, PRIO_DEFAULT, PROC_DEFAULT, &shell);
     if (IS_ERR(status))
     {
         return -1;
     }
 
-    fd_t wait;
-    status = open(&wait, IOFMT("/proc/%d/wait", shell));
+    char buf[MAX_PATH] = {0};
+    status = ioreadp(IOPATH(IOFMT("/proc/%d/wait", shell)), IOBUF(buf, sizeof(buf) - 1), IOCUR, NULL);
     if (IS_ERR(status))
     {
+        proc_kill(shell);
         return -1;
     }
 
-    char buf[MAX_PATH];
-    status = ioread(wait, buf, MAX_PATH, IOCUR, NULL);
-    if (IS_ERR(status))
-    {
-        close(wait);
-        return -1;
-    }
-
-    close(wait);
     return atoi(buf);
 }

@@ -1513,7 +1513,7 @@ static inline status_t iopoll(fd_t fd, ioevents_t events, clock_t timeout, ioeve
 status_t iopolln(iopoll_t* fds, size_t nfds, clock_t timeout, size_t* count);
 
 /**
- * @brief Synchronous wrapper for a seek operation.
+ * @brief Synchronous wrapper for a seek operation with a timeout.
  *
  * @param fd The file descriptor to seek.
  * @param origin The origin of the seek operation.
@@ -1522,7 +1522,7 @@ status_t iopolln(iopoll_t* fds, size_t nfds, clock_t timeout, size_t* count);
  * @param pos Output pointer for the new file position, can be `NULL`.
  * @return An appropriate status value.
  */
-static inline status_t ioseek(fd_t fd, ioseek_t origin, ssize_t offset, clock_t timeout, size_t* pos)
+static inline status_t ioseekt(fd_t fd, ioseek_t origin, ssize_t offset, clock_t timeout, size_t* pos)
 {
     ioseekqt(fd, origin, offset, timeout, 0);
     iocqe_t cqe;
@@ -1539,7 +1539,21 @@ static inline status_t ioseek(fd_t fd, ioseek_t origin, ssize_t offset, clock_t 
 }
 
 /**
- * @brief Synchronous wrapper for a memory map operation.
+ * @brief Synchronous wrapper for a seek operation.
+ *
+ * @param fd The file descriptor to seek.
+ * @param origin The origin of the seek operation.
+ * @param offset The offset to seek to.
+ * @param pos Output pointer for the new file position, can be `NULL`.
+ * @return An appropriate status value.
+ */
+static inline status_t ioseek(fd_t fd, ioseek_t origin, ssize_t offset, size_t* pos)
+{
+    return ioseekt(fd, origin, offset, CLOCKS_NEVER, pos);
+}
+
+/**
+ * @brief Synchronous wrapper for a memory map operation with a timeout.
  *
  * @param fd The file descriptor to map.
  * @param address Input/Output pointer for the virtual address, if *address is NULL the kernel will choose an
@@ -1550,7 +1564,7 @@ static inline status_t ioseek(fd_t fd, ioseek_t origin, ssize_t offset, clock_t 
  * @param timeout Timeout for the operation.
  * @return An appropriate status value.
  */
-static inline status_t iomap(fd_t fd, void** address, size_t count, ssize_t offset, iomap_t mem, clock_t timeout)
+static inline status_t iomapt(fd_t fd, void** address, size_t count, ssize_t offset, iomap_t mem, clock_t timeout)
 {
     if ((void*)address == NULL)
     {
@@ -1566,6 +1580,22 @@ static inline status_t iomap(fd_t fd, void** address, size_t count, ssize_t offs
     }
     *address = (void*)cqe.result;
     return cqe.status;
+}
+
+/**
+ * @brief Synchronous wrapper for a memory map operation.
+ *
+ * @param fd The file descriptor to map.
+ * @param address Input/Output pointer for the virtual address, if *address is NULL the kernel will choose an
+ * address.
+ * @param count The number of bytes to map.
+ * @param offset The offset within the file to start mapping from.
+ * @param mem Memory mapping flags.
+ * @return An appropriate status value.
+ */
+static inline status_t iomap(fd_t fd, void** address, size_t count, ssize_t offset, iomap_t mem)
+{
+    return iomapt(fd, address, count, offset, mem, CLOCKS_NEVER);
 }
 
 /**

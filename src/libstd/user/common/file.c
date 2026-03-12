@@ -155,7 +155,7 @@ int _file_deinit(FILE* stream)
         free(stream->buf);
     }
 
-    close(stream->fd);
+    iodrop(stream->fd);
 
     mtx_destroy(&stream->mtx);
     return status;
@@ -174,7 +174,7 @@ int _file_flush_buffer(FILE* stream)
     while (remaining > 0)
     {
         size_t count;
-        status_t status = iowrite(stream->fd, ptr, remaining, stream->pos.offset, &count);
+        status_t status = iowrite(stream->fd, IOBUF(ptr, remaining), stream->pos.offset, &count);
         if (IS_ERR(status))
         {
             stream->flags |= _FILE_ERROR;
@@ -199,7 +199,7 @@ int _file_flush_buffer(FILE* stream)
 int _file_fill_buffer(FILE* stream)
 {
     uint64_t count;
-    status_t status = ioread(stream->fd, stream->buf, stream->bufSize, stream->pos.offset, &count);
+    status_t status = ioread(stream->fd, IOBUF(stream->buf, stream->bufSize), stream->pos.offset, &count);
     if (IS_ERR(status))
     {
         stream->flags |= _FILE_ERROR;
@@ -237,7 +237,7 @@ int _file_seek(FILE* stream, int64_t offset, int whence)
         ioWhence = IOSEEK_START;
         break;
     case SEEK_CUR:
-        ioWhence = IOSEEK_CUR;
+        ioWhence = IOSEEK_CURRENT;
         break;
     case SEEK_END:
         ioWhence = IOSEEK_END;

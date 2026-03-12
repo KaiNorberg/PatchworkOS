@@ -8,7 +8,6 @@ ROOT_DIRS = acpi base base/bin base/lib base/include base/data box cfg dev efi e
 BOOT_TARGET = bin/boot/.built
 KERNEL_TARGET = bin/kernel/.built
 LIBSTD_TARGET = bin/libstd/.built
-LIBPATCHWORK_TARGET = bin/libpatchwork/.built
 
 MODULES_MK = $(shell find src/modules/ -name "*.mk" 2>/dev/null)
 MODULES_NAMES = $(basename $(notdir $(MODULES_MK)))
@@ -114,11 +113,6 @@ $(LIBSTD_TARGET): setup | bin/libstd
 	@$(MAKE) -s --no-print-directory -f src/libstd/libstd.mk SRCDIR=src/libstd BUILDDIR=build/libstd BINDIR=bin/libstd all
 	@touch $@
 
-$(LIBPATCHWORK_TARGET): setup | bin/libpatchwork
-	@echo "BUILD   libpatchwork"
-	@$(MAKE) -s --no-print-directory -f src/libpatchwork/libpatchwork.mk SRCDIR=src/libpatchwork BUILDDIR=build/libpatchwork BINDIR=bin/libpatchwork all
-	@touch $@
-
 lib/argon2/.built: $(MODULES_TARGETS)
 	@if [ ! -d "lib/argon2" ]; then \
 		echo "CLONE   argon2"; \
@@ -131,7 +125,7 @@ lib/argon2/.built: $(MODULES_TARGETS)
 	@touch $@
 
 define MODULE_RULE
-bin/modules/.$(1).built: $(filter %/$(1).mk,$(MODULES_MK)) $(BOOT_TARGET) $(KERNEL_TARGET) $(LIBSTD_TARGET) $(LIBPATCHWORK_TARGET) | bin/modules
+bin/modules/.$(1).built: $(filter %/$(1).mk,$(MODULES_MK)) $(BOOT_TARGET) $(KERNEL_TARGET) $(LIBSTD_TARGET) | bin/modules
 	@echo "BUILD   module $(1)"
 	@$$(MAKE) -s --no-print-directory -f $$(filter %/$(1).mk,$$(MODULES_MK)) SRCDIR=$$(dir $$(filter %/$(1).mk,$$(MODULES_MK))) BUILDDIR=build/modules/$(1) BINDIR=bin/modules MODULE=$(1) all
 	@touch $$@

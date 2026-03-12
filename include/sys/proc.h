@@ -45,6 +45,7 @@ typedef uint8_t prio_t;
 
 #define PRIO_MAX 63      ///< The maximum priority value, inclusive.
 #define PRIO_MAX_USER 31 ///< The maximum priority user space is allowed to specify, inclusive.
+#define PRIO_DEFAULT 15  ///< The default priority value.
 #define PRIO_MIN 0       ///< The minimum priority value.
 
 /**
@@ -148,19 +149,19 @@ static inline proc_t proc_current(void)
 }
 
 /**
- * @brief System call that exists the current process.
- *
- * @param result The string exit result of the process.
- */
-_NORETURN void proc_exit(const char* result);
-
-/**
  * @brief Helper for sending the "kill" note to a process.
  *
  * @param pid The PID of the process to send the note to.
  * @return An appropriate status value.
  */
 status_t proc_kill(proc_t pid);
+
+/**
+ * @brief System call that exists the current process.
+ *
+ * @param result The string exit result of the process.
+ */
+_NORETURN void proc_exit(const char* result);
 
 /** @} */
 

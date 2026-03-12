@@ -46,7 +46,7 @@ void* _heap_map_memory(uint64_t size)
 {
     if (zeroDev == FDNONE)
     {
-        status_t status = open(&zeroDev, "/dev/const/zero:rw");
+        status_t status = iowalk(IOPATH("/dev/const/zero:rw"), &zeroDev);
         if (IS_ERR(status))
         {
             proc_exit(IOFMT("libstd: failed to open /dev/const/zero %Y\n", status));

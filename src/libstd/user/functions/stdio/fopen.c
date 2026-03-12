@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <sys/fs.h>
+#include <sys/io.h>
 #include <sys/proc.h>
 
 #include "user/common/file.h"
@@ -42,7 +43,7 @@ FILE* fopen(const char* _RESTRICT filename, const char* _RESTRICT mode)
     }
 
     fd_t fd;
-    status_t status = open(&fd, IOFMT("%s%s", filename, _flags_to_string(flags)));
+    status_t status = iowalk(IOPATH(IOFMT("%s%s", filename, _flags_to_string(flags))), &fd);
     if (IS_ERR(status))
     {
         errno = ENOENT;
@@ -53,14 +54,14 @@ FILE* fopen(const char* _RESTRICT filename, const char* _RESTRICT mode)
     if (stream == NULL)
     {
         errno = ENOMEM;
-        close(fd);
+        iodrop(fd);
         return NULL;
     }
 
     if (_file_init(stream, fd, flags | _FILE_FULLY_BUFFERED, NULL, BUFSIZ) == EOF)
     {
         errno = ENOMEM;
-        close(fd);
+        iodrop(fd);
         free(stream);
         return NULL;
     }
