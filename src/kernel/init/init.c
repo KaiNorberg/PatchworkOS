@@ -91,10 +91,10 @@ static void init_finalize(void)
 {
     pic_disable();
 
-    tmpfs_init();
-    devfs_init();
     sysfs_init();
+    devfs_init();
     procfs_init();
+    tmpfs_init();
 
     log_expose();
 
