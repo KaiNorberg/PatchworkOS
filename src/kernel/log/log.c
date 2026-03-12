@@ -5,7 +5,7 @@
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/drivers/com.h>
-#include <kernel/init/boot_info.h>
+#include <kernel/start/boot_info.h>
 #include <kernel/log/screen.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/clock.h>
@@ -66,7 +66,7 @@ static status_t klog_write(irp_t* irp)
     uint8_t* c;
     MDL_FOR_EACH(c, frame->write.buffer)
     {
-        log_handle_char(LOG_LEVEL_INFO, (char)*c);
+        log_handle_char(LOG_LEVEL_USER, (char)*c);
         bytesWritten++;
     }
 
@@ -114,6 +114,11 @@ void log_init(void)
 #endif
 
     log_splash();
+}
+
+dentry_t* log_dentry(void)
+{
+    return REF(klog);
 }
 
 void log_expose(void)

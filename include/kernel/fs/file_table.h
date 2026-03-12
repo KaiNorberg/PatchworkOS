@@ -57,9 +57,11 @@ file_t* file_table_get(file_table_t* table, fd_t fd);
  *
  * @param table The file table.
  * @param file The file to associate with the new file descriptor.
- * @return On success, the allocated file descriptor. On failure, `FDNONE`.
+ * @param fd Output pointer for the new file descriptor, if `FDNONE` any free file descriptor will be used,
+ * otherwise the specified file descriptor will be used.
+ * @return An appropriate status value.
  */
-fd_t file_table_grab(file_table_t* table, file_t* file);
+status_t file_table_grab(file_table_t* table, file_t* file, fd_t* fd);
 
 /**
  * @brief Free a file descriptor.

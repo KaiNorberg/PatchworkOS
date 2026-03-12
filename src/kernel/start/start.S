@@ -1,6 +1,6 @@
 .code64
 
-.extern init_early
+.extern start_early
 .extern bootInfo
 .extern _early_init_stack_end
 
@@ -21,6 +21,6 @@ _start:
     // bootInfo = rdi
     movq %rdi, bootInfo(%rip)
 
-    // init_early()
-    call init_early
+    // start_early()
+    call start_early
     ud2 // Should never be reached

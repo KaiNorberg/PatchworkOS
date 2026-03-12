@@ -21,20 +21,6 @@
 
 static dentry_t* root = NULL;
 
-static status_t sysfs_mount(filesystem_t* fs, dentry_t** out, const char* options, void* data)
-{
-    UNUSED(fs);
-    UNUSED(data);
-
-    if (options != NULL)
-    {
-        return ERR(FS, INVAL);
-    }
-
-    *out = REF(root);
-    return OK;
-}
-
 static vnode_class_t dirClass = {
     .name = "sysfs dir",
     .type = FILE_TYPE_DIRECTORY,
@@ -93,6 +79,25 @@ void sysfs_init(void)
     {
         panic(NULL, "Failed to register sysfs %Y", status);
     }
+}
+
+status_t sysfs_root_file(file_t** out)
+{
+    binding_t* binding = binding_new(root, NULL, NULL, MODE_ALL_PERMS);
+    if (binding == NULL)
+    {
+        return ERR(MEM, NOMEM);
+    }
+    UNREF_DEFER(binding);
+
+    file_t* file = file_new(root, binding, MODE_ALL_PERMS);
+    if (file == NULL)
+    {
+        return ERR(MEM, NOMEM);
+    }
+
+    *out = file;
+    return OK;
 }
 
 dentry_t* sysfs_dentry_new(dentry_t* parent, const char* name, const vnode_class_t* cls, void* data)

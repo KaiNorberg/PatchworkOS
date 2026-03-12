@@ -21,20 +21,6 @@
 
 static dentry_t* root = NULL;
 
-static status_t devfs_mount(filesystem_t* fs, dentry_t** out, const char* options, void* data)
-{
-    UNUSED(fs);
-    UNUSED(data);
-
-    if (options != NULL)
-    {
-        return ERR(FS, INVAL);
-    }
-
-    *out = REF(root);
-    return OK;
-}
-
 static vnode_class_t dirClass = {
     .name = "devfs dir",
     .type = FILE_TYPE_DIRECTORY,

@@ -1,7 +1,7 @@
 #include <kernel/drivers/abstract/fb.h>
 #include <kernel/fs/vfs.h>
-#include <kernel/init/boot_info.h>
-#include <kernel/init/init.h>
+#include <kernel/start/boot_info.h>
+#include <kernel/start/start.h>
 #include <kernel/fs/vnode.h>
 #include <kernel/io/irp.h>
 #include <kernel/log/log.h>

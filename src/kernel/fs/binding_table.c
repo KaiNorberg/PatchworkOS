@@ -305,7 +305,7 @@ void binding_table_unbind(binding_table_t* table, binding_t* binding)
     binding_table_remove(table, binding);
 }
 
-SYSCALL_DEFINE(SYS_FS_BIND, fd_t root, fd_t target, fd_t source)
+SYSCALL_DEFINE(SYS_FD_BIND, fd_t root, fd_t target, fd_t source)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
@@ -334,7 +334,7 @@ SYSCALL_DEFINE(SYS_FS_BIND, fd_t root, fd_t target, fd_t source)
     return binding_table_bind(&rootFile->bindings, &targetFile->path, &sourceFile->path, sourceFile->mode, NULL);
 }
 
-SYSCALL_DEFINE(SYS_FS_UNBIND, fd_t root, fd_t target)
+SYSCALL_DEFINE(SYS_FD_UNBIND, fd_t root, fd_t target)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;

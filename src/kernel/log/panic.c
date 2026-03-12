@@ -6,7 +6,7 @@
 #include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/port.h>
 #include <kernel/cpu/regs.h>
-#include <kernel/init/init.h>
+#include <kernel/start/start.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/vmm.h>

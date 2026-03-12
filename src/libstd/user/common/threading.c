@@ -60,7 +60,7 @@ static void _thread_init(_thread_t* thread)
     thread->err = EOK;
     thread->func = NULL;
     thread->arg = NULL;
-    thread->ring = NULL;
+    thread->hasRing = false;
 }
 
 void _threading_init(void)
@@ -124,10 +124,9 @@ _thread_t* _thread_new(thrd_start_t func, void* arg)
 void _thread_free(_thread_t* thread)
 {
     _thread_remove(thread);
-    if (thread->ring != NULL)
+    if (thread->hasRing)
     {
-        ioring_teardown(thread->ring);
-        free(thread->ring);
+        ioring_teardown(&thread->ring);
     }
     if (thread != &thread0)
     {

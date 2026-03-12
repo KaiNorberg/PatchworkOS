@@ -60,17 +60,10 @@ static status_t vfs_open_done(irp_t* irp, path_state_t* state, file_t* file)
 
 status_t vfs_open(file_t** out, const path_t* from, const char* pathname, process_t* process)
 {
-    if (out == NULL || pathname == NULL || process == NULL)
+    if (out == NULL || from == NULL || pathname == NULL || process == NULL)
     {
         return ERR(VFS, INVAL);
     }
-
-    file_t* root = file_table_get(&process->files, FDROOT);
-    if (root == NULL)
-    {
-        return ERR(VFS, BADFD);
-    }
-    UNREF_DEFER(root);
 
     size_t len = strlen(pathname);
     if (len >= MAX_PATH)
@@ -84,7 +77,7 @@ status_t vfs_open(file_t** out, const path_t* from, const char* pathname, proces
         return ERR(VFS, NOMEM);
     }
 
-    path_state_init(state, from->dentry, from->binding, root, vfs_open_done);
+    path_state_init(state, from->dentry, from->binding, NULL, vfs_open_done);
 
     memcpy(state->path, pathname, len + 1);
     state->count = len;

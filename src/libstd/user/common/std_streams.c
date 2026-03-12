@@ -8,9 +8,9 @@
 #include <sys/io.h>
 #include <sys/proc.h>
 
-static uint8_t _stdin_buff[BUFSIZ];
-static uint8_t _stdout_buff[BUFSIZ];
-static uint8_t _stderr_buff[BUFSIZ];
+static uint8_t _stdinBuff[BUFSIZ];
+static uint8_t _stdoutBuff[BUFSIZ];
+static uint8_t _stderrBuff[BUFSIZ];
 
 static FILE _stdin;
 static FILE _stdout;
@@ -35,8 +35,8 @@ static void _std_stream_init(fd_t fd, FILE* stream, FILE** streamPtr, void* buff
 
 void _std_streams_init(void)
 {
-    _std_stream_init(FDIN, &_stdin, &stdin, _stdin_buff, _FILE_LINE_BUFFERED | _FILE_READ);
-    _std_stream_init(FDOUT, &_stdout, &stdout, _stdout_buff, _FILE_LINE_BUFFERED | _FILE_WRITE);
-    _std_stream_init(FDERR, &_stderr, &stderr, _stderr_buff, _FILE_UNBUFFERED | _FILE_WRITE);
+    _std_stream_init(FDIN, &_stdin, &stdin, _stdinBuff, _FILE_LINE_BUFFERED | _FILE_READ);
+    _std_stream_init(FDOUT, &_stdout, &stdout, _stdoutBuff, _FILE_LINE_BUFFERED | _FILE_WRITE);
+    _std_stream_init(FDERR, &_stderr, &stderr, _stderrBuff, _FILE_UNBUFFERED | _FILE_WRITE);
     errno = EOK;
 }

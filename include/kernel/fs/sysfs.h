@@ -25,9 +25,17 @@ typedef struct volume_ops volume_ops_t;
 #define SYSFS_NAME "sysfs"
 
 /**
- * @brief Initializes  the system filesystem.
+ * @brief Initializes the system filesystem.
  */
 void sysfs_init(void);
+
+/**
+ * @brief Get the root file of the system filesystem.
+ *
+ * @param out Output pointer for the root file.
+ * @return An appropriate status value.
+ */
+status_t sysfs_root_file(file_t** out);
 
 /**
  * @brief Create a new dentry inside a mounted sysfs instance.

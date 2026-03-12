@@ -4,6 +4,7 @@
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <sys/proc.h>
+#include <sys/io.h>
 #include <threads.h>
 
 /**
@@ -23,7 +24,6 @@
 #define _THREADS_MAX 2048
 
 typedef struct _thread _thread_t;
-typedef struct ioring ioring_t;
 
 typedef void (*_thread_entry_t)(_thread_t*);
 
@@ -41,7 +41,8 @@ typedef struct _thread
     errno_t err;
     thrd_start_t func;
     void* arg;
-    struct ioring* ring;
+    ioring_t ring;
+    bool hasRing;
 } _thread_t;
 
 void _threading_init(void);

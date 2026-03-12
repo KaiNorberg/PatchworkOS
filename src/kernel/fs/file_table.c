@@ -47,24 +47,40 @@ file_t* file_table_get(file_table_t* table, fd_t fd)
     return REF(table->files[fd]);
 }
 
-fd_t file_table_grab(file_table_t* table, file_t* file)
+status_t file_table_grab(file_table_t* table, file_t* file, fd_t* fd)
 {
     if (table == NULL || file == NULL)
     {
-        return FDNONE;
+        return ERR(VFS, INVAL);
     }
 
     LOCK_SCOPE(&table->lock);
 
+    if (*fd != FDNONE)
+    {
+        if (*fd >= CONFIG_MAX_FD || table->files[*fd] != NULL)
+        {
+            return ERR(VFS, FD_OVERFLOW);
+        }
+
+        UNREF(table->files[*fd]);
+        table->files[*fd] = NULL;
+
+        table->files[*fd] = REF(file);
+        bitmap_set(&table->bitmap, *fd);
+        return OK;
+    }
+
     uint64_t index = bitmap_find_first_clear(&table->bitmap, 0, CONFIG_MAX_FD);
     if (index >= CONFIG_MAX_FD)
     {
-        return FDNONE;
+        return ERR(VFS, MFILE);
     }
 
     table->files[index] = REF(file);
     bitmap_set(&table->bitmap, index);
-    return (fd_t)index;
+    *fd = (fd_t)index;
+    return OK;
 }
 
 status_t file_table_drop(file_table_t* table, fd_t fd)

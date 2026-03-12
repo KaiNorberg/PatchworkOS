@@ -140,7 +140,10 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state);
 
 static void path_state_free(path_state_t* state)
 {
-    UNREF(state->root);
+    if (state->root != NULL)
+    {
+        UNREF(state->root);
+    }
     if (state->lookup != NULL)
     {
         UNREF(state->lookup);
@@ -194,7 +197,7 @@ static status_t path_dotdot(path_state_t* state)
         binding = binding->parent;
     }
 
-    if (dentry == state->root->path.dentry && binding == state->root->path.binding)
+    if (state->root != NULL && dentry == state->root->path.dentry && binding == state->root->path.binding)
     {
         return OK;
     }
@@ -276,6 +279,12 @@ static status_t path_symlink_complete(irp_t* irp, void* ctx)
 
     if (link[0] == '/')
     {
+        if (state->root == NULL)
+        {
+            path_state_free_acquired(state);
+            return ERR(VFS, INVAL);
+        }
+
         state->ptr = state->path;
         state->dentry = state->root->path.dentry;
         state->binding = state->root->path.binding;
@@ -501,6 +510,13 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state)
 {
     if (state->ptr == state->path && state->ptr[0] == '/')
     {
+        if (state->root == NULL)
+        {
+            rcu_read_unlock();
+            path_state_free(state);
+            return ERR(VFS, INVAL);
+        }
+
         state->dentry = state->root->path.dentry;
         state->binding = state->root->path.binding;
         state->ptr++;
@@ -555,7 +571,7 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state)
 
         state->dentry = next;
 
-        if (atomic_load(&state->dentry->bindings) > 0)
+        if (state->root != NULL && atomic_load(&state->dentry->bindings) > 0)
         {
             binding_table_rcu_traverse(&state->root->bindings, &state->binding, &state->dentry);
         }

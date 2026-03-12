@@ -3,7 +3,7 @@
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
-#include <kernel/init/init.h>
+#include <kernel/start/start.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/cache.h>

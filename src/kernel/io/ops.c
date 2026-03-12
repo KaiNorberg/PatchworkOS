@@ -167,7 +167,8 @@ static status_t io_op_walk_done(irp_t* irp, struct path_state* state, file_t* fi
 {
     UNUSED(state);
 
-    return file_table_grab(&irp->process->files, file);
+    irp->result = FDNONE;
+    return file_table_grab(&irp->process->files, file, &irp->result);
 }
 
 static status_t io_op_walk(irp_t* irp)

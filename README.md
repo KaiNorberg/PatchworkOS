@@ -273,18 +273,18 @@ All that happened is that the shell printed the exit status of the process, whic
 
 ### Mounting a Filesystem
 
-There is no `mount()` system call in PatchworkOS; instead filesystems are exposed via files which are used in combination with the `fsbind()` function to mount filesystems.
+There is no `mount()` system call in PatchworkOS; instead filesystems are exposed via files which are used in combination with the `fdbind()` function to mount filesystems.
 
 Filesystem files are exposed by "sysfs" as directories, for example, `/sys/fs/tmpfs` is the filesystem directory for the tmpfs filesystem. Within these directories are "clone" files. Opening one of these clone files (for example `/sys/fs/tmpfs/clone`) gives us a file descriptor containing the root of a new instance of that filesystem (for more complex filesystems, for example a disk based one, additional parameters might be needed within the payload specified in `iowalk()` when opening the filesystem file).
 
-Then we can use `fsbind()` to bind the root of the filesystem instance into our desired target:
+Then we can use `fdbind()` to bind the root of the filesystem instance into our desired target:
 
 ```c
 fd_t fs;
 fd_t target;
 iowalk(IOPATH("/sys/fs/tmpfs/clone"), &fs);
 iowalk(IOPATH("/mnt/tmpfs"), &target);
-fsbind(FDROOT, target, fs);
+fdbind(FDROOT, target, fs);
 ```
 
 ## Modules

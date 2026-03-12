@@ -21,8 +21,8 @@ PROGRAMS_MK = $(shell find src/programs/ -name "*.mk" 2>/dev/null)
 PROGRAMS_NAMES = $(basename $(notdir $(PROGRAMS_MK)))
 PROGRAMS_TARGETS = $(patsubst %,bin/programs/.%.built,$(PROGRAMS_NAMES))
 
-# Programs to be installed in /sbin
-SBIN_PROGRAMS = init boxd
+# Programs to be installed in /efi/boot
+EFI_BOOT_PROGRAMS = init boxd
 # Programs to be installed in /base/bin
 BASE_BIN_PROGRAMS = $(filter-out $(SBIN_PROGRAMS),$(PROGRAMS_NAMES))
 # Programs to be installed in /box/<box_name>/bin
@@ -53,9 +53,9 @@ bin/.deployed: $(BOOT_TARGET) $(KERNEL_TARGET) $(LIBSTD_TARGET) $(LIBPATCHWORK_T
 	@if [ -d include ]; then \
 		mcopy -i $(IMAGE) -s include/* ::/base/include 2>/dev/null || true; \
 	fi
-	@$(foreach prog,$(SBIN_PROGRAMS),\
+	@$(foreach prog,$(EFI_BOOT_PROGRAMS),\
 		if [ -f bin/programs/$(prog) ]; then \
-			mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/sbin 2>/dev/null || true; \
+			mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/efi/boot 2>/dev/null || true; \
 		fi;)
 	@$(foreach prog,$(BASE_BIN_PROGRAMS),\
 		if [ -f bin/programs/$(prog) ]; then \

@@ -319,7 +319,7 @@ static inline void path_state_init(path_state_t* state, dentry_t* dentry, bindin
 {
     state->dentry = dentry;
     state->binding = binding;
-    state->root = REF(root);
+    state->root = root != NULL ? REF(root) : NULL;
     state->ptr = state->path;
     state->componentLen = 0;
     state->mode = MODE_NONE;

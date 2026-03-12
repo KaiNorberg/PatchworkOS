@@ -6,11 +6,6 @@
 static void (*_stack[_EXIT_STACK_SIZE])(void);
 static uint64_t _length = 0;
 
-void _exit_stack_init(void)
-{
-    _length = 0;
-}
-
 int _exit_stack_push(void (*func)(void))
 {
     if (_length == _EXIT_STACK_SIZE)

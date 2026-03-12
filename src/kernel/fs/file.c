@@ -40,7 +40,7 @@ static void file_close(file_t* file)
 
 static cache_t cache = CACHE_CREATE(cache, "file", sizeof(file_t), CACHE_LINE, NULL, NULL);
 
-file_t* file_new(dentry_t* dentry, binding_t* mount, mode_t mode)
+file_t* file_new(dentry_t* dentry, binding_t* binding, mode_t mode)
 {
     file_t* file = cache_alloc(&cache);
     if (file == NULL)
@@ -51,7 +51,7 @@ file_t* file_new(dentry_t* dentry, binding_t* mount, mode_t mode)
     ref_init(&file->ref, file_close);
     file->pos = 0;
     file->mode = mode;
-    file->path = PATH_CREATE(mount, dentry);
+    file->path = PATH_CREATE(binding, dentry);
     file->data = NULL;
     file->close = irp_new(process_get_kernel(), NULL);
     if (file->close == NULL)

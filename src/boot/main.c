@@ -901,6 +901,99 @@ cleanup:
 }
 
 /**
+ * @brief Loads the init process into a buffer.
+ *
+ * @param init Pointer to the init structure to populate.
+ * @param rootHandle Handle to the root of the boot volume.
+ * @return On success, `EFI_SUCCESS`. On failure, an EFI error code.
+ */
+static EFI_STATUS init_load(boot_init_t* init, EFI_FILE* rootHandle)
+{
+    if (init == NULL || rootHandle == NULL)
+    {
+        return EFI_INVALID_PARAMETER;
+    }
+
+    EFI_FILE* efiDir = NULL;
+    EFI_STATUS status = uefi_call_wrapper(rootHandle->Open, 5, rootHandle, &efiDir, L"efi", EFI_FILE_MODE_READ, 0);
+    if (EFI_ERROR(status))
+    {
+        Print(L"  ERROR: Failed to open efi directory (0x%lx)\n", status);
+        return status;
+    }
+
+    EFI_FILE* bootDir = NULL;
+    status = uefi_call_wrapper(efiDir->Open, 5, efiDir, &bootDir, L"boot", EFI_FILE_MODE_READ, 0);
+    uefi_call_wrapper(efiDir->Close, 1, efiDir);
+    if (EFI_ERROR(status))
+    {
+        Print(L"  ERROR: Failed to open boot directory (0x%lx)\n", status);
+        return status;
+    }
+
+    EFI_FILE* file = NULL;
+    void* fileData = NULL;
+    Elf64_File elf;
+    Elf64_Addr minVaddr = 0;
+    Elf64_Addr maxVaddr = 0;
+    status = uefi_call_wrapper(bootDir->Open, 5, bootDir, &file, L"init", EFI_FILE_MODE_READ, 0);
+    uefi_call_wrapper(bootDir->Close, 1, bootDir);
+    if (EFI_ERROR(status))
+    {
+        Print(L"  ERROR: Failed to open init file (0x%lx)\n", status);
+        return status;
+    }
+
+    EFI_FILE_INFO* info = LibFileInfo(file);
+    if (info == NULL)
+    {
+        uefi_call_wrapper(file->Close, 1, file);
+        return EFI_LOAD_ERROR;
+    }
+
+    UINTN fileSize = info->FileSize;
+    FreePool(info);
+
+    fileData = AllocatePool(fileSize);
+    if (fileData == NULL)
+    {
+        uefi_call_wrapper(file->Close, 1, file);
+        return EFI_OUT_OF_RESOURCES;
+    }
+
+    UINTN readSize = fileSize;
+    status = uefi_call_wrapper(file->Read, 3, file, &readSize, fileData);
+    uefi_call_wrapper(file->Close, 1, file);
+
+    if (EFI_ERROR(status) || readSize != fileSize)
+    {
+        FreePool(fileData);
+        return EFI_LOAD_ERROR;
+    }
+
+    if (elf64_validate(&elf, fileData, fileSize) != 0)
+    {
+        Print(L"  ERROR: Invalid init ELF\n");
+        FreePool(fileData);
+        return EFI_LOAD_ERROR;
+    }
+
+    elf64_get_loadable_bounds(&elf, &minVaddr, &maxVaddr);
+    init->size = maxVaddr - minVaddr;
+    init->loadAddr = minVaddr;
+    init->entry = elf.header->e_entry;
+    init->buffer = AllocateZeroPool(init->size);
+
+    elf64_load_segments(&elf, (uintptr_t)init->buffer, minVaddr);
+
+    FreePool(fileData);
+
+    Print(L"  Init loaded at 0x%lx, loadAddr=%lx entry=%lx size=%lu\n", init->buffer, init->loadAddr, init->entry, init->size);
+
+    return EFI_SUCCESS;
+}
+
+/**
  * @brief Displays the bootloader splash screen.
  */
 static void splash_screen_display(void)
@@ -1012,6 +1105,14 @@ static EFI_STATUS boot_info_populate(EFI_HANDLE imageHandle, EFI_SYSTEM_TABLE* s
 
     Print(L"Loading kernel...\n");
     status = kernel_load(&bootInfo->kernel, rootHandle);
+    if (EFI_ERROR(status))
+    {
+        uefi_call_wrapper(rootHandle->Close, 1, rootHandle);
+        return status;
+    }
+
+    Print(L"Loading init...\n");
+    status = init_load(&bootInfo->init, rootHandle);
     if (EFI_ERROR(status))
     {
         uefi_call_wrapper(rootHandle->Close, 1, rootHandle);

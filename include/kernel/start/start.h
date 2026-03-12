@@ -4,7 +4,7 @@
 
 /**
  * @brief Initialization and `kmain()`.
- * @defgroup kernel_init Initialization
+ * @defgroup kernel_start Initialization
  * @ingroup kernel
  *
  * @{
@@ -20,7 +20,7 @@
  *
  * Will be called in the `_start()` function found in `start.S` with interrupts disabled.
  */
-_NORETURN void init_early(void);
+_NORETURN void start_early(void);
 
 /**
  * @brief Kernel main function.

@@ -1,4 +1,4 @@
-#include <kernel/init/boot_info.h>
+#include <kernel/start/boot_info.h>
 
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>

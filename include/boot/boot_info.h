@@ -92,6 +92,14 @@ typedef struct
 
 typedef struct
 {
+    void* buffer;
+    size_t size;
+    uintptr_t loadAddr;
+    uintptr_t entry;
+} boot_init_t;
+
+typedef struct
+{
     boot_memory_map_t map;
     page_table_t table;
 } boot_memory_t;
@@ -103,6 +111,7 @@ typedef struct boot_info
     void* runtimeServices;
     boot_disk_t disk;
     boot_kernel_t kernel;
+    boot_init_t init;
     boot_memory_t memory;
 } boot_info_t;
 

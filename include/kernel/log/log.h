@@ -1,9 +1,10 @@
 #pragma once
 
+#include <kernel/fs/dentry.h>
+
 #include <sys/defs.h>
-
+#include <sys/list.h>
 #include <boot/boot_info.h>
-
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -41,6 +42,13 @@ typedef enum
  * @brief Initialize the logging system.
  */
 void log_init(void);
+
+/**
+ * @brief Get the dentry for the kernel log.
+ *
+ * @return The dentry of the kernel log.
+ */
+dentry_t* log_dentry(void);
 
 /**
  * @brief Expose kernel logs via the `/sys/klog` file.

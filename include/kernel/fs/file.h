@@ -67,12 +67,12 @@ typedef struct file
  * There is no `file_free()` instead use `UNREF()`.
  *
  * @param dentry The dentry of the file to open.
- * @param mount The mount of the file to open.
+ * @param binding The binding of the file to open.
  * @param mode The mode with which the file was opened, if no permissions are specified the maximum allowed permissions
- * from the mount are used.
+ * from the binding are used.
  * @return On success, a pointer to the allocated file. On failure, `NULL`.
  */
-file_t* file_new(dentry_t* dentry, binding_t* mount, mode_t mode);
+file_t* file_new(dentry_t* dentry, binding_t* binding, mode_t mode);
 
 /**
  * @brief Send an IRP to the vnode of the specified file.

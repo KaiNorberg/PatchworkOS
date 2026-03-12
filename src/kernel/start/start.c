@@ -7,12 +7,13 @@
 #include <kernel/drivers/pic.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/filesystem.h>
+#include <kernel/fs/path.h>
 #include <kernel/fs/procfs.h>
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/tmpfs.h>
 #include <kernel/fs/vfs.h>
-#include <kernel/init/boot_info.h>
-#include <kernel/init/init.h>
+#include <kernel/start/boot_info.h>
+#include <kernel/start/start.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/log/screen.h>
@@ -23,7 +24,6 @@
 #include <kernel/proc/job.h>
 #include <kernel/proc/process.h>
 #include <kernel/proc/reaper.h>
-#include <kernel/sched/loader.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
@@ -43,7 +43,7 @@
 
 static cpu_t bootstrapCpu ALIGNED(PAGE_SIZE) = {0};
 
-void init_early(void)
+void start_early(void)
 {
     gdt_init();
     idt_init();
@@ -87,7 +87,7 @@ void init_early(void)
     panic(NULL, "sched_start returned unexpectedly");
 }
 
-static void init_finalize(void)
+static void start_finalize(void)
 {
     pic_disable();
 
@@ -104,7 +104,7 @@ static void init_finalize(void)
 
     boot_info_t* bootInfo = boot_info_get();
 
-    if (bootInfo->gop.virtAddr != NULL)
+    /*if (bootInfo->gop.virtAddr != NULL)
     {
         status_t status = module_device_attach("BOOT_GOP", "BOOT_GOP", MODULE_LOAD_ALL, NULL);
         if (IS_ERR(status))
@@ -149,22 +149,66 @@ static void init_finalize(void)
     if (ipi_chip_amount() == 0)
     {
         panic(NULL, "No IPI chip registered, most likely no IPI chips with a provided driver was found");
-    }
+    }*/
 
     LOG_INFO("kernel initalized using %llu kb of memory\n", pmm_used_pages() * PAGE_SIZE / 1024);
 }
 
-static inline void init_process_spawn(void)
+static inline void start_init_process(void)
 {
     LOG_INFO("spawning init process\n");
 
+    job_t* job;
+    status_t status = job_new(&job, NULL);
+    if (IS_ERR(status))
+    {
+        panic(NULL, "Failed to create init job");
+    }
+    UNREF_DEFER(job);
+
     process_t* initProcess;
-    status_t status = process_new(&initProcess, PRIO_MAX_USER, NULL);
+    status = process_new(&initProcess, PRIO_MAX_USER, job);
     if (IS_ERR(status))
     {
         panic(NULL, "Failed to create init process");
     }
     UNREF_DEFER(initProcess);
+
+    file_t* sysfs;
+    status = sysfs_root_file(&sysfs);
+    if (IS_ERR(status))
+    {
+        panic(NULL, "Failed to get sysfs root file");
+    }
+    UNREF_DEFER(sysfs);
+
+    fd_t fd = FDROOT;
+    status = file_table_grab(&initProcess->files, sysfs, & fd);
+    if (IS_ERR(status))
+    {
+        panic(NULL, "Failed to grab sysfs root file");
+    }
+
+    dentry_t* klogDentry = log_dentry();
+    if (klogDentry == NULL)
+    {
+        panic(NULL, "Failed to get klog dentry");
+    }
+    UNREF_DEFER(klogDentry);
+
+    file_t* klog = file_new(klogDentry, sysfs->path.binding, MODE_ALL_PERMS);
+    if (klog == NULL)
+    {
+        panic(NULL, "Failed to create klog file");
+    }
+    UNREF_DEFER(klog);
+
+    fd = FDOUT;
+    status = file_table_grab(&initProcess->files, klog, &fd);
+    if (IS_ERR(status))
+    {
+        panic(NULL, "Failed to grab klog file");
+    }
 
     thread_t* initThread;
     status = thread_new(&initThread, initProcess);
@@ -173,18 +217,35 @@ static inline void init_process_spawn(void)
         panic(NULL, "Failed to create init thread");
     }
 
-    char* args = "/sbin/init";
-    status = process_set_cmdline(initProcess, args, strlen(args));
-    if (IS_ERR(status))
+    boot_info_t* bootInfo = boot_info_get();
+    if (bootInfo->init.buffer == NULL)
     {
-        panic(NULL, "Failed to set init process cmdline");
+        panic(NULL, "No init process loaded by bootloader");
     }
 
-    // Calls loader_exec();
-    initThread->frame.rip = (uintptr_t)loader_exec;
-    initThread->frame.cs = GDT_CS_RING0;
-    initThread->frame.ss = GDT_SS_RING0;
-    initThread->frame.rsp = initThread->kernelStack.top;
+    void* buffer = (void*)PML_ENSURE_HIGHER_HALF(bootInfo->init.buffer);
+    void* loadAddr = (void*)bootInfo->init.loadAddr;
+    size_t size = bootInfo->init.size;
+
+    status = vmm_alloc(&initProcess->space, &loadAddr, size, PAGE_SIZE, PML_USER | PML_WRITE | PML_PRESENT,
+        VMM_ALLOC_OVERWRITE);
+    if (IS_ERR(status))
+    {
+        panic(NULL, "Failed to allocate memory for init process");
+    }
+
+    status = space_copy_in(&initProcess->space, loadAddr, buffer, size);
+    if (IS_ERR(status))
+    {
+        panic(NULL, "Failed to copy init process to user space");
+    }
+
+    memset(&initThread->frame, 0, sizeof(interrupt_frame_t));
+    initThread->frame.rip = bootInfo->init.entry;
+    initThread->frame.cs = GDT_CS_RING3;
+    initThread->frame.ss = GDT_SS_RING3;
+    initThread->frame.rsp = initThread->userStack.top;
+    initThread->frame.rbp = initThread->userStack.top;
     initThread->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
 
     sched_submit(initThread);
@@ -194,13 +255,13 @@ void kmain(void)
 {
     LOG_DEBUG("kmain entered\n");
 
-    init_finalize();
+    start_finalize();
 
 #ifdef _TESTING_
     TEST_ALL();
 #endif
 
-    init_process_spawn();
+    start_init_process();
 
     LOG_INFO("done with boot thread\n");
     sched_thread_exit();

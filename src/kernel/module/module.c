@@ -3,7 +3,7 @@
 #include <kernel/module/module.h>
 
 #include <kernel/fs/vfs.h>
-#include <kernel/init/boot_info.h>
+#include <kernel/start/boot_info.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
@@ -1192,7 +1192,6 @@ status_t module_device_attach(const char* type, const char* name, module_load_fl
     list_t handlers = LIST_CREATE(handlers);
     uint64_t count = 0;
 
-    status = OK;
     module_cached_device_entry_t* deviceEntry;
     LIST_FOR_EACH(deviceEntry, &cachedDevice->entries, listEntry)
     {
@@ -1204,10 +1203,20 @@ status_t module_device_attach(const char* type, const char* name, module_load_fl
         }
 
         module_device_handler_t* handler;
-        status = module_handler_add(&handler, module, device);
+        status_t status = module_handler_add(&handler, module, device);
         if (IS_ERR(status))
         {
-            goto error;
+            while (!list_is_empty(&handlers))
+            {
+                module_device_handler_t* handler = CONTAINER_OF(list_pop_front(&handlers), module_device_handler_t, loadEntry);
+                module_handler_remove(handler);
+            }
+            if (list_is_empty(&device->handlers))
+            {
+                module_device_free(device);
+            }
+            module_gc_collect();
+            return status;
         }
         list_push_back(&handlers, &handler->loadEntry);
         count++;
@@ -1229,18 +1238,6 @@ status_t module_device_attach(const char* type, const char* name, module_load_fl
         *loadedCount = count;
     }
     return OK;
-error:
-    while (!list_is_empty(&handlers))
-    {
-        module_device_handler_t* handler = CONTAINER_OF(list_pop_front(&handlers), module_device_handler_t, loadEntry);
-        module_handler_remove(handler);
-    }
-    if (list_is_empty(&device->handlers))
-    {
-        module_device_free(device);
-    }
-    module_gc_collect();
-    return status;
 }
 
 void module_device_detach(const char* name)

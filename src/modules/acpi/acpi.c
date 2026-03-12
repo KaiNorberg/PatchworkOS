@@ -7,8 +7,8 @@
 
 #include <kernel/fs/binding.h>
 #include <kernel/fs/sysfs.h>
-#include <kernel/init/boot_info.h>
-#include <kernel/init/init.h>
+#include <kernel/start/boot_info.h>
+#include <kernel/start/start.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/pmm.h>
