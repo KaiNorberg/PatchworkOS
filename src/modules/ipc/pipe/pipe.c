@@ -46,8 +46,11 @@ typedef struct
 static dentry_t* dir = NULL;
 static dentry_t* clone = NULL;
 
-static status_t pipe_open(file_t* file)
+static status_t pipe_open(irp_t* irp)
 {
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
+
     pipe_t* data = malloc(sizeof(pipe_t));
     if (data == NULL)
     {
@@ -63,16 +66,19 @@ static status_t pipe_open(file_t* file)
     return OK;
 }
 
-static void pipe_close(file_t* file)
+static status_t pipe_close(irp_t* irp)
 {
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
     pipe_t* data = file->data;
     if (data == NULL)
     {
-        return;
+        return OK;
     }
 
     free(data);
     file->data = NULL;
+    return OK;
 }
 
 static status_t pipe_cancel(irp_t* irp)
@@ -149,7 +155,7 @@ static status_t pipe_read(irp_t* irp)
     {
         irp_frame_t* pollFrame = irp_current(poll);
 
-        iopoll_t events = 0;
+        ioevents_t events = 0;
         if (fifo_bytes_readable(&data->fifo) > 0)
         {
             events |= IOEVENT_READ;
@@ -228,7 +234,7 @@ static status_t pipe_write(irp_t* irp)
     {
         irp_frame_t* pollFrame = irp_current(poll);
 
-        iopoll_t events = 0;
+        ioevents_t events = 0;
         if (fifo_bytes_readable(&data->fifo) > 0)
         {
             events |= IOEVENT_READ;
@@ -289,11 +295,12 @@ static status_t pipe_poll(irp_t* irp)
 
 static vnode_class_t pipeClass = {
     .name = "pipe",
-    .type = VNODE_REGULAR,
-    .open = pipe_open,
-    .close = pipe_close,
+    .type = FILE_TYPE_REGULAR,
     .handlers =
         {
+            VNODE_HANDLERS(),
+            [IRP_MJ_OPEN] = pipe_open,
+            [IRP_MJ_CLOSE] = pipe_close,
             [IRP_MJ_READ] = pipe_read,
             [IRP_MJ_WRITE] = pipe_write,
             [IRP_MJ_POLL] = pipe_poll,
@@ -302,8 +309,10 @@ static vnode_class_t pipeClass = {
 
 static vnode_class_t dirClass = {
     .name = "pipe",
-    .type = VNODE_DIR,
-    .iterate = dentry_generic_iterate,
+    .type = FILE_TYPE_DIRECTORY,
+    .handlers = {
+        VNODE_DIR_HANDLERS(),
+    },
 };
 
 status_t pipe_init(void)

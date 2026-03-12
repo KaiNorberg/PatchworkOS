@@ -37,11 +37,10 @@ static status_t acpi_table_read(irp_t* irp)
 
 static vnode_class_t tableClass = {
     .name = "acpi table",
-    .type = VNODE_DIR,
-    .iterate = dentry_generic_iterate,
+    .type = FILE_TYPE_DIRECTORY,
     .handlers =
         {
-            [IRP_MJ_READ] = acpi_table_read,
+            VNODE_DIR_HANDLERS(),
         },
 };
 

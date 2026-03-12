@@ -94,8 +94,10 @@ void aml_namespace_init(aml_object_t* root)
 
 static vnode_class_t amlClass = {
     .name = "aml",
-    .type = VNODE_DIR,
-    .iterate = dentry_generic_iterate,
+    .type = FILE_TYPE_DIRECTORY,
+    .handlers = {
+        VNODE_DIR_HANDLERS(),
+    },
 };
 
 static status_t aml_namespace_expose_object(aml_object_t* object, dentry_t* parentDir)

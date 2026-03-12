@@ -17,6 +17,7 @@
 #include <stdlib.h>
 
 #include <sys/list.h>
+
 /**
  * @brief Shared Memory
  * @defgroup kernel_ipc_shmem Shared Memory
@@ -144,8 +145,11 @@ static status_t shmem_object_allocate_pages(shmem_object_t* shmem, uint64_t page
     return OK;
 }
 
-static status_t shmem_open(file_t* file)
+static status_t shmem_open(irp_t* irp)
 {
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
+
     shmem_object_t* shmem = shmem_object_new();
     if (shmem == NULL)
     {
@@ -156,15 +160,18 @@ static status_t shmem_open(file_t* file)
     return OK;
 }
 
-static void shmem_close(file_t* file)
+static status_t shmem_close(irp_t* irp)
 {
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
     shmem_object_t* shmem = file->data;
     if (shmem == NULL)
     {
-        return;
+        return OK;
     }
 
     UNREF(shmem);
+    return OK;
 }
 
 static status_t shmem_mmap(irp_t* irp)
@@ -185,7 +192,7 @@ static status_t shmem_mmap(irp_t* irp)
 
     LOCK_SCOPE(&shmem->lock);
 
-    process_t* process = irp_get_process(irp);
+    process_t* process = irp->process;
     space_t* space = &process->space;
 
     uint64_t pageAmount = BYTES_TO_PAGES(length);
@@ -240,19 +247,22 @@ static status_t shmem_mmap(irp_t* irp)
 
 static vnode_class_t fileClass = {
     .name = "shmem file",
-    .type = VNODE_REGULAR,
-    .open = shmem_open,
-    .close = shmem_close,
+    .type = FILE_TYPE_REGULAR,
     .handlers =
         {
+            VNODE_HANDLERS(),
+            [IRP_MJ_OPEN] = shmem_open,
+            [IRP_MJ_CLOSE] = shmem_close,
             [IRP_MJ_MMAP] = shmem_mmap,
         },
 };
 
 static vnode_class_t dirClass = {
     .name = "shmem dir",
-    .type = VNODE_DIR,
-    .iterate = dentry_generic_iterate,
+    .type = FILE_TYPE_DIRECTORY,
+    .handlers = {
+        VNODE_DIR_HANDLERS(),
+    },
 };
 
 static status_t shmem_init(void)

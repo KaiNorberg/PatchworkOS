@@ -39,21 +39,17 @@ bool acpi_is_checksum_valid(void* table, uint64_t length)
 
 static vnode_class_t acpiClass = {
     .name = "acpi",
-    .type = VNODE_DIR,
-    .iterate = dentry_generic_iterate,
+    .type = FILE_TYPE_DIRECTORY,
+    .handlers =
+        {
+            VNODE_DIR_HANDLERS(),
+        }
 };
 
 dentry_t* acpi_get_dir(void)
 {
     if (!dirInitialized)
     {
-        namespace_t* ns = process_get_ns(process_get_kernel());
-        if (ns == NULL)
-        {
-            panic(NULL, "failed to get kernel process namespace for ACPI sysfs group");
-        }
-        UNREF_DEFER(ns);
-
         acpi = sysfs_dentry_new(NULL, "acpi", &acpiClass, NULL);
         if (acpi == NULL)
         {

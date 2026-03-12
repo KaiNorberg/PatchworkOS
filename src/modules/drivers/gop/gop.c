@@ -2,6 +2,7 @@
 #include <kernel/fs/vfs.h>
 #include <kernel/init/boot_info.h>
 #include <kernel/init/init.h>
+#include <kernel/fs/vnode.h>
 #include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
@@ -26,17 +27,6 @@
 
 static boot_gop_t gop;
 static fb_t fb;
-
-static status_t gop_info(fb_t* fb, fb_info_t* info)
-{
-    UNUSED(fb);
-
-    info->width = gop.width;
-    info->height = gop.height;
-    info->pitch = gop.stride * sizeof(uint32_t);
-    strncpy(info->format, "B8G8R8A8", sizeof(info->format));
-    return OK;
-}
 
 static status_t gop_read(irp_t* irp)
 {
@@ -80,6 +70,18 @@ static status_t gop_mmap(irp_t* irp)
     return OK;
 }
 
+static vnode_class_t gopDataClass = {
+    .name = "gop data",
+    .type = FILE_TYPE_DEVICE,
+    .handlers =
+        {
+            VNODE_HANDLERS(),
+            [IRP_MJ_READ] = gop_read,
+            [IRP_MJ_WRITE] = gop_write,
+            [IRP_MJ_MMAP] = gop_mmap,
+        },
+};
+
 static status_t gop_init(void)
 {
     boot_info_t* bootInfo = boot_info_get();
@@ -92,10 +94,11 @@ static status_t gop_init(void)
     gop = bootInfo->gop;
 
     fb.name = "Graphics Output Protocol";
-    fb.info = gop_info;
-    fb.read = gop_read;
-    fb.write = gop_write;
-    fb.mmap = gop_mmap;
+    fb.width = gop.width;
+    fb.height = gop.height;
+    fb.pitch = gop.stride * sizeof(uint32_t);
+    fb.format = "B8G8R8A8";
+    fb.data = &gopDataClass;
 
     status_t status = fb_register(&fb);
     if (IS_ERR(status))

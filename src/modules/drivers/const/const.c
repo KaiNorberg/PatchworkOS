@@ -61,9 +61,10 @@ static status_t const_one_mmap(irp_t* irp)
 
 static vnode_class_t oneClass = {
     .name = "const one",
-    .type = VNODE_REGULAR,
+    .type = FILE_TYPE_DEVICE,
     .handlers =
         {
+            VNODE_HANDLERS(),
             [IRP_MJ_READ] = const_one_read,
             [IRP_MJ_MMAP] = const_one_mmap,
         },
@@ -95,9 +96,10 @@ static status_t const_zero_mmap(irp_t* irp)
 
 static vnode_class_t zeroClass = {
     .name = "const zero",
-    .type = VNODE_REGULAR,
+    .type = FILE_TYPE_DEVICE,
     .handlers =
         {
+            VNODE_HANDLERS(),
             [IRP_MJ_READ] = const_zero_read,
             [IRP_MJ_MMAP] = const_zero_mmap,
         },
@@ -118,9 +120,10 @@ static status_t const_null_write(irp_t* irp)
 
 static vnode_class_t nullClass = {
     .name = "const null",
-    .type = VNODE_REGULAR,
+    .type = FILE_TYPE_DEVICE,
     .handlers =
         {
+            VNODE_HANDLERS(),
             [IRP_MJ_READ] = const_null_read,
             [IRP_MJ_WRITE] = const_null_write,
         },
@@ -128,8 +131,11 @@ static vnode_class_t nullClass = {
 
 static vnode_class_t constClass = {
     .name = "const",
-    .type = VNODE_DIR,
-    .iterate = dentry_generic_iterate,
+    .type = FILE_TYPE_DIRECTORY,
+    .handlers =
+        {
+            VNODE_DIR_HANDLERS(),
+        },
 };
 
 static status_t const_init(void)
