@@ -11,7 +11,6 @@
 #include <kernel/sched/thread.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/rcu.h>
-#include <kernel/sync/sync_ctl.h>
 #include <kernel/utils/ref.h>
 
 #include <stdatomic.h>
@@ -83,7 +82,6 @@ typedef struct process
     process_result_t result;
     space_t space;
     file_table_t files;
-    sync_ctl_t sync;
     perf_process_ctx_t perf;
     ioring_ctx_t rings[CONFIG_MAX_RINGS];
     note_handler_t noteHandler;

@@ -64,7 +64,6 @@ static void process_ctor(void* ptr)
     lock_init(&process->result.lock);
     process->space = (space_t){0};
     process->files = (file_table_t){0};
-    process->sync = (sync_ctl_t){0};
     process->perf = (perf_process_ctx_t){0};
     process->noteHandler = (note_handler_t){0};
     process->suspendQueue = (wait_queue_t){0};
@@ -98,7 +97,6 @@ static void process_free(process_t* process)
     job_member_deinit(&process->job);
     file_table_deinit(&process->files);
     space_deinit(&process->space);
-    sync_ctl_deinit(&process->sync);
     for (uint64_t i = 0; i < ARRAY_SIZE(process->rings); i++)
     {
         ioring_ctx_deinit(&process->rings[i]);
@@ -135,7 +133,6 @@ status_t process_new(process_t** out, prio_t priority, job_t* job)
     }
 
     file_table_init(&process->files);
-    sync_ctl_init(&process->sync);
     perf_process_ctx_init(&process->perf);
     for (uint64_t i = 0; i < ARRAY_SIZE(process->rings); i++)
     {

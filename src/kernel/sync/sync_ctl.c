@@ -1,5 +1,6 @@
 #include <kernel/cpu/syscall.h>
 #include <kernel/log/log.h>
+#include <kernel/mem/space.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/sched.h>
@@ -7,57 +8,95 @@
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
+#include <kernel/sync/seqlock.h>
 #include <kernel/sync/sync_ctl.h>
+#include <kernel/utils/ref.h>
 
 #include <stdlib.h>
 #include <sys/map.h>
 #include <sys/sync.h>
 
-static bool sync_ctl_cmp(map_entry_t* entry, const void* key)
+typedef struct
+{
+    ref_t ref;
+    map_entry_t entry;
+    wait_queue_t queue;
+    phys_addr_t addr;
+} sync_object_t;
+
+static cache_t cache = CACHE_CREATE(cache, "sync", sizeof(sync_object_t), CACHE_LINE, NULL, NULL);
+
+static bool sync_map_cmp(map_entry_t* entry, const void* key)
 {
     sync_object_t* object = CONTAINER_OF(entry, sync_object_t, entry);
-    return object->addr == (uintptr_t)key;
+    return object->addr == (phys_addr_t)key;
 }
 
-void sync_ctl_init(sync_ctl_t* ctl)
+static MAP_CREATE(syncMap, 256, sync_map_cmp);
+static seqlock_t syncLock = SEQLOCK_CREATE();
+
+static void sync_object_free(void* ptr)
 {
-    MAP_DEFINE_INIT(ctl->objects, sync_ctl_cmp);
-    lock_init(&ctl->lock);
+    sync_object_t* object = (sync_object_t*)ptr;
+
+    seqlock_write_acquire(&syncLock);
+    map_remove(&syncMap, &object->entry, hash_uint64(object->addr));
+    seqlock_write_release(&syncLock);
+
+    wait_queue_deinit(&object->queue);
+    cache_free(object);
 }
 
-void sync_ctl_deinit(sync_ctl_t* ctl)
+static sync_object_t* sync_object_get(phys_addr_t addr)
 {
-    LOCK_SCOPE(&ctl->lock);
+    seqlock_write_acquire(&syncLock);
 
-    sync_object_t* object;
-    sync_object_t* temp;
-    MAP_FOR_EACH_SAFE(object, temp, &ctl->objects, entry)
+    uint64_t hash = hash_uint64(addr);
+    sync_object_t* object = CONTAINER_OF_SAFE(map_find(&syncMap, (void*)addr, hash), sync_object_t, entry);
+    if (object != NULL)
     {
-        wait_queue_deinit(&object->queue);
-        free(object);
+        if (REF_TRY(object) == NULL)
+        {
+            map_remove(&syncMap, &object->entry, hash);
+            object = NULL;
+        }
     }
-}
 
-static sync_object_t* sync_ctl_get(sync_ctl_t* ctl, void* addr)
-{
-    LOCK_SCOPE(&ctl->lock);
-
-    uint64_t hash = hash_uint64((uintptr_t)addr);
-    sync_object_t* object = CONTAINER_OF_SAFE(map_find(&ctl->objects, addr, hash), sync_object_t, entry);
     if (object == NULL)
     {
-        return NULL;
+        object = cache_alloc(&cache);
+        if (object == NULL)
+        {
+            seqlock_write_release(&syncLock);
+            return NULL;
+        }
+        ref_init(&object->ref, sync_object_free);
+        map_entry_init(&object->entry);
+        wait_queue_init(&object->queue);
+        object->addr = addr;
+
+        map_insert(&syncMap, &object->entry, hash);
     }
 
-    object = malloc(sizeof(sync_object_t));
-    if (object == NULL)
+    seqlock_write_release(&syncLock);
+    return object;
+}
+
+static sync_object_t* sync_object_lookup(phys_addr_t addr)
+{
+    seqlock_write_acquire(&syncLock);
+
+    uint64_t hash = hash_uint64(addr);
+    sync_object_t* object = CONTAINER_OF_SAFE(map_find(&syncMap, (void*)addr, hash), sync_object_t, entry);
+    if (object != NULL)
     {
-        return NULL;
+        if (REF_TRY(object) == NULL)
+        {
+            object = NULL;
+        }
     }
-    map_entry_init(&object->entry);
-    wait_queue_init(&object->queue);
 
-    map_insert(&ctl->objects, &object->entry, hash);
+    seqlock_write_release(&syncLock);
     return object;
 }
 
@@ -65,21 +104,28 @@ SYSCALL_DEFINE(SYS_SYNC_CTL, atomic_uint64_t* addr, uint64_t val, sync_op_t op, 
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
-    sync_ctl_t* ctl = &process->sync;
 
-    sync_object_t* object = sync_ctl_get(ctl, addr);
-    if (object == NULL)
+    phys_addr_t phys;
+    status_t status = space_virt_to_phys(&phys, &process->space, addr);
+    if (IS_ERR(status))
     {
-        return ERR(SYNC, NOMEM);
+        return status;
     }
 
     switch (op)
     {
     case SYNC_WAIT:
     {
+        sync_object_t* object = sync_object_get(phys);
+        if (object == NULL)
+        {
+            return ERR(SYNC, NOMEM);
+        }
+        UNREF_DEFER(object);
+
         wait_queue_t* queue = &object->queue;
 
-        status_t status = wait_block_prepare(&queue, 1, timeout);
+        status = wait_block_prepare(&queue, 1, timeout);
         if (IS_ERR(status))
         {
             return status;
@@ -100,15 +146,17 @@ SYSCALL_DEFINE(SYS_SYNC_CTL, atomic_uint64_t* addr, uint64_t val, sync_op_t op, 
         }
 
         status = wait_block_commit();
-        if (IS_ERR(status))
-        {
-            return status;
-        }
-
-        return OK;
+        return status;
     }
     case SYNC_WAKE:
     {
+        sync_object_t* object = sync_object_lookup(phys);
+        if (object == NULL)
+        {
+            return 0;
+        }
+        UNREF_DEFER(object);
+
         return wait_unblock(&object->queue, val, OK);
     }
     default:
