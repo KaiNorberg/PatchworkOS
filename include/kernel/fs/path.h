@@ -294,23 +294,24 @@ typedef struct path_state
     dentry_t* dentry;      ///< The current dentry in the walk.
     binding_t* binding;    ///< The current binding in the walk.
     file_t* root;          ///< The root file, specifies the root path and bindings.
-    char* ptr;             ///< Pointer to the current component in the path.
-    size_t componentLen;   ///< Length of the current component being processed.
+    char* ptr;             ///< Pointer to the current location in the path.
+    char* end;             ///< Pointer to the end of the path.
+    char* token;           ///< Pointer to the current token in the path.
+    size_t tokenLength;   ///< Length of the current component being processed.
     mode_t mode;           ///< Parsed mode from the path.
     uint32_t symlinkDepth; ///< Current symlink recursion depth.
     dentry_t* lookup;      ///< A reference to the last "looked up" dentry to keep it and its parents alive.
     status_t (*done)(irp_t* irp, struct path_state* state, file_t* file);
-    char* payload;             ///< The payload string extracted from the path.
-    uint64_t count;            ///< The length of the path string.
+    file_t* file;              ///< Stores the file used in `path_done()`.
     char path[MAX_PATH];       ///< The full path string buffer, not `NULL` terminated.
     char linkBuffer[MAX_PATH]; ///< Temporary buffer for reading symlinks.
+    char payload[MAX_PATH]; ///< Temporary buffer for storing the payload of a path.
 } path_state_t;
 
 /**
  * @brief Initialize a path state.
  *
- * After calling this function the path to walk should be copied to `path_state_t::path` and the length of the path
- * should be set in `path_state_t::count` before calling `path_walk()`.
+ * After or after calling this function the path to walk should be copied to `path_state_t::path`.
  *
  * @param state The path state to initialize.
  */
@@ -321,15 +322,16 @@ static inline void path_state_init(path_state_t* state, dentry_t* dentry, bindin
     state->binding = binding;
     state->root = root != NULL ? REF(root) : NULL;
     state->ptr = state->path;
-    state->componentLen = 0;
+    state->end = NULL;
+    state->token = NULL;
+    state->tokenLength = 0;
     state->mode = MODE_NONE;
     state->symlinkDepth = 0;
     state->lookup = NULL;
     state->done = done;
-    state->payload = NULL;
-    state->count = 0;
-    state->path[0] = '\0';
     state->linkBuffer[0] = '\0';
+    state->payload[0] = '\0';
+    state->file = NULL;
 }
 
 /**
@@ -337,9 +339,10 @@ static inline void path_state_init(path_state_t* state, dentry_t* dentry, bindin
  *
  * @param irp The IRP to use for the operation.
  * @param state The walking state, must be allocated by the caller but will be freed upon completion.
+ * @param length The length of the path string in `state->path`.
  * @return An appropriate status value.
  */
-status_t path_walk(irp_t* irp, path_state_t* state);
+status_t path_walk(irp_t* irp, path_state_t* state, size_t length);
 
 /**
  * @brief Convert a path to a pathname.

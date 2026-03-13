@@ -86,7 +86,7 @@ SYSCALL_DEFINE(SYS_SYNC_CTL, atomic_uint64_t* addr, uint64_t val, sync_op_t op, 
         }
 
         uint64_t loadedVal;
-        status = thread_load_atomic_from_user(thread, addr, &loadedVal);
+        status = space_copy_out(&process->space, &loadedVal, addr, sizeof(uint64_t));
         if (IS_ERR(status))
         {
             wait_block_cancel();

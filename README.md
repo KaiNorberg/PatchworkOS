@@ -147,9 +147,9 @@ In this system one can consider binding a file to be nothing more than a conveni
 
 ### Threads, Processes and Jobs
 
-There are three structures related to execution in PatchworkOS: threads, processes, and jobs. 
+There are three structures related to execution in PatchworkOS: threads, processes, and jobs.
 
-A thread is the smallest unit of execution, representing a single flow of control within a process. 
+A thread is the smallest unit of execution, representing a single flow of control within a process.
 
 A process is a collection of threads that share resources such the address space and file descriptors.
 
@@ -236,15 +236,15 @@ iowalk(IOPATH("/dev/pipe/clone"), &in);
 iowalk(IOPATH("/dev/pipe/clone"), &out);
 
 proc_fd_t fds = {{.parent = in, .child = 0}, {.parent = out, .child = 1}};
-fd_t proc;
+proc_t proc;
 proc_create(PROC_ARGS("/path/to/program"), &fds, ARRAY_SIZE(fds), PRIO_MAX_USER, PROC_DEFAULT, &proc);
 ```
 
 We first create two pipes by opening the special file `/dev/pipe/clone` twice.
 
-Then we create a new process using the `proc_create()` function. This function takes in several arguments, first it takes in a `proc_args_t` structure containing the command line arguments for the process which we use the `PROC_ARGS()` helper to construct. The second argument is an array of `proc_fd_t` structures allowing us to pass file descriptors to the child, where each `proc_fd_t` structure contains a parent file descriptor and a child file descriptor. The third argument is the size of this array which we use the `ARRAY_SIZE()` helper to compute. The fourth and fifth arguments are the process's priority and flags, and the sixth argument is an optional pointer to the root of the childs proc directory.
+Then we create a new process using the `proc_create()` function. This function takes in several arguments, first it takes in a `proc_args_t` structure containing the command line arguments for the process which we use the `PROC_ARGS()` helper to construct. The second argument is an array of `proc_fd_t` structures allowing us to pass file descriptors to the child, where each `proc_fd_t` structure contains a parent file descriptor and a child file descriptor. The third argument is the size of this array which we use the `ARRAY_SIZE()` helper to compute. The fourth and fifth arguments are the process's priority and flags, and the sixth argument is an optional pointer for the childs identifier.
 
-As a side note, we could optimize the pipe creation by walking to the second pipe relative to the first one. This optimization can be applied any time we wish to open the same file multiple times:
+We could optimize the pipe creation by walking to the second pipe relative to the first one. This optimization can be applied any time we wish to open the same file multiple times:
 
 ```c
 fd_t in;
@@ -252,6 +252,8 @@ fd_t out;
 iowalk(IOPATH("/dev/pipe/clone"), &in);
 iowalk(in, FDROOT, ".", &out);
 ```
+
+Finally, its important to note that the path specified to the executable or paths specified within the executable (for example to the dynamic linker) are from the parents perspective as the executable will be loaded in user-space by the parent.
 
 ### Environment Variables
 
@@ -557,6 +559,7 @@ Currently untested on Intel hardware (broke student, no access to hardware). Let
 
 ### Notable Future Plans
 
+- Consider if a GTK-inspired GUI could be performant enough using CPU rendering. Use transparency and prerendering for shadows?
 - Port LUA and use it for dynamic system configuration.
 - Driver support, for example USB.
 

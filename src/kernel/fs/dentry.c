@@ -145,7 +145,8 @@ dentry_t* dentry_new(dentry_t* parent, const char* name)
     }
     else
     {
-        dentry->name[0] = '\0';
+        strncpy(dentry->name, "__root__", MAX_NAME);
+        dentry->name[MAX_NAME - 1] = '\0';
     }
     dentry->parent = parent != NULL ? REF(parent) : NULL;
 

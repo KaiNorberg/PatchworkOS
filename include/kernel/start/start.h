@@ -29,6 +29,8 @@ _NORETURN void start_early(void);
  * then perform the rest of the kernel initialization here and start the init process.
  *
  * Will never return, the boot thread will exit itself when done.
+ * 
+ * @see init
  */
 _NORETURN void kmain(void);
 

@@ -88,7 +88,7 @@ typedef uint64_t file_volume_t; ///< File volume id type, uniquely identifies a 
 
 typedef uint64_t file_number_t; ///< File number type, uniquely identifies a file within its volume.
 
-typedef uint16_t file_type_t; ///< File type enum.
+typedef uint64_t file_type_t; ///< File type enum.
 #define FILE_TYPE_UNKNOWN 0   ///< Unknown file type.
 #define FILE_TYPE_REGULAR 1   ///< Regular file.
 #define FILE_TYPE_DIRECTORY 3 ///< Directory.
@@ -157,7 +157,7 @@ typedef struct file_info
     file_type_t type;     ///< File type.
     char name[MAX_PATH];  ///< File name.
     char mode[MAX_NAME];  ///< File mode represented by their short-hand.
-    uint8_t _reserved[123];
+    uint8_t _reserved[118];
 } file_info_t;
 
 #ifdef static_assert

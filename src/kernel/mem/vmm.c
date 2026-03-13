@@ -275,11 +275,6 @@ status_t vmm_alloc(space_t* space, void** addr, size_t length, size_t alignment,
         return ERR(MMU, ACCESS);
     }
 
-    if (page_table_is_pinned(&space->pageTable, *addr, pageAmount))
-    {
-        return ERR(MMU, PINNED);
-    }
-
     if (!page_table_is_unmapped(&space->pageTable, *addr, pageAmount))
     {
         if (allocFlags & VMM_ALLOC_FAIL_IF_MAPPED)
@@ -371,11 +366,6 @@ status_t vmm_map(space_t* space, void** addr, phys_addr_t phys, size_t length, p
         return ERR(MMU, ACCESS);
     }
 
-    if (page_table_is_pinned(&space->pageTable, *addr, pageAmount))
-    {
-        return ERR(MMU, PINNED);
-    }
-
     pml_callback_id_t callbackId = PML_CALLBACK_NONE;
     if (func != NULL)
     {
@@ -447,11 +437,6 @@ status_t vmm_map_pages(space_t* space, void** addr, pfn_t* pfns, size_t amount, 
         return ERR(MMU, ACCESS);
     }
 
-    if (page_table_is_pinned(&space->pageTable, *addr, amount))
-    {
-        return ERR(MMU, PINNED);
-    }
-
     pml_callback_id_t callbackId = PML_CALLBACK_NONE;
     if (func != NULL)
     {
@@ -497,11 +482,6 @@ status_t vmm_unmap(space_t* space, void* virtAddr, size_t length)
 
     vmm_align_region(&virtAddr, &length);
     uint64_t pageAmount = BYTES_TO_PAGES(length);
-
-    if (page_table_is_pinned(&space->pageTable, virtAddr, pageAmount))
-    {
-        return ERR(MMU, PINNED);
-    }
 
     // Stores the amount of pages that have each callback id within the region.
     uint64_t callbacks[PML_MAX_CALLBACK] = {0};
@@ -567,11 +547,6 @@ status_t vmm_protect(space_t* space, void* virtAddr, size_t length, pml_flags_t 
 
     vmm_align_region(&virtAddr, &length);
     uint64_t pageAmount = BYTES_TO_PAGES(length);
-
-    if (page_table_is_pinned(&space->pageTable, virtAddr, pageAmount))
-    {
-        return ERR(MMU, PINNED);
-    }
 
     if (page_table_is_unmapped(&space->pageTable, virtAddr, pageAmount))
     {

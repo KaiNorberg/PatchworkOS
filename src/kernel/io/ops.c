@@ -1,4 +1,3 @@
-#include <_libstd/MAX_PATH.h>
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file_table.h>
 #include <kernel/fs/path.h>
@@ -7,6 +6,7 @@
 #include <kernel/io/irp.h>
 #include <kernel/mem/paging_types.h>
 #include <kernel/proc/process.h>
+#include <kernel/log/log.h>
 
 #include <sys/io.h>
 
@@ -197,7 +197,12 @@ static status_t io_op_walk(irp_t* irp)
     {
         return ERR(IO, NOMEM);
     }
-    path_state_init(state, from->path.dentry, from->path.binding, root, io_op_walk_done);
+
+    if (irp->sqe.pathLen >= MAX_PATH)
+    {
+        free(state);
+        return ERR(IO, INVAL);
+    }
 
     status_t status = space_copy_out(&irp->process->space, state->path, irp->sqe.path, irp->sqe.pathLen);
     if (IS_ERR(status))
@@ -205,9 +210,9 @@ static status_t io_op_walk(irp_t* irp)
         free(state);
         return status;
     }
-    state->count = irp->sqe.pathLen;
 
-    return path_walk(irp, state);
+    path_state_init(state, from->path.dentry, from->path.binding, root, io_op_walk_done);
+    return path_walk(irp, state, irp->sqe.pathLen);
 }
 
 static status_t io_op_drop(irp_t* irp)

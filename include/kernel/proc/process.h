@@ -156,23 +156,12 @@ static inline process_t* process_current_unsafe(void)
 process_t* process_get(proc_t id);
 
 /**
- * @brief Kills a process, pushing it to the reaper.
- *
- * The process will still exist until the reaper removes it.
+ * @brief Kills a process by sending kill notes to all its threads.
  *
  * @param process The process to kill.
  * @param result The exit result of the process.
  */
 void process_kill(process_t* process, const char* result);
-
-/**
- * @brief Removes a process from the system.
- *
- * This should only be called by the reaper.
- *
- * @param process The process to remove.
- */
-void process_remove(process_t* process);
 
 /**
  * @brief Macro to iterate over all threads in a process.

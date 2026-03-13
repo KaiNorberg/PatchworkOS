@@ -3,7 +3,7 @@ IMAGE = bin/PatchworkOS.img
 VERSION_HEADER = include/kernel/version.h
 VERSION_STRING := $(shell git describe --tags --always --dirty --long 2>/dev/null || echo "unknown")
 
-ROOT_DIRS = acpi base base/bin base/lib base/include base/data box cfg dev efi efi/boot kernel kernel/modules kernel/modules/$(VERSION_STRING) net proc sbin sys tmp
+ROOT_DIRS = acpi dev efi efi/boot kernel kernel/modules kernel/modules/$(VERSION_STRING) proc sys tmp
 
 BOOT_TARGET = bin/boot/.built
 KERNEL_TARGET = bin/kernel/.built

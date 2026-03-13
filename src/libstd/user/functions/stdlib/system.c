@@ -6,7 +6,12 @@
 
 int system(const char* command)
 {
-    proc_t shell;
+    UNUSED(command);
+
+    /// @todo Reimplement system()
+    return -1;
+
+    /*proc_t shell;
     status_t status = proc_create(PROC_ARGS("/bin/shell", command), NULL, 0, PRIO_DEFAULT, PROC_DEFAULT, &shell);
     if (IS_ERR(status))
     {
@@ -21,5 +26,5 @@ int system(const char* command)
         return -1;
     }
 
-    return atoi(buf);
+    return atoi(buf);*/
 }

@@ -80,7 +80,6 @@ status_t vfs_open(file_t** out, const path_t* from, const char* pathname, proces
     path_state_init(state, from->dentry, from->binding, NULL, vfs_open_done);
 
     memcpy(state->path, pathname, len + 1);
-    state->count = len;
 
     irp_t* irp = irp_new(process, NULL);
     if (irp == NULL)
@@ -95,7 +94,7 @@ status_t vfs_open(file_t** out, const path_t* from, const char* pathname, proces
 
     irp_set_complete(irp, vfs_sync_complete, &ctx);
 
-    status_t status = path_walk(irp, state);
+    status_t status = path_walk(irp, state, len);
     if (IS_ERR(status))
     {
         irp_complete(irp, status);

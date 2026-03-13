@@ -5,6 +5,7 @@
 #include <kernel/sched/clock.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
+#include <kernel/log/log.h>
 
 #include <stdlib.h>
 
@@ -105,6 +106,12 @@ status_t vnode_generic_query(irp_t* irp)
 
     file_info_t info = {0};
 
+    if (frame->file != NULL && DENTRY_IS_POSITIVE(frame->file->path.dentry))
+    {
+        strncpy(info.name, frame->file->path.dentry->name, MAX_NAME);
+        info.mask |= FILE_MASK_NAME;
+    }
+
     info.type = vnode->cls->type;
     info.mask |= FILE_MASK_TYPE;
 
@@ -161,6 +168,14 @@ done:
     status = diremit_end(&emit);
     mutex_release(&vnode->mutex);
     return status;
+}
+
+status_t vnode_generic_lookup(irp_t* irp)
+{
+    UNUSED(irp);
+
+    LOG_DEBUG("lookup: %s\n", irp_current(irp)->lookup.dentry->name);
+    return ERR(FS, NOENT);
 }
 
 file_number_t vnode_hash(file_number_t parent, const char* name)

@@ -586,8 +586,6 @@ static inline void page_table_clear_pml1_pml2_pml3(page_table_t* table, page_tab
  * Intended to be used in conjunction with `page_table_unmap()` to first unmap pages and then free any owned pages after
  * TLB shootdown is complete.
  *
- * Any still present or pinned entries will be skipped.
- *
  * All unskipped entries will be fully cleared (set to 0).
  *
  * @param table The page table.
@@ -955,38 +953,6 @@ static inline bool page_table_find_unmapped_region(page_table_t* table, uintptr_
             {
                 consecutiveUnmapped = 0;
             }
-        }
-    }
-
-    return false;
-}
-
-/**
- * @brief Checks if any page in a range is pinned.
- *
- * @param table The page table.
- * @param addr The starting virtual address.
- * @param amount The number of pages to check.
- * @return `true` if any page in the range us pinned, `false` otherwise.
- */
-static inline bool page_table_is_pinned(page_table_t* table, void* addr, size_t amount)
-{
-    page_table_traverse_t traverse = PAGE_TABLE_TRAVERSE_CREATE;
-    for (uint64_t i = 0; i < amount; i++)
-    {
-        if (!page_table_traverse(table, &traverse, addr + i * PAGE_SIZE, PML_NONE))
-        {
-            continue;
-        }
-
-        if (!traverse.entry->present)
-        {
-            continue;
-        }
-
-        if (traverse.entry->pinned)
-        {
-            return true;
         }
     }
 

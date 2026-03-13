@@ -6,8 +6,10 @@
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/file.h>
 #include <kernel/fs/vfs.h>
+#include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
+#include <kernel/proc/process.h>
 #include <kernel/sync/mutex.h>
 
 #include <kernel/sync/rcu.h>
@@ -112,28 +114,6 @@ static inline bool path_is_char_valid(char ch)
         ['*'] = true,
     };
     return !forbidden[(uint8_t)ch];
-}
-
-static bool path_is_name_valid(const char* name)
-{
-    if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
-    {
-        return false;
-    }
-
-    for (uint64_t i = 0; i < MAX_NAME - 1; i++)
-    {
-        if (name[i] == '\0')
-        {
-            return true;
-        }
-        if (!path_is_char_valid(name[i]))
-        {
-            return false;
-        }
-    }
-
-    return false;
 }
 
 static status_t path_walk_loop(irp_t* irp, path_state_t* state);
@@ -257,9 +237,8 @@ static status_t path_symlink_complete(irp_t* irp, void* ctx)
         return ERR(VFS, IO);
     }
 
-    char* start = state->ptr - state->componentLen;
-    size_t prefixLen = start - state->path;
-    size_t suffixLen = (state->path + state->count) - state->ptr;
+    size_t prefixLen = state->token - state->path;
+    size_t suffixLen = state->end - state->ptr;
     size_t newLen = prefixLen + linkLen + suffixLen;
 
     if (newLen >= MAX_PATH)
@@ -268,14 +247,9 @@ static status_t path_symlink_complete(irp_t* irp, void* ctx)
         return ERR(VFS, PATHTOOLONG);
     }
 
-    memmove(start + linkLen, state->ptr, suffixLen);
-    memcpy(start, link, linkLen);
-
-    if (state->payload != NULL)
-    {
-        state->payload = state->payload - state->componentLen + linkLen;
-    }
-    state->count = newLen;
+    memmove(state->token + linkLen, state->ptr, suffixLen);
+    memcpy(state->token, link, linkLen);
+    state->end = state->path + newLen;    
 
     if (link[0] == '/')
     {
@@ -291,7 +265,7 @@ static status_t path_symlink_complete(irp_t* irp, void* ctx)
     }
     else
     {
-        state->ptr = start;
+        state->ptr = state->token;
     }
 
     path_state_release(state);
@@ -322,7 +296,7 @@ static status_t path_symlink(irp_t* irp, path_state_t* state, dentry_t* symlink)
         return status;
     }
 
-    status = mdl_add(mdl, NULL, state->linkBuffer, MAX_PATH);
+    status = mdl_add(mdl, &process_get_kernel()->space, state->linkBuffer, MAX_PATH);
     if (IS_ERR(status))
     {
         path_state_release(state);
@@ -359,15 +333,14 @@ static status_t path_lookup_complete(irp_t* irp, void* ctx)
     {
         irp->status = ERR(VFS, NOENT);
     }
-
+    
     if (IS_ERR(irp->status))
     {
-        char* ptr = state->ptr;
-        while (*ptr == '/')
+        while (*state->ptr == '/')
         {
-            ptr++;
+            state->ptr++;
         }
-        bool isEnd = (*ptr == '\0' || *ptr == ':' || *ptr == '?');
+        bool isEnd = state->ptr == state->end;
 
         if (IS_CODE(irp->status, NOENT))
         {
@@ -396,15 +369,11 @@ static status_t path_lookup_complete(irp_t* irp, void* ctx)
     path_state_release(state);
 
     state->dentry = state->lookup;
+    state->lookup = NULL;
 
     if (DENTRY_IS_TYPE(state->dentry, FILE_TYPE_SYMLINK) && !(state->mode & MODE_NOFOLLOW))
     {
-        status_t status = path_symlink(irp, state, state->dentry);
-        if (IS_ERR(status))
-        {
-            path_state_free(state);
-            return status;
-        }
+        return path_symlink(irp, state, state->dentry);
     }
 
     return path_walk_loop(irp, state);
@@ -459,8 +428,8 @@ static status_t path_done_complete(irp_t* irp, void* ctx)
 
     path_state_t* state = ctx;
 
-    status_t status = state->done(irp, state, (file_t*)irp->result);
-    path_state_free(ctx);
+    status_t status = state->done(irp, state, state->file);
+    path_state_free(state);
     return status;
 }
 
@@ -501,6 +470,14 @@ static status_t path_done(irp_t* irp, path_state_t* state)
     }
     UNREF_DEFER(file);
 
+    state->file = file;
+    if (dentry->vnode->cls->handlers[IRP_MJ_OPEN] == NULL)
+    {
+        status_t status = state->done(irp, state, state->file);
+        path_state_free(state);
+        return status;
+    }
+
     irp_prep_open(irp, state->payload);
     irp_set_complete(irp, path_done_complete, state);
     return file_call(file, irp);
@@ -508,7 +485,7 @@ static status_t path_done(irp_t* irp, path_state_t* state)
 
 static status_t path_walk_loop(irp_t* irp, path_state_t* state)
 {
-    if (state->ptr == state->path && state->ptr[0] == '/')
+    if (state->ptr == state->path && state->ptr < state->end && state->ptr[0] == '/')
     {
         if (state->root == NULL)
         {
@@ -524,18 +501,18 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state)
 
     while (true)
     {
-        while (*state->ptr == '/')
+        while (state->ptr < state->end && *state->ptr == '/')
         {
             state->ptr++;
         }
 
-        if (*state->ptr == '\0')
+        if (state->ptr >= state->end)
         {
             return path_done(irp, state);
         }
 
-        const char* component = state->ptr;
-        while (*state->ptr != '\0' && *state->ptr != '/' && *state->ptr != ':')
+        state->token = state->ptr;
+        while (state->ptr < state->end && *state->ptr != '/')
         {
             if (!path_is_char_valid(*state->ptr))
             {
@@ -545,14 +522,13 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state)
             }
             state->ptr++;
         }
-        size_t len = state->ptr - component;
-        state->componentLen = len;
 
-        if (len == 1 && component[0] == '.')
+        state->tokenLength = state->ptr - state->token;
+        if (state->tokenLength == 1 && state->token[0] == '.')
         {
             continue;
         }
-        if (len == 2 && component[0] == '.' && component[1] == '.')
+        if (state->tokenLength == 2 && state->token[0] == '.' && state->token[1] == '.')
         {
             status_t status = path_dotdot(state);
             if (IS_ERR(status))
@@ -563,10 +539,10 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state)
             continue;
         }
 
-        dentry_t* next = dentry_rcu_get(state->dentry, component, len);
+        dentry_t* next = dentry_rcu_get(state->dentry, state->token, state->tokenLength);
         if (next == NULL)
         {
-            return path_walk_lookup(irp, state, component, len);
+            return path_walk_lookup(irp, state, state->token, state->tokenLength);
         }
 
         state->dentry = next;
@@ -583,114 +559,87 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state)
     }
 }
 
-static status_t path_verify(path_state_t* state)
+static status_t path_verify(path_state_t* state, size_t length)
 {
     state->mode = MODE_NONE;
-    state->payload = NULL;
+    state->payload[0] = '\0';
 
-    uint64_t index = 0;
-    uint64_t currentNameLength = 0;
-    while (state->path[index] != ':' && state->path[index] != '?')
+    char* p = state->path;
+    char* end = state->path + length;
+
+    uint64_t nameLength = 0;
+    while (p < end && *p != ':' && *p != '?')
     {
-        if (index >= state->count)
+        if (*p == '/')
         {
-            return OK;
-        }
-
-        if (state->path[index] == '/')
-        {
-            currentNameLength = 0;
+            nameLength = 0;
         }
         else
         {
-            if (!path_is_char_valid(state->path[index]))
+            if (!path_is_char_valid(*p))
             {
                 return ERR(VFS, INVALCHAR);
             }
-            currentNameLength++;
-            if (currentNameLength >= MAX_NAME)
+            nameLength++;
+            if (nameLength >= MAX_NAME)
             {
                 return ERR(VFS, NAMETOOLONG);
             }
         }
 
-        index++;
+        p++;
     }
 
-    char delimiter = state->path[index];
-    state->path[index] = '\0';
-    index++;
-
-    if (delimiter == '\0')
-    {
-        return OK;
-    }
-
-    if (delimiter == '?')
-    {
-        state->payload = &state->path[index];
-        if (state->count < MAX_PATH)
-        {
-            state->path[state->count] = '\0';
-        }
-        return OK;
-    }
-
-    // Delimiter is ':'
+    state->end = p;
+    p++;
 
     while (true)
     {
-        while (state->path[index] == ':' && index < state->count)
+        if (p < end && *p == '?')
         {
-            index++;
+           memcpy(state->payload, p + 1, end - p - 1);
+           state->payload[end - p - 1] = '\0';
+           return OK;
         }
 
-        if (state->path[index] == '?' || index >= state->count)
+        if (p >= end)
         {
-            if (index < state->count && state->path[index] == '?')
-            {
-                state->path[index] = '\0';
-                state->payload = &state->path[index + 1];
-                if (state->count < MAX_PATH)
-                {
-                    state->path[state->count] = '\0';
-                }
-            }
             return OK;
         }
 
-        const char* token = &state->path[index];
-        while (state->path[index] != ':' && state->path[index] != '?' && index < state->count)
+        char* token = p;
+        while (p < end && *p != ':' && *p != '?')
         {
-            if (!isalpha(state->path[index]))
+            if (!isalpha(*p))
             {
                 return ERR(VFS, INVALCHAR);
             }
-            index++;
+            p++;
         }
 
-        if (index >= state->count)
-        {
-            return OK;
-        }
-
-        size_t tokenLength = &state->path[index] - token;
-        mode_t mode = path_flag_to_mode(token, tokenLength);
+        size_t length = p - token;
+        mode_t mode = path_flag_to_mode(token, length);
         if (mode == MODE_NONE)
         {
             return ERR(VFS, INVALFLAG);
         }
 
         state->mode |= mode;
-        index++;
     }
 
     return OK;
 }
 
-status_t path_walk(irp_t* irp, path_state_t* state)
+status_t path_walk(irp_t* irp, path_state_t* state, size_t length)
 {
-    status_t status = path_verify(state);
+    status_t status = path_verify(state, length);
+    if (IS_ERR(status))
+    {
+        path_state_free(state);
+        return status;
+    }
+
+    status = mode_check(&state->mode, state->binding->mode);    
     if (IS_ERR(status))
     {
         path_state_free(state);

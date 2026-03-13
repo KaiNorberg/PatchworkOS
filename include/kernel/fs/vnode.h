@@ -141,6 +141,16 @@ status_t vnode_generic_query(irp_t* irp);
 status_t vnode_generic_dir_read(irp_t* irp);
 
 /**
+ * @brief Generic lookup handler.
+ * 
+ * * This function can be used as a default `IRP_MJ_LOOKUP` handler.
+ *
+ * @param irp The IRP.
+ * @return Always `ERR(FS, NOENT)`.
+ */
+status_t vnode_generic_lookup(irp_t* irp);
+
+/**
  * @brief Helper macro to define default vnode handlers.
  *
  * This macro should be used for all non-directory vnodes.
@@ -153,7 +163,8 @@ status_t vnode_generic_dir_read(irp_t* irp);
  * This macro should be used for all directory vnodes.
  */
 #define VNODE_DIR_HANDLERS() \
-    [IRP_MJ_READ] = vnode_generic_dir_read, [IRP_MJ_ATTR] = vnode_generic_attr, [IRP_MJ_QUERY] = vnode_generic_query
+    [IRP_MJ_READ] = vnode_generic_dir_read, [IRP_MJ_ATTR] = vnode_generic_attr, [IRP_MJ_QUERY] = vnode_generic_query, [IRP_MJ_LOOKUP] = vnode_generic_lookup
+
 
 /**
  * @brief Generate a unique vnode number based on the parent vnode and the name of the file.

@@ -191,173 +191,6 @@ status_t thread_send_note(thread_t* thread, const char* string)
     return OK;
 }
 
-SYSCALL_DEFINE(SYS_THRD_CURRENT)
-{
-    *_result = thread_current()->id;
-    return OK;
-}
-
-status_t thread_copy_from_user(thread_t* thread, void* dest, const void* userSrc, uint64_t length)
-{
-    if (thread == NULL || dest == NULL || userSrc == NULL || length == 0)
-    {
-        return ERR(SCHED, INVAL);
-    }
-
-    status_t status = space_pin(&thread->process->space, userSrc, length, &thread->userStack);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
-    memcpy(dest, userSrc, length);
-    space_unpin(&thread->process->space, userSrc, length);
-    return OK;
-}
-
-status_t thread_copy_to_user(thread_t* thread, void* userDest, const void* src, uint64_t length)
-{
-    if (thread == NULL || userDest == NULL || src == NULL || length == 0)
-    {
-        return ERR(SCHED, INVAL);
-    }
-
-    status_t status = space_pin(&thread->process->space, userDest, length, &thread->userStack);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
-    memcpy(userDest, src, length);
-    space_unpin(&thread->process->space, userDest, length);
-    return OK;
-}
-
-status_t thread_copy_from_user_terminated(thread_t* thread, const void* userArray, const void* terminator,
-    uint8_t objectSize, uint64_t maxCount, void** outArray, uint64_t* outCount)
-{
-    if (thread == NULL || userArray == NULL || terminator == NULL || objectSize == 0 || maxCount == 0 ||
-        outArray == NULL)
-    {
-        return ERR(SCHED, INVAL);
-    }
-
-    size_t arraySize;
-    status_t status = space_pin_terminated(&arraySize, &thread->process->space, userArray, terminator, objectSize,
-        maxCount, &thread->userStack);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
-    uint64_t elementCount = arraySize / objectSize;
-    uint64_t allocSize = arraySize;
-
-    void* kernelArray = malloc(allocSize);
-    if (kernelArray == NULL)
-    {
-        space_unpin(&thread->process->space, userArray, arraySize);
-        return ERR(SCHED, NOMEM);
-    }
-
-    memcpy(kernelArray, userArray, arraySize);
-    space_unpin(&thread->process->space, userArray, arraySize);
-
-    *outArray = kernelArray;
-    if (outCount != NULL)
-    {
-        *outCount = elementCount - 1;
-    }
-
-    return OK;
-}
-
-status_t thread_copy_from_user_string(thread_t* thread, char* dest, const char* userSrc, uint64_t size)
-{
-    if (thread == NULL || dest == NULL || userSrc == NULL || size <= 1)
-    {
-        return ERR(SCHED, INVAL);
-    }
-
-    char terminator = '\0';
-    size_t strLength;
-    status_t status = space_pin_terminated(&strLength, &thread->process->space, userSrc, &terminator, sizeof(char),
-        size - 1, &thread->userStack);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-    dest[size - 1] = '\0';
-
-    memcpy(dest, userSrc, strLength);
-    space_unpin(&thread->process->space, userSrc, strLength);
-    return OK;
-}
-
-status_t thread_copy_from_user_string_array(thread_t* thread, const char** user, char*** out, uint64_t* outAmount)
-{
-    if (thread == NULL || user == NULL || out == NULL)
-    {
-        return ERR(SCHED, INVAL);
-    }
-
-    char** copy;
-    uint64_t amount;
-    char* terminator = NULL;
-    status_t status = thread_copy_from_user_terminated(thread, (void*)user, (void*)&terminator, sizeof(char*),
-        CONFIG_MAX_ARGC, (void**)&copy, &amount);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
-    for (uint64_t i = 0; i < amount; i++)
-    {
-        char* strCopy;
-        uint64_t strLen;
-        char strTerminator = '\0';
-        status = thread_copy_from_user_terminated(thread, copy[i], &strTerminator, sizeof(char), MAX_PATH,
-            (void**)&strCopy, &strLen);
-        if (IS_ERR(status))
-        {
-            for (uint64_t j = 0; j < i; j++)
-            {
-                free(copy[j]);
-            }
-            free((void*)copy);
-            return status;
-        }
-
-        copy[i] = strCopy;
-    }
-
-    *out = copy;
-    if (outAmount != NULL)
-    {
-        *outAmount = amount;
-    }
-
-    return OK;
-}
-
-status_t thread_load_atomic_from_user(thread_t* thread, atomic_uint64_t* userObj, uint64_t* outValue)
-{
-    if (thread == NULL || userObj == NULL || outValue == NULL)
-    {
-        return ERR(SCHED, INVAL);
-    }
-
-    status_t status = space_pin(&thread->process->space, userObj, sizeof(atomic_uint64_t), &thread->userStack);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-
-    *outValue = atomic_load(userObj);
-    space_unpin(&thread->process->space, userObj, sizeof(atomic_uint64_t));
-    return OK;
-}
-
 SYSCALL_DEFINE(SYS_ARCH_CTL, arch_op_t op, uintptr_t addr)
 {
     thread_t* thread = thread_current();
@@ -370,11 +203,52 @@ SYSCALL_DEFINE(SYS_ARCH_CTL, arch_op_t op, uintptr_t addr)
         msr_write(MSR_FS_BASE, addr);
         break;
     case ARCH_GET_FS:
-        status = thread_copy_to_user(thread, (void*)addr, &thread->fsBase, sizeof(uintptr_t));
+        status = space_copy_in(&thread->process->space, (void*)addr, &thread->fsBase, sizeof(thread->fsBase));
         break;
     default:
         status = ERR(SCHED, INVAL);
     }
 
     return status;
+}
+
+SYSCALL_DEFINE(SYS_THRD_CURRENT)
+{
+    *_result = thread_current()->id;
+    return OK;
+}
+
+SYSCALL_DEFINE(SYS_THRD_CREATE, void* entry, void* arg)
+{
+    thread_t* thread = thread_current();
+    process_t* process = thread->process;
+    space_t* space = &process->space;
+
+    status_t status = space_check_access(space, entry, sizeof(uint64_t));
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+
+    // Dont check arg user space can use it however it wants
+
+    thread_t* newThread;
+    status = thread_new(&newThread, process);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+
+    memset(&thread->frame, 0, sizeof(interrupt_frame_t));
+    newThread->frame.rip = (uint64_t)entry;
+    newThread->frame.rsp = newThread->userStack.top;
+    newThread->frame.rbp = newThread->userStack.top;
+    newThread->frame.rdi = (uint64_t)arg;
+    newThread->frame.cs = GDT_CS_RING3;
+    newThread->frame.ss = GDT_SS_RING3;
+    newThread->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
+
+    *_result = newThread->id;
+    sched_submit(newThread);
+    return OK;
 }

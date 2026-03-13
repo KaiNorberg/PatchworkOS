@@ -25,7 +25,6 @@ extern "C"
 typedef enum
 {
     SYS_PROC_EXIT,
-    SYS_PROC_CREATE,
     SYS_PROC_CURRENT,
     SYS_THRD_EXIT,
     SYS_THRD_CREATE,

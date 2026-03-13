@@ -116,22 +116,7 @@ typedef struct
              * (Defined by PatchworkOS)
              */
             uint64_t owned : 1;
-            /**
-             * If set, the page is pinned and cannot be unmapped or have its mappings modified.
-             *
-             * Used to prevent TOCTOU vulnerabilities by preventing a page from being unmapped or its mappings modified
-             * while its being used, in for example a system call.
-             *
-             * For performance the paging code will never check this flag instead its the responsibility of the virtual
-             * memory manager to check this flag.
-             *
-             * Note that recursive pinning is implemented in the virtual memory manager, not here, meaning that this
-             * flag only indicates if the page is pinned or not, for faster access, while the pin depth is tracked
-             * elsewhere.
-             *
-             * (Defined by PatchworkOS)
-             */
-            uint64_t pinned : 1;
+            uint64_t _available1 : 1;
             /**
              * The low bit of the callback ID associated with this page.
              *

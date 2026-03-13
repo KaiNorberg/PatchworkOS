@@ -55,19 +55,6 @@ typedef struct
 } space_callback_t;
 
 /**
- * @brief Pinned page structure.
- * @struct space_pinned_page_t
- *
- * Stored in the `pinnedPages` map in `space_t`.
- */
-typedef struct
-{
-    map_entry_t mapEntry;
-    uint64_t pinCount; ///< The number of times this page is pinned, will be unpinned when it reaches 0.
-    uintptr_t address; ///< The virtual address of the pinned page.
-} space_pinned_page_t;
-
-/**
  * @brief Virtual address space structure.
  * @struct space_t
  *
@@ -80,7 +67,6 @@ typedef struct
 typedef struct space
 {
     page_table_t pageTable;      ///< The page table associated with the address space.
-    MAP_DEFINE(pinnedPages, 64); ///< Map of pages with a pin depth greater than 1.
     uintptr_t startAddress;      ///< The start address for allocations in this address space.
     uintptr_t endAddress;        ///< The end address for allocations in this address space.
     uintptr_t freeAddress;       ///< The next available free virtual address in this address space.
@@ -120,68 +106,6 @@ status_t space_init(space_t* space, uintptr_t startAddress, uintptr_t endAddress
  * @param space The address space to deinitialize.
  */
 void space_deinit(space_t* space);
-
-/**
- * @brief Pins pages within a region of the address space.
- *
- * Used to prevent TOCTOU attacks, where a system call provides some user space region, the kernel then checks that its
- * mapped and after that check a seperate thread in the user space process unmaps or modifies that regions mappings
- * while the kernel is still using it.
- *
- * Our solution is to pin any user space pages that are accessed or modified during the syscall, meaning that a special
- * flag is set in the address spaces page tables that prevent those pages from being unmapped or modified until they are
- * unpinned which happens when the syscall is finished in `space_unpin()`.
- *
- * If the region is not fully mapped, or the region is not within the spaces `startAddress` and `endAddress` range, the
- * function will fail.
- *
- * If any page in the region is already at its maximum pin depth, the calling thread will block until the page is
- * unpinned by another thread.
- *
- * If a user stack is provided and the region to pin is both unmapped and within the stack region, memory will be
- * allocated and mapped to the relevant region in the user stack. This is needed as its possible for a user space
- * process to pass an address to a system call that is in its user stack but not yet mapped. For example, it could
- * create a big buffer on its stack then pass it to a syscall without first accessing it, meaning no page fault would
- * have occurred to map the pages.
- *
- * @param space The target address space.
- * @param address The address to pin, can be `NULL` if length is 0.
- * @param length The length of the region pointed to by `address`, in bytes.
- * @param userStack Pointer to the user stack of the calling thread, can be `NULL, see above.
- * @return An appropriate status value.
- */
-status_t space_pin(space_t* space, const void* address, size_t length, stack_pointer_t* userStack);
-
-/**
- * @brief Pins a region of memory terminated by a terminator value.
- *
- * Pins pages in the address space starting from `address` up to `maxSize` bytes or until the specified
- * terminator is found.
- *
- * Used for null-terminated strings or other buffers that have a specific terminator.
- *
- * @param outPinned Output pointer for the number of bytes pinned, not including the terminator.
- * @param space The target address space.
- * @param address The starting address of the region to pin.
- * @param terminator The terminator value to search for.
- * @param objectSize The size of each object to compare against the terminator, in bytes.
- * @param maxCount The maximum number of objects to scan before failing.
- * @param userStack Pointer to the user stack of the calling thread, can be `NULL`, see `space_pin()`.
- * @return An appropriate status value.
- */
-status_t space_pin_terminated(size_t* outPinned, space_t* space, const void* address, const void* terminator,
-    size_t objectSize, size_t maxCount, stack_pointer_t* userStack);
-
-/**
- * @brief Unpins pages in a region previously pinned with `space_pin()` or `space_pin_string()`.
- *
- * Will wake up any threads waiting to pin the same pages.
- *
- * @param space The target address space.
- * @param address The address of the region to unpin, can be `NULL` if length is 0.
- * @param length The length of the region pointed to by `address`, in bytes.
- */
-void space_unpin(space_t* space, const void* address, size_t length);
 
 /**
  * @brief Checks if a virtual memory region is within the allowed address range of the space.

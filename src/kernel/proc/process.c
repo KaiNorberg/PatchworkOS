@@ -13,7 +13,6 @@
 #include <kernel/mem/vmm.h>
 #include <kernel/proc/job.h>
 #include <kernel/proc/process.h>
-#include <kernel/proc/reaper.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
@@ -161,7 +160,7 @@ status_t process_new(process_t** out, prio_t priority, job_t* job)
 
     LOG_DEBUG("created process pid=%d\n", process->id);
 
-    *out = REF(process);
+    *out = process;
     return OK;
 }
 
@@ -237,18 +236,6 @@ void process_kill(process_t* process, const char* result)
         }
     }
     lock_release(&process->dyingIrpsLock);
-
-    reaper_push(process);
-}
-
-void process_remove(process_t* process)
-{
-    lock_acquire(&processesLock);
-    map_remove(&pidMap, &process->mapEntry, hash_uint64(process->id));
-    list_remove_rcu(&process->entry);
-    lock_release(&processesLock);
-
-    UNREF(process);
 }
 
 status_t process_set_cmdline(process_t* process, const char* args, size_t len)

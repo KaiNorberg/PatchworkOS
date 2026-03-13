@@ -20,16 +20,17 @@
  *
  * The "procfs" filesystem is used to expose process information and control interfaces to user space.
  *
- * Each process has its own directory whose name is its process ID and for convenience,
- * `/self` is a dynamic symbolic link to the current process's directory.
+ * The root of the filesystem contains a `self` directory, which allows a process to interact with its own
+ * information, and a `clone` file which can be used to create new processes.
  *
- * Unlike traditional UNIX systems, a process can only see the proc directories of processes within its own job or
- * child jobs. It is however possible for a process to pass a file descriptor to its own proc directory to another
- * process, allowing it to be controlled by that process.
+ * Opening the `clone` file will create a new process and return a file descriptor to the root of that process's
+ * proc directory.
  *
  * @note Anytime a file descriptor is referred to it is from the perspective of the target process unless stated
  * otherwise.
  *
+ * Included below is a list of contents for each processes proc directory.
+ * 
  * ## prio
  *
  * A readable and writable file that contains the scheduling priority of the process.

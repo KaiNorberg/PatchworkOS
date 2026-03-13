@@ -23,7 +23,6 @@
 #include <kernel/module/symbol.h>
 #include <kernel/proc/job.h>
 #include <kernel/proc/process.h>
-#include <kernel/proc/reaper.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
@@ -97,8 +96,6 @@ static void start_finalize(void)
     tmpfs_init();
 
     log_expose();
-
-    reaper_init();
 
     perf_init();
 
@@ -183,6 +180,13 @@ static inline void start_init_process(void)
     UNREF_DEFER(sysfs);
 
     fd_t fd = FDROOT;
+    status = file_table_grab(&initProcess->files, sysfs, & fd);
+    if (IS_ERR(status))
+    {
+        panic(NULL, "Failed to grab sysfs root file");
+    }
+
+    fd = FDCWD;
     status = file_table_grab(&initProcess->files, sysfs, & fd);
     if (IS_ERR(status))
     {

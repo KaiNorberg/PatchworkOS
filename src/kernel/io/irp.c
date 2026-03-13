@@ -33,6 +33,8 @@ static cache_t cache = CACHE_CREATE(cache, "irp", sizeof(irp_t), 64, NULL, NULL)
 
 static void irp_unwind_stack(irp_t* irp)
 {
+    irp_timeout_remove(irp);
+
     while (irp->loc < IRP_FRAME_MAX)
     {
         irp_frame_t* frame = irp_current(irp);
@@ -46,6 +48,11 @@ static void irp_unwind_stack(irp_t* irp)
         if (frame->complete != NULL)
         {
             status = frame->complete(irp, frame->ctx);
+        }
+
+        if (IS_ERR(status) && irp->status == OK)
+        {
+            irp->status = status;
         }
 
         if (irp->loc >= loc)
@@ -68,8 +75,6 @@ static void irp_unwind_stack(irp_t* irp)
             return;
         }
     }
-
-    irp_timeout_remove(irp);
 
     assert(irp->loc == IRP_FRAME_MAX);
     assert(irp->cpu == CPU_ID_INVALID);
@@ -348,7 +353,7 @@ status_t irp_write_helper(irp_t* irp, void* buffer, size_t size)
     assert(buffer != NULL || size == 0);
 
     irp_frame_t* frame = irp_current(irp);
-    assert(frame->major == IRP_MJ_READ);
+    assert(frame->major == IRP_MJ_WRITE);
 
     if (*frame->write.offset > size)
     {
