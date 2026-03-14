@@ -30,7 +30,7 @@
  * otherwise.
  *
  * Included below is a list of contents for each processes proc directory.
- * 
+ *
  * ## prio
  *
  * A readable and writable file that contains the scheduling priority of the process.

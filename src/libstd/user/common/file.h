@@ -51,7 +51,8 @@ typedef struct FILE
     (((stream)->ungetIndex == 0) ? (unsigned char)(stream)->buf[(stream)->bufIndex++] \
                                  : (unsigned char)(stream)->ungetBuf[--(stream)->ungetIndex])
 
-#define _FILE_CHECK_AVAIL(fh) ((((fh)->bufIndex == (fh)->bufEnd) && ((fh)->ungetIndex == 0)) ? _file_fill_buffer(fh) : 0)
+#define _FILE_CHECK_AVAIL(fh) \
+    ((((fh)->bufIndex == (fh)->bufEnd) && ((fh)->ungetIndex == 0)) ? _file_fill_buffer(fh) : 0)
 
 _file_flags_t _file_flags_parse(const char* mode);
 

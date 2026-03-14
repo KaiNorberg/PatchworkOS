@@ -1,6 +1,6 @@
 #include <sys/fs.h>
-#include <sys/proc.h>
 #include <sys/io.h>
+#include <sys/proc.h>
 #include <user/common/note.h>
 
 #include <signal.h>

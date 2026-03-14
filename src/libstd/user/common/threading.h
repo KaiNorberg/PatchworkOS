@@ -3,8 +3,8 @@
 #include <errno.h>
 #include <stdatomic.h>
 #include <stdbool.h>
-#include <sys/proc.h>
 #include <sys/io.h>
+#include <sys/proc.h>
 #include <threads.h>
 
 /**

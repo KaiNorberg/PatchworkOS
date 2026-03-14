@@ -123,9 +123,7 @@ SYSCALL_DEFINE(SYS_SYNC_CTL, atomic_uint64_t* addr, uint64_t val, sync_op_t op, 
         }
         UNREF_DEFER(object);
 
-        wait_queue_t* queue = &object->queue;
-
-        status = wait_block_prepare(&queue, 1, timeout);
+        status = wait_block_prepare(&object->queue, timeout);
         if (IS_ERR(status))
         {
             return status;

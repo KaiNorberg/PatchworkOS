@@ -310,9 +310,10 @@ static vnode_class_t pipeClass = {
 static vnode_class_t dirClass = {
     .name = "pipe",
     .type = FILE_TYPE_DIRECTORY,
-    .handlers = {
-        VNODE_DIR_HANDLERS(),
-    },
+    .handlers =
+        {
+            VNODE_DIR_HANDLERS(),
+        },
 };
 
 status_t pipe_init(void)

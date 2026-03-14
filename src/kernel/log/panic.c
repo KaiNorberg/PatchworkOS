@@ -6,7 +6,6 @@
 #include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/port.h>
 #include <kernel/cpu/regs.h>
-#include <kernel/start/start.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/mem/vmm.h>
@@ -14,6 +13,7 @@
 #include <kernel/proc/process.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
+#include <kernel/start/start.h>
 #include <kernel/version.h>
 
 #include <boot/boot_info.h>

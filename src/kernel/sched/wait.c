@@ -15,11 +15,7 @@
 
 #include <assert.h>
 #include <stdatomic.h>
-#include <stdlib.h>
 #include <sys/list.h>
-
-static cache_t waitEntryCache =
-    CACHE_CREATE(waitEntryCache, "wait_entry", sizeof(wait_entry_t), CACHE_LINE, NULL, NULL);
 
 PERCPU_DEFINE_CTOR(static wait_t, pcpu_wait)
 {
@@ -29,22 +25,21 @@ PERCPU_DEFINE_CTOR(static wait_t, pcpu_wait)
     lock_init(&wait->lock);
 }
 
-static void wait_remove_wait_entries(thread_t* thread, status_t status)
+static void wait_remove_from_queue(thread_t* thread)
 {
-    assert(atomic_load(&thread->state) == THREAD_UNBLOCKING);
+    wait_client_t* client = &thread->wait;
 
-    thread->wait.status = status;
-
-    wait_entry_t* temp;
-    wait_entry_t* entry;
-    LIST_FOR_EACH_SAFE(entry, temp, &thread->wait.entries, threadEntry)
+    // A queue should never be freed while still having clients so this is probably safe?
+    wait_queue_t* queue = client->queue;
+    if (queue != NULL)
     {
-        lock_acquire(&entry->queue->lock);
-        list_remove(&entry->queueEntry);
-        lock_release(&entry->queue->lock);
-
-        list_remove(&entry->threadEntry); // Belongs to thread, no lock needed.
-        cache_free(entry);
+        lock_acquire(&queue->lock);
+        if (client->queue == queue)
+        {
+            list_remove(&client->queueEntry);
+            client->queue = NULL;
+        }
+        lock_release(&queue->lock);
     }
 }
 
@@ -66,8 +61,9 @@ void wait_queue_deinit(wait_queue_t* queue)
 
 void wait_client_init(wait_client_t* client)
 {
-    list_entry_init(&client->entry);
-    list_init(&client->entries);
+    list_entry_init(&client->timeoutEntry);
+    list_entry_init(&client->queueEntry);
+    client->queue = NULL;
     client->status = OK;
     client->deadline = 0;
     client->owner = NULL;
@@ -82,7 +78,7 @@ void wait_check_timeouts(interrupt_frame_t* frame)
 
     while (1)
     {
-        thread_t* thread = CONTAINER_OF_SAFE(list_first(&wait->blockedThreads), thread_t, wait.entry);
+        thread_t* thread = CONTAINER_OF_SAFE(list_first(&wait->blockedThreads), thread_t, wait.timeoutEntry);
         if (thread == NULL)
         {
             return;
@@ -95,7 +91,7 @@ void wait_check_timeouts(interrupt_frame_t* frame)
             return;
         }
 
-        list_remove(&thread->wait.entry);
+        list_remove(&thread->wait.timeoutEntry);
 
         thread_state_t expected = THREAD_BLOCKED;
         if (!atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING)) // Already unblocking.
@@ -103,14 +99,15 @@ void wait_check_timeouts(interrupt_frame_t* frame)
             continue;
         }
 
-        wait_remove_wait_entries(thread, ERR(SCHED, TIMEOUT));
+        thread->wait.status = ERR(SCHED, TIMEOUT);
+        wait_remove_from_queue(thread);
         sched_submit(thread);
     }
 }
 
-status_t wait_block_prepare(wait_queue_t** waitQueues, uint64_t amount, clock_t timeout)
+status_t wait_block_prepare(wait_queue_t* queue, clock_t timeout)
 {
-    if (waitQueues == NULL || amount == 0)
+    if (queue == NULL)
     {
         return ERR(SCHED, INVAL);
     }
@@ -120,52 +117,16 @@ status_t wait_block_prepare(wait_queue_t** waitQueues, uint64_t amount, clock_t 
     thread_t* thread = thread_current_unsafe();
     assert(thread != NULL);
 
-    for (uint64_t i = 0; i < amount; i++)
-    {
-        lock_acquire(&waitQueues[i]->lock);
-    }
-
-    for (uint64_t i = 0; i < amount; i++)
-    {
-        wait_entry_t* entry = cache_alloc(&waitEntryCache);
-        if (entry == NULL)
-        {
-            while (1)
-            {
-                wait_entry_t* other =
-                    CONTAINER_OF_SAFE(list_pop_front(&thread->wait.entries), wait_entry_t, threadEntry);
-                if (other == NULL)
-                {
-                    break;
-                }
-                cache_free(other);
-            }
-
-            for (uint64_t j = 0; j < amount; j++)
-            {
-                lock_release(&waitQueues[j]->lock);
-            }
-
-            cli_pop();
-            return ERR(SCHED, NOMEM);
-        }
-        list_entry_init(&entry->queueEntry);
-        list_entry_init(&entry->threadEntry);
-        entry->queue = waitQueues[i];
-        entry->thread = thread;
-
-        list_push_back(&thread->wait.entries, &entry->threadEntry);
-        list_push_back(&entry->queue->entries, &entry->queueEntry);
-    }
+    lock_acquire(&queue->lock);
 
     thread->wait.status = OK;
     thread->wait.deadline = CLOCKS_DEADLINE(timeout, clock_uptime());
     thread->wait.owner = NULL;
+    thread->wait.queue = queue;
 
-    for (uint64_t i = 0; i < amount; i++)
-    {
-        lock_release(&waitQueues[i]->lock);
-    }
+    list_push_back(&queue->entries, &thread->wait.queueEntry);
+
+    lock_release(&queue->lock);
 
     thread_state_t expected = THREAD_ACTIVE;
     if (!atomic_compare_exchange_strong(&thread->state, &expected, THREAD_PRE_BLOCK))
@@ -193,7 +154,7 @@ void wait_block_cancel(void)
     // State might already be unblocking if the thread unblocked prematurely.
     assert(state == THREAD_PRE_BLOCK || state == THREAD_UNBLOCKING);
 
-    wait_remove_wait_entries(thread, OK);
+    wait_remove_from_queue(thread);
 
     thread_state_t newState = atomic_exchange(&thread->state, THREAD_ACTIVE);
     assert(newState == THREAD_UNBLOCKING); // Make sure state did not change.
@@ -213,7 +174,7 @@ status_t wait_block_commit(void)
     switch (state)
     {
     case THREAD_UNBLOCKING:
-        wait_remove_wait_entries(thread, OK);
+        wait_remove_from_queue(thread);
         atomic_store(&thread->state, THREAD_ACTIVE);
         cli_pop(); // Release cpu from wait_block_prepare().
         break;
@@ -239,22 +200,22 @@ bool wait_block_finalize(interrupt_frame_t* frame, thread_t* thread, clock_t upt
     thread->wait.owner = wait;
     LOCK_SCOPE(&wait->lock);
 
-    thread_t* lastThread = (CONTAINER_OF(list_last(&wait->blockedThreads), thread_t, wait.entry));
+    thread_t* lastThread = (CONTAINER_OF(list_last(&wait->blockedThreads), thread_t, wait.timeoutEntry));
 
     // Sort blocked threads by deadline
     if (thread->wait.deadline == CLOCKS_NEVER || list_is_empty(&wait->blockedThreads) ||
         lastThread->wait.deadline <= thread->wait.deadline)
     {
-        list_push_back(&wait->blockedThreads, &thread->wait.entry);
+        list_push_back(&wait->blockedThreads, &thread->wait.timeoutEntry);
     }
     else
     {
         thread_t* other;
-        LIST_FOR_EACH(other, &wait->blockedThreads, wait.entry)
+        LIST_FOR_EACH(other, &wait->blockedThreads, wait.timeoutEntry)
         {
             if (other->wait.deadline > thread->wait.deadline)
             {
-                list_prepend(&other->wait.entry, &thread->wait.entry);
+                list_prepend(&other->wait.timeoutEntry, &thread->wait.timeoutEntry);
                 break;
             }
         }
@@ -263,8 +224,8 @@ bool wait_block_finalize(interrupt_frame_t* frame, thread_t* thread, clock_t upt
     thread_state_t expected = THREAD_PRE_BLOCK;
     if (!atomic_compare_exchange_strong(&thread->state, &expected, THREAD_BLOCKED)) // Prematurely unblocked
     {
-        list_remove(&thread->wait.entry);
-        wait_remove_wait_entries(thread, OK);
+        list_remove(&thread->wait.timeoutEntry);
+        wait_remove_from_queue(thread);
         atomic_store(&thread->state, THREAD_ACTIVE);
         return false;
     }
@@ -274,8 +235,9 @@ bool wait_block_finalize(interrupt_frame_t* frame, thread_t* thread, clock_t upt
         thread_state_t expected = THREAD_BLOCKED;
         if (atomic_compare_exchange_strong(&thread->state, &expected, THREAD_UNBLOCKING))
         {
-            list_remove(&thread->wait.entry);
-            wait_remove_wait_entries(thread, ERR(SCHED, CANCELLED));
+            list_remove(&thread->wait.timeoutEntry);
+            thread->wait.status = ERR(SCHED, CANCELLED);
+            wait_remove_from_queue(thread);
             atomic_store(&thread->state, THREAD_ACTIVE);
             return false;
         }
@@ -290,8 +252,9 @@ void wait_unblock_thread(thread_t* thread, status_t status)
     assert(atomic_load(&thread->state) == THREAD_UNBLOCKING);
 
     lock_acquire(&thread->wait.owner->lock);
-    list_remove(&thread->wait.entry);
-    wait_remove_wait_entries(thread, status);
+    list_remove(&thread->wait.timeoutEntry);
+    thread->wait.status = status;
+    wait_remove_from_queue(thread);
     lock_release(&thread->wait.owner->lock);
 
     sched_submit(thread);
@@ -312,25 +275,32 @@ uint64_t wait_unblock(wait_queue_t* queue, uint64_t amount, status_t status)
 
         lock_acquire(&queue->lock);
 
-        wait_entry_t* temp;
-        wait_entry_t* waitEntry;
+        wait_client_t* temp;
+        wait_client_t* client;
         uint64_t collected = 0;
-        LIST_FOR_EACH_SAFE(waitEntry, temp, &queue->entries, queueEntry)
+        LIST_FOR_EACH_SAFE(client, temp, &queue->entries, queueEntry)
         {
             if (collected == toUnblock)
             {
                 break;
             }
 
-            thread_t* thread = waitEntry->thread;
+            thread_t* thread = CONTAINER_OF(client, thread_t, wait);
+            thread_state_t oldState = atomic_exchange(&thread->state, THREAD_UNBLOCKING);
 
-            if (atomic_exchange(&thread->state, THREAD_UNBLOCKING) == THREAD_BLOCKED)
+            if (oldState == THREAD_BLOCKED || oldState == THREAD_PRE_BLOCK)
             {
-                list_remove(&waitEntry->queueEntry);
-                list_remove(&waitEntry->threadEntry);
-                cache_free(waitEntry);
-                threads[collected] = thread;
-                collected++;
+                list_remove(&client->queueEntry);
+                client->queue = NULL;
+                client->status = status;
+
+                // Only threads that are fully blocked need to be removed from the timeout list and submitted.
+                if (oldState == THREAD_BLOCKED)
+                {
+                    threads[collected] = thread;
+                    collected++;
+                }
+                amountUnblocked++;
             }
         }
 
@@ -344,12 +314,10 @@ uint64_t wait_unblock(wait_queue_t* queue, uint64_t amount, status_t status)
         for (uint64_t i = 0; i < collected; i++)
         {
             lock_acquire(&threads[i]->wait.owner->lock);
-            list_remove(&threads[i]->wait.entry);
-            wait_remove_wait_entries(threads[i], status);
+            list_remove(&threads[i]->wait.timeoutEntry);
             lock_release(&threads[i]->wait.owner->lock);
 
             sched_submit(threads[i]);
-            amountUnblocked++;
         }
     }
 

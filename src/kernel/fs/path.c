@@ -249,7 +249,7 @@ static status_t path_symlink_complete(irp_t* irp, void* ctx)
 
     memmove(state->token + linkLen, state->ptr, suffixLen);
     memcpy(state->token, link, linkLen);
-    state->end = state->path + newLen;    
+    state->end = state->path + newLen;
 
     if (link[0] == '/')
     {
@@ -333,7 +333,7 @@ static status_t path_lookup_complete(irp_t* irp, void* ctx)
     {
         irp->status = ERR(VFS, NOENT);
     }
-    
+
     if (IS_ERR(irp->status))
     {
         while (*state->ptr == '/')
@@ -597,9 +597,9 @@ static status_t path_verify(path_state_t* state, size_t length)
     {
         if (p < end && *p == '?')
         {
-           memcpy(state->payload, p + 1, end - p - 1);
-           state->payload[end - p - 1] = '\0';
-           return OK;
+            memcpy(state->payload, p + 1, end - p - 1);
+            state->payload[end - p - 1] = '\0';
+            return OK;
         }
 
         if (p >= end)
@@ -639,7 +639,7 @@ status_t path_walk(irp_t* irp, path_state_t* state, size_t length)
         return status;
     }
 
-    status = mode_check(&state->mode, state->binding->mode);    
+    status = mode_check(&state->mode, state->binding->mode);
     if (IS_ERR(status))
     {
         path_state_free(state);

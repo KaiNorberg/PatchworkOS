@@ -5,12 +5,12 @@
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/drivers/com.h>
-#include <kernel/start/boot_info.h>
 #include <kernel/log/screen.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
+#include <kernel/start/boot_info.h>
 #include <kernel/sync/lock.h>
 
 #include <boot/boot_info.h>

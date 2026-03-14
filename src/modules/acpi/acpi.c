@@ -7,14 +7,14 @@
 
 #include <kernel/fs/binding.h>
 #include <kernel/fs/sysfs.h>
-#include <kernel/start/boot_info.h>
-#include <kernel/start/start.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/pmm.h>
 #include <kernel/module/module.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
+#include <kernel/start/boot_info.h>
+#include <kernel/start/start.h>
 
 #ifdef _TESTING_
 #include <kernel/utils/test.h>
@@ -37,14 +37,11 @@ bool acpi_is_checksum_valid(void* table, uint64_t length)
     return sum == 0;
 }
 
-static vnode_class_t acpiClass = {
-    .name = "acpi",
+static vnode_class_t acpiClass = {.name = "acpi",
     .type = FILE_TYPE_DIRECTORY,
-    .handlers =
-        {
-            VNODE_DIR_HANDLERS(),
-        }
-};
+    .handlers = {
+        VNODE_DIR_HANDLERS(),
+    }};
 
 dentry_t* acpi_get_dir(void)
 {

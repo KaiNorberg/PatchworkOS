@@ -122,7 +122,7 @@ typedef struct proc_args
  * @brief System call for creating new processes.
  *
  * @todo Reimplement this with user-space executable loading.
- * 
+ *
  * @param args The arguments for the new process.
  * @param fds An array of file descriptor mappings.
  * @param count The number of mappings in the array.

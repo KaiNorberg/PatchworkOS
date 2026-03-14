@@ -3,7 +3,7 @@ IMAGE = bin/PatchworkOS.img
 VERSION_HEADER = include/kernel/version.h
 VERSION_STRING := $(shell git describe --tags --always --dirty --long 2>/dev/null || echo "unknown")
 
-ROOT_DIRS = acpi dev efi efi/boot kernel kernel/modules kernel/modules/$(VERSION_STRING) proc sys tmp
+ROOT_DIRS = acpi dev efi efi/boot boot boot/modules boot/modules/$(VERSION_STRING) proc sys tmp
 
 BOOT_TARGET = bin/boot/.built
 KERNEL_TARGET = bin/kernel/.built
@@ -21,8 +21,8 @@ PROGRAMS_MK = $(shell find src/programs/ -name "*.mk" 2>/dev/null)
 PROGRAMS_NAMES = $(basename $(notdir $(PROGRAMS_MK)))
 PROGRAMS_TARGETS = $(patsubst %,bin/programs/.%.built,$(PROGRAMS_NAMES))
 
-# Programs to be installed in /efi/boot
-EFI_BOOT_PROGRAMS = init boxd
+# Programs to be installed in /boot
+BOOT_PROGRAMS = init
 # Programs to be installed in /base/bin
 BASE_BIN_PROGRAMS = $(filter-out $(SBIN_PROGRAMS),$(PROGRAMS_NAMES))
 # Programs to be installed in /box/<box_name>/bin
@@ -42,20 +42,20 @@ bin/.deployed: $(BOOT_TARGET) $(KERNEL_TARGET) $(LIBSTD_TARGET) $(LIBPATCHWORK_T
 	@mlabel -i $(IMAGE) ::PatchworkOS
 	@$(foreach dir,$(ROOT_DIRS),mmd -i $(IMAGE) ::/$(dir) 2>/dev/null;)
 	@mcopy -i $(IMAGE) -s root/* :: 2>/dev/null || true
-	@mcopy -i $(IMAGE) -s LICENSE ::/base/license 2>/dev/null || true
 	@mcopy -i $(IMAGE) -s bin/boot/bootx64.efi ::/efi/boot 2>/dev/null || true
-	@mcopy -i $(IMAGE) -s bin/kernel/kernel ::/kernel 2>/dev/null || true
+	@mcopy -i $(IMAGE) -s bin/kernel/kernel ::/boot 2>/dev/null || true
 	@if [ -d bin/modules ] && [ -n "$$(ls -A bin/modules 2>/dev/null)" ]; then \
-		mcopy -i $(IMAGE) -s bin/modules/* ::/kernel/modules/$(VERSION_STRING) 2>/dev/null || true; \
+		mcopy -i $(IMAGE) -s bin/modules/* ::/boot/modules/$(VERSION_STRING) 2>/dev/null || true; \
 	fi
-	@mcopy -i $(IMAGE) -s bin/libstd/libstd.a ::/base/lib 2>/dev/null || true
-	@mcopy -i $(IMAGE) -s bin/libpatchwork/libpatchwork.a ::/base/lib 2>/dev/null || true
-	@if [ -d include ]; then \
+#@mcopy -i $(IMAGE) -s LICENSE ::/base/license 2>/dev/null || true
+#@mcopy -i $(IMAGE) -s bin/libstd/libstd.a ::/base/lib 2>/dev/null || true
+#@mcopy -i $(IMAGE) -s bin/libpatchwork/libpatchwork.a ::/base/lib 2>/dev/null || true
+#@if [ -d include ]; then \
 		mcopy -i $(IMAGE) -s include/* ::/base/include 2>/dev/null || true; \
 	fi
-	@$(foreach prog,$(EFI_BOOT_PROGRAMS),\
+	@$(foreach prog,$(BOOT_PROGRAMS),\
 		if [ -f bin/programs/$(prog) ]; then \
-			mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/efi/boot 2>/dev/null || true; \
+			mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/boot 2>/dev/null || true; \
 		fi;)
 	@$(foreach prog,$(BASE_BIN_PROGRAMS),\
 		if [ -f bin/programs/$(prog) ]; then \

@@ -2,9 +2,9 @@
 #include <kernel/mem/pmm.h>
 
 #include <kernel/config.h>
-#include <kernel/start/boot_info.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
+#include <kernel/start/boot_info.h>
 #include <kernel/sync/lock.h>
 
 #include <boot/boot_info.h>

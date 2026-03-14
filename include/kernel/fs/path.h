@@ -115,24 +115,25 @@ typedef struct file file_t;
 typedef enum mode
 {
     MODE_NONE = 0,
-    MODE_READ = 1 << 0, ///< Handled by the VFS.
-    MODE_WRITE = 1 << 1, ///< Handled by the VFS.
+    MODE_READ = 1 << 0,    ///< Handled by the VFS.
+    MODE_WRITE = 1 << 1,   ///< Handled by the VFS.
     MODE_EXECUTE = 1 << 2, ///< Handled by the VFS.
-    MODE_APPEND = 1 << 3, ///< Should be implemented by the filesystem.
+    MODE_APPEND = 1 << 3,  ///< Should be implemented by the filesystem.
     /**
-     * Handled by the VFS, if `MODE_DIRECTORY`, `MODE_SYMLINK` and `MODE_HARDLINK` are not specified, then a `IRP_MJ_CREATE` handler should create a regular file.
+     * Handled by the VFS, if `MODE_DIRECTORY`, `MODE_SYMLINK` and `MODE_HARDLINK` are not specified, then a
+     * `IRP_MJ_CREATE` handler should create a regular file.
      */
     MODE_CREATE = 1 << 4,
     MODE_DIRECTORY = 1 << 5, ///< Specifies what to create in a `IRP_MJ_CREATE` handler.
-    MODE_SYMLINK = 1 << 6, ///< Specifies what to create in a `IRP_MJ_CREATE` handler.
-    MODE_HARDLINK = 1 << 7, ///< Specifies what to create in a `IRP_MJ_CREATE` handler.
+    MODE_SYMLINK = 1 << 6,   ///< Specifies what to create in a `IRP_MJ_CREATE` handler.
+    MODE_HARDLINK = 1 << 7,  ///< Specifies what to create in a `IRP_MJ_CREATE` handler.
     MODE_EXCLUSIVE = 1 << 8, ///< Handled by the VFS.
-    MODE_EXISTING = 1 << 9, ///< Handled by the VFS.
+    MODE_EXISTING = 1 << 9,  ///< Handled by the VFS.
     MODE_TRUNCATE = 1 << 10, ///< Should be implemented by the filesystem.
     MODE_NOFOLLOW = 1 << 11, ///< Handled by the VFS.
-    MODE_PRIVATE = 1 << 12, ///< Handled by the VFS.
-    MODE_PARENTS = 1 << 13, ///< Handled by the VFS.
-    MODE_LOCKED = 1 << 14, ///< Handled by the VFS.
+    MODE_PRIVATE = 1 << 12,  ///< Handled by the VFS.
+    MODE_PARENTS = 1 << 13,  ///< Handled by the VFS.
+    MODE_LOCKED = 1 << 14,   ///< Handled by the VFS.
     MODE_ALL_PERMS = MODE_READ | MODE_WRITE | MODE_EXECUTE,
 } mode_t;
 
@@ -297,7 +298,7 @@ typedef struct path_state
     char* ptr;             ///< Pointer to the current location in the path.
     char* end;             ///< Pointer to the end of the path.
     char* token;           ///< Pointer to the current token in the path.
-    size_t tokenLength;   ///< Length of the current component being processed.
+    size_t tokenLength;    ///< Length of the current component being processed.
     mode_t mode;           ///< Parsed mode from the path.
     uint32_t symlinkDepth; ///< Current symlink recursion depth.
     dentry_t* lookup;      ///< A reference to the last "looked up" dentry to keep it and its parents alive.
@@ -305,7 +306,7 @@ typedef struct path_state
     file_t* file;              ///< Stores the file used in `path_done()`.
     char path[MAX_PATH];       ///< The full path string buffer, not `NULL` terminated.
     char linkBuffer[MAX_PATH]; ///< Temporary buffer for reading symlinks.
-    char payload[MAX_PATH]; ///< Temporary buffer for storing the payload of a path.
+    char payload[MAX_PATH];    ///< Temporary buffer for storing the payload of a path.
 } path_state_t;
 
 /**

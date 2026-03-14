@@ -4,9 +4,9 @@
 #include <kernel/fs/vnode.h>
 #include <kernel/io/ioring.h>
 #include <kernel/io/irp.h>
+#include <kernel/log/log.h>
 #include <kernel/mem/paging_types.h>
 #include <kernel/proc/process.h>
-#include <kernel/log/log.h>
 
 #include <sys/io.h>
 

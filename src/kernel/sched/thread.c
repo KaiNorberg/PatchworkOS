@@ -3,7 +3,6 @@
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
-#include <kernel/start/start.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/cache.h>
@@ -12,6 +11,7 @@
 #include <kernel/sched/sched.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
+#include <kernel/start/start.h>
 #include <kernel/sync/lock.h>
 
 #include <stdlib.h>

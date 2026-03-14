@@ -145,16 +145,6 @@ Finally, the root file descriptor stores bindings. Within PatchworkOS, there is 
 
 In this system one can consider binding a file to be nothing more than a convenient way to pass multiple capabilities (file descriptors) within a single file descriptor, by binding paths within its binding table. It does also allow all the expected benefits of bindings or mounts from POSIX-like systems but from a different perspective.
 
-### Threads, Processes and Jobs
-
-There are three structures related to execution in PatchworkOS: threads, processes, and jobs.
-
-A thread is the smallest unit of execution, representing a single flow of control within a process.
-
-A process is a collection of threads that share resources such the address space and file descriptors.
-
-A job is a collection of processes, this structure allows notes to be sent to all processes in the job and is also used for security within procfs.
-
 ### Standard Library
 
 The standard library (libstd) is a superset of the ANSI C standard library, meaning that headers such as `<stdio.h>` and `<stdlib.h>` are included while POSIX headers such as `<unistd.h>` are not. Instead, the `sys` directory provides a set of PatchworkOS-specific headers such as `<sys/io.h>` and `<sys/proc.h>`.
@@ -236,13 +226,13 @@ iowalk(IOPATH("/dev/pipe/clone"), &in);
 iowalk(IOPATH("/dev/pipe/clone"), &out);
 
 proc_fd_t fds = {{.parent = in, .child = 0}, {.parent = out, .child = 1}};
-proc_t proc;
+fd_t proc;
 proc_create(PROC_ARGS("/path/to/program"), &fds, ARRAY_SIZE(fds), PRIO_MAX_USER, PROC_DEFAULT, &proc);
 ```
 
 We first create two pipes by opening the special file `/dev/pipe/clone` twice.
 
-Then we create a new process using the `proc_create()` function. This function takes in several arguments, first it takes in a `proc_args_t` structure containing the command line arguments for the process which we use the `PROC_ARGS()` helper to construct. The second argument is an array of `proc_fd_t` structures allowing us to pass file descriptors to the child, where each `proc_fd_t` structure contains a parent file descriptor and a child file descriptor. The third argument is the size of this array which we use the `ARRAY_SIZE()` helper to compute. The fourth and fifth arguments are the process's priority and flags, and the sixth argument is an optional pointer for the childs identifier.
+Then we create a new process using the `proc_create()` function. This function takes in several arguments, first it takes in a `proc_args_t` structure containing the command line arguments for the process which we use the `PROC_ARGS()` helper to construct. The second argument is an array of `proc_fd_t` structures allowing us to pass file descriptors to the child, where each `proc_fd_t` structure contains a parent file descriptor and a child file descriptor. The third argument is the size of this array which we use the `ARRAY_SIZE()` helper to compute. The fourth and fifth arguments are the process's priority and flags, and the sixth argument is an output pointer for a file descriptor to the child's proc directory containing files for manipulating the child.
 
 We could optimize the pipe creation by walking to the second pipe relative to the first one. This optimization can be applied any time we wish to open the same file multiple times:
 
@@ -253,17 +243,19 @@ iowalk(IOPATH("/dev/pipe/clone"), &in);
 iowalk(in, FDROOT, ".", &out);
 ```
 
-Finally, its important to note that the path specified to the executable or paths specified within the executable (for example to the dynamic linker) are from the parents perspective as the executable will be loaded in user-space by the parent.
+It's important to note that `proc_create()` is not a system call; it's a wrapper around the `/proc/clone` file which when opened returns the root of the new processes proc directory. The kernel does nothing more than provide an empty address space that `proc_create()` fills using the `mem` file in the child's proc directory. This means that the path specified to the executable or paths specified within the executable (for example to the dynamic linker) are from the parents perspective.
+
+Finally, there is no way to directly kill a process, instead a process will be killed when its proc directories reference count reaches zero.
 
 ### Environment Variables
 
-Environment variables are typically a set of key-value pairs that provide a simple way to configure programs. Intuitively from a everything is a file perspective, the concept of environment variables map cleanly to a directory containing files, where the name of the file is the key and its contents are the value. As such, environment variables are provided via another standard file descriptor, `FDENV`. The directory that `FDENV` points to could either be a real directory, allowing the user to easily manage environment variables via the filesystem, or one could create a tmpfs instace and use that as the `FDENV` directory.
+Environment variables are typically a set of key-value pairs that provide a simple way to configure programs. This concept of environment variables maps cleanly to a directory containing files, where the name of the file is the key and its contents are the value. As such, environment variables are provided via a binding in the `/env` directory. This directory could either be a real directory, allowing the user to manage environment variables via the filesystem, or one could create a tmpfs instance and use that as the `/env` directory.
 
 ### Notes/Signals
 
 Notes are PatchworkOS's equivalent to POSIX signals which asynchronously send strings to processes.
 
-In POSIX, if a page fault were to occur in a process running in some from of shell, we would usually receive a `SIGSEGV`, which is not very helpful. The core limitation is that signals are just integers, so we can't receive any additional information.
+In POSIX, if a page fault were to occur in a process running in some form of shell, we would usually receive a `SIGSEGV`, which is not very helpful. The core limitation is that signals are just integers, so we can't receive any additional information.
 
 In PatchworkOS, a note is a string where the first word of the string is the note type and the rest is arbitrary data. As such, a page fault note might look like:
 
@@ -271,7 +263,7 @@ In PatchworkOS, a note is a string where the first word of the string is the not
 shell: pagefault at 0x40013b due to stack overflow at 0x7ffffff9af18
 ```
 
-All that happened is that the shell printed the exit status of the process, which is also a string and in this case is set to the note that killed the process. This is much more useful, as we can know the exact address and the reason for the fault.
+All that happened is that the shell printed the exit status of the process, which is also a string and in this case is set to the note that killed the process.
 
 ### Mounting a Filesystem
 

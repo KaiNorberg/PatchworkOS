@@ -1,10 +1,10 @@
 #pragma once
 
+#include <kernel/fs/path.h>
 #include <kernel/mem/cache.h>
 #include <kernel/mem/mdl.h>
 #include <kernel/sync/lock.h>
 #include <kernel/utils/ref.h>
-#include <kernel/fs/path.h>
 
 #include <assert.h>
 #include <stdatomic.h>

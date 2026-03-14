@@ -1,9 +1,9 @@
 #include <kernel/log/screen.h>
 
 #include <kernel/drivers/com.h>
-#include <kernel/start/boot_info.h>
 #include <kernel/log/glyphs.h>
 #include <kernel/log/panic.h>
+#include <kernel/start/boot_info.h>
 #include <kernel/sync/lock.h>
 
 #include <string.h>

@@ -6,14 +6,14 @@
 #include "user/common/file.h"
 #include "user/common/note.h"
 
-#include <sys/io.h>
 #include <sys/fs.h>
+#include <sys/io.h>
 #include <sys/proc.h>
 #include <sys/status.h>
 
 static void _populate_std_descriptors(void)
 {
-    for (fd_t i = 0; i <= FDENV; i++)
+    for (fd_t i = 0; i <= FDROOT; i++)
     {
         status_t status = ioseek(i, IOSEEK_CURRENT, 0, NULL);
         if (!IS_CODE(status, BADFD))
@@ -39,7 +39,7 @@ static void _populate_std_descriptors(void)
 
 void _user_init(void)
 {
-    _threading_init();   
+    _threading_init();
     _populate_std_descriptors();
     _files_init();
     _std_streams_init();

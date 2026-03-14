@@ -260,9 +260,10 @@ static vnode_class_t fileClass = {
 static vnode_class_t dirClass = {
     .name = "shmem dir",
     .type = FILE_TYPE_DIRECTORY,
-    .handlers = {
-        VNODE_DIR_HANDLERS(),
-    },
+    .handlers =
+        {
+            VNODE_DIR_HANDLERS(),
+        },
 };
 
 static status_t shmem_init(void)

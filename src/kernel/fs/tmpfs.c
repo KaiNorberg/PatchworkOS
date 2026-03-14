@@ -8,15 +8,15 @@
 #include <kernel/fs/path.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/fs/vnode.h>
-#include <kernel/start/boot_info.h>
 #include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
+#include <kernel/sched/clock.h>
 #include <kernel/sched/sched.h>
+#include <kernel/start/boot_info.h>
 #include <kernel/sync/lock.h>
 #include <kernel/sync/mutex.h>
 #include <kernel/utils/ref.h>
-#include <kernel/sched/clock.h>
 
 #include <assert.h>
 #include <stdlib.h>
@@ -51,7 +51,7 @@ static status_t tmpfs_regular_read(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
     tmpfs_vnode_t* vnode = VNODE_GET(frame->vnode, tmpfs_vnode_t);
-    
+
     MUTEX_SCOPE(&vnode->vnode.mutex);
 
     vnode->atime = clock_epoch();
@@ -93,7 +93,7 @@ static status_t tmpfs_regular_write(irp_t* irp)
     vnode->mtime = vnode->ctime = clock_epoch();
 
     return irp_write_helper(irp, vnode->buffer, vnode->size);
-}   
+}
 
 static status_t tmpfs_regular_seek(irp_t* irp)
 {
@@ -135,7 +135,7 @@ static status_t tmpfs_regular_attr(irp_t* irp)
         return OK;
     case FILE_GET_CTIME:
         irp->result = vnode->ctime;
-        return OK; 
+        return OK;
     case FILE_SET_CTIME:
         vnode->ctime = frame->attr.value;
         return OK;
@@ -351,8 +351,7 @@ static status_t tmpfs_dir_create(irp_t* irp)
         cls = &regularClass;
     }
 
-    tmpfs_vnode_t* vnode = 
-        tmpfs_vnode_create(dir->volume, cls, vnode_hash(dir->vnode.number, target->name));
+    tmpfs_vnode_t* vnode = tmpfs_vnode_create(dir->volume, cls, vnode_hash(dir->vnode.number, target->name));
     if (vnode == NULL)
     {
         return ERR(FS, NOMEM);
@@ -385,7 +384,7 @@ static status_t tmpfs_dir_create(irp_t* irp)
 
 static status_t tmpfs_dir_remove(irp_t* irp)
 {
-    irp_frame_t* frame = irp_current(irp);    
+    irp_frame_t* frame = irp_current(irp);
     dentry_t* target = frame->remove.dentry;
     tmpfs_vnode_t* dir = VNODE_GET(frame->vnode, tmpfs_vnode_t);
 

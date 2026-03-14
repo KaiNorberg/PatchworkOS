@@ -4,7 +4,6 @@
 #include <kernel/cpu/ipi.h>
 #include <kernel/cpu/regs.h>
 #include <kernel/cpu/syscall.h>
-#include <kernel/start/boot_info.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/paging.h>
@@ -14,6 +13,7 @@
 #include <kernel/sched/clock.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
+#include <kernel/start/boot_info.h>
 #include <kernel/sync/lock.h>
 
 #include <boot/boot_info.h>

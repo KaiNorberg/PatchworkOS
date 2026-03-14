@@ -2,13 +2,13 @@
 
 #include <kernel/fs/dentry.h>
 
-#include <sys/defs.h>
-#include <sys/list.h>
 #include <boot/boot_info.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <sys/defs.h>
 #include <sys/fs.h>
+#include <sys/list.h>
 #include <sys/math.h>
 #include <sys/proc.h>
 

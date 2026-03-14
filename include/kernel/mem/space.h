@@ -66,10 +66,10 @@ typedef struct
  */
 typedef struct space
 {
-    page_table_t pageTable;      ///< The page table associated with the address space.
-    uintptr_t startAddress;      ///< The start address for allocations in this address space.
-    uintptr_t endAddress;        ///< The end address for allocations in this address space.
-    uintptr_t freeAddress;       ///< The next available free virtual address in this address space.
+    page_table_t pageTable; ///< The page table associated with the address space.
+    uintptr_t startAddress; ///< The start address for allocations in this address space.
+    uintptr_t endAddress;   ///< The end address for allocations in this address space.
+    uintptr_t freeAddress;  ///< The next available free virtual address in this address space.
     space_flags_t flags;
     /**
      * Array of callbacks for this address space, indexed by the callback ID.

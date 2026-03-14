@@ -1,7 +1,5 @@
 #include <kernel/drivers/abstract/fb.h>
 #include <kernel/fs/vfs.h>
-#include <kernel/start/boot_info.h>
-#include <kernel/start/start.h>
 #include <kernel/fs/vnode.h>
 #include <kernel/io/irp.h>
 #include <kernel/log/log.h>
@@ -11,6 +9,8 @@
 #include <kernel/module/module.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
+#include <kernel/start/boot_info.h>
+#include <kernel/start/start.h>
 
 #include <string.h>
 #include <sys/math.h>

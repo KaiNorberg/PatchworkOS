@@ -1,11 +1,11 @@
 #include <kernel/fs/vnode.h>
 
 #include <kernel/fs/vfs.h>
+#include <kernel/log/log.h>
 #include <kernel/mem/cache.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
-#include <kernel/log/log.h>
 
 #include <stdlib.h>
 

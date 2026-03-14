@@ -12,8 +12,6 @@
 #include <kernel/fs/sysfs.h>
 #include <kernel/fs/tmpfs.h>
 #include <kernel/fs/vfs.h>
-#include <kernel/start/boot_info.h>
-#include <kernel/start/start.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/log/screen.h>
@@ -27,6 +25,8 @@
 #include <kernel/sched/thread.h>
 #include <kernel/sched/timer.h>
 #include <kernel/sched/wait.h>
+#include <kernel/start/boot_info.h>
+#include <kernel/start/start.h>
 
 #include <boot/boot_info.h>
 
@@ -180,14 +180,14 @@ static inline void start_init_process(void)
     UNREF_DEFER(sysfs);
 
     fd_t fd = FDROOT;
-    status = file_table_grab(&initProcess->files, sysfs, & fd);
+    status = file_table_grab(&initProcess->files, sysfs, &fd);
     if (IS_ERR(status))
     {
         panic(NULL, "Failed to grab sysfs root file");
     }
 
     fd = FDCWD;
-    status = file_table_grab(&initProcess->files, sysfs, & fd);
+    status = file_table_grab(&initProcess->files, sysfs, &fd);
     if (IS_ERR(status))
     {
         panic(NULL, "Failed to grab sysfs root file");

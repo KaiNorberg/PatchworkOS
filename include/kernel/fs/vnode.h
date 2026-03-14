@@ -43,7 +43,7 @@ typedef struct vnode_class
 {
     const char* name;                   ///< The name of the class, used for debugging.
     file_type_t type;                   ///< The type of the vnode.
-    cache_t* cache; ///< The cache to allocate vnodes from, if `NULL` a default cache will be used.
+    cache_t* cache;                     ///< The cache to allocate vnodes from, if `NULL` a default cache will be used.
     irp_handler_t handlers[IRP_MJ_MAX]; ///< IRP handlers indexed by major function number.
     /**
      * @brief Called when the dentry is looked up or retrieved from cache.
@@ -79,10 +79,12 @@ typedef struct vnode
  * @param _vnode The vnode to type cast.
  * @param _type The type of the filesystem-specific vnode.
  */
-#define VNODE_GET(_vnode, _type) ({ \
-    assert((_vnode) == NULL || sizeof(_type) >= (_vnode)->cls != NULL ? (_vnode)->cls->cache->size : sizeof(vnode_t)); \
-    (_type*)(_vnode); \
-})
+#define VNODE_GET(_vnode, _type) \
+    ({ \
+        assert((_vnode) == NULL || sizeof(_type) >= (_vnode)->cls != NULL ? (_vnode)->cls->cache->size \
+                                                                          : sizeof(vnode_t)); \
+        (_type*)(_vnode); \
+    })
 
 /**
  * @brief Create a new vnode.
@@ -142,7 +144,7 @@ status_t vnode_generic_dir_read(irp_t* irp);
 
 /**
  * @brief Generic lookup handler.
- * 
+ *
  * * This function can be used as a default `IRP_MJ_LOOKUP` handler.
  *
  * @param irp The IRP.
@@ -163,8 +165,8 @@ status_t vnode_generic_lookup(irp_t* irp);
  * This macro should be used for all directory vnodes.
  */
 #define VNODE_DIR_HANDLERS() \
-    [IRP_MJ_READ] = vnode_generic_dir_read, [IRP_MJ_ATTR] = vnode_generic_attr, [IRP_MJ_QUERY] = vnode_generic_query, [IRP_MJ_LOOKUP] = vnode_generic_lookup
-
+    [IRP_MJ_READ] = vnode_generic_dir_read, [IRP_MJ_ATTR] = vnode_generic_attr, [IRP_MJ_QUERY] = vnode_generic_query, \
+    [IRP_MJ_LOOKUP] = vnode_generic_lookup
 
 /**
  * @brief Generate a unique vnode number based on the parent vnode and the name of the file.

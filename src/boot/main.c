@@ -786,10 +786,10 @@ static EFI_STATUS kernel_load(boot_kernel_t* kernel, EFI_FILE* rootHandle)
     Elf64_Addr maxVaddr = 0;
     EFI_STATUS status;
 
-    status = uefi_call_wrapper(rootHandle->Open, 5, rootHandle, &kernelDir, L"kernel", EFI_FILE_MODE_READ, 0);
+    status = uefi_call_wrapper(rootHandle->Open, 5, rootHandle, &kernelDir, L"boot", EFI_FILE_MODE_READ, 0);
     if (EFI_ERROR(status))
     {
-        Print(L"  ERROR: Failed to open kernel directory (0x%lx)\n", status);
+        Print(L"  ERROR: Failed to open boot directory (0x%lx)\n", status);
         goto cleanup;
     }
 
@@ -914,17 +914,8 @@ static EFI_STATUS init_load(boot_init_t* init, EFI_FILE* rootHandle)
         return EFI_INVALID_PARAMETER;
     }
 
-    EFI_FILE* efiDir = NULL;
-    EFI_STATUS status = uefi_call_wrapper(rootHandle->Open, 5, rootHandle, &efiDir, L"efi", EFI_FILE_MODE_READ, 0);
-    if (EFI_ERROR(status))
-    {
-        Print(L"  ERROR: Failed to open efi directory (0x%lx)\n", status);
-        return status;
-    }
-
     EFI_FILE* bootDir = NULL;
-    status = uefi_call_wrapper(efiDir->Open, 5, efiDir, &bootDir, L"boot", EFI_FILE_MODE_READ, 0);
-    uefi_call_wrapper(efiDir->Close, 1, efiDir);
+    EFI_STATUS status = uefi_call_wrapper(rootHandle->Open, 5, rootHandle, &bootDir, L"boot", EFI_FILE_MODE_READ, 0);
     if (EFI_ERROR(status))
     {
         Print(L"  ERROR: Failed to open boot directory (0x%lx)\n", status);
@@ -988,7 +979,8 @@ static EFI_STATUS init_load(boot_init_t* init, EFI_FILE* rootHandle)
 
     FreePool(fileData);
 
-    Print(L"  Init loaded at 0x%lx, loadAddr=%lx entry=%lx size=%lu\n", init->buffer, init->loadAddr, init->entry, init->size);
+    Print(L"  Init loaded at 0x%lx, loadAddr=%lx entry=%lx size=%lu\n", init->buffer, init->loadAddr, init->entry,
+        init->size);
 
     return EFI_SUCCESS;
 }

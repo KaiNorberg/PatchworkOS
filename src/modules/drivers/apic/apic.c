@@ -3,9 +3,9 @@
 #include <kernel/drivers/apic/lapic.h>
 
 #include <kernel/cpu/cpu.h>
-#include <kernel/start/start.h>
 #include <kernel/log/log.h>
 #include <kernel/module/module.h>
+#include <kernel/start/start.h>
 
 #include <sys/defs.h>
 

@@ -3,13 +3,13 @@
 #include <kernel/module/module.h>
 
 #include <kernel/fs/vfs.h>
-#include <kernel/start/boot_info.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/module/symbol.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
+#include <kernel/start/boot_info.h>
 #include <kernel/sync/lock.h>
 #include <kernel/version.h>
 
@@ -1208,7 +1208,8 @@ status_t module_device_attach(const char* type, const char* name, module_load_fl
         {
             while (!list_is_empty(&handlers))
             {
-                module_device_handler_t* handler = CONTAINER_OF(list_pop_front(&handlers), module_device_handler_t, loadEntry);
+                module_device_handler_t* handler =
+                    CONTAINER_OF(list_pop_front(&handlers), module_device_handler_t, loadEntry);
                 module_handler_remove(handler);
             }
             if (list_is_empty(&device->handlers))

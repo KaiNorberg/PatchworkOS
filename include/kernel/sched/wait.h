@@ -4,7 +4,6 @@
 #include <kernel/cpu/regs.h>
 #include <kernel/sync/lock.h>
 
-#include <errno.h>
 #include <sys/list.h>
 #include <sys/proc.h>
 
@@ -53,8 +52,7 @@ typedef struct wait wait_t;
         status_t status = OK; \
         while (!(condition) && IS_INFO(status)) \
         { \
-            wait_queue_t* temp = queue; \
-            status = wait_block_prepare(&temp, 1, CLOCKS_NEVER); \
+            status = wait_block_prepare(queue, CLOCKS_NEVER); \
             if (IS_ERR(status)) \
             { \
                 break; \
@@ -84,8 +82,7 @@ typedef struct wait wait_t;
                 break; \
             } \
             clock_t remaining = CLOCKS_REMAINING(deadline, uptime); \
-            wait_queue_t* temp = queue; \
-            status = wait_block_prepare(&temp, 1, remaining); \
+            status = wait_block_prepare(queue, remaining); \
             if (IS_ERR(status)) \
             { \
                 break; \
@@ -108,8 +105,7 @@ typedef struct wait wait_t;
         status_t status = OK; \
         while (!(condition) && IS_INFO(status)) \
         { \
-            wait_queue_t* temp = queue; \
-            status = wait_block_prepare(&temp, 1, CLOCKS_NEVER); \
+            status = wait_block_prepare(queue, CLOCKS_NEVER); \
             if (IS_ERR(status)) \
             { \
                 break; \
@@ -141,8 +137,7 @@ typedef struct wait wait_t;
                 break; \
             } \
             clock_t remaining = CLOCKS_REMAINING(deadline, uptime); \
-            wait_queue_t* temp = queue; \
-            status = wait_block_prepare(&temp, 1, remaining); \
+            status = wait_block_prepare(queue, remaining); \
             if (IS_ERR(status)) \
             { \
                 break; \
@@ -157,27 +152,12 @@ typedef struct wait wait_t;
     })
 
 /**
- * @brief Represents a thread waiting on a wait queue.
- * @struct wait_entry_t
- *
- * Since each thread can wait on multiple wait queues simultaneously, each wait queue the thread is waiting on
- * will have its own wait entry.
- */
-typedef struct wait_entry
-{
-    list_entry_t queueEntry;  ///< Used in wait_queue_t->entries.
-    list_entry_t threadEntry; ///< Used in wait_client_t->entries.
-    thread_t* thread;         ///< The thread that is waiting.
-    wait_queue_t* queue;      ///< The wait queue the thread is waiting on.
-} wait_entry_t;
-
-/**
  * @brief The primitive that threads block on.
  * @struct wait_queue_t
  */
 typedef struct wait_queue
 {
-    list_t entries; ///< List of wait entries for threads waiting on this queue.
+    list_t entries; ///< List of threads waiting on this queue.
     lock_t lock;
 } wait_queue_t;
 
@@ -185,16 +165,16 @@ typedef struct wait_queue
  * @brief Represents a thread in the waiting subsystem.
  * @struct wait_client_t
  *
- * Each thread stores all wait queues it is currently waiting on in here to allow blocking on multiple wait queues,
- * since if one queue unblocks the thread must be removed from all other queues as well.
+ * Each thread can only wait on one wait queue at a time.
  */
 typedef struct wait_client
 {
-    list_entry_t entry;
-    list_t entries;   ///< List of wait entries, one for each wait queue the thread is waiting on.
-    status_t status;  ///< The status to return when unblocking the thread.
-    clock_t deadline; ///< Deadline for timeout, `CLOCKS_NEVER` for no timeout.
-    wait_t* owner;    ///< The wait cpu context of the cpu the thread is blocked on.
+    list_entry_t timeoutEntry; ///< Used in wait_t->blockedThreads.
+    list_entry_t queueEntry;   ///< Used in wait_queue_t->entries.
+    wait_queue_t* queue;       ///< The queue the thread is waiting on.
+    status_t status;           ///< The status to return when unblocking the thread.
+    clock_t deadline;          ///< Deadline for timeout, `CLOCKS_NEVER` for no timeout.
+    wait_t* owner;             ///< The wait cpu context of the cpu the thread is blocked on.
 } wait_client_t;
 
 /**
@@ -249,7 +229,7 @@ void wait_check_timeouts(interrupt_frame_t* frame);
  * @brief Prepare to block the currently running thread.
  *
  * Needed to handle race conditions when a thread is unblocked prematurely. The following sequence is used:
- * - Call `wait_block_prepare()` to add the currently running thread to the provided wait queues and disable interrupts.
+ * - Call `wait_block_prepare()` to add the currently running thread to the provided wait queue and disable interrupts.
  * - Check if the condition to block is still valid.
  * - (The condition might change here, thus causing a race condition, leading to premature unblocking.)
  * - If the condition was evaluated as not valid, call `wait_block_cancel()`.
@@ -258,12 +238,11 @@ void wait_check_timeouts(interrupt_frame_t* frame);
  *
  * Will reenable interrupts on failure.
  *
- * @param waitQueues Array of wait queues to add the thread to.
- * @param amount Number of wait queues to add the thread to.
+ * @param queue The wait queue to add the thread to.
  * @param timeout Timeout.
  * @return An appropriate status value.
  */
-status_t wait_block_prepare(wait_queue_t** waitQueues, size_t amount, clock_t timeout);
+status_t wait_block_prepare(wait_queue_t* queue, clock_t timeout);
 
 /**
  * @brief Cancels blocking of the currently running thread.
