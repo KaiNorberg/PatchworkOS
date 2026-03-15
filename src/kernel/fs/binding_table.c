@@ -199,11 +199,6 @@ status_t binding_table_copy(binding_table_t* dest, binding_table_t* src)
     {
         for (uint64_t i = 0; i < stack->count; i++)
         {
-            if (stack->bindings[i]->mode & MODE_PRIVATE)
-            {
-                continue;
-            }
-
             status_t status = binding_table_add(dest, stack->bindings[i]);
             if (IS_ERR(status))
             {

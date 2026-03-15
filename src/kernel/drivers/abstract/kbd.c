@@ -127,7 +127,7 @@ static status_t kbd_events_read(irp_t* irp)
         return irp_delay(irp, &kbd->internal.pending, kbd_cancel);
     }
 
-    return fifo_read_mdl(&client->fifo, frame->read.buffer, 0, &irp->result);
+    return fifo_read_sglist(&client->fifo, frame->read.buffer, 0, &irp->result);
 }
 
 static status_t kbd_events_poll(irp_t* irp)

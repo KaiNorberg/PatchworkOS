@@ -7,15 +7,10 @@ status_t ioattrp(fd_t cwd, fd_t root, const char* path, file_attr_t attr, uint64
         return ERR(LIBSTD, INVAL);
     }
 
-    iowalkq(cwd, root, path, 0);
-    iolink(IOREG0, IOLINK_SOFT);
-
-    ioattrq(FDNONE, attr, *value, 0);
-    iouse(IOARG0, IOREG0);
-    iolink(IOREG_NONE, IOLINK_SOFT);
-
-    iodropq(FDNONE, 0);
-    iouse(IOARG0, IOREG0);
+    iovar_t fdReg = IOREG(IOREG0, FDNONE);
+    IOWALKQ(cwd, root, path, IOSOFT, &fdReg, 0);
+    IOATTRQ(fdReg, attr, *value, IOSOFT, NULL, 0);
+    IODROPQ(fdReg, IONOLINK, NULL, 0);
 
     status_t status = OK;
     iocqe_t cqe = {0};

@@ -42,6 +42,7 @@ typedef struct _thread
     thrd_start_t func;
     void* arg;
     ioring_t ring;
+    ioring_t* activeRing;
     bool hasRing;
 } _thread_t;
 

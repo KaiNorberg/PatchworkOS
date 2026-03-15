@@ -4,6 +4,8 @@
 #include <kernel/fs/vnode.h>
 
 #include <boot/boot_info.h>
+#include <kernel/mem/paging_types.h>
+#include <kernel/mem/pmm.h>
 
 #include <sys/fs.h>
 #include <sys/list.h>
@@ -43,9 +45,8 @@ typedef struct
 typedef struct
 {
     vnode_t vnode;
-    void* buffer;
+    pagevec_t pages;
     size_t size;
-    size_t capacity;
     tmpfs_volume_t* volume;
     time_t atime;
     time_t mtime;

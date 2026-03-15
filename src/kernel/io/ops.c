@@ -75,20 +75,20 @@ static status_t io_op_read(irp_t* irp)
         return ERR(IO, ACCESS);
     }
 
-    mdl_t* mdl;
-    status_t status = irp_get_mdl(irp, &mdl);
+    sglist_t* list;
+    status_t status = irp_get_sglist(irp, &list);
     if (IS_ERR(status))
     {
         return status;
     }
 
-    status = mdl_add_vector(mdl, &irp->process->space, irp->sqe.vector, irp->sqe.count);
+    status = sglist_add_vector(list, &irp->process->space, irp->sqe.vector, irp->sqe.count);
     if (IS_ERR(status))
     {
         return status;
     }
 
-    irp_prep_read(irp, mdl, irp->sqe.offset);
+    irp_prep_read(irp, list, irp->sqe.offset);
     return file_call(file, irp);
 }
 
@@ -106,20 +106,20 @@ static status_t io_op_write(irp_t* irp)
         return ERR(IO, ACCESS);
     }
 
-    mdl_t* mdl;
-    status_t status = irp_get_mdl(irp, &mdl);
+    sglist_t* list;
+    status_t status = irp_get_sglist(irp, &list);
     if (IS_ERR(status))
     {
         return status;
     }
 
-    status = mdl_add_vector(mdl, &irp->process->space, irp->sqe.vector, irp->sqe.count);
+    status = sglist_add_vector(list, &irp->process->space, irp->sqe.vector, irp->sqe.count);
     if (IS_ERR(status))
     {
         return status;
     }
 
-    irp_prep_write(irp, mdl, irp->sqe.offset);
+    irp_prep_write(irp, list, irp->sqe.offset);
     return file_call(file, irp);
 }
 
@@ -261,20 +261,20 @@ static status_t io_op_query(irp_t* irp)
     }
     UNREF_DEFER(file);
 
-    mdl_t* mdl;
-    status_t status = irp_get_mdl(irp, &mdl);
+    sglist_t* list;
+    status_t status = irp_get_sglist(irp, &list);
     if (IS_ERR(status))
     {
         return status;
     }
 
-    status = mdl_add(mdl, &irp->process->space, irp->sqe.info, sizeof(file_info_t));
+    status = sglist_add(list, &irp->process->space, irp->sqe.info, sizeof(file_info_t));
     if (IS_ERR(status))
     {
         return status;
     }
 
-    irp_prep_query(irp, mdl);
+    irp_prep_query(irp, list);
     return file_call(file, irp);
 }
 

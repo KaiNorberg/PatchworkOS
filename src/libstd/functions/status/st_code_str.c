@@ -38,8 +38,6 @@ const char* st_code_str(st_code_t code)
         return "end of file";
     case ST_CODE_ARGC:
         return "invalid argument count";
-    case ST_CODE_INVALCTL:
-        return "invalid control command";
     case ST_CODE_TOCTOU:
         return "time-of-check to time-of-use race condition";
     case ST_CODE_TEST_FAIL:
@@ -112,8 +110,10 @@ const char* st_code_str(st_code_t code)
         return "address already in use";
     case ST_CODE_EXPECT_FILE:
         return "operation expected to be provided a file";
-    case ST_CODE_INVAL_CTL:
+    case ST_CODE_INVALCTL:
         return "invalid i/o control command";
+    case ST_CODE_NOSUPPORT:
+        return "operation not supported";
 
     // Access
     case ST_CODE_ACCESS:
@@ -140,6 +140,10 @@ const char* st_code_str(st_code_t code)
         return "process is dying";
     case ST_CODE_DEADLOCK:
         return "deadlock detected";
+    case ST_CODE_RUNNING:
+        return "process is already running";
+    case ST_CODE_NOT_RUNNING:
+        return "process is not running";
 
     // Device
     case ST_CODE_NODEV:

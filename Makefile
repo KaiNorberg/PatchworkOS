@@ -3,7 +3,7 @@ IMAGE = bin/PatchworkOS.img
 VERSION_HEADER = include/kernel/version.h
 VERSION_STRING := $(shell git describe --tags --always --dirty --long 2>/dev/null || echo "unknown")
 
-ROOT_DIRS = acpi dev efi efi/boot boot boot/modules boot/modules/$(VERSION_STRING) proc sys tmp
+ROOT_DIRS = acpi bin dev efi efi/boot boot boot/modules boot/modules/$(VERSION_STRING) proc sys tmp
 
 BOOT_TARGET = bin/boot/.built
 KERNEL_TARGET = bin/kernel/.built
@@ -13,20 +13,14 @@ MODULES_MK = $(shell find src/modules/ -name "*.mk" 2>/dev/null)
 MODULES_NAMES = $(basename $(notdir $(MODULES_MK)))
 MODULES_TARGETS = $(patsubst %,bin/modules/.%.built,$(MODULES_NAMES))
 
-BOXES_MK = $(shell find src/boxes/ -name "*.mk" 2>/dev/null)
-BOXES_NAMES = $(basename $(notdir $(BOXES_MK)))
-BOXES_TARGETS = $(patsubst %,bin/boxes/.%.built,$(BOXES_NAMES))
-
 PROGRAMS_MK = $(shell find src/programs/ -name "*.mk" 2>/dev/null)
 PROGRAMS_NAMES = $(basename $(notdir $(PROGRAMS_MK)))
 PROGRAMS_TARGETS = $(patsubst %,bin/programs/.%.built,$(PROGRAMS_NAMES))
 
 # Programs to be installed in /boot
 BOOT_PROGRAMS = init
-# Programs to be installed in /base/bin
-BASE_BIN_PROGRAMS = $(filter-out $(SBIN_PROGRAMS),$(PROGRAMS_NAMES))
-# Programs to be installed in /box/<box_name>/bin
-BOX_PROGRAMS = $(BOXES_NAMES)
+# Programs to be installed in /bin
+BIN_PROGRAMS = $(filter-out $(BOOT_PROGRAMS),$(PROGRAMS_NAMES))
 
 .PHONY: all setup deploy run clean generate_version compile_commands format doxygen clean_programs nuke grub_loopback argon2
 
@@ -57,14 +51,9 @@ bin/.deployed: $(BOOT_TARGET) $(KERNEL_TARGET) $(LIBSTD_TARGET) $(LIBPATCHWORK_T
 		if [ -f bin/programs/$(prog) ]; then \
 			mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/boot 2>/dev/null || true; \
 		fi;)
-	@$(foreach prog,$(BASE_BIN_PROGRAMS),\
+	@$(foreach prog,$(BIN_PROGRAMS),\
 		if [ -f bin/programs/$(prog) ]; then \
-			mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/base/bin 2>/dev/null || true; \
-		fi;)
-	@$(foreach prog,$(BOX_PROGRAMS),\
-		if [ -f bin/boxes/$(prog) ]; then \
-			mmd -i $(IMAGE) ::/box/$(prog)/bin 2>/dev/null || true; \
-			mcopy -i $(IMAGE) -s bin/boxes/$(prog) ::/box/$(prog)/bin 2>/dev/null || true; \
+			mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/bin 2>/dev/null || true; \
 		fi;)
 	@touch $@
 
@@ -132,15 +121,6 @@ bin/modules/.$(1).built: $(filter %/$(1).mk,$(MODULES_MK)) $(BOOT_TARGET) $(KERN
 endef
 
 $(foreach mod,$(MODULES_NAMES),$(eval $(call MODULE_RULE,$(mod))))
-
-define BOX_RULE
-bin/boxes/.$(1).built: $(filter %/$(1).mk,$(BOXES_MK)) $(MODULES_TARGETS) lib/argon2/.built | bin/boxes
-	@echo "BUILD   box $(1)"
-	@$$(MAKE) -s --no-print-directory -f $$(filter %/$(1).mk,$$(BOXES_MK)) SRCDIR=$$(dir $$(filter %/$(1).mk,$$(BOXES_MK))) BUILDDIR=build/boxes/$(1) BINDIR=bin/boxes BOX=$(1) all
-	@touch $$@
-endef
-
-$(foreach box,$(BOXES_NAMES),$(eval $(call BOX_RULE,$(box))))
 
 define PROGRAM_RULE
 bin/programs/.$(1).built: $(filter %/$(1).mk,$(PROGRAMS_MK)) $(BOXES_TARGETS) | bin/programs

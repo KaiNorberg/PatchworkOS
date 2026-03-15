@@ -13,22 +13,6 @@
 #include <sys/io.h>
 #include <sys/status.h>
 
-/**
- * @brief Constant devices
- * @defgroup kernel_drivers_const Constant Devices
- * @ingroup kernel_drivers
- *
- * This module provides the constant devices which provide user space with its primary means of allocating memory and
- * obtaining constant data.
- *
- * The constant devices are exposed under the `/dev/const/` directory:
- * - `/dev/const/one`: A readable and mappable file that returns bytes with all bits set to 1.
- * - `/dev/const/zero`: A readable and mappable file that returns bytes with all bits set to 0.
- * - `/dev/const/null`: A readable and writable file that discards all written data and returns EOF on read.
- *
- * @{
- */
-
 static dentry_t* constDir;
 static dentry_t* oneFile;
 static dentry_t* zeroFile;
@@ -38,7 +22,7 @@ static status_t const_one_read(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
 
-    return mdl_fill(frame->read.buffer, SIZE_MAX, 0, &irp->result, UINT8_MAX);
+    return sglist_fill(frame->read.buffer, SIZE_MAX, 0, &irp->result, UINT8_MAX);
 }
 
 static status_t const_one_mmap(irp_t* irp)
@@ -74,7 +58,7 @@ static status_t const_zero_read(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
 
-    return mdl_fill(frame->read.buffer, SIZE_MAX, 0, &irp->result, 0);
+    return sglist_fill(frame->read.buffer, SIZE_MAX, 0, &irp->result, 0);
 }
 
 static status_t const_zero_mmap(irp_t* irp)
@@ -114,7 +98,7 @@ static status_t const_null_read(irp_t* irp)
 static status_t const_null_write(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
-    irp->result = mdl_size(frame->write.buffer);
+    irp->result = sglist_size(frame->write.buffer);
     return OK;
 }
 
@@ -138,21 +122,19 @@ static vnode_class_t constClass = {
         },
 };
 
-static status_t const_init(void)
+void const_init(void)
 {
     constDir = devfs_dentry_new(NULL, "const", &constClass, NULL);
     if (constDir == NULL)
     {
-        LOG_ERR("failed to init const directory\n");
-        return ERR(DRIVER, NOMEM);
+        panic(NULL, "failed to init const directory\n");
     }
 
     oneFile = devfs_dentry_new(constDir, "one", &oneClass, NULL);
     if (oneFile == NULL)
     {
         UNREF(constDir);
-        LOG_ERR("failed to init one file\n");
-        return ERR(DRIVER, NOMEM);
+        panic(NULL, "failed to init one file\n");
     }
 
     zeroFile = devfs_dentry_new(constDir, "zero", &zeroClass, NULL);
@@ -160,8 +142,7 @@ static status_t const_init(void)
     {
         UNREF(constDir);
         UNREF(oneFile);
-        LOG_ERR("failed to init zero file\n");
-        return ERR(DRIVER, NOMEM);
+        panic(NULL, "failed to init zero file\n");
     }
 
     nullFile = devfs_dentry_new(constDir, "null", &nullClass, NULL);
@@ -170,37 +151,6 @@ static status_t const_init(void)
         UNREF(constDir);
         UNREF(oneFile);
         UNREF(zeroFile);
-        LOG_ERR("failed to init null file\n");
-        return ERR(DRIVER, NOMEM);
+        panic(NULL, "failed to init null file\n");
     }
-
-    return OK;
 }
-
-static void const_deinit(void)
-{
-    UNREF(constDir);
-    UNREF(oneFile);
-    UNREF(zeroFile);
-    UNREF(nullFile);
-}
-
-/** @} */
-
-status_t _module_procedure(const module_event_t* event)
-{
-    switch (event->type)
-    {
-    case MODULE_EVENT_LOAD:
-        return const_init();
-    case MODULE_EVENT_UNLOAD:
-        const_deinit();
-        break;
-    default:
-        break;
-    }
-
-    return OK;
-}
-
-MODULE_INFO("Const Driver", "Kai Norberg", "A constant device driver", OS_VERSION, "MIT", "BOOT_ALWAYS");

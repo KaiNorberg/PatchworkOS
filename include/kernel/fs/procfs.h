@@ -20,11 +20,8 @@
  *
  * The "procfs" filesystem is used to expose process information and control interfaces to user space.
  *
- * The root of the filesystem contains a `self` directory, which allows a process to interact with its own
- * information, and a `clone` file which can be used to create new processes.
- *
- * Opening the `clone` file will create a new process and return a file descriptor to the root of that process's
- * proc directory.
+ * The root of the filesystem contains a `clone` file. Opening the `clone` file will create a new process and return a
+ * file descriptor to the root of that process's proc directory.
  *
  * @note Anytime a file descriptor is referred to it is from the perspective of the target process unless stated
  * otherwise.
@@ -115,14 +112,26 @@
  *
  * Duplicates the specified old file descriptor to the new file descriptor in the process.
  *
- * ### start
+ * ### give <parentfd> <childfd>
  *
- * Starts the process if it was previously suspended.
+ * Copies the `parentfd` from the caller process into the `childfd` of the target process.
+ *
+ * ### start <address>
+ *
+ * Creates the first thread of the process and starts execution at the specified virtual address.
+ *
+ * If the process already has threads, this command will fail.
  *
  * ### kill [result]
  *
  * Sends a kill note to all threads in the process, effectively terminating it. The optional result will be set as the
  * processes exit result.
+ *
+ * ## mem
+ *
+ * A writeable, readable and mappable file representing the address space of the process.
+ *
+ * The offset being accessed corresponds to the virtual address in the process's address space.
  *
  * @{
  */

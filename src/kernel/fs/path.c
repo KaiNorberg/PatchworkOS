@@ -37,7 +37,6 @@ static path_flag_short_t shortFlags[UINT8_MAX + 1] = {
     ['t'] = {.mode = MODE_TRUNCATE},
     ['l'] = {.mode = MODE_NOFOLLOW},
     ['p'] = {.mode = MODE_PARENTS},
-    ['P'] = {.mode = MODE_PRIVATE},
     ['L'] = {.mode = MODE_LOCKED},
 };
 
@@ -60,7 +59,6 @@ static const path_flag_t flags[] = {
     {.mode = MODE_EXISTING, .name = "existing"},
     {.mode = MODE_TRUNCATE, .name = "truncate"},
     {.mode = MODE_NOFOLLOW, .name = "nofollow"},
-    {.mode = MODE_PRIVATE, .name = "private"},
     {.mode = MODE_PARENTS, .name = "parents"},
     {.mode = MODE_LOCKED, .name = "locked"},
 };
@@ -287,8 +285,8 @@ static status_t path_symlink(irp_t* irp, path_state_t* state, dentry_t* symlink)
         return status;
     }
 
-    mdl_t* mdl;
-    status = irp_get_mdl(irp, &mdl);
+    sglist_t* list;
+    status = irp_get_sglist(irp, &list);
     if (IS_ERR(status))
     {
         path_state_release(state);
@@ -296,7 +294,7 @@ static status_t path_symlink(irp_t* irp, path_state_t* state, dentry_t* symlink)
         return status;
     }
 
-    status = mdl_add(mdl, &process_get_kernel()->space, state->linkBuffer, MAX_PATH);
+    status = sglist_add(list, &process_get_kernel()->space, state->linkBuffer, MAX_PATH);
     if (IS_ERR(status))
     {
         path_state_release(state);
@@ -304,7 +302,7 @@ static status_t path_symlink(irp_t* irp, path_state_t* state, dentry_t* symlink)
         return status;
     }
 
-    irp_prep_read(irp, mdl, 0);
+    irp_prep_read(irp, list, 0);
     irp_set_complete(irp, path_symlink_complete, state);
     return vnode_call(symlink->vnode, irp);
 }

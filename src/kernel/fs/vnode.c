@@ -121,7 +121,7 @@ status_t vnode_generic_query(irp_t* irp)
     info.number = vnode->number;
     info.mask |= FILE_MASK_NUMBER;
 
-    return mdl_copy_in(frame->query.buffer, sizeof(file_info_t), 0, &irp->result, &info, sizeof(file_info_t));
+    return sglist_copy_in(frame->query.buffer, sizeof(file_info_t), 0, &irp->result, &info, sizeof(file_info_t));
 }
 
 status_t vnode_generic_dir_read(irp_t* irp)
@@ -174,7 +174,6 @@ status_t vnode_generic_lookup(irp_t* irp)
 {
     UNUSED(irp);
 
-    LOG_DEBUG("lookup: %s\n", irp_current(irp)->lookup.dentry->name);
     return ERR(FS, NOENT);
 }
 

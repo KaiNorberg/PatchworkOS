@@ -106,7 +106,7 @@ SYSCALL_DEFINE(SYS_SYNC_CTL, atomic_uint64_t* addr, uint64_t val, sync_op_t op, 
     process_t* process = thread->process;
 
     phys_addr_t phys;
-    status_t status = space_virt_to_phys(&phys, &process->space, addr);
+    status_t status = space_virt_to_phys(&process->space, addr, &phys);
     if (IS_ERR(status))
     {
         return status;

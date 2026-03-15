@@ -121,7 +121,7 @@ typedef struct
 typedef enum
 {
     VMM_ALLOC_OVERWRITE = 0 << 0,      ///< If any page is already mapped, overwrite the mapping.
-    VMM_ALLOC_FAIL_IF_MAPPED = 1 << 0, ///< If set and any page is already mapped, fail and set `errno` to `EEXIST`.
+    VMM_ALLOC_FAIL_IF_MAPPED = 1 << 0, ///< If set and any page is already mapped, fail.
     VMM_ALLOC_ZERO = 1 << 1            ///< If set, atomically zero the allocated pages.
 } vmm_alloc_flags_t;
 
@@ -211,6 +211,24 @@ status_t vmm_map(space_t* space, void** addr, phys_addr_t phys, size_t length, p
  */
 status_t vmm_map_pages(space_t* space, void** addr, pfn_t* pfns, size_t amount, pml_flags_t flags,
     space_callback_func_t func, void* data);
+
+/**
+ * @brief Maps an array of physical pages to virtual memory in a given address space, taking a reference to the pages
+ * and keeping them alive until the space is freed or the memory is unmapped.
+ *
+ * Will overwrite any existing mappings in the specified range.
+ *
+ * @see `vmm_map()` for details on TLB shootdowns.
+ *
+ * @param space The target address space, if `NULL`, the kernel space is used.
+ * @param addr The output pointer to store the virtual address, the value it currently points to is used as the desired
+ * virtual address. If it points to `NULL`, the kernel chooses an address.
+ * @param pfns An array of page frame numbers to map from.
+ * @param amount The number of pages to map.
+ * @param flags The page table flags for the mapping, must have `PML_PRESENT` set.
+ * @return An appropriate status value.
+ */
+status_t vmm_map_shared(space_t* space, void** addr, const pfn_t* pfns, size_t amount, pml_flags_t flags);
 
 /**
  * @brief Unmaps virtual memory from a given address space.

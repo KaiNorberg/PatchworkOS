@@ -64,7 +64,7 @@ static status_t klog_write(irp_t* irp)
 
     size_t bytesWritten = 0;
     uint8_t* c;
-    MDL_FOR_EACH(c, frame->write.buffer)
+    SGLIST_FOR_EACH(c, frame->write.buffer)
     {
         log_handle_char(LOG_LEVEL_USER, (char)*c);
         bytesWritten++;

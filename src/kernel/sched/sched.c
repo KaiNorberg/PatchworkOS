@@ -603,10 +603,7 @@ void sched_do(interrupt_frame_t* frame)
 
     lock_release(&sched->lock);
 
-    if (sched->runThread != sched->idleThread)
-    {
-        timer_set(uptime, uptime + CONFIG_TIME_SLICE);
-    }
+    timer_set(uptime, uptime + CONFIG_TIME_SLICE);
 
     if (threadToFree != NULL)
     {

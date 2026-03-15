@@ -9,6 +9,11 @@
 ioring_t* _ioring_get(void)
 {
     _thread_t* self = _THREAD_SELF->self;
+    if (self->activeRing != NULL)
+    {
+        return self->activeRing;
+    }
+
     if (!self->hasRing)
     {
         status_t status = ioring_setup(&self->ring, NULL, 64, 64);

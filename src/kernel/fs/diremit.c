@@ -1,6 +1,6 @@
 #include <kernel/fs/diremit.h>
 
-#include <kernel/mem/mdl.h>
+#include <kernel/mem/sglist.h>
 #include <string.h>
 
 bool diremit(diremit_t* emit, const char* name)
@@ -23,7 +23,7 @@ bool diremit(diremit_t* emit, const char* name)
     size_t copied = 0;
 
     status_t status =
-        mdl_copy_in(irp_current(emit->irp)->read.buffer, toWrite, emit->bytes, &copied, name + skip, toWrite);
+        sglist_copy_in(irp_current(emit->irp)->read.buffer, toWrite, emit->bytes, &copied, name + skip, toWrite);
     if (IS_ERR(status))
     {
         emit->status = status;

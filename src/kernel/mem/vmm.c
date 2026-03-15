@@ -466,6 +466,73 @@ status_t vmm_map_pages(space_t* space, void** addr, pfn_t* pfns, size_t amount, 
     return OK;
 }
 
+typedef struct
+{
+    pfn_t* pfns;
+    size_t amount;
+} vmm_shared_pages_cb_t;
+
+static cache_t sharedPagesCache =
+    CACHE_CREATE(sharedPagesCache, "vmm_shared_pages", sizeof(vmm_shared_pages_cb_t), CACHE_LINE, NULL, NULL);
+
+static void vmm_shared_pages_free_callback(void* data)
+{
+    vmm_shared_pages_cb_t* cb = data;
+    for (size_t i = 0; i < cb->amount; i++)
+    {
+        pmm_free(cb->pfns[i]);
+    }
+    free(cb->pfns);
+    cache_free(cb);
+}
+
+status_t vmm_map_shared(space_t* space, void** addr, const pfn_t* pfns, size_t amount, pml_flags_t flags)
+{
+    vmm_shared_pages_cb_t* cb = cache_alloc(&sharedPagesCache);
+    if (cb == NULL)
+    {
+        return ERR(MMU, NOMEM);
+    }
+
+    cb->amount = amount;
+    cb->pfns = malloc(amount * sizeof(pfn_t));
+    if (cb->pfns == NULL)
+    {
+        cache_free(cb);
+        return ERR(MMU, NOMEM);
+    }
+
+    memcpy(cb->pfns, pfns, amount * sizeof(pfn_t));
+
+    for (size_t i = 0; i < amount; i++)
+    {
+        if (pmm_ref_inc(cb->pfns[i], 1) == 0)
+        {
+            for (size_t j = 0; j < i; j++)
+            {
+                pmm_free(cb->pfns[j]);
+            }
+            free(cb->pfns);
+            cache_free(cb);
+            return ERR(MMU, FAULT);
+        }
+    }
+
+    status_t status = vmm_map_pages(space, addr, cb->pfns, amount, flags, vmm_shared_pages_free_callback, cb);
+    if (IS_ERR(status))
+    {
+        for (size_t i = 0; i < amount; i++)
+        {
+            pmm_free(cb->pfns[i]);
+        }
+        free(cb->pfns);
+        cache_free(cb);
+        return status;
+    }
+
+    return OK;
+}
+
 status_t vmm_unmap(space_t* space, void* virtAddr, size_t length)
 {
     if (virtAddr == NULL || length == 0)

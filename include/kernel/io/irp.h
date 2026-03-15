@@ -2,7 +2,7 @@
 
 #include <kernel/fs/path.h>
 #include <kernel/mem/cache.h>
-#include <kernel/mem/mdl.h>
+#include <kernel/mem/sglist.h>
 #include <kernel/sync/lock.h>
 #include <kernel/utils/ref.h>
 
@@ -349,13 +349,13 @@ typedef struct irp_frame
     union {
         struct
         {
-            mdl_t* buffer;      ///< The MDL describing the buffer to read into.
+            sglist_t* buffer;   ///< The sglist describing the buffer to read into.
             size_t* offset;     ///< The offset within the file to read from.
             size_t dummyOffset; ///< Allows the offset to be redirected to the file's current position.
         } read;
         struct
         {
-            mdl_t* buffer;      ///< The MDL describing the buffer to write from.
+            sglist_t* buffer;   ///< The sglist describing the buffer to write from.
             size_t* offset;     ///< The offset within the file to write to.
             size_t dummyOffset; ///< Allows the offset to be redirected to the file's current position.
         } write;
@@ -399,7 +399,7 @@ typedef struct irp_frame
         } attr;
         struct
         {
-            mdl_t* buffer; ///< The buffer to write the `file_info_t` into.
+            sglist_t* buffer; ///< The buffer to write the `file_info_t` into.
         } query;
         struct
         {
@@ -433,7 +433,7 @@ typedef struct irp
         clock_t timeout;  ///< The timeout of the operation starting from when the IRP is added to a timeout queue.
         clock_t deadline; ///< The time at which the IRP will be removed from a timeout queue.
     };
-    mdl_t mdl;          ///< A preallocated memory descriptor list for use by the IRP.
+    sglist_t sglist;    ///< A preallocated scatter-gather list for use by the IRP.
     uintptr_t result;   ///< The result returned by the last completed frame.
     status_t status;    ///< The status of the last completed frame.
     struct irp* next;   ///< Pointer to the next IRP in a chain.
@@ -479,15 +479,15 @@ void irp_timeouts_check(void);
 irp_t* irp_new(process_t* process, void* ctx);
 
 /**
- * @brief Retrieve a memory descriptor list and associate it with an IRP.
+ * @brief Retrieve a scatter-gather list and associate it with an IRP.
  *
- * All MDLs associated with a IRP will be cleaned up when finished.
+ * All sglists associated with a IRP will be cleaned up when finished.
  *
- * @param irp The IRP to associate the MDL with.
- * @param out Output pointer for the MDL.
+ * @param irp The IRP to associate the sglist with.
+ * @param out Output pointer for the sglist.
  * @return An appropriate status value.
  */
-status_t irp_get_mdl(irp_t* irp, mdl_t** out);
+status_t irp_get_sglist(irp_t* irp, sglist_t** out);
 
 /**
  * @brief Retrieve the next IRP in a chain and clear its next pointer.
@@ -698,7 +698,7 @@ static inline status_t irp_delay(irp_t* irp, list_t* list, irp_cancel_t cancel)
 }
 
 /**
- * @brief Helper function for implementing a read operation from a buffer into a read IRP's MDL.
+ * @brief Helper function for implementing a read operation from a buffer into a read IRP's sglist.
  *
  * @param irp The IRP.
  * @param buffer The source buffer.
@@ -708,7 +708,7 @@ static inline status_t irp_delay(irp_t* irp, list_t* list, irp_cancel_t cancel)
 status_t irp_read_helper(irp_t* irp, const void* buffer, size_t size);
 
 /**
- * @brief Helper function for implementing a write operation from a write IRP's MDL into a buffer.
+ * @brief Helper function for implementing a write operation from a write IRP's sglist into a buffer.
  *
  * @param irp The IRP.
  * @param buffer The destination buffer.
@@ -731,7 +731,7 @@ status_t irp_seek_helper(irp_t* irp, size_t size);
  *
  * @see `IRP_MJ_READ`
  */
-static inline void irp_prep_read(irp_t* irp, mdl_t* buffer, ssize_t offset)
+static inline void irp_prep_read(irp_t* irp, sglist_t* buffer, ssize_t offset)
 {
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);
@@ -753,7 +753,7 @@ static inline void irp_prep_read(irp_t* irp, mdl_t* buffer, ssize_t offset)
  *
  * @see `IRP_MJ_WRITE`
  */
-static inline void irp_prep_write(irp_t* irp, mdl_t* buffer, ssize_t offset)
+static inline void irp_prep_write(irp_t* irp, sglist_t* buffer, ssize_t offset)
 {
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);
@@ -924,7 +924,7 @@ static inline void irp_prep_attr(irp_t* irp, file_attr_t attr, uint64_t value)
  *
  * @see `IRP_MJ_QUERY`
  */
-static inline void irp_prep_query(irp_t* irp, mdl_t* buffer)
+static inline void irp_prep_query(irp_t* irp, sglist_t* buffer)
 {
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);

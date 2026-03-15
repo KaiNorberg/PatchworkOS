@@ -1,41 +1,26 @@
+#include <sys/fs.h>
 #include <sys/io.h>
 
 status_t ioreadp(fd_t cwd, fd_t root, const char* path, const iovec_t* vector, size_t count, ssize_t offset,
     size_t* bytesRead)
 {
-    iowalkq(cwd, root, path, 0);
-    iolink(IOREG0, IOLINK_SOFT);
+    iovar_t fdReg = IOREG(IOREG0, FDNONE);
+    IOWALKQ(cwd, root, path, IOSOFT, &fdReg, 0);
 
-    ioreadq(FDNONE, vector, count, offset, 0);
-    iouse(IOARG0, IOREG0);
-    iolink(IOREG_NONE, IOLINK_SOFT);
+    iovar_t readReg = IOREG(IOREG1, 0);
+    IOREADQ(fdReg, vector, count, offset, IOSOFT, &readReg, 0);
 
-    iodropq(FDNONE, 0);
-    iouse(IOARG0, IOREG0);
+    IODROPQ(fdReg, IONOLINK, NULL, 0);
 
-    status_t status = OK;
-    iocqe_t cqe = {0};
-
-    for (int i = 0; i < 3; i++)
+    status_t status = iosync();
+    if (IS_ERR(status))
     {
-        status = iowait(&cqe);
-        if (IS_ERR(status))
-        {
-            return status;
-        }
+        return status;
+    }
 
-        if (cqe.op == IOOP_READ)
-        {
-            if (bytesRead != NULL)
-            {
-                *bytesRead = cqe.result;
-            }
-        }
-
-        if (!IS_ERR(cqe.status))
-        {
-            status = cqe.status;
-        }
+    if (bytesRead != NULL)
+    {
+        *bytesRead = IOREG_LOAD(readReg);
     }
 
     return status;

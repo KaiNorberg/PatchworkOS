@@ -35,7 +35,6 @@ typedef enum
 {
     PROCESS_NONE = 0,
     PROCESS_DYING = 1 << 0,
-    PROCESS_SUSPENDED = 1 << 1,
 } process_flags_t;
 
 /**
@@ -68,6 +67,17 @@ typedef struct
 } process_result_t;
 
 /**
+ * @brief Process arguments structure.
+ * @struct process_args_t
+ */
+typedef struct
+{
+    lock_t lock;
+    char* buffer;
+    size_t length;
+} process_args_t;
+
+/**
  * @brief Process structure.
  * @struct process_t
  */
@@ -85,14 +95,12 @@ typedef struct process
     perf_process_ctx_t perf;
     ioring_ctx_t rings[CONFIG_MAX_RINGS];
     note_handler_t noteHandler;
-    wait_queue_t suspendQueue;
     list_t dyingIrps;
     lock_t dyingIrpsLock;
     _Atomic(process_flags_t) flags;
     process_threads_t threads;
+    process_args_t args;
     clock_t start;
-    char* args;
-    size_t argsLen;
     job_member_t job;
     rcu_entry_t rcu;
 } process_t;
@@ -179,18 +187,6 @@ void process_kill(process_t* process, const char* result);
  * @param process Loop variable, a pointer to `process_t`.
  */
 #define PROCESS_RCU_FOR_EACH(process) LIST_FOR_EACH(process, &_processes, entry)
-
-/**
- * @brief Sets the command line arguments for a process.
- *
- * This value is only used for the `/proc/[pid]/cmdline` file.
- *
- * @param process The process to set the cmdline for.
- * @param args The arguments buffer.
- * @param len The length of the arguments buffer.
- * @return An appropriate status value.
- */
-status_t process_set_cmdline(process_t* process, const char* args, size_t len);
 
 /**
  * @brief Sends a note to a process.

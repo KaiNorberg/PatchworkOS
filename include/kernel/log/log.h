@@ -1,7 +1,5 @@
 #pragma once
 
-#include <kernel/fs/dentry.h>
-
 #include <boot/boot_info.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -11,6 +9,8 @@
 #include <sys/list.h>
 #include <sys/math.h>
 #include <sys/proc.h>
+
+typedef struct dentry dentry_t;
 
 /**
  * @brief Kernel logging and debugging.

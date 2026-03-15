@@ -190,7 +190,8 @@ status_t ctl_dispatch(irp_t* irp, file_t* file)
     }
 
     size_t bytesWritten;
-    status_t status = mdl_copy_out(frame->write.buffer, SIZE_MAX, 0, &bytesWritten, state->buffer, CTL_BUFFER_SIZE - 1);
+    status_t status =
+        sglist_copy_out(frame->write.buffer, SIZE_MAX, 0, &bytesWritten, state->buffer, CTL_BUFFER_SIZE - 1);
     if (IS_ERR(status))
     {
         cache_free(state);

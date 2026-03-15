@@ -10,6 +10,7 @@
 #include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
+#include <kernel/mem/vmm.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
@@ -23,6 +24,7 @@
 #include <sys/fs.h>
 #include <sys/io.h>
 #include <sys/list.h>
+#include <sys/math.h>
 #include <sys/status.h>
 
 static dentry_t* root = NULL;
@@ -46,7 +48,7 @@ static status_t procfs_prio_read(irp_t* irp)
 
     char prioStr[MAX_NAME];
     uint32_t length = snprintf(prioStr, MAX_NAME, "%llu", priority);
-    return mdl_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, prioStr, length);
+    return sglist_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, prioStr, length);
 }
 
 static status_t procfs_prio_write(irp_t* irp)
@@ -56,7 +58,7 @@ static status_t procfs_prio_write(irp_t* irp)
 
     char prioStr[MAX_NAME];
     size_t bytesWritten;
-    status_t status = mdl_copy_out(frame->write.buffer, SIZE_MAX, 0, &bytesWritten, prioStr, MAX_NAME - 1);
+    status_t status = sglist_copy_out(frame->write.buffer, SIZE_MAX, 0, &bytesWritten, prioStr, MAX_NAME - 1);
     if (IS_ERR(status))
     {
         return status;
@@ -94,13 +96,54 @@ static status_t procfs_cmdline_read(irp_t* irp)
     irp_frame_t* frame = irp_current(irp);
     process_t* process = procfs_get_process(irp);
 
-    if (process->args == NULL || process->argsLen == 0)
+    if (process->args.buffer == NULL || process->args.length == 0)
     {
         irp->result = 0;
         return OK;
     }
 
-    return mdl_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, process->args, process->argsLen);
+    LOCK_SCOPE(&process->args.lock);
+    return sglist_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, process->args.buffer, process->args.length);
+}
+
+static status_t procfs_cmdline_write(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    process_t* process = procfs_get_process(irp);
+
+    size_t count = sglist_size(frame->write.buffer);
+    if (count == 0)
+    {
+        irp->result = 0;
+        return OK;
+    }
+
+    char* args = malloc(count + 1);
+    if (args == NULL)
+    {
+        return ERR(FS, NOMEM);
+    }
+
+    size_t bytesWritten;
+    status_t status = sglist_copy_out(frame->write.buffer, count, 0, &bytesWritten, args, count);
+    if (IS_ERR(status))
+    {
+        free(args);
+        return status;
+    }
+    args[bytesWritten] = '\0';
+
+    lock_acquire(&process->args.lock);
+    if (process->args.buffer != NULL)
+    {
+        free(process->args.buffer);
+    }
+    process->args.buffer = args;
+    process->args.length = bytesWritten;
+    lock_release(&process->args.lock);
+
+    irp->result = bytesWritten;
+    return OK;
 }
 
 static vnode_class_t cmdlineClass = {
@@ -110,6 +153,7 @@ static vnode_class_t cmdlineClass = {
         {
             VNODE_HANDLERS(),
             [IRP_MJ_READ] = procfs_cmdline_read,
+            [IRP_MJ_WRITE] = procfs_cmdline_write,
         },
 };
 
@@ -118,7 +162,7 @@ static status_t procfs_note_write(irp_t* irp)
     irp_frame_t* frame = irp_current(irp);
     process_t* process = procfs_get_process(irp);
 
-    size_t count = mdl_size(frame->write.buffer);
+    size_t count = sglist_size(frame->write.buffer);
     if (count == 0)
     {
         irp->result = 0;
@@ -132,7 +176,7 @@ static status_t procfs_note_write(irp_t* irp)
 
     char string[NOTE_MAX];
     size_t bytesWritten;
-    status_t status = mdl_copy_out(frame->write.buffer, SIZE_MAX, 0, &bytesWritten, string, NOTE_MAX - 1);
+    status_t status = sglist_copy_out(frame->write.buffer, SIZE_MAX, 0, &bytesWritten, string, NOTE_MAX - 1);
     if (IS_ERR(status))
     {
         return status;
@@ -176,7 +220,7 @@ static status_t procfs_pid_read(irp_t* irp)
 
     char pidStr[MAX_NAME];
     uint32_t length = snprintf(pidStr, MAX_NAME, "%llu", process->id);
-    return mdl_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, pidStr, length);
+    return sglist_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, pidStr, length);
 }
 
 static vnode_class_t pidClass = {.name = "procfs pid",
@@ -213,7 +257,7 @@ static status_t procfs_wait_read(irp_t* irp)
     }
 
     lock_acquire(&process->result.lock);
-    status_t status = mdl_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, process->result.buffer,
+    status_t status = sglist_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, process->result.buffer,
         strlen(process->result.buffer));
     lock_release(&process->result.lock);
     return status;
@@ -234,13 +278,16 @@ static status_t procfs_wait_poll(irp_t* irp)
     return OK;
 }
 
-static vnode_class_t waitClass = {.name = "procfs wait",
+static vnode_class_t waitClass = {
+    .name = "procfs wait",
     .type = FILE_TYPE_SYSTEM,
-    .handlers = {
-        VNODE_HANDLERS(),
-        [IRP_MJ_READ] = procfs_wait_read,
-        [IRP_MJ_POLL] = procfs_wait_poll,
-    }};
+    .handlers =
+        {
+            VNODE_HANDLERS(),
+            [IRP_MJ_READ] = procfs_wait_read,
+            [IRP_MJ_POLL] = procfs_wait_poll,
+        },
+};
 
 static status_t procfs_perf_read(irp_t* irp)
 {
@@ -265,7 +312,7 @@ static status_t procfs_perf_read(irp_t* irp)
         return ERR(FS, IMPL);
     }
 
-    return mdl_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, statStr, length);
+    return sglist_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, statStr, length);
 }
 
 static vnode_class_t perfClass = {
@@ -313,10 +360,66 @@ static status_t procfs_ctl_control(irp_t* irp)
         }
         return file_table_dup(&process->files, oldFd, &newFd);
     }
+    case IOCMD('g', 'i', 'v', 'e'):
+    {
+        fd_t parentFd;
+        fd_t childFd;
+        if (sscanf(args, "%lld %lld", &parentFd, &childFd) != 2)
+        {
+            return ERR(FS, INVAL);
+        }
+
+        file_t* file = file_table_get(&irp->process->files, parentFd);
+        if (file == NULL)
+        {
+            return ERR(FS, BADFD);
+        }
+
+        status_t status = OK;
+        if (!file_table_set(&process->files, childFd, file))
+        {
+            status = ERR(FS, INVAL);
+        }
+
+        UNREF(file);
+        return status;
+    }
     case IOCMD('s', 't', 'a', 'r', 't'):
     {
-        atomic_fetch_and(&process->flags, ~PROCESS_SUSPENDED);
-        wait_unblock(&process->suspendQueue, WAIT_ALL, OK);
+        lock_acquire(&process->threads.lock);
+        if (process->threads.count > 0)
+        {
+            lock_release(&process->threads.lock);
+            return ERR(FS, RUNNING);
+        }
+        lock_release(&process->threads.lock);
+
+        if (atomic_load(&process->flags) & PROCESS_DYING)
+        {
+            return ERR(FS, DYING);
+        }
+
+        uintptr_t addr;
+        if (sscanf(args, "%zu", &addr) != 1)
+        {
+            return ERR(FS, INVAL);
+        }
+
+        thread_t* thread;
+        status_t status = thread_new(&thread, process);
+        if (IS_ERR(status))
+        {
+            return status;
+        }
+
+        thread->frame.rip = addr;
+        thread->frame.rsp = thread->userStack.top;
+        thread->frame.rbp = thread->userStack.top;
+        thread->frame.cs = GDT_CS_RING3;
+        thread->frame.ss = GDT_SS_RING3;
+        thread->frame.rflags = RFLAGS_ALWAYS_SET | RFLAGS_INTERRUPT_ENABLE;
+
+        sched_submit(thread);
         return OK;
     }
     case IOCMD('k', 'i', 'l', 'l'):
@@ -330,7 +433,7 @@ static status_t procfs_ctl_control(irp_t* irp)
         return OK;
     }
     default:
-        return ERR(FS, INVAL_CTL);
+        return ERR(FS, INVALCTL);
     }
 }
 
@@ -342,6 +445,147 @@ static vnode_class_t ctlClass = {
             VNODE_HANDLERS(),
             [IRP_MJ_WRITE] = ctl_generic_write,
             [IRP_MJ_CONTROL] = procfs_ctl_control,
+        },
+};
+
+static status_t procfs_mem_read(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    process_t* process = procfs_get_process(irp);
+
+    size_t addr = *frame->read.offset;
+    size_t count = sglist_size(frame->read.buffer);
+    size_t copied = 0;
+
+    if (addr >= process->space.endAddress || addr < process->space.startAddress)
+    {
+        irp->result = 0;
+        return OK;
+    }
+
+    if (addr + count > process->space.endAddress || addr + count < addr)
+    {
+        count = process->space.endAddress - addr;
+    }
+
+    status_t status = sglist_copy_in_space(frame->read.buffer, count, 0, &copied, &process->space, (const void*)addr);
+
+    *frame->read.offset = addr + copied;
+    irp->result = copied;
+
+    if (copied > 0)
+    {
+        return OK;
+    }
+
+    return status;
+}
+
+static status_t procfs_mem_write(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    process_t* process = procfs_get_process(irp);
+
+    size_t addr = *frame->write.offset;
+    size_t count = sglist_size(frame->write.buffer);
+    size_t copied = 0;
+
+    if (addr >= process->space.endAddress || addr < process->space.startAddress)
+    {
+        irp->result = 0;
+        return OK;
+    }
+
+    if (addr + count > process->space.endAddress || addr + count < addr)
+    {
+        count = process->space.endAddress - addr;
+    }
+
+    status_t status = sglist_copy_out_space(frame->write.buffer, count, 0, &copied, &process->space, (void*)addr);
+
+    *frame->write.offset = addr + copied;
+    irp->result = copied;
+
+    if (copied > 0)
+    {
+        return OK;
+    }
+
+    return status;
+}
+
+static status_t procfs_mem_seek(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    process_t* process = procfs_get_process(irp);
+
+    return irp_seek_helper(irp, process->space.endAddress);
+}
+
+static status_t procfs_mem_mmap(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    process_t* process = procfs_get_process(irp);
+
+    size_t offset = frame->mmap.offset;
+    size_t length = frame->mmap.length;
+
+    if (offset % PAGE_SIZE != 0)
+    {
+        return ERR(FS, INVAL);
+    }
+
+    size_t pageAmount = BYTES_TO_PAGES(length);
+    if (pageAmount == 0)
+    {
+        return ERR(FS, INVAL);
+    }
+
+    if (!space_check_access(&process->space, (void*)offset, length))
+    {
+        return ERR(FS, FAULT);
+    }
+
+    pfn_t* pfns = malloc(pageAmount * sizeof(pfn_t));
+    if (pfns == NULL)
+    {
+        return ERR(FS, NOMEM);
+    }
+
+    for (size_t i = 0; i < pageAmount; i++)
+    {
+        phys_addr_t phys;
+        status_t status = space_virt_to_phys_alloc(&process->space, (void*)(offset + (i * PAGE_SIZE)), &phys);
+        if (IS_ERR(status))
+        {
+            free(pfns);
+            return status;
+        }
+        pfns[i] = PHYS_TO_PFN(phys);
+    }
+
+    void* addr = frame->mmap.address;
+    status_t status = vmm_map_shared(&irp->process->space, &addr, pfns, pageAmount, frame->mmap.flags);
+    free(pfns);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+
+    irp->result = (uintptr_t)addr;
+    return OK;
+}
+
+static vnode_class_t memClass = {
+    .name = "procfs mem",
+    .type = FILE_TYPE_SYSTEM,
+    .handlers =
+        {
+            VNODE_HANDLERS(),
+            [IRP_MJ_READ] = procfs_mem_read,
+            [IRP_MJ_WRITE] = procfs_mem_write,
+            [IRP_MJ_SEEK] = procfs_mem_seek,
+            [IRP_MJ_MMAP] = procfs_mem_mmap,
         },
 };
 
@@ -359,6 +603,7 @@ static const procfs_entry_t dirEntries[] = {
     {"wait", &waitClass},
     {"perf", &perfClass},
     {"ctl", &ctlClass},
+    {"mem", &memClass},
 };
 
 static status_t procfs_dir_lookup(irp_t* irp)
@@ -382,7 +627,7 @@ static status_t procfs_dir_lookup(irp_t* irp)
             return ERR(FS, NOMEM);
         }
         UNREF_DEFER(vnode);
-        vnode->data = process; // No reference, if NULL it remains NULL (self)
+        vnode->data = process;
 
         dentry_make_positive(target, vnode);
         return OK;
@@ -427,6 +672,7 @@ static status_t procfs_dir_reclaim(irp_t* irp)
 
     if (process != NULL)
     {
+        process_kill(process, "kill");
         UNREF(process);
     }
     frame->vnode->data = NULL;
@@ -463,7 +709,7 @@ static status_t procfs_file_clone_open(irp_t* irp)
     UNREF_DEFER(job);
 
     process_t* child;
-    status_t status = process_new(&child, atomic_load(&parent->priority), job);
+    status_t status = process_new(&child, PRIO_DEFAULT, job);
     if (IS_ERR(status))
     {
         return status;
@@ -500,7 +746,6 @@ static vnode_class_t fileCloneClass = {
 };
 
 static const procfs_entry_t rootEntries[] = {
-    {"self", &dirClass},
     {"clone", &fileCloneClass},
 };
 

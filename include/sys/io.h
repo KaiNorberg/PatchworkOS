@@ -519,6 +519,14 @@ static inline status_t ioring_enter(ioring_t* ring, size_t amount, size_t wait, 
 }
 
 /**
+ * @brief Set the active I/O ring for the current thread.
+ *
+ * @param ring The ring to set as active, or `NULL` to use the default thread-specific ring.
+ * @return The previously active ring, or `NULL` if it was the default ring.
+ */
+ioring_t* ioring_set(ioring_t* ring);
+
+/**
  * @brief Retrieve the next available submission queue entry (SQE) from the ring.
  *
  * @param ring The I/O ring.
@@ -549,7 +557,7 @@ static inline void iosqe_put(ioring_t* ring)
 }
 
 /**
- * @brief Retrieve the number of available submission queue entries (SQEs) in the ring.
+ * @brief Retrieve the number of pending submission queue entries (SQEs) in the ring.
  *
  * @param ring The I/O ring.
  * @return The number of pending SQEs.
@@ -757,47 +765,7 @@ static inline void ioprep_flush(iosqe_t* iosqe, iosqe_flags_t flags, clock_t tim
  *
  * @return The I/O ring for the current thread.
  */
-ioring_t* _ioring_get(void);
-
-/**
- * @brief I/O Register type for `iolink()` and `iouse()`.
- * @enum ioreg_t
- */
-typedef enum
-{
-    IOREG_NONE = IOSQE_REG_NONE,
-    IOREG0 = IOSQE_REG0,
-    IOREG1 = IOSQE_REG1,
-    IOREG2 = IOSQE_REG2,
-    IOREG3 = IOSQE_REG3,
-    IOREG4 = IOSQE_REG4,
-    IOREG5 = IOSQE_REG5,
-    IOREG6 = IOSQE_REG6,
-} ioreg_t;
-
-/**
- * @brief I/O Argument index for `iouse()`.
- * @enum ioarg_t
- */
-typedef enum
-{
-    IOARG0 = 0,
-    IOARG1 = 1,
-    IOARG2 = 2,
-    IOARG3 = 3,
-    IOARG4 = 4,
-} ioarg_t;
-
-/**
- * @brief I/O Link type for `iolink()`.
- * @enum iolink_t
- */
-typedef enum
-{
-    IOLINK_NONE = 0, ///< No link.
-    IOLINK_SOFT = 1, ///< Soft link (only process next if this one succeeds).
-    IOLINK_HARD = 2, ///< Hard link (process next even if this one fails).
-} iolink_t;
+PURE ioring_t* _ioring_get(void);
 
 /**
  * @brief Internal helper to get a submission queue entry, entering the ring if full.
@@ -826,428 +794,710 @@ static inline iosqe_t* _iosqe_last(ioring_t* ring)
 }
 
 /**
+ * @brief I/O Register type for configuration options.
+ * @enum ioreg_t
+ */
+typedef enum
+{
+    IOREG_NONE = IOSQE_REG_NONE,
+    IOREG0 = IOSQE_REG0,
+    IOREG1 = IOSQE_REG1,
+    IOREG2 = IOSQE_REG2,
+    IOREG3 = IOSQE_REG3,
+    IOREG4 = IOSQE_REG4,
+    IOREG5 = IOSQE_REG5,
+    IOREG6 = IOSQE_REG6,
+} ioreg_t;
+
+/**
+ * @brief I/O Variable type for configuration options.
+ */
+typedef struct iovar* iovar_t;
+
+#define IONOLINK 0 ///< No link.
+#define IOSOFT 1   ///< Soft link (only process next if this one succeeds).
+#define IOHARD 2   ///< Hard link (process next even if this one fails).
+
+/**
+ * @brief Internal macro to extract the register index from an I/O variable or default to `IOREG_NONE`.
+ *
+ * @param x The value or `iovar_t` to extract from.
+ * @return The extracted register index.
+ */
+#define _IOVAR_REG(x) _Generic((x), iovar_t: (uint32_t)(uintptr_t)(x), default: IOREG_NONE)
+
+/**
+ * @brief Internal macro to return a placeholder value from an I/O variable or default to the provided value.
+ *
+ * @param x The value or `iovar_t` to extract from.
+ * @return The extracted value.
+ */
+#define _IOVAR_VAL(x) _Generic((x), iovar_t: 0ULL, default: (uint64_t)(size_t)(x))
+
+/**
+ * @brief Internal macro to extract the register index from a pointer to an I/O variable or default to `IOREG_NONE`.
+ *
+ * @param x The pointer to `iovar_t` to extract from.
+ * @return The extracted register index.
+ */
+#define _IOSAVE_REG(x) \
+    _Generic((x), \
+        iovar_t*: (x) ? (uint32_t)(uintptr_t)(*(volatile iovar_t*)(uintptr_t)(x)) : (uint32_t)IOREG_NONE, \
+        default: IOREG_NONE)
+
+/**
+ * @brief Internal macro to convert the shortform I/O link type to their SQE flags expansion.
+ *
+ * @param _link The link type.
+ * @return The corresponding SQE flags.
+ */
+#define _IOLINK_FLAGS(_link) ((_link) == IOSOFT ? IOSQE_LINK : ((_link) == IOHARD ? IOSQE_HARDLINK : 0))
+
+/**
+ * @brief Internal macro to generate the SQE flags for an operation.
+ *
+ * This macro combines the link flags, the save register, and the load registers for each argument.
+ *
+ * @param _link The link type.
+ * @param _save The register to save the result into.
+ * @param _a0 The first argument.
+ * @param _a1 The second argument.
+ * @param _a2 The third argument.
+ * @param _a3 The fourth argument.
+ * @param _a4 The fifth argument.
+ * @return The generated SQE flags.
+ */
+#define _IOOPTS_FLAGS(_link, _save, _a0, _a1, _a2, _a3, _a4) \
+    (_IOLINK_FLAGS(_link) | ((_IOSAVE_REG(_save) & IOSQE_REG_MASK) << IOSQE_SAVE) | \
+        ((_IOVAR_REG(_a0) & IOSQE_REG_MASK) << IOSQE_LOAD0) | ((_IOVAR_REG(_a1) & IOSQE_REG_MASK) << IOSQE_LOAD1) | \
+        ((_IOVAR_REG(_a2) & IOSQE_REG_MASK) << IOSQE_LOAD2) | ((_IOVAR_REG(_a3) & IOSQE_REG_MASK) << IOSQE_LOAD3) | \
+        ((_IOVAR_REG(_a4) & IOSQE_REG_MASK) << IOSQE_LOAD4))
+
+/**
+ * @brief Load a value from an I/O ring register.
+ *
+ * @param _reg The register to read from.
+ * @return The value of the register, or 0 if `IOREG_NONE`.
+ */
+#define IOREG_LOAD(_reg) \
+    ({ \
+        uint64_t value = 0; \
+        ioreg_t _r = _Generic((_reg), iovar_t: (ioreg_t)(uintptr_t)(_reg), default: (ioreg_t)(size_t)(_reg)); \
+        if (_r != IOREG_NONE) \
+        { \
+            ioring_t* ring = _ioring_get(); \
+            value = atomic_load_explicit(&ring->ctrl->regs[_r - 1], memory_order_relaxed); \
+        } \
+        value; \
+    })
+
+/**
+ * @brief Store a value to an I/O ring register.
+ *
+ * @param _reg The register to write to.
+ * @param _value The value to write.
+ * @return The register that was written to.
+ */
+#define IOREG_STORE(_reg, _value) \
+    ({ \
+        ioreg_t _r = _Generic((_reg), iovar_t: (ioreg_t)(uintptr_t)(_reg), default: (ioreg_t)(size_t)(_reg)); \
+        if (_r != IOREG_NONE) \
+        { \
+            ioring_t* ring = _ioring_get(); \
+            atomic_store_explicit(&ring->ctrl->regs[_r - 1], (uint64_t)(_value), memory_order_relaxed); \
+        } \
+        _r; \
+    })
+
+/**
+ * @brief Initialize a register and return an I/O variable representing it.
+ *
+ * @param _reg The register.
+ * @param _value The value to store.
+ * @return An `iovar_t` mapped to the specified register.
+ */
+#define IOREG(_reg, _value) \
+    ({ \
+        IOREG_STORE(_reg, _value); \
+        (iovar_t)(uintptr_t)(_reg); \
+    })
+
+/**
  * @brief Queue a cancel operation.
  *
- * @param target The user data of the operation(s) to cancel.
- * @param cancel Cancellation flags.
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @param _target The user data of the operation(s) to cancel.
+ * @param _cancel Cancellation flags.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void iocancelq(uintptr_t target, iocancel_t cancel, uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_cancel(sqe, IOSQE_NORMAL, CLOCKS_NEVER, (uintptr_t)data, target, cancel);
-    iosqe_put(ring);
-}
+#define IOCANCELQ(_target, _cancel, _link, _save, _data) \
+    ({ \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        ioprep_cancel(_sqe, _IOOPTS_FLAGS(_link, _save, _target, _cancel, 0, 0, 0), CLOCKS_NEVER, (uintptr_t)(_data), \
+            (uintptr_t)_IOVAR_VAL(_target), (iocancel_t)_IOVAR_VAL(_cancel)); \
+        iosqe_put(_ring); \
+    })
 
 /**
  * @brief Queue a cancel operation with a timeout.
  *
- * @param target The user data of the operation(s) to cancel.
- * @param cancel Cancellation flags.
- * @param timeout The timeout for the operation.
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @param _target The user data of the operation(s) to cancel.
+ * @param _cancel Cancellation flags.
+ * @param _timeout The timeout for the operation.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void iocancelqt(uintptr_t target, iocancel_t cancel, clock_t timeout, uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_cancel(sqe, IOSQE_NORMAL, timeout, (uintptr_t)data, target, cancel);
-    iosqe_put(ring);
-}
+#define IOCANCELQT(_target, _cancel, _timeout, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        ioprep_cancel(_sqe, _IOOPTS_FLAGS(_link, _save, _target, _cancel, 0, 0, 0), (_timeout), (uintptr_t)(_data), \
+            (uintptr_t)_IOVAR_VAL(_target), (iocancel_t)_IOVAR_VAL(_cancel)); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Queue a read operation.
  *
- * @param fd The file descriptor to read from.
- * @param vector The vector to read into.
- * @param count The number of vectors.
- * @param offset The offset to read from.
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @note The reason for the redirection to the `_*_IMPL` macro is to ensure that `IOBUF()` expands correctly.
+ *
+ * @param _fd The file descriptor to read from.
+ * @param _vector An array of `iovec_t` structures to read into.
+ * @param _count The number of `iovec_t` structures.
+ * @param _offset The offset to read from, or `IOCUR`.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void ioreadq(fd_t fd, const iovec_t* vector, size_t count, ssize_t offset, uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_read(sqe, IOSQE_NORMAL, CLOCKS_NEVER, (uintptr_t)data, fd, vector, count, offset);
-    iosqe_put(ring);
-}
+#define IOREADQ(...) _IOREADQ_IMPL(__VA_ARGS__)
+#define _IOREADQ_IMPL(_fd, _vector, _count, _offset, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        ioprep_read(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _vector, _count, _offset, 0), CLOCKS_NEVER, \
+            (uintptr_t)(_data), (fd_t)_IOVAR_VAL(_fd), (const iovec_t*)_IOVAR_VAL(_vector), \
+            (size_t)_IOVAR_VAL(_count), (ssize_t)_IOVAR_VAL(_offset)); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Queue a read operation with a timeout.
  *
- * @param fd The file descriptor to read from.
- * @param vector The vector to read into.
- * @param count The number of vectors.
- * @param offset The offset to read from.
- * @param timeout The timeout for the operation.
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @note The reason for the redirection to the `_*_IMPL` macro is to ensure that `IOBUF()` expands correctly.
+ *
+ * @param _fd The file descriptor to read from.
+ * @param _vector An array of `iovec_t` structures to read into.
+ * @param _count The number of `iovec_t` structures.
+ * @param _offset The offset to read from, or `IOCUR`.
+ * @param _timeout The timeout for the operation.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void ioreadqt(fd_t fd, const iovec_t* vector, size_t count, ssize_t offset, clock_t timeout,
-    uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_read(sqe, IOSQE_NORMAL, timeout, (uintptr_t)data, fd, vector, count, offset);
-    iosqe_put(ring);
-}
+#define IOREADQT(...) _IOREADQT_IMPL(__VA_ARGS__)
+#define _IOREADQT_IMPL(_fd, _vector, _count, _offset, _timeout, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        ioprep_read(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _vector, _count, _offset, 0), (_timeout), \
+            (uintptr_t)(_data), (fd_t)_IOVAR_VAL(_fd), (const iovec_t*)_IOVAR_VAL(_vector), \
+            (size_t)_IOVAR_VAL(_count), (ssize_t)_IOVAR_VAL(_offset)); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Queue a write operation.
  *
- * @param fd The file descriptor to write to.
- * @param vector The vector to write from.
- * @param count The number of vectors.
- * @param offset The offset to write to.
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @note The reason for the redirection to the `_*_IMPL` macro is to ensure that `IOBUF()` expands correctly.
+ *
+ * @param _fd The file descriptor to write to.
+ * @param _vector An array of `iovec_t` structures to write from.
+ * @param _count The number of `iovec_t` structures.
+ * @param _offset The offset to write to, or `IOCUR`.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void iowriteq(fd_t fd, const iovec_t* vector, size_t count, ssize_t offset, uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_write(sqe, IOSQE_NORMAL, CLOCKS_NEVER, (uintptr_t)data, fd, vector, count, offset);
-    iosqe_put(ring);
-}
+#define IOWRITEQ(...) _IOWRITEQ_IMPL(__VA_ARGS__)
+#define _IOWRITEQ_IMPL(_fd, _vector, _count, _offset, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        ioprep_write(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _vector, _count, _offset, 0), CLOCKS_NEVER, \
+            (uintptr_t)(_data), (fd_t)_IOVAR_VAL(_fd), (const iovec_t*)_IOVAR_VAL(_vector), \
+            (size_t)_IOVAR_VAL(_count), (ssize_t)_IOVAR_VAL(_offset)); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Queue a write operation with a timeout.
  *
- * @param fd The file descriptor to write to.
- * @param vector The vector to write from.
- * @param count The number of vectors.
- * @param offset The offset to write to.
- * @param timeout The timeout for the operation.
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @note The reason for the redirection to the `_*_IMPL` macro is to ensure that `IOBUF()` expands correctly.
+ *
+ * @param _fd The file descriptor to write to.
+ * @param _vector An array of `iovec_t` structures to write from.
+ * @param _count The number of `iovec_t` structures.
+ * @param _offset The offset to write to, or `IOCUR`.
+ * @param _timeout The timeout for the operation.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void iowriteqt(fd_t fd, const iovec_t* vector, size_t count, ssize_t offset, clock_t timeout,
-    uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_write(sqe, IOSQE_NORMAL, timeout, (uintptr_t)data, fd, vector, count, offset);
-    iosqe_put(ring);
-}
+#define IOWRITEQT(...) _IOWRITEQT_IMPL(__VA_ARGS__)
+#define _IOWRITEQT_IMPL(_fd, _vector, _count, _offset, _timeout, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        ioprep_write(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _vector, _count, _offset, 0), (_timeout), \
+            (uintptr_t)(_data), (fd_t)_IOVAR_VAL(_fd), (const iovec_t*)_IOVAR_VAL(_vector), \
+            (size_t)_IOVAR_VAL(_count), (ssize_t)_IOVAR_VAL(_offset)); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Queue a poll operation.
  *
- * @param fd The file descriptor to poll.
- * @param events The events to wait for.
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @param _fd The file descriptor to poll.
+ * @param _events The events to wait for.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void iopollq(fd_t fd, ioevents_t events, uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_poll(sqe, IOSQE_NORMAL, CLOCKS_NEVER, (uintptr_t)data, fd, events);
-    iosqe_put(ring);
-}
+#define IOPOLLQ(_fd, _events, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        ioprep_poll(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _events, 0, 0, 0), CLOCKS_NEVER, (uintptr_t)(_data), \
+            (fd_t)_IOVAR_VAL(_fd), (ioevents_t)_IOVAR_VAL(_events)); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Queue a poll operation with a timeout.
  *
- * @param fd The file descriptor to poll.
- * @param events The events to wait for.
- * @param timeout The timeout for the operation.
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @param _fd The file descriptor to poll.
+ * @param _events The events to wait for.
+ * @param _timeout The timeout for the operation.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void iopollqt(fd_t fd, ioevents_t events, clock_t timeout, uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_poll(sqe, IOSQE_NORMAL, timeout, (uintptr_t)data, fd, events);
-    iosqe_put(ring);
-}
+#define IOPOLLQT(_fd, _events, _timeout, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        ioprep_poll(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _events, 0, 0, 0), (_timeout), (uintptr_t)(_data), \
+            (fd_t)_IOVAR_VAL(_fd), (ioevents_t)_IOVAR_VAL(_events)); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Queue a seek operation.
  *
- * @param fd The file descriptor to seek.
- * @param origin The origin of the seek operation.
- * @param offset The offset to seek to.
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @param _fd The file descriptor to seek.
+ * @param _origin The origin of the seek operation.
+ * @param _offset The offset to seek to.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void ioseekq(fd_t fd, ioseek_t origin, ssize_t offset, uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_seek(sqe, IOSQE_NORMAL, CLOCKS_NEVER, (uintptr_t)data, fd, origin, offset);
-    iosqe_put(ring);
-}
+#define IOSEEKQ(_fd, _origin, _offset, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        ioprep_seek(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, 0, _origin, _offset, 0), CLOCKS_NEVER, (uintptr_t)(_data), \
+            (fd_t)_IOVAR_VAL(_fd), (ioseek_t)_IOVAR_VAL(_origin), (ssize_t)_IOVAR_VAL(_offset)); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Queue a seek operation with a timeout.
  *
- * @param fd The file descriptor to seek.
- * @param origin The origin of the seek operation.
- * @param offset The offset to seek to.
- * @param timeout The timeout for the operation.
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @param _fd The file descriptor to seek.
+ * @param _origin The origin of the seek operation.
+ * @param _offset The offset to seek to.
+ * @param _timeout The timeout for the operation.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void ioseekqt(fd_t fd, ioseek_t origin, ssize_t offset, clock_t timeout, uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_seek(sqe, IOSQE_NORMAL, timeout, (uintptr_t)data, fd, origin, offset);
-    iosqe_put(ring);
-}
+#define IOSEEKQT(_fd, _origin, _offset, _timeout, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        ioprep_seek(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, 0, _origin, _offset, 0), (_timeout), (uintptr_t)(_data), \
+            (fd_t)_IOVAR_VAL(_fd), (ioseek_t)_IOVAR_VAL(_origin), (ssize_t)_IOVAR_VAL(_offset)); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Queue a memory map operation.
  *
- * @param fd The file descriptor to map.
- * @param address The virtual address to map the file into, or `NULL` for any address.
- * @param count The number of bytes to map.
- * @param offset The offset within the file to start mapping from.
- * @param map Memory mapping flags.
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @note The reason for the redirection to the `_*_IMPL` macro is to ensure that `IOBUF()` expands correctly.
+ *
+ * @param _fd The file descriptor to map.
+ * @param _address The virtual address to map the file into, or `NULL` for any address.
+ * @param _count The number of bytes to map.
+ * @param _offset The offset within the file to start mapping from.
+ * @param _map Memory mapping flags.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void iomapq(fd_t fd, void* address, size_t count, ssize_t offset, iomap_t map, uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_map(sqe, IOSQE_NORMAL, CLOCKS_NEVER, (uintptr_t)data, fd, address, count, offset, map);
-    iosqe_put(ring);
-}
+#define IOMAPQ(_fd, _address, _count, _offset, _map, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        ioprep_map(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _address, _count, _offset, _map), CLOCKS_NEVER, \
+            (uintptr_t)(_data), (fd_t)_IOVAR_VAL(_fd), (void*)_IOVAR_VAL(_address), (size_t)_IOVAR_VAL(_count), \
+            (ssize_t)_IOVAR_VAL(_offset), (iomap_t)_IOVAR_VAL(_map)); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Queue a memory map operation with a timeout.
  *
- * @param fd The file descriptor to map.
- * @param address The virtual address to map the file into, or `NULL` for any address.
- * @param count The number of bytes to map.
- * @param offset The offset within the file to start mapping from.
- * @param map Memory mapping flags.
- * @param timeout The timeout for the operation.
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @note The reason for the redirection to the `_*_IMPL` macro is to ensure that `IOBUF()` expands correctly.
+ *
+ * @param _fd The file descriptor to map.
+ * @param _address The virtual address to map the file into, or `NULL` for any address.
+ * @param _count The number of bytes to map.
+ * @param _offset The offset within the file to start mapping from.
+ * @param _map Memory mapping flags.
+ * @param _timeout The timeout for the operation.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void iomapqt(fd_t fd, void* address, size_t count, ssize_t offset, iomap_t map, clock_t timeout,
-    uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_map(sqe, IOSQE_NORMAL, timeout, (uintptr_t)data, fd, address, count, offset, map);
-    iosqe_put(ring);
-}
+#define IOMAPQT(_fd, _address, _count, _offset, _map, _timeout, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        ioprep_map(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _address, _count, _offset, _map), (_timeout), \
+            (uintptr_t)(_data), (fd_t)_IOVAR_VAL(_fd), (void*)_IOVAR_VAL(_address), (size_t)_IOVAR_VAL(_count), \
+            (ssize_t)_IOVAR_VAL(_offset), (iomap_t)_IOVAR_VAL(_map)); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Queue a walk operation.
  *
- * @param cwd The file descriptor to open the file relative to, or `FDCWD` to open from the current working directory.
- * @param root The file descriptor to use as the root for the walk, or `FDROOT` to use the standard root directory.
- * @param path The path to the file to open.
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @param _cwd The file descriptor to open the file relative to, or `FDCWD` to open from the current working directory.
+ * @param _root The file descriptor to use as the root for the walk, or `FDROOT` to use the standard root directory.
+ * @param _path The path to the file to open.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void iowalkq(fd_t cwd, fd_t root, const char* path, uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_walk(sqe, IOSQE_NORMAL, CLOCKS_NEVER, (uintptr_t)data, cwd, root, path, strlen(path));
-    iosqe_put(ring);
-}
+#define IOWALKQ(_cwd, _root, _path, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        const char* _p = (const char*)_IOVAR_VAL(_path); \
+        ioprep_walk(_sqe, _IOOPTS_FLAGS(_link, _save, _cwd, _root, _path, 0, 0), CLOCKS_NEVER, (uintptr_t)(_data), \
+            (fd_t)_IOVAR_VAL(_cwd), (fd_t)_IOVAR_VAL(_root), _p, _p ? strlen(_p) : 0); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Queue a walk operation with a timeout.
  *
- * @param cwd The file descriptor to open the file relative to, or `FDCWD` to open from the current working directory.
- * @param root The file descriptor to use as the root for the walk, or `FDROOT` to use the standard root directory.
- * @param path The path to the file to open.
- * @param timeout The timeout for the operation.
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @param _cwd The file descriptor to open the file relative to, or `FDCWD` to open from the current working directory.
+ * @param _root The file descriptor to use as the root for the walk, or `FDROOT` to use the standard root directory.
+ * @param _path The path to the file to open.
+ * @param _timeout The timeout for the operation.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void iowalkqt(fd_t cwd, fd_t root, const char* path, clock_t timeout, uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_walk(sqe, IOSQE_NORMAL, timeout, (uintptr_t)data, cwd, root, path, strlen(path));
-    iosqe_put(ring);
-}
+#define IOWALKQT(_cwd, _root, _path, _timeout, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        const char* _p = (const char*)_IOVAR_VAL(_path); \
+        ioprep_walk(_sqe, _IOOPTS_FLAGS(_link, _save, _cwd, _root, _path, 0, 0), (_timeout), (uintptr_t)(_data), \
+            (fd_t)_IOVAR_VAL(_cwd), (fd_t)_IOVAR_VAL(_root), _p, _p ? strlen(_p) : 0); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Queue a drop operation.
  *
- * @param fd The file descriptor to drop.
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @param _fd The file descriptor to drop.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void iodropq(fd_t fd, uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_drop(sqe, IOSQE_NORMAL, CLOCKS_NEVER, (uintptr_t)data, fd);
-    iosqe_put(ring);
-}
+#define IODROPQ(_fd, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        ioprep_drop(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, 0, 0, 0, 0), CLOCKS_NEVER, (uintptr_t)(_data), \
+            (fd_t)_IOVAR_VAL(_fd)); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Queue a drop operation with a timeout.
  *
- * @param fd The file descriptor to drop.
- * @param timeout The timeout for the operation.
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @param _fd The file descriptor to drop.
+ * @param _timeout The timeout for the operation.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void iodropqt(fd_t fd, clock_t timeout, uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_drop(sqe, IOSQE_NORMAL, timeout, (uintptr_t)data, fd);
-    iosqe_put(ring);
-}
+#define IODROPQT(_fd, _timeout, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        ioprep_drop(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, 0, 0, 0, 0), (_timeout), (uintptr_t)(_data), \
+            (fd_t)_IOVAR_VAL(_fd)); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Queue a remove operation.
  *
- * @param fd The file descriptor to remove.
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @param _fd The file descriptor to remove.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void ioremoveq(fd_t fd, uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_remove(sqe, IOSQE_NORMAL, CLOCKS_NEVER, (uintptr_t)data, fd);
-    iosqe_put(ring);
-}
+#define IOREMOVEQ(_fd, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        ioprep_remove(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, 0, 0, 0, 0), CLOCKS_NEVER, (uintptr_t)(_data), \
+            (fd_t)_IOVAR_VAL(_fd)); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Queue a remove operation with a timeout.
  *
- * @param fd The file descriptor to remove.
- * @param timeout The timeout for the operation.
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @param _fd The file descriptor to remove.
+ * @param _timeout The timeout for the operation.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void ioremoveqt(fd_t fd, clock_t timeout, uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_remove(sqe, IOSQE_NORMAL, timeout, (uintptr_t)data, fd);
-    iosqe_put(ring);
-}
+#define IOREMOVEQT(_fd, _timeout, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        ioprep_remove(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, 0, 0, 0, 0), (_timeout), (uintptr_t)(_data), \
+            (fd_t)_IOVAR_VAL(_fd)); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Queue an attribute operation.
  *
- * @param fd The file descriptor.
- * @param attr The attribute to get or set.
- * @param value The value to set (ignored for getters).
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @param _fd The file descriptor.
+ * @param _attr The attribute to get or set.
+ * @param _value The value to set (ignored for getters).
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void ioattrq(fd_t fd, file_attr_t attr, uint64_t value, uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_attr(sqe, IOSQE_NORMAL, CLOCKS_NEVER, (uintptr_t)data, fd, attr, value);
-    iosqe_put(ring);
-}
+#define IOATTRQ(_fd, _attr, _value, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        ioprep_attr(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _attr, _value, 0, 0), CLOCKS_NEVER, (uintptr_t)(_data), \
+            (fd_t)_IOVAR_VAL(_fd), (file_attr_t)_IOVAR_VAL(_attr), (uint64_t)_IOVAR_VAL(_value)); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Queue an attribute operation with a timeout.
  *
- * @param fd The file descriptor.
- * @param attr The attribute to get or set.
- * @param value The value to set (ignored for getters).
- * @param timeout The timeout for the operation.
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @param _fd The file descriptor.
+ * @param _attr The attribute to get or set.
+ * @param _value The value to set (ignored for getters).
+ * @param _timeout The timeout for the operation.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void ioattrqt(fd_t fd, file_attr_t attr, uint64_t value, clock_t timeout, uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_attr(sqe, IOSQE_NORMAL, timeout, (uintptr_t)data, fd, attr, value);
-    iosqe_put(ring);
-}
+#define IOATTRQT(_fd, _attr, _value, _timeout, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        ioprep_attr(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _attr, _value, 0, 0), (_timeout), (uintptr_t)(_data), \
+            (fd_t)_IOVAR_VAL(_fd), (file_attr_t)_IOVAR_VAL(_attr), (uint64_t)_IOVAR_VAL(_value)); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Queue a query operation.
  *
- * @param fd The file descriptor.
- * @param info Pointer to the `file_info_t` structure to fill.
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @param _fd The file descriptor.
+ * @param _info Pointer to the `file_info_t` structure to fill.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void ioqueryq(fd_t fd, file_info_t* info, uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_query(sqe, IOSQE_NORMAL, CLOCKS_NEVER, (uintptr_t)data, fd, info);
-    iosqe_put(ring);
-}
+#define IOQUERYQ(_fd, _info, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        ioprep_query(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _info, 0, 0, 0), CLOCKS_NEVER, (uintptr_t)(_data), \
+            (fd_t)_IOVAR_VAL(_fd), (file_info_t*)_IOVAR_VAL(_info)); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Queue a query operation with a timeout.
  *
- * @param fd The file descriptor.
- * @param info Pointer to the `file_info_t` structure to fill.
- * @param timeout The timeout for the operation.
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @param _fd The file descriptor.
+ * @param _info Pointer to the `file_info_t` structure to fill.
+ * @param _timeout The timeout for the operation.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void ioqueryqt(fd_t fd, file_info_t* info, clock_t timeout, uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_query(sqe, IOSQE_NORMAL, timeout, (uintptr_t)data, fd, info);
-    iosqe_put(ring);
-}
+#define IOQUERYQT(_fd, _info, _timeout, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        ioprep_query(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _info, 0, 0, 0), (_timeout), (uintptr_t)(_data), \
+            (fd_t)_IOVAR_VAL(_fd), (file_info_t*)_IOVAR_VAL(_info)); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Queue a flush operation.
  *
- * @param fd The file descriptor to flush.
- * @param data User data to associate with the operation.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
+ *
+ * @param _fd The file descriptor to flush.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void ioflushq(fd_t fd, uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_flush(sqe, IOSQE_NORMAL, CLOCKS_NEVER, (uintptr_t)data, fd);
-    iosqe_put(ring);
-}
+#define IOFLUSHQ(_fd, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        ioprep_flush(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, 0, 0, 0, 0), CLOCKS_NEVER, (uintptr_t)(_data), \
+            (fd_t)_IOVAR_VAL(_fd)); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Queue a flush operation with a timeout.
  *
- * @param fd The file descriptor to flush.
- * @param timeout The timeout for the operation.
- * @param data User data to associate with the operation.
- */
-static inline void ioflushqt(fd_t fd, clock_t timeout, uint64_t data)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_get(ring);
-    ioprep_flush(sqe, IOSQE_NORMAL, timeout, (uintptr_t)data, fd);
-    iosqe_put(ring);
-}
-
-/**
- * @brief Link the last queued operation to the next one and optionally save the result.
+ * All arguments except `_link`, `_save` and `_data` can also be specified as a `ioreg_t`, this will utilize _Generic to
+ * cause the operation to load its arguments from that register.
  *
- * @param save The register to save the result into, or `IOREG_NONE`.
- * @param link The type of link to establish.
+ * @param _fd The file descriptor to flush.
+ * @param _timeout The timeout for the operation.
+ * @param _link The link type (e.g., `IONOLINK`, `IOSOFT`, `IOHARD`).
+ * @param _save The register to save the result into, or `NULL`.
+ * @param _data User data to associate with the operation.
  */
-static inline void iolink(ioreg_t save, iolink_t link)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_last(ring);
-    sqe->flags |= (save & IOSQE_REG_MASK) << IOSQE_SAVE;
-    if (link == IOLINK_SOFT)
-    {
-        sqe->flags |= IOSQE_LINK;
-    }
-    else if (link == IOLINK_HARD)
-    {
-        sqe->flags |= IOSQE_HARDLINK;
-    }
-}
-
-/**
- * @brief Set the register to use as an argument for the last queued operation.
- *
- * @param arg The argument index.
- * @param reg The register to use.
- */
-static inline void iouse(ioarg_t arg, ioreg_t reg)
-{
-    ioring_t* ring = _ioring_get();
-    iosqe_t* sqe = _iosqe_last(ring);
-    uint32_t shift = IOSQE_LOAD0 + (arg * IOSQE_REG_SHIFT);
-    sqe->flags |= (reg & IOSQE_REG_MASK) << shift;
-}
+#define IOFLUSHQT(_fd, _timeout, _link, _save, _data) \
+    do \
+    { \
+        ioring_t* _ring = _ioring_get(); \
+        iosqe_t* _sqe = _iosqe_get(_ring); \
+        ioprep_flush(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, 0, 0, 0, 0), (_timeout), (uintptr_t)(_data), \
+            (fd_t)_IOVAR_VAL(_fd)); \
+        iosqe_put(_ring); \
+    } while (0)
 
 /**
  * @brief Wait for an I/O completion.
@@ -1276,6 +1526,55 @@ static inline status_t iowait(iocqe_t* out)
 }
 
 /**
+ * @brief Will submit all currently pending submissions and wait for all pending operations, including in flight
+ * operations, to complete.
+ *
+ * The returned status follows a priority scheme:
+ * - If a synchronous error occurs such as with `ioring_enter()` that status will be returned immediately.
+ * - If no synchronous error occurs, then the status of the first completion queue entry containing an error status will
+ * be returned.
+ * - If no completion queue entry contains an error, then the status of the first completion queue entry containing a
+ * status that is not `OK` will be returned.
+ * - If none of the above are true, `OK` is returned.
+ *
+ * @return An appropriate status value.
+ */
+static inline status_t iosync(void)
+{
+    ioring_t* ring = _ioring_get();
+    uint32_t stail = atomic_load_explicit(&ring->ctrl->stail, memory_order_relaxed);
+    uint32_t chead = atomic_load_explicit(&ring->ctrl->chead, memory_order_relaxed);
+    size_t pending = (uint32_t)(stail - chead);
+
+    status_t status = OK;
+    while (pending > 0)
+    {
+        status_t status2 = ioring_enter(ring, iosqe_count(ring), pending, NULL);
+        if (IS_ERR(status2))
+        {
+            return status2;
+        }
+
+        iocqe_t* cqe;
+        while (pending > 0 && (cqe = iocqe_get(ring)) != NULL)
+        {
+            if (IS_ERR(cqe->status) && IS_INFO(status))
+            {
+                status = cqe->status;
+            }
+            else if (status == OK && cqe->status != OK)
+            {
+                status = cqe->status;
+            }
+            iocqe_put(ring);
+            pending--;
+        }
+    }
+
+    return status;
+}
+
+/**
  * @brief Synchronous wrapper for a read operation with timeout.
  *
  * @param fd The file descriptor to read from.
@@ -1290,7 +1589,7 @@ static inline status_t iowait(iocqe_t* out)
 static inline status_t ioreadt(fd_t fd, const iovec_t* vector, size_t count, ssize_t offset, clock_t timeout,
     size_t* bytesRead)
 {
-    ioreadqt(fd, vector, count, offset, timeout, 0);
+    IOREADQT(fd, vector, count, offset, timeout, IONOLINK, NULL, 0);
     iocqe_t cqe;
     status_t status = iowait(&cqe);
     if (IS_ERR(status))
@@ -1334,7 +1633,7 @@ static inline status_t ioread(fd_t fd, const iovec_t* vector, size_t count, ssiz
 static inline status_t iowritet(fd_t fd, const iovec_t* vector, size_t count, ssize_t offset, clock_t timeout,
     size_t* bytesWritten)
 {
-    iowriteqt(fd, vector, count, offset, timeout, 0);
+    IOWRITEQT(fd, vector, count, offset, timeout, IONOLINK, NULL, 0);
     iocqe_t cqe;
     status_t status = iowait(&cqe);
     if (IS_ERR(status))
@@ -1382,6 +1681,352 @@ status_t ioload(fd_t fd, char** out, size_t* outLen);
  * @return An appropriate status value.
  */
 status_t iostore(fd_t fd, const char* in, size_t* bytesWritten);
+
+/**
+ * @brief Synchronous wrapper for a poll operation.
+ *
+ * @param fd The file descriptor to poll.
+ * @param events The events to wait for.
+ * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout or `CLOCKS_NOW` to fail the operation if it
+ * cannot be completed immediately.
+ * @param revents Output pointer for the events that occurred, can be `NULL`.
+ * @return An appropriate status value.
+ */
+static inline status_t iopoll(fd_t fd, ioevents_t events, clock_t timeout, ioevents_t* revents)
+{
+    IOPOLLQT(fd, events, timeout, IONOLINK, NULL, 0);
+    iocqe_t cqe;
+    status_t status = iowait(&cqe);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+    if (revents != NULL)
+    {
+        *revents = (ioevents_t)cqe.result;
+    }
+    return cqe.status;
+}
+
+/**
+ * @brief Synchronous wrapper for polling multiple files.
+ *
+ * @param fds Array of pollfd structures.
+ * @param nfds Number of file descriptors.
+ * @param timeout Timeout in clock ticks.
+ * @param count Output pointer for the number of events.
+ * @return An appropriate status value.
+ */
+status_t iopolln(iopoll_t* fds, size_t nfds, clock_t timeout, size_t* count);
+
+/**
+ * @brief Synchronous wrapper for a seek operation with a timeout.
+ *
+ * @param fd The file descriptor to seek.
+ * @param origin The origin of the seek operation.
+ * @param offset The offset to seek to.
+ * @param timeout Timeout for the operation.
+ * @param pos Output pointer for the new file position, can be `NULL`.
+ * @return An appropriate status value.
+ */
+static inline status_t ioseekt(fd_t fd, ioseek_t origin, ssize_t offset, clock_t timeout, size_t* pos)
+{
+    IOSEEKQT(fd, origin, offset, timeout, IONOLINK, NULL, 0);
+    iocqe_t cqe;
+    status_t status = iowait(&cqe);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+    if (pos != NULL)
+    {
+        *pos = (size_t)cqe.result;
+    }
+    return cqe.status;
+}
+
+/**
+ * @brief Synchronous wrapper for a seek operation.
+ *
+ * @param fd The file descriptor to seek.
+ * @param origin The origin of the seek operation.
+ * @param offset The offset to seek to.
+ * @param pos Output pointer for the new file position, can be `NULL`.
+ * @return An appropriate status value.
+ */
+static inline status_t ioseek(fd_t fd, ioseek_t origin, ssize_t offset, size_t* pos)
+{
+    return ioseekt(fd, origin, offset, CLOCKS_NEVER, pos);
+}
+
+/**
+ * @brief Synchronous wrapper for a memory map operation with a timeout.
+ *
+ * @param fd The file descriptor to map.
+ * @param address Input/Output pointer for the virtual address, if *address is NULL the kernel will choose an
+ * address.
+ * @param count The number of bytes to map.
+ * @param offset The offset within the file to start mapping from.
+ * @param mem Memory mapping flags.
+ * @param timeout Timeout for the operation.
+ * @return An appropriate status value.
+ */
+static inline status_t iomapt(fd_t fd, void** address, size_t count, ssize_t offset, iomap_t mem, clock_t timeout)
+{
+    if ((void*)address == NULL)
+    {
+        return ERR(LIBSTD, INVAL);
+    }
+
+    IOMAPQT(fd, *address, count, offset, mem, timeout, IONOLINK, NULL, 0);
+    iocqe_t cqe;
+    status_t status = iowait(&cqe);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+    *address = (void*)cqe.result;
+    return cqe.status;
+}
+
+/**
+ * @brief Synchronous wrapper for a memory map operation.
+ *
+ * @param fd The file descriptor to map.
+ * @param address Input/Output pointer for the virtual address, if *address is NULL the kernel will choose an
+ * address.
+ * @param count The number of bytes to map.
+ * @param offset The offset within the file to start mapping from.
+ * @param mem Memory mapping flags.
+ * @return An appropriate status value.
+ */
+static inline status_t iomap(fd_t fd, void** address, size_t count, ssize_t offset, iomap_t mem)
+{
+    return iomapt(fd, address, count, offset, mem, CLOCKS_NEVER);
+}
+
+/**
+ * @brief System call to unmap mapped memory.
+ *
+ * The `iounmap()` function unmaps memory from the currently running processes address space.
+ *
+ * @param address The starting virtual address of the memory area to be unmapped.
+ * @param length The length of the memory area to be unmapped.
+ * @return An appropriate status value.
+ */
+static inline status_t iounmap(void* address, size_t length)
+{
+    return syscall2(SYS_UNMAP, NULL, (uintptr_t)address, length);
+}
+
+/**
+ * @brief System call to change the protection flags of memory.
+ *
+ * @param address  The starting virtual address of the memory area to be modified.
+ * @param length The length of the memory area to be modifed.
+ * @param map The new protection flags of the memory area, if equal to `IOMAP_NONE` the memory area will be
+ * unmapped.
+ * @return An appropriate status value.
+ */
+static inline status_t ioprotect(void* address, size_t length, iomap_t map)
+{
+    return syscall3(SYS_PROTECT, NULL, (uintptr_t)address, length, map);
+}
+
+/**
+ * @brief Synchronous wrapper for an walk operation with timeout.
+ *
+ * @param cwd The file descriptor to start walking from, or `FDCWD` start at the current working directory.
+ * @param root The file descriptor to use as the root for the walk, or `FDROOT` to use the standard root directory.
+ * @param path The path to walk.
+ * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout or `CLOCKS_NOW` to fail the operation if it
+ * cannot be completed immediately.
+ * @param opened Output pointer for the opened file descriptor.
+ * @return An appropriate status value.
+ */
+static inline status_t iowalkt(fd_t cwd, fd_t root, const char* path, clock_t timeout, fd_t* opened)
+{
+    IOWALKQT(cwd, root, path, timeout, IONOLINK, NULL, 0);
+    iocqe_t cqe;
+    status_t status = iowait(&cqe);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+    *opened = cqe.result;
+    return cqe.status;
+}
+
+/**
+ * @brief Synchronous wrapper for an walk operation.
+ *
+ * @param cwd The file descriptor to start walking from, or `FDCWD` start at the current working directory.
+ * @param root The file descriptor to use as the root for the walk, or `FDROOT` to use the standard root directory.
+ * @param path The path to walk.
+ * @param opened Output pointer for the opened file descriptor.
+ * @return An appropriate status value.
+ */
+static inline status_t iowalk(fd_t cwd, fd_t root, const char* path, fd_t* opened)
+{
+    return iowalkt(cwd, root, path, CLOCKS_NEVER, opened);
+}
+
+/**
+ * @brief Synchronous wrapper for a drop operation with timeout.
+ *
+ * @param fd The file descriptor to drop.
+ * @param timeout Timeout for the operation.
+ * @return An appropriate status value.
+ */
+static inline status_t iodropt(fd_t fd, clock_t timeout)
+{
+    IODROPQT(fd, timeout, IONOLINK, NULL, 0);
+    iocqe_t cqe;
+    status_t status = iowait(&cqe);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+    return cqe.status;
+}
+
+/**
+ * @brief Synchronous wrapper for a drop operation.
+ *
+ * @param fd The file descriptor to drop.
+ * @return An appropriate status value.
+ */
+static inline status_t iodrop(fd_t fd)
+{
+    return iodropt(fd, CLOCKS_NEVER);
+}
+
+/**
+ * @brief Synchronous wrapper for a remove operation with timeout.
+ *
+ * @param fd The file descriptor to remove.
+ * @param timeout Timeout for the operation.
+ * @return An appropriate status value.
+ */
+static inline status_t ioremovet(fd_t fd, clock_t timeout)
+{
+    IOREMOVEQT(fd, timeout, IONOLINK, NULL, 0);
+    iocqe_t cqe;
+    status_t status = iowait(&cqe);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+    return cqe.status;
+}
+
+/**
+ * @brief Synchronous wrapper for a remove operation.
+ *
+ * @param fd The file descriptor to remove.
+ * @return An appropriate status value.
+ */
+static inline status_t ioremove(fd_t fd)
+{
+    return ioremovet(fd, CLOCKS_NEVER);
+}
+
+/**
+ * @brief Synchronous wrapper for an attribute operation with timeout.
+ *
+ * @param fd The file descriptor.
+ * @param attr The attribute to get or set (e.g., IOATTR_GET_SIZE, IOATTR_SET_SIZE).
+ * @param value Pointer to the value to set or retrieve.
+ * @param timeout Timeout for the operation.
+ * @result The requested value or `0` if setting a value.
+ */
+static inline status_t ioattrt(fd_t fd, file_attr_t attr, uint64_t* value, clock_t timeout)
+{
+    IOATTRQT(fd, attr, *value, timeout, IONOLINK, NULL, 0);
+    iocqe_t cqe;
+    status_t status = iowait(&cqe);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+    *value = cqe.result;
+    return cqe.status;
+}
+
+/**
+ * @brief Synchronous wrapper for an attribute operation.
+ *
+ * @param fd The file descriptor.
+ * @param attr The attribute to get or set (e.g., IOATTR_GET_SIZE, IOATTR_SET_SIZE).
+ * @param value Pointer to the value to set or retrieve.
+ * @result The requested value or `0` if setting a value.
+ */
+static inline status_t ioattr(fd_t fd, file_attr_t attr, uint64_t* value)
+{
+    return ioattrt(fd, attr, value, CLOCKS_NEVER);
+}
+
+/**
+ * @brief Synchronous wrapper for a query operation with timeout.
+ *
+ * @param fd The file descriptor.
+ * @param info Pointer to the `file_info_t` structure to fill.
+ * @param timeout Timeout for the operation.
+ * @result The status of the operation.
+ */
+static inline status_t ioqueryt(fd_t fd, file_info_t* info, clock_t timeout)
+{
+    IOQUERYQT(fd, info, timeout, IONOLINK, NULL, 0);
+    iocqe_t cqe;
+    status_t status = iowait(&cqe);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+    return cqe.status;
+}
+
+/**
+ * @brief Synchronous wrapper for a query operation.
+ *
+ * @param fd The file descriptor.
+ * @param info Pointer to the `file_info_t` structure to fill.
+ * @result The status of the operation.
+ */
+static inline status_t ioquery(fd_t fd, file_info_t* info)
+{
+    return ioqueryt(fd, info, CLOCKS_NEVER);
+}
+
+/**
+ * @brief Synchronous wrapper for a flush operation with timeout.
+ *
+ * @param fd The file descriptor to flush.
+ * @param timeout Timeout for the operation.
+ * @return An appropriate status value.
+ */
+static inline status_t ioflusht(fd_t fd, clock_t timeout)
+{
+    IOFLUSHQT(fd, timeout, IONOLINK, NULL, 0);
+    iocqe_t cqe;
+    status_t status = iowait(&cqe);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+    return cqe.status;
+}
+
+/**
+ * @brief Synchronous wrapper for a flush operation.
+ *
+ * @param fd The file descriptor to flush.
+ * @return An appropriate status value.
+ */
+static inline status_t ioflush(fd_t fd)
+{
+    return ioflusht(fd, CLOCKS_NEVER);
+}
 
 /**
  * @brief Synchronous wrapper for a reading a file directly using a path.
@@ -1476,350 +2121,18 @@ status_t ioattrp(fd_t cwd, fd_t root, const char* path, file_attr_t attr, uint64
 status_t ioqueryp(fd_t cwd, fd_t root, const char* path, file_info_t* info);
 
 /**
- * @brief Synchronous wrapper for a poll operation.
+ * @brief Synchronous wrapper for memory mapping a file directly using a path.
  *
- * @param fd The file descriptor to poll.
- * @param events The events to wait for.
- * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout or `CLOCKS_NOW` to fail the operation if it
- * cannot be completed immediately.
- * @param revents Output pointer for the events that occurred, can be `NULL`.
- * @return An appropriate status value.
- */
-static inline status_t iopoll(fd_t fd, ioevents_t events, clock_t timeout, ioevents_t* revents)
-{
-    iopollqt(fd, events, timeout, 0);
-    iocqe_t cqe;
-    status_t status = iowait(&cqe);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-    if (revents != NULL)
-    {
-        *revents = (ioevents_t)cqe.result;
-    }
-    return cqe.status;
-}
-
-/**
- * @brief Synchronous wrapper for polling multiple files.
- *
- * @param fds Array of pollfd structures.
- * @param nfds Number of file descriptors.
- * @param timeout Timeout in clock ticks.
- * @param count Output pointer for the number of events.
- * @return An appropriate status value.
- */
-status_t iopolln(iopoll_t* fds, size_t nfds, clock_t timeout, size_t* count);
-
-/**
- * @brief Synchronous wrapper for a seek operation with a timeout.
- *
- * @param fd The file descriptor to seek.
- * @param origin The origin of the seek operation.
- * @param offset The offset to seek to.
- * @param timeout Timeout for the operation.
- * @param pos Output pointer for the new file position, can be `NULL`.
- * @return An appropriate status value.
- */
-static inline status_t ioseekt(fd_t fd, ioseek_t origin, ssize_t offset, clock_t timeout, size_t* pos)
-{
-    ioseekqt(fd, origin, offset, timeout, 0);
-    iocqe_t cqe;
-    status_t status = iowait(&cqe);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-    if (pos != NULL)
-    {
-        *pos = (size_t)cqe.result;
-    }
-    return cqe.status;
-}
-
-/**
- * @brief Synchronous wrapper for a seek operation.
- *
- * @param fd The file descriptor to seek.
- * @param origin The origin of the seek operation.
- * @param offset The offset to seek to.
- * @param pos Output pointer for the new file position, can be `NULL`.
- * @return An appropriate status value.
- */
-static inline status_t ioseek(fd_t fd, ioseek_t origin, ssize_t offset, size_t* pos)
-{
-    return ioseekt(fd, origin, offset, CLOCKS_NEVER, pos);
-}
-
-/**
- * @brief Synchronous wrapper for a memory map operation with a timeout.
- *
- * @param fd The file descriptor to map.
- * @param address Input/Output pointer for the virtual address, if *address is NULL the kernel will choose an
- * address.
- * @param count The number of bytes to map.
- * @param offset The offset within the file to start mapping from.
- * @param mem Memory mapping flags.
- * @param timeout Timeout for the operation.
- * @return An appropriate status value.
- */
-static inline status_t iomapt(fd_t fd, void** address, size_t count, ssize_t offset, iomap_t mem, clock_t timeout)
-{
-    if ((void*)address == NULL)
-    {
-        return ERR(LIBSTD, INVAL);
-    }
-
-    iomapqt(fd, *address, count, offset, mem, timeout, 0);
-    iocqe_t cqe;
-    status_t status = iowait(&cqe);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-    *address = (void*)cqe.result;
-    return cqe.status;
-}
-
-/**
- * @brief Synchronous wrapper for a memory map operation.
- *
- * @param fd The file descriptor to map.
- * @param address Input/Output pointer for the virtual address, if *address is NULL the kernel will choose an
- * address.
+ * @param cwd The file descriptor to start walking from, or `FDCWD` start at the current working directory.
+ * @param root The file descriptor to use as the root for the walk, or `FDROOT` to use the standard root directory.
+ * @param path The path to the file.
+ * @param address Input/Output pointer for the virtual address.
  * @param count The number of bytes to map.
  * @param offset The offset within the file to start mapping from.
  * @param mem Memory mapping flags.
  * @return An appropriate status value.
  */
-static inline status_t iomap(fd_t fd, void** address, size_t count, ssize_t offset, iomap_t mem)
-{
-    return iomapt(fd, address, count, offset, mem, CLOCKS_NEVER);
-}
-
-/**
- * @brief System call to unmap mapped memory.
- *
- * The `iounmap()` function unmaps memory from the currently running processes address space.
- *
- * @param address The starting virtual address of the memory area to be unmapped.
- * @param length The length of the memory area to be unmapped.
- * @return An appropriate status value.
- */
-static inline status_t iounmap(void* address, size_t length)
-{
-    return syscall2(SYS_UNMAP, NULL, (uintptr_t)address, length);
-}
-
-/**
- * @brief System call to change the protection flags of memory.
- *
- * @param address  The starting virtual address of the memory area to be modified.
- * @param length The length of the memory area to be modifed.
- * @param map The new protection flags of the memory area, if equal to `IOMAP_NONE` the memory area will be
- * unmapped.
- * @return An appropriate status value.
- */
-static inline status_t ioprotect(void* address, size_t length, iomap_t map)
-{
-    return syscall3(SYS_PROTECT, NULL, (uintptr_t)address, length, map);
-}
-
-/**
- * @brief Synchronous wrapper for an walk operation with timeout.
- *
- * @param cwd The file descriptor to start walking from, or `FDCWD` start at the current working directory.
- * @param root The file descriptor to use as the root for the walk, or `FDROOT` to use the standard root directory.
- * @param path The path to walk.
- * @param timeout Timeout for the operation, `CLOCKS_NEVER` for no timeout or `CLOCKS_NOW` to fail the operation if it
- * cannot be completed immediately.
- * @param opened Output pointer for the opened file descriptor.
- * @return An appropriate status value.
- */
-static inline status_t iowalkt(fd_t cwd, fd_t root, const char* path, clock_t timeout, fd_t* opened)
-{
-    iowalkqt(cwd, root, path, timeout, 0);
-    iocqe_t cqe;
-    status_t status = iowait(&cqe);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-    *opened = cqe.result;
-    return cqe.status;
-}
-
-/**
- * @brief Synchronous wrapper for an walk operation.
- *
- * @param cwd The file descriptor to start walking from, or `FDCWD` start at the current working directory.
- * @param root The file descriptor to use as the root for the walk, or `FDROOT` to use the standard root directory.
- * @param path The path to walk.
- * @param opened Output pointer for the opened file descriptor.
- * @return An appropriate status value.
- */
-static inline status_t iowalk(fd_t cwd, fd_t root, const char* path, fd_t* opened)
-{
-    return iowalkt(cwd, root, path, CLOCKS_NEVER, opened);
-}
-
-/**
- * @brief Synchronous wrapper for a drop operation with timeout.
- *
- * @param fd The file descriptor to drop.
- * @param timeout Timeout for the operation.
- * @return An appropriate status value.
- */
-static inline status_t iodropt(fd_t fd, clock_t timeout)
-{
-    iodropqt(fd, timeout, 0);
-    iocqe_t cqe;
-    status_t status = iowait(&cqe);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-    return cqe.status;
-}
-
-/**
- * @brief Synchronous wrapper for a drop operation.
- *
- * @param fd The file descriptor to drop.
- * @return An appropriate status value.
- */
-static inline status_t iodrop(fd_t fd)
-{
-    return iodropt(fd, CLOCKS_NEVER);
-}
-
-/**
- * @brief Synchronous wrapper for a remove operation with timeout.
- *
- * @param fd The file descriptor to remove.
- * @param timeout Timeout for the operation.
- * @return An appropriate status value.
- */
-static inline status_t ioremovet(fd_t fd, clock_t timeout)
-{
-    ioremoveqt(fd, timeout, 0);
-    iocqe_t cqe;
-    status_t status = iowait(&cqe);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-    return cqe.status;
-}
-
-/**
- * @brief Synchronous wrapper for a remove operation.
- *
- * @param fd The file descriptor to remove.
- * @return An appropriate status value.
- */
-static inline status_t ioremove(fd_t fd)
-{
-    return ioremovet(fd, CLOCKS_NEVER);
-}
-
-/**
- * @brief Synchronous wrapper for an attribute operation with timeout.
- *
- * @param fd The file descriptor.
- * @param attr The attribute to get or set (e.g., IOATTR_GET_SIZE, IOATTR_SET_SIZE).
- * @param value Pointer to the value to set or retrieve.
- * @param timeout Timeout for the operation.
- * @result The requested value or `0` if setting a value.
- */
-static inline status_t ioattrt(fd_t fd, file_attr_t attr, uint64_t* value, clock_t timeout)
-{
-    ioattrqt(fd, attr, *value, timeout, 0);
-    iocqe_t cqe;
-    status_t status = iowait(&cqe);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-    *value = cqe.result;
-    return cqe.status;
-}
-
-/**
- * @brief Synchronous wrapper for an attribute operation.
- *
- * @param fd The file descriptor.
- * @param attr The attribute to get or set (e.g., IOATTR_GET_SIZE, IOATTR_SET_SIZE).
- * @param value Pointer to the value to set or retrieve.
- * @result The requested value or `0` if setting a value.
- */
-static inline status_t ioattr(fd_t fd, file_attr_t attr, uint64_t* value)
-{
-    return ioattrt(fd, attr, value, CLOCKS_NEVER);
-}
-
-/**
- * @brief Synchronous wrapper for a query operation with timeout.
- *
- * @param fd The file descriptor.
- * @param info Pointer to the `file_info_t` structure to fill.
- * @param timeout Timeout for the operation.
- * @result The status of the operation.
- */
-static inline status_t ioqueryt(fd_t fd, file_info_t* info, clock_t timeout)
-{
-    ioqueryqt(fd, info, timeout, 0);
-    iocqe_t cqe;
-    status_t status = iowait(&cqe);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-    return cqe.status;
-}
-
-/**
- * @brief Synchronous wrapper for a query operation.
- *
- * @param fd The file descriptor.
- * @param info Pointer to the `file_info_t` structure to fill.
- * @result The status of the operation.
- */
-static inline status_t ioquery(fd_t fd, file_info_t* info)
-{
-    return ioqueryt(fd, info, CLOCKS_NEVER);
-}
-
-/**
- * @brief Synchronous wrapper for a flush operation with timeout.
- *
- * @param fd The file descriptor to flush.
- * @param timeout Timeout for the operation.
- * @return An appropriate status value.
- */
-static inline status_t ioflusht(fd_t fd, clock_t timeout)
-{
-    ioflushqt(fd, timeout, 0);
-    iocqe_t cqe;
-    status_t status = iowait(&cqe);
-    if (IS_ERR(status))
-    {
-        return status;
-    }
-    return cqe.status;
-}
-
-/**
- * @brief Synchronous wrapper for a flush operation.
- *
- * @param fd The file descriptor to flush.
- * @return An appropriate status value.
- */
-static inline status_t ioflush(fd_t fd)
-{
-    return ioflusht(fd, CLOCKS_NEVER);
-}
+status_t iomapp(fd_t cwd, fd_t root, const char* path, void** address, size_t count, ssize_t offset, iomap_t mem);
 
 #endif
 

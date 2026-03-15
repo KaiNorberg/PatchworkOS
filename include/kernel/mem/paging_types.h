@@ -93,6 +93,14 @@ typedef uintptr_t phys_addr_t;
 #endif
 
 /**
+ * @brief Convert a physical address to its virtual address.
+ *
+ * @param _addr The physical address.
+ * @return The higher half virtual address of the page.
+ */
+#define PHYS_TO_VIRT(_addr) PFN_TO_VIRT(PHYS_TO_PFN(_addr))
+
+/**
  * @brief One entry in a page table.
  * @typedef pml_entry_t
  */

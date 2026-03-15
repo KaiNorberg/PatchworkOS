@@ -3,7 +3,7 @@
 #include <kernel/config.h>
 #include <kernel/io/irp.h>
 #include <kernel/log/panic.h>
-#include <kernel/mem/mdl.h>
+#include <kernel/mem/sglist.h>
 #include <kernel/mem/vmm.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>

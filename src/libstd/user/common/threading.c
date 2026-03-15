@@ -60,6 +60,7 @@ static void _thread_init(_thread_t* thread)
     thread->err = EOK;
     thread->func = NULL;
     thread->arg = NULL;
+    thread->activeRing = NULL;
     thread->hasRing = false;
 }
 

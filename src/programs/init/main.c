@@ -95,7 +95,7 @@ int main(void)
 
     printf("init: binding sysfs to /sys within ramfs\n");
     fd_t ramfs;
-    status_t status = iowalk(FDCWD, FDROOT, "/fs/ramfs/clone:rw", &ramfs);
+    status_t status = iowalk(FDCWD, FDROOT, "/fs/ramfs/clone:rwx", &ramfs);
     if (IS_ERR(status))
     {
         printf("init: failed to walk to ramfs %Y\n", status);
@@ -103,7 +103,7 @@ int main(void)
     }
 
     fd_t sysdir;
-    status = iowalk(ramfs, ramfs, "/sys:rwd", &sysdir);
+    status = iowalk(ramfs, ramfs, "/sys:rwxd", &sysdir);
     if (IS_ERR(status))
     {
         iodrop(ramfs);
@@ -123,7 +123,7 @@ int main(void)
 
     printf("init: binding devfs to /dev within ramfs\n");
     fd_t devfs;
-    status = iowalk(FDROOT, FDROOT, "/fs/devfs/clone:rw", &devfs);
+    status = iowalk(FDROOT, FDROOT, "/fs/devfs/clone:rwx", &devfs);
     if (IS_ERR(status))
     {
         iodrop(ramfs);
@@ -132,7 +132,7 @@ int main(void)
     }
 
     fd_t devdir;
-    status = iowalk(ramfs, ramfs, "/dev:rwd", &devdir);
+    status = iowalk(ramfs, ramfs, "/dev:rwxd", &devdir);
     if (IS_ERR(status))
     {
         iodrop(ramfs);
@@ -156,7 +156,7 @@ int main(void)
 
     printf("init: binding procfs to /proc within ramfs\n");
     fd_t procfs;
-    status = iowalk(FDROOT, FDROOT, "/fs/procfs/clone:rw", &procfs);
+    status = iowalk(FDROOT, FDROOT, "/fs/procfs/clone:rwx", &procfs);
     if (IS_ERR(status))
     {
         iodrop(ramfs);
@@ -165,7 +165,7 @@ int main(void)
     }
 
     fd_t procdir;
-    status = iowalk(ramfs, ramfs, "/proc:rwd", &procdir);
+    status = iowalk(ramfs, ramfs, "/proc:rwxd", &procdir);
     if (IS_ERR(status))
     {
         iodrop(ramfs);
@@ -193,6 +193,19 @@ int main(void)
     iodrop(ramfs);
 
     print_dir(FDROOT, 0);
+
+    proc_fd_t fds[] = {
+        {
+            .parent = FDOUT,
+            .child = FDOUT,
+        },
+    };
+    status = proc_create(PROC_ARGS("/bin/test"), fds, ARRAY_SIZE(fds), PRIO_DEFAULT, 0, NULL);
+    if (IS_ERR(status))
+    {
+        printf("init: failed to create test process %Y\n", status);
+        return EXIT_FAILURE;
+    }
 
     return EXIT_SUCCESS;
 }

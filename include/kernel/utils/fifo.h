@@ -1,7 +1,7 @@
 #pragma once
 
 #include <errno.h>
-#include <kernel/mem/mdl.h>
+#include <kernel/mem/sglist.h>
 #include <stdint.h>
 #include <string.h>
 #include <sys/status.h>
@@ -210,15 +210,15 @@ static inline status_t fifo_write(fifo_t* fifo, const void* buffer, size_t count
 }
 
 /**
- * @brief Read data from a fifo buffer into an MDL.
+ * @brief Read data from a fifo buffer into an Scatter-Gather List.
  *
  * @param fifo The fifo buffer structure.
- * @param mdl The destination MDL.
- * @param offset The offset within the MDL to start writing to.
+ * @param list The destination Scatter-Gather List.
+ * @param offset The offset within the Scatter-Gather List to start writing to.
  * @param bytesRead Output pointer for the amount of bytes read, can be `NULL`.
  * @return An appropriate status value.
  */
-static inline status_t fifo_read_mdl(fifo_t* fifo, mdl_t* mdl, size_t offset, size_t* bytesRead)
+static inline status_t fifo_read_sglist(fifo_t* fifo, sglist_t* list, size_t offset, size_t* bytesRead)
 {
     size_t readable = fifo_bytes_readable(fifo);
     if (readable == 0)
@@ -237,7 +237,7 @@ static inline status_t fifo_read_mdl(fifo_t* fifo, mdl_t* mdl, size_t offset, si
     }
 
     size_t copied1 = 0;
-    status_t status = mdl_copy_in(mdl, firstSize, offset, &copied1, fifo->buffer + fifo->tail, firstSize);
+    status_t status = sglist_copy_in(list, firstSize, offset, &copied1, fifo->buffer + fifo->tail, firstSize);
     if (IS_ERR(status))
     {
         return status;
@@ -252,7 +252,7 @@ static inline status_t fifo_read_mdl(fifo_t* fifo, mdl_t* mdl, size_t offset, si
         if (remaining > 0)
         {
             size_t copied2 = 0;
-            status = mdl_copy_in(mdl, remaining, offset + copied1, &copied2, fifo->buffer, remaining);
+            status = sglist_copy_in(list, remaining, offset + copied1, &copied2, fifo->buffer, remaining);
             if (IS_ERR(status))
             {
                 if (bytesRead != NULL)
@@ -280,15 +280,15 @@ static inline status_t fifo_read_mdl(fifo_t* fifo, mdl_t* mdl, size_t offset, si
 }
 
 /**
- * @brief Write data from an MDL to the fifo buffer.
+ * @brief Write data from an Scatter-Gather List to the fifo buffer.
  *
  * @param fifo Pointer to the fifo buffer structure.
- * @param mdl The source MDL.
- * @param offset The offset within the MDL to start reading from.
+ * @param list The source Scatter-Gather List.
+ * @param offset The offset within the Scatter-Gather List to start reading from.
  * @param bytesWritten Output pointer for the amount of bytes written, can be `NULL`.
  * @return An appropriate status value.
  */
-static inline status_t fifo_write_mdl(fifo_t* fifo, mdl_t* mdl, size_t offset, size_t* bytesWritten)
+static inline status_t fifo_write_sglist(fifo_t* fifo, sglist_t* list, size_t offset, size_t* bytesWritten)
 {
     size_t writeable = fifo_bytes_writeable(fifo);
     size_t firstSize = fifo->size - fifo->head;
@@ -298,7 +298,7 @@ static inline status_t fifo_write_mdl(fifo_t* fifo, mdl_t* mdl, size_t offset, s
     }
 
     size_t copied1 = 0;
-    status_t status = mdl_copy_out(mdl, firstSize, offset, &copied1, fifo->buffer + fifo->head, firstSize);
+    status_t status = sglist_copy_out(list, firstSize, offset, &copied1, fifo->buffer + fifo->head, firstSize);
     if (IS_ERR(status))
     {
         return status;
@@ -313,7 +313,7 @@ static inline status_t fifo_write_mdl(fifo_t* fifo, mdl_t* mdl, size_t offset, s
         if (remaining > 0)
         {
             size_t copied2 = 0;
-            status = mdl_copy_out(mdl, remaining, offset + copied1, &copied2, fifo->buffer, remaining);
+            status = sglist_copy_out(list, remaining, offset + copied1, &copied2, fifo->buffer, remaining);
             if (IS_ERR(status))
             {
                 if (bytesWritten != NULL)

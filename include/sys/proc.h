@@ -121,22 +121,16 @@ typedef struct proc_args
 /**
  * @brief System call for creating new processes.
  *
- * @todo Reimplement this with user-space executable loading.
- *
  * @param args The arguments for the new process.
  * @param fds An array of file descriptor mappings.
  * @param count The number of mappings in the array.
  * @param priority The priority of the new process.
  * @param flags Creation behaviour flags.
- * @param proc Optional output pointer for the process identifier of the child.
+ * @param proc Optional output pointer for the proc directory of the child.
  * @return An appropriate status value.
  */
-/*static inline status_t proc_create(proc_args_t args, const proc_fd_t* fds, size_t count, prio_t priority,
-    proc_flags_t flags, proc_t* proc)
-{
-    return syscall6(SYS_PROC_CREATE, (uint64_t*)proc, (uint64_t)args.buf, args.len, (uint64_t)fds, count, priority,
-        flags);
-}*/
+status_t proc_create(proc_args_t args, const proc_fd_t* fds, size_t count, prio_t priority, proc_flags_t flags,
+    fd_t* proc);
 
 /**
  * @brief System call to retrieve the current pid.

@@ -66,7 +66,6 @@ static void process_ctor(void* ptr)
     process->files = (file_table_t){0};
     process->perf = (perf_process_ctx_t){0};
     process->noteHandler = (note_handler_t){0};
-    process->suspendQueue = (wait_queue_t){0};
     process->dyingIrps = (list_t)LIST_CREATE(process->dyingIrps);
     process->dyingIrpsLock = (lock_t)LOCK_CREATE();
     atomic_init(&process->flags, PROCESS_NONE);
@@ -75,8 +74,9 @@ static void process_ctor(void* ptr)
     process->threads.count = 0;
     lock_init(&process->threads.lock);
     process->start = 0;
-    process->args = NULL;
-    process->argsLen = 0;
+    lock_init(&process->args.lock);
+    process->args.buffer = NULL;
+    process->args.length = 0;
     process->job = (job_member_t){0};
     process->rcu = (rcu_entry_t){0};
 }
@@ -89,9 +89,16 @@ static void process_free(process_t* process)
 
     assert(list_is_empty(&process->threads.list));
 
-    if (process->args != NULL)
+    lock_acquire(&processesLock);
+    map_remove(&pidMap, &process->mapEntry, hash_uint64(process->id));
+    list_remove_rcu(&process->entry);
+    lock_release(&processesLock);
+
+    if (process->args.buffer != NULL)
     {
-        free(process->args);
+        free(process->args.buffer);
+        process->args.buffer = NULL;
+        process->args.length = 0;
     }
 
     job_member_deinit(&process->job);
@@ -101,7 +108,6 @@ static void process_free(process_t* process)
     {
         ioring_ctx_deinit(&process->rings[i]);
     }
-    wait_queue_deinit(&process->suspendQueue);
 
     rcu_call(&process->rcu, rcu_call_cache_free, process);
 }
@@ -139,13 +145,9 @@ status_t process_new(process_t** out, prio_t priority, job_t* job)
         ioring_ctx_init(&process->rings[i]);
     }
     note_handler_init(&process->noteHandler);
-    wait_queue_init(&process->suspendQueue);
     atomic_store(&process->flags, PROCESS_NONE);
     atomic_store(&process->threads.newTid, 0);
-    lock_init(&process->threads.lock);
     process->start = clock_uptime();
-    process->args = NULL;
-    process->argsLen = 0;
 
     job_member_init(&process->job);
     job_join(job, &process->job);
@@ -163,15 +165,17 @@ status_t process_new(process_t** out, prio_t priority, job_t* job)
 
 process_t* process_get(proc_t id)
 {
-    RCU_READ_SCOPE();
-
+    lock_acquire(&processesLock);
     map_entry_t* entry = map_find(&pidMap, (void*)(uintptr_t)id, hash_uint64(id));
     if (entry == NULL)
     {
+        lock_release(&processesLock);
         return NULL;
     }
 
-    return REF_TRY(CONTAINER_OF(entry, process_t, mapEntry));
+    process_t* process = REF_TRY(CONTAINER_OF(entry, process_t, mapEntry));
+    lock_release(&processesLock);
+    return process;
 }
 
 void process_kill(process_t* process, const char* result)
@@ -181,21 +185,22 @@ void process_kill(process_t* process, const char* result)
         return;
     }
 
-    LOG_DEBUG("killing process pid=%d result='%s'\n", process->id, result);
+    LOG_DEBUG("killing process pid=%d result='%s' ref=%llu\n", process->id, result, atomic_load(&process->ref.count));
 
     lock_acquire(&process->result.lock);
     strncpy(process->result.buffer, result, PROCESS_RESULT_MAX - 1);
     process->result.buffer[PROCESS_RESULT_MAX - 1] = '\0';
     lock_release(&process->result.lock);
 
-    RCU_READ_SCOPE();
-
     uint64_t killCount = 0;
-    thread_t* thread;
-    PROCESS_RCU_THREAD_FOR_EACH(thread, process)
     {
-        thread_send_note(thread, "kill");
-        killCount++;
+        RCU_READ_SCOPE();
+        thread_t* thread;
+        PROCESS_RCU_THREAD_FOR_EACH(thread, process)
+        {
+            thread_send_note(thread, "kill");
+            killCount++;
+        }
     }
 
     if (killCount > 0)
@@ -203,22 +208,23 @@ void process_kill(process_t* process, const char* result)
         LOG_DEBUG("sent kill note to %llu threads in process pid=%d\n", killCount, process->id);
     }
 
-    // Anything that another process could be waiting on must be cleaned up here.
-
     file_table_drop_all(&process->files);
-
     job_leave(&process->job);
 
     lock_acquire(&process->dyingIrpsLock);
-    while (!list_is_empty(&process->dyingIrps))
+    list_t dyingIrps = LIST_CREATE(dyingIrps);
+    irp_claim_list(&dyingIrps, &process->dyingIrps);
+    lock_release(&process->dyingIrpsLock);
+
+    while (!list_is_empty(&dyingIrps))
     {
-        irp_t* irp = CONTAINER_OF(list_pop_front(&process->dyingIrps), irp_t, entry);
+        irp_t* irp = CONTAINER_OF(list_pop_front(&dyingIrps), irp_t, entry);
         irp_frame_t* frame = irp_current(irp);
         switch (frame->major)
         {
         case IRP_MJ_READ:
             lock_acquire(&process->result.lock);
-            status_t status = mdl_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, process->result.buffer,
+            status_t status = sglist_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, process->result.buffer,
                 strlen(process->result.buffer));
             lock_release(&process->result.lock);
             irp_complete(irp, status);
@@ -232,38 +238,6 @@ void process_kill(process_t* process, const char* result)
             break;
         }
     }
-    lock_release(&process->dyingIrpsLock);
-}
-
-status_t process_set_cmdline(process_t* process, const char* args, size_t len)
-{
-    if (process == NULL)
-    {
-        return ERR(PROC, INVAL);
-    }
-
-    if (args == NULL || len == 0)
-    {
-        process->args = NULL;
-        process->argsLen = 0;
-        return OK;
-    }
-
-    char* newArgs = malloc(len);
-    if (newArgs == NULL)
-    {
-        return ERR(PROC, NOMEM);
-    }
-    memcpy(newArgs, args, len);
-
-    if (process->args != NULL)
-    {
-        free(process->args);
-    }
-    process->args = newArgs;
-    process->argsLen = len;
-
-    return OK;
 }
 
 status_t process_send_note(process_t* process, const char* note)

@@ -11,6 +11,8 @@
 #include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
+#include <kernel/mem/pmm.h>
+#include <kernel/mem/vmm.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/sched.h>
 #include <kernel/start/boot_info.h>
@@ -40,6 +42,7 @@ static status_t tmpfs_regular_open(irp_t* irp)
     {
         tmpfs_vnode_t* vnode = VNODE_GET(frame->vnode, tmpfs_vnode_t);
         MUTEX_SCOPE(&vnode->vnode.mutex);
+        pagevec_deinit(&vnode->pages);
         vnode->size = 0;
         vnode->mtime = vnode->ctime = clock_epoch();
     }
@@ -56,7 +59,26 @@ static status_t tmpfs_regular_read(irp_t* irp)
 
     vnode->atime = clock_epoch();
 
-    return irp_read_helper(irp, vnode->buffer, vnode->size);
+    size_t offset = *frame->read.offset;
+    if (offset >= vnode->size)
+    {
+        irp->result = 0;
+        return OK;
+    }
+
+    size_t remaining = vnode->size - offset;
+    size_t copied = 0;
+
+    status_t status = sglist_copy_in_pagevec(frame->read.buffer, remaining, 0, &copied, &vnode->pages, offset);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+
+    *frame->read.offset += copied;
+    irp->result = copied;
+
+    return OK;
 }
 
 static status_t tmpfs_regular_write(irp_t* irp)
@@ -71,28 +93,43 @@ static status_t tmpfs_regular_write(irp_t* irp)
         *frame->write.offset = vnode->size;
     }
 
-    size_t required = *frame->write.offset + mdl_size(frame->write.buffer);
-    if (required > vnode->capacity)
+    size_t offset = *frame->write.offset;
+    size_t toWrite = sglist_size(frame->write.buffer);
+    if (toWrite == 0)
     {
-        size_t newCapacity = MAX(vnode->capacity * 2, required);
-        void* newData = realloc(vnode->buffer, newCapacity);
-        if (newData == NULL)
-        {
-            return ERR(FS, NOMEM);
-        }
-        memset((uint8_t*)newData + vnode->size, 0, newCapacity - vnode->size);
-        vnode->buffer = newData;
-        vnode->capacity = newCapacity;
+        irp->result = 0;
+        return OK;
     }
 
-    if (required > vnode->size)
+    size_t required = offset + toWrite;
+    size_t requiredPages = BYTES_TO_PAGES(required);
+    if (requiredPages > vnode->pages.amount)
     {
-        vnode->size = required;
+        status_t status = pagevec_resize(&vnode->pages, requiredPages);
+        if (IS_ERR(status))
+        {
+            return status;
+        }
+    }
+
+    size_t copied = 0;
+    status_t status = sglist_copy_out_pagevec(frame->write.buffer, toWrite, 0, &copied, &vnode->pages, offset);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+
+    offset += copied;
+    if (offset > vnode->size)
+    {
+        vnode->size = offset;
     }
 
     vnode->mtime = vnode->ctime = clock_epoch();
 
-    return irp_write_helper(irp, vnode->buffer, vnode->size);
+    *frame->write.offset = offset;
+    irp->result = copied;
+    return OK;
 }
 
 static status_t tmpfs_regular_seek(irp_t* irp)
@@ -103,6 +140,55 @@ static status_t tmpfs_regular_seek(irp_t* irp)
     MUTEX_SCOPE(&vnode->vnode.mutex);
 
     return irp_seek_helper(irp, vnode->size);
+}
+
+static status_t tmpfs_regular_mmap(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    tmpfs_vnode_t* vnode = VNODE_GET(frame->vnode, tmpfs_vnode_t);
+
+    MUTEX_SCOPE(&vnode->vnode.mutex);
+
+    size_t offset = frame->mmap.offset;
+    size_t length = frame->mmap.length;
+
+    if (offset % PAGE_SIZE != 0)
+    {
+        return ERR(FS, INVAL);
+    }
+
+    size_t pageOffset = offset / PAGE_SIZE;
+    size_t pageAmount = BYTES_TO_PAGES(length);
+    if (pageAmount == 0)
+    {
+        return ERR(FS, INVAL);
+    }
+
+    if (pageOffset + pageAmount > vnode->pages.amount)
+    {
+        size_t requiredPages = pageOffset + pageAmount;
+        status_t status = pagevec_resize(&vnode->pages, requiredPages);
+        if (IS_ERR(status))
+        {
+            return status;
+        }
+
+        if (offset + length > vnode->size)
+        {
+            vnode->size = offset + length;
+        }
+    }
+
+    void* addr = frame->mmap.address;
+    status_t status =
+        vmm_map_shared(&irp->process->space, &addr, &vnode->pages.pfns[pageOffset], pageAmount, frame->mmap.flags);
+    if (IS_ERR(status))
+    {
+        return status;
+    }
+
+    irp->result = (uintptr_t)addr;
+    return OK;
 }
 
 static status_t tmpfs_regular_attr(irp_t* irp)
@@ -118,9 +204,30 @@ static status_t tmpfs_regular_attr(irp_t* irp)
         irp->result = vnode->size;
         return OK;
     case FILE_SET_SIZE:
-        vnode->size = frame->attr.value;
+    {
+        size_t newSize = frame->attr.value;
+        size_t newPages = BYTES_TO_PAGES(newSize);
+
+        if (newPages != vnode->pages.amount)
+        {
+            status_t status = pagevec_resize(&vnode->pages, newPages);
+            if (IS_ERR(status))
+            {
+                vnode->size = vnode->pages.amount * PAGE_SIZE;
+                return status;
+            }
+        }
+
+        if (newSize < vnode->size && newSize % PAGE_SIZE != 0)
+        {
+            size_t pageOffset = newSize % PAGE_SIZE;
+            pagevec_fill(&vnode->pages, newSize, 0, PAGE_SIZE - pageOffset);
+        }
+
+        vnode->size = newSize;
         vnode->mtime = vnode->ctime = clock_epoch();
         return OK;
+    }
     case FILE_GET_ATIME:
         irp->result = vnode->atime;
         return OK;
@@ -201,7 +308,7 @@ static status_t tmpfs_regular_query(irp_t* irp)
     strcpy(info.name, frame->file->path.dentry->name);
     info.mask |= FILE_MASK_NAME;
 
-    return mdl_copy_in(frame->query.buffer, sizeof(file_info_t), 0, &irp->result, &info, sizeof(file_info_t));
+    return sglist_copy_in(frame->query.buffer, sizeof(file_info_t), 0, &irp->result, &info, sizeof(file_info_t));
 }
 
 static status_t tmpfs_regular_reclaim(irp_t* irp)
@@ -211,10 +318,8 @@ static status_t tmpfs_regular_reclaim(irp_t* irp)
 
     MUTEX_SCOPE(&vnode->vnode.mutex);
 
-    free(vnode->buffer);
-    vnode->buffer = NULL;
+    pagevec_deinit(&vnode->pages);
     vnode->size = 0;
-    vnode->capacity = 0;
 
     if (&vnode->vnode == vnode->volume->rootVnode)
     {
@@ -235,6 +340,7 @@ static vnode_class_t regularClass = {
             [IRP_MJ_READ] = tmpfs_regular_read,
             [IRP_MJ_WRITE] = tmpfs_regular_write,
             [IRP_MJ_SEEK] = tmpfs_regular_seek,
+            [IRP_MJ_MMAP] = tmpfs_regular_mmap,
             [IRP_MJ_ATTR] = tmpfs_regular_attr,
             [IRP_MJ_QUERY] = tmpfs_regular_query,
             [IRP_MJ_RECLAIM] = tmpfs_regular_reclaim,
@@ -283,9 +389,8 @@ static tmpfs_vnode_t* tmpfs_vnode_create(tmpfs_volume_t* volume, const vnode_cla
 
     tmpfs_vnode_t* tvnode = VNODE_GET(vnode, tmpfs_vnode_t);
     tvnode->volume = volume; // No ref, volume is kept alive by the root.
-    tvnode->buffer = NULL;
+    pagevec_init(&tvnode->pages);
     tvnode->size = 0;
-    tvnode->capacity = 0;
     tvnode->atime = tvnode->mtime = tvnode->ctime = tvnode->btime = clock_epoch();
     tvnode->nlink = 1;
 
@@ -360,14 +465,20 @@ static status_t tmpfs_dir_create(irp_t* irp)
 
     if (frame->create.mode & MODE_SYMLINK)
     {
-        vnode->size = strlen(frame->create.payload);
-        vnode->buffer = strdup(frame->create.payload);
-        if (vnode->buffer == NULL)
+        size_t payloadLen = strlen(frame->create.payload);
+        size_t reqPages = BYTES_TO_PAGES(payloadLen);
+
+        if (reqPages > 0)
         {
-            UNREF(vnode->volume);
-            return ERR(FS, NOMEM);
+            status_t status = pagevec_resize(&vnode->pages, reqPages);
+            if (IS_ERR(status))
+            {
+                return status;
+            }
         }
-        vnode->capacity = vnode->size;
+
+        vnode->size = payloadLen;
+        pagevec_write(&vnode->pages, 0, frame->create.payload, payloadLen);
     }
 
     dentry_make_positive(target, &vnode->vnode);
@@ -510,14 +621,18 @@ static status_t ramfs_load_file(tmpfs_volume_t* volume, dentry_t* parent, const 
     }
     UNREF_DEFER(vnode);
 
-    vnode->size = in->size;
-    vnode->capacity = in->size;
-    vnode->buffer = malloc(in->size);
-    if (vnode->buffer == NULL)
+    size_t reqPages = BYTES_TO_PAGES(in->size);
+    if (reqPages > 0)
     {
-        return ERR(FS, NOMEM);
+        status_t status = pagevec_resize(&vnode->pages, reqPages);
+        if (IS_ERR(status))
+        {
+            return status;
+        }
     }
-    memcpy(vnode->buffer, in->data, in->size);
+
+    vnode->size = in->size;
+    pagevec_write(&vnode->pages, 0, in->data, in->size);
 
     dentry_make_positive(dentry, &vnode->vnode);
 

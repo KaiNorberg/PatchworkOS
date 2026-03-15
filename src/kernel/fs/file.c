@@ -7,7 +7,7 @@
 #include <kernel/fs/vnode.h>
 #include <kernel/io/irp.h>
 #include <kernel/mem/cache.h>
-#include <kernel/mem/mdl.h>
+#include <kernel/mem/sglist.h>
 #include <kernel/proc/process.h>
 #include <kernel/sync/mutex.h>
 #include <kernel/utils/ref.h>

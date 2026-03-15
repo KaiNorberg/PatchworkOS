@@ -103,6 +103,12 @@ static void thread_rcu_free(void* arg)
 {
     thread_t* thread = (thread_t*)arg;
 
+    if (thread->process->id != 0)
+    {
+        LOG_DEBUG("rcu freeing thread pid=%d tid=%d (process references: %llu)\n", thread->process->id, thread->id,
+            atomic_load(&thread->process->ref.count));
+    }
+
     UNREF(thread->process);
     thread->process = NULL;
 
@@ -117,6 +123,12 @@ void thread_free(thread_t* thread)
     thread->process->threads.count--;
     list_remove_rcu(&thread->processEntry);
     lock_release(&thread->process->threads.lock);
+
+    if (thread->process->id != 0)
+    {
+        LOG_DEBUG("freeing thread pid=%d tid=%d (process references: %llu)\n", thread->process->id, thread->id,
+            atomic_load(&thread->process->ref.count));
+    }
 
     rcu_call(&thread->rcu, thread_rcu_free, thread);
 }

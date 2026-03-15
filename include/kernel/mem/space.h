@@ -144,12 +144,22 @@ uint64_t space_user_page_count(space_t* space);
 /**
  * @brief Translate a virtual address to a physical address in the address space.
  *
- * @param out Output pointer for the physical address.
  * @param space The target address space.
  * @param virtAddr The virtual address to translate.
+ * @param out Output pointer for the physical address.
  * @return An appropriate status value.
  */
-status_t space_virt_to_phys(phys_addr_t* out, space_t* space, const void* virtAddr);
+status_t space_virt_to_phys(space_t* space, const void* virtAddr, phys_addr_t* out);
+
+/**
+ * @brief Translate a virtual address to a physical address, allocating a page if it is not mapped.
+ *
+ * @param space The target address space.
+ * @param virtAddr The virtual address to translate.
+ * @param out Output pointer for the physical address.
+ * @return An appropriate status value.
+ */
+status_t space_virt_to_phys_alloc(space_t* space, const void* virtAddr, phys_addr_t* out);
 
 /**
  * @brief Copy memory from an address space.

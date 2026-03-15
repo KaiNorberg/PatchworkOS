@@ -4,7 +4,7 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/cache.h>
-#include <kernel/mem/mdl.h>
+#include <kernel/mem/sglist.h>
 #include <kernel/proc/process.h>
 #include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
@@ -79,9 +79,9 @@ static void irp_unwind_stack(irp_t* irp)
     assert(irp->loc == IRP_FRAME_MAX);
     assert(irp->cpu == CPU_ID_INVALID);
 
-    mdl_t* next = irp->mdl.next;
-    mdl_deinit(&irp->mdl);
-    mdl_free_chain(next, free);
+    sglist_t* next = irp->sglist.next;
+    sglist_deinit(&irp->sglist);
+    sglist_free_chain(next, free);
 
     assert(atomic_load(&irp->cancel) == NULL || atomic_load(&irp->cancel) == IRP_CANCELLED);
     atomic_store(&irp->cancel, NULL);
@@ -229,7 +229,7 @@ irp_t* irp_new(process_t* process, void* ctx)
     atomic_init(&irp->cancel, NULL);
     irp->deadline = CLOCKS_NEVER;
     irp->result = 0;
-    mdl_init(&irp->mdl, NULL);
+    sglist_init(&irp->sglist, NULL);
     irp->next = NULL;
     irp->cpu = CPU_ID_INVALID;
     irp->status = OK;
@@ -240,14 +240,14 @@ irp_t* irp_new(process_t* process, void* ctx)
     return irp;
 }
 
-status_t irp_get_mdl(irp_t* irp, mdl_t** out)
+status_t irp_get_sglist(irp_t* irp, sglist_t** out)
 {
     if (irp == NULL || out == NULL)
     {
         return ERR(IO, INVAL);
     }
 
-    mdl_t* current = &irp->mdl;
+    sglist_t* current = &irp->sglist;
     while (current->amount > 0)
     {
         if (current->next != NULL)
@@ -256,12 +256,12 @@ status_t irp_get_mdl(irp_t* irp, mdl_t** out)
             continue;
         }
 
-        mdl_t* next = malloc(sizeof(mdl_t));
+        sglist_t* next = malloc(sizeof(sglist_t));
         if (next == NULL)
         {
             return ERR(IO, NOMEM);
         }
-        mdl_init(next, current);
+        sglist_init(next, current);
         current = next;
     }
 
@@ -285,7 +285,7 @@ status_t irp_call(irp_t* irp, irp_handler_t func)
     }
     else
     {
-        status = ERR(IO, INVAL);
+        status = ERR(IO, NOSUPPORT);
     }
 
     irp_complete(irp, status);
@@ -336,8 +336,8 @@ status_t irp_read_helper(irp_t* irp, const void* buffer, size_t size)
     }
 
     size_t available = size - *frame->read.offset;
-    status_t status =
-        mdl_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, (uint8_t*)buffer + *frame->read.offset, available);
+    status_t status = sglist_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result,
+        (uint8_t*)buffer + *frame->read.offset, available);
     if (IS_ERR(status))
     {
         return status;
@@ -362,7 +362,7 @@ status_t irp_write_helper(irp_t* irp, void* buffer, size_t size)
     }
 
     size_t available = size - *frame->write.offset;
-    status_t status = mdl_copy_out(frame->write.buffer, SIZE_MAX, 0, &irp->result,
+    status_t status = sglist_copy_out(frame->write.buffer, SIZE_MAX, 0, &irp->result,
         (uint8_t*)buffer + *frame->write.offset, available);
     if (IS_ERR(status))
     {

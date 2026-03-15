@@ -203,7 +203,7 @@ uint64_t space_user_page_count(space_t* space)
         BYTES_TO_PAGES(VMM_USER_SPACE_MAX - VMM_USER_SPACE_MIN), PML_PRESENT | PML_USER | PML_OWNED);
 }
 
-status_t space_virt_to_phys(phys_addr_t* out, space_t* space, const void* virtAddr)
+status_t space_virt_to_phys(space_t* space, const void* virtAddr, phys_addr_t* out)
 {
     if (space == NULL)
     {
@@ -219,6 +219,30 @@ status_t space_virt_to_phys(phys_addr_t* out, space_t* space, const void* virtAd
     return OK;
 }
 
+status_t space_virt_to_phys_alloc(space_t* space, const void* virtAddr, phys_addr_t* out)
+{
+    if (space == NULL || out == NULL)
+    {
+        return ERR(MMU, INVAL);
+    }
+
+    status_t status = space_virt_to_phys(space, virtAddr, out);
+    if (IS_INFO(status))
+    {
+        return OK;
+    }
+
+    void* alignedAddr = (void*)ROUND_DOWN(virtAddr, PAGE_SIZE);
+    status = vmm_alloc(space, &alignedAddr, PAGE_SIZE, PAGE_SIZE, PML_PRESENT | PML_USER | PML_WRITE,
+        VMM_ALLOC_ZERO | VMM_ALLOC_FAIL_IF_MAPPED);
+    if (IS_ERR(status) && !IS_CODE(status, MAPPED))
+    {
+        return status;
+    }
+
+    return space_virt_to_phys(space, virtAddr, out);
+}
+
 status_t space_copy_out(space_t* space, void* dest, const void* src, size_t size)
 {
     const uint8_t* ptr = src;
@@ -228,7 +252,7 @@ status_t space_copy_out(space_t* space, void* dest, const void* src, size_t size
     while (remaining > 0)
     {
         phys_addr_t phys;
-        status_t status = space_virt_to_phys(&phys, space, ptr);
+        status_t status = space_virt_to_phys(space, ptr, &phys);
         if (IS_ERR(status))
         {
             return status;
@@ -257,7 +281,7 @@ status_t space_copy_in(space_t* space, void* dest, const void* src, size_t size)
     while (remaining > 0)
     {
         phys_addr_t phys;
-        status_t status = space_virt_to_phys(&phys, space, ptr);
+        status_t status = space_virt_to_phys(space, ptr, &phys);
         if (IS_ERR(status))
         {
             return status;

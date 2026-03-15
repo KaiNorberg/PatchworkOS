@@ -145,22 +145,22 @@ status_t vfs_read(file_t* file, void* buffer, size_t count, size_t* out)
         return ERR(VFS, NOMEM);
     }
 
-    mdl_t* mdl;
-    status_t status = irp_get_mdl(irp, &mdl);
+    sglist_t* list;
+    status_t status = irp_get_sglist(irp, &list);
     if (IS_ERR(status))
     {
         irp_complete(irp, status);
         return status;
     }
 
-    status = mdl_add(mdl, &irp->process->space, buffer, count);
+    status = sglist_add(list, &irp->process->space, buffer, count);
     if (IS_ERR(status))
     {
         irp_complete(irp, status);
         return status;
     }
 
-    irp_prep_read(irp, mdl, IOCUR);
+    irp_prep_read(irp, list, IOCUR);
     uint64_t result = 0;
     status = vfs_run_sync(irp, file, &result);
     if (out != NULL)
@@ -188,22 +188,22 @@ status_t vfs_write(file_t* file, const void* buffer, size_t count, size_t* out)
         return ERR(VFS, NOMEM);
     }
 
-    mdl_t* mdl;
-    status_t status = irp_get_mdl(irp, &mdl);
+    sglist_t* list;
+    status_t status = irp_get_sglist(irp, &list);
     if (IS_ERR(status))
     {
         irp_complete(irp, status);
         return status;
     }
 
-    status = mdl_add(mdl, &irp->process->space, buffer, count);
+    status = sglist_add(list, &irp->process->space, buffer, count);
     if (IS_ERR(status))
     {
         irp_complete(irp, status);
         return status;
     }
 
-    irp_prep_write(irp, mdl, IOCUR);
+    irp_prep_write(irp, list, IOCUR);
     uint64_t result = 0;
     status = vfs_run_sync(irp, file, &result);
     if (out != NULL)

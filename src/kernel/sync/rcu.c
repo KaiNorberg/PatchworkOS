@@ -128,7 +128,6 @@ static void rcu_advance(bool wake)
         lock_acquire(&lock);
         pcpu_rcu->grace = grace + 1;
         lock_release(&lock);
-        pcpu_rcu->grace = active ? grace : grace + 1;
     }
 }
 
@@ -158,6 +157,11 @@ static void rcu_start_grace(void)
         }
 
         bitmap_clear(&ack, cpu->id);
+    }
+
+    if (bitmap_is_empty(&ack))
+    {
+        active = false;
     }
 }
 

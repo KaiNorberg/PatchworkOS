@@ -88,7 +88,7 @@ The I/O Ring acts as the user-kernel space boundary and is made up of two queues
 
 The I/O Request Packet is a self-contained structure that contains the information needed to perform an I/O operation. When the kernel receives a submission queue entry, it will parse it and create an I/O Request Packet from it. The I/O Request Packet will then be sent to the appropriate vnode (file system, device, etc.) for processing, once the I/O Request is completed, the kernel will write the result of the operation into the completion queue.
 
-For reading or writing, the I/O Request Packet uses a Memory Descriptor List, which is an array of memory descriptors, each containing a page frame number, offset and length. These are created by reading the user space `iovec_t` structures from the submission queue entry and converting them into page frame numbers. Finally, since the kernel identity maps all of physical memory into its address space, it can directly read from or write to the user space buffers without needing to copy them into kernel space or even map them in, thus achieving direct and zero-copy I/O.
+For reading or writing, the I/O Request Packet uses a Scatter Gather List, which is an array of entries, each containing a page frame number, offset and length. These are created by reading the user space `iovec_t` structures from the submission queue entry and converting them into page frame numbers. Finally, since the kernel identity maps all of physical memory into its address space, it can directly read from or write to the user space buffers without needing to copy them into kernel space or even map them in, thus achieving direct and zero-copy I/O.
 
 Built on top of this system are several layers of abstractions. For example, the `iowrite()` function is a simple synchronous wrapper around the I/O ring and of course `fwrite()` is a wrapper around `iowrite()` that works as expected. Many helper functions are also provided, for example `iowritep()` is a version of `iowrite()` that will use the virtual register system to perform an open, write and close using a single system call.
 
@@ -190,7 +190,7 @@ Finally, we close the file using `iodrop()`.
 
 > The term "drop" is used instead of "close" to cleanly differentiate between closing a file and closing a file descriptor. We only use the terms "open" and "close" when referring to the underlying file (`file_t`), while using terms such as "grab" and "drop" when referring to file descriptors (`fd_t`).
 
-The `iowritet()`, `ioreadt()` and `iowalkt()` functions are also provided that expect an additional `clock_t timeout` argument. There is also an event loop based abstraction around the I/O Ring itself provided via functions with the `q` suffix.
+The `iowritet()`, `ioreadt()` and `iowalkt()` functions are also provided that expect an additional `clock_t timeout` argument. There is also an event loop based abstraction around the I/O Ring itself provided via macros with the `Q` suffix.
 
 ### Process Creation
 

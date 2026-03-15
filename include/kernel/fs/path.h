@@ -45,8 +45,7 @@ typedef struct file file_t;
  * | `exclusive` | `e` | Will cause the open to fail if the file already exists. |
  * | `existing`  | `E` | Force failure if the file does not exist even if any creation flags are specified, useful if you want to, for example, ensure you are opening a directory. | 
  * | `truncate`  | `t` | Truncate the file to zero length if it already exists. | 
- * | `nofollow`  | `l` | Do not follow symlinks. | 
- * | `private`   | `P` | Any files with this flag will be closed before a process starts executing. Any mounts with this flag will not be copied to a child namespace. | 
+ * | `nofollow`  | `l` | Do not follow symlinks. |
  * | `parents`   | `p` | Create parent directories if they do not exist. |
  * | `locked`    | `L` | Forbid unmounting this binding, useful for hiding directories or files. |
  *
@@ -131,9 +130,8 @@ typedef enum mode
     MODE_EXISTING = 1 << 9,  ///< Handled by the VFS.
     MODE_TRUNCATE = 1 << 10, ///< Should be implemented by the filesystem.
     MODE_NOFOLLOW = 1 << 11, ///< Handled by the VFS.
-    MODE_PRIVATE = 1 << 12,  ///< Handled by the VFS.
-    MODE_PARENTS = 1 << 13,  ///< Handled by the VFS.
-    MODE_LOCKED = 1 << 14,   ///< Handled by the VFS.
+    MODE_PARENTS = 1 << 12,  ///< Handled by the VFS.
+    MODE_LOCKED = 1 << 13,   ///< Handled by the VFS.
     MODE_ALL_PERMS = MODE_READ | MODE_WRITE | MODE_EXECUTE,
 } mode_t;
 

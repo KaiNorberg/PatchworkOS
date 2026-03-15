@@ -147,7 +147,6 @@ typedef enum
     ST_CODE_FULL,                                 ///< Buffer full.
     ST_CODE_EOF,                                  ///< End of file.
     ST_CODE_ARGC,                                 ///< Invalid argument count.
-    ST_CODE_INVALCTL,                             ///< Invalid control command.
     ST_CODE_TOCTOU,                               ///< Time-of-check to time-of-use race condition.
     ST_CODE_TEST_FAIL,                            ///< Test failure.
     ST_CODE_PENDING,                              ///< Operation is pending.
@@ -184,7 +183,8 @@ typedef enum
     ST_CODE_SPIPE,                               ///< Invalid seek.
     ST_CODE_ADDRINUSE,                           ///< Address already in use.
     ST_CODE_EXPECT_FILE,                         ///< Operation expected to be provided a file.
-    ST_CODE_INVAL_CTL,                           ///< Invalid I/O control command.
+    ST_CODE_INVALCTL,                            ///< Invalid I/O control command.
+    ST_CODE_NOSUPPORT,                           ///< Operation not supported.
 
     ST_CODE_ACCESS = (ST_KIND_ACCESS << 8) | 1, ///< Permission denied.
     ST_CODE_PERM,                               ///< Operation not permitted.
@@ -198,6 +198,8 @@ typedef enum
 
     ST_CODE_DYING = (ST_KIND_PROC << 8) | 1, ///< Process is dying.
     ST_CODE_DEADLOCK,                        ///< Deadlock detected.
+    ST_CODE_RUNNING,                         ///< Process is already running.
+    ST_CODE_NOT_RUNNING,                     ///< Process is not running.
 
     ST_CODE_NODEV = (ST_KIND_DEV << 8) | 1, ///< No such device.
     ST_CODE_NOTTY,                          ///< Inappropriate ioctl for device.

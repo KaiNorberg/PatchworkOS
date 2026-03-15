@@ -4,6 +4,7 @@
 #include <kernel/cpu/ipi.h>
 #include <kernel/cpu/irq.h>
 #include <kernel/cpu/syscall.h>
+#include <kernel/drivers/const.h>
 #include <kernel/drivers/pic.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/filesystem.h>
@@ -98,6 +99,7 @@ static void start_finalize(void)
     log_expose();
 
     perf_init();
+    const_init();
 
     boot_info_t* bootInfo = boot_info_get();
 
