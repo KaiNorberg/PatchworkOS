@@ -57,6 +57,8 @@ LDFLAGS := \
 	-Wno-unused-command-line-argument \
 	-no-pie 
 
+LDFLAGS_SHARED := $(filter-out -no-pie,$(LDFLAGS)) -shared
+
 ifeq ($(TESTING),1)
 	CFLAGS += -D_TESTING_
 	ASFLAGS += -D_TESTING_
@@ -71,8 +73,12 @@ endif
 
 ifeq ($(NOSTDLIB),1)
 	LDSTDLIB :=
+	CRT_START :=
+	CRT_END :=
 else
 	LDSTDLIB := -lstd
+	CRT_START := bin/libstd/crt0.o bin/libstd/crti.o
+	CRT_END := bin/libstd/crtn.o
 endif
 
 CFLAGS_MODULE := \
@@ -102,9 +108,3 @@ $(shell find $(1) -name "*.c" -o -name "*.S" 2>/dev/null)
 endef
 
 SRC = $(call find_sources,$(SRCDIR))
-
-OBJ = $(patsubst src/%, $(BUILDDIR)/%.o, $(SRC))
-
-DEP = $(OBJ:.o=.d)
-
--include $(DEP)

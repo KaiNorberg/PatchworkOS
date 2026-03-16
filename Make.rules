@@ -1,3 +1,9 @@
+OBJ = $(patsubst src/%, $(BUILDDIR)/%.o, $(SRC))
+
+DEP = $(OBJ:.o=.d)
+
+-include $(DEP)
+
 $(BUILDDIR)/%.c.o: src/%.c
 	$(MKCWD)
 	@echo "  CC    $<"
@@ -13,7 +19,12 @@ $(BINDIR)/%.a: $(OBJ)
 	@echo "  AR    $@"
 	@$(AR) rcs $@ $^
 
+$(BINDIR)/%.so: $(OBJ)
+	$(MKCWD)
+	@echo "  LD    $@"
+	@$(LD) -o $@ $^ $(LDFLAGS_SHARED) $(LDSTDLIB)
+
 $(BINDIR)/%: $(OBJ)
 	$(MKCWD)
 	@echo "  LD    $@"
-	@$(LD) -o $@ $^ $(LDFLAGS) $(LDSTDLIB)
+	@$(LD) -o $@ $(CRT_START) $^ $(LDFLAGS) $(LDSTDLIB) $(CRT_END)

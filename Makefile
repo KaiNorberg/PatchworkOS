@@ -41,8 +41,8 @@ bin/.deployed: $(BOOT_TARGET) $(KERNEL_TARGET) $(LIBSTD_TARGET) $(LIBPATCHWORK_T
 	@if [ -d bin/modules ] && [ -n "$$(ls -A bin/modules 2>/dev/null)" ]; then \
 		mcopy -i $(IMAGE) -s bin/modules/* ::/boot/modules/$(VERSION_STRING) 2>/dev/null || true; \
 	fi
+	@mcopy -i $(IMAGE) -s bin/libstd/libstd.so ::/comp/libstd/1.0.0/lib 2>/dev/null || true
 #@mcopy -i $(IMAGE) -s LICENSE ::/base/license 2>/dev/null || true
-#@mcopy -i $(IMAGE) -s bin/libstd/libstd.a ::/base/lib 2>/dev/null || true
 #@mcopy -i $(IMAGE) -s bin/libpatchwork/libpatchwork.a ::/base/lib 2>/dev/null || true
 #@if [ -d include ]; then \
 		mcopy -i $(IMAGE) -s include/* ::/base/include 2>/dev/null || true; \
