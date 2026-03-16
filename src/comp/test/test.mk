@@ -1,6 +1,6 @@
 include Make.defaults
 
-TARGET := $(BINDIR)/$(PROGRAM)
+TARGET := $(BINDIR)/$(COMP)
 
 LDFLAGS +=
 

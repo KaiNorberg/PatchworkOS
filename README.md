@@ -245,7 +245,7 @@ iowalk(in, FDROOT, ".", &out);
 
 It's important to note that `proc_create()` is not a system call; it's a wrapper around the `/proc/clone` file which when opened returns the root of the new processes proc directory. The kernel does nothing more than provide an empty address space that `proc_create()` fills using the `mem` file in the child's proc directory. This means that the path specified to the executable or paths specified within the executable (for example to the dynamic linker) are from the parents perspective.
 
-Finally, there is no way to directly kill a process, instead a process will be killed when its proc directories reference count reaches zero.
+A process will be freed when its proc directories reference count reaches zero.
 
 ### Environment Variables
 
@@ -280,6 +280,51 @@ iowalk(IOPATH("/sys/fs/tmpfs/clone"), &fs);
 iowalk(IOPATH("/mnt/tmpfs"), &target);
 fdbind(FDROOT, target, fs);
 ```
+
+## Components
+
+In PatchworkOS, the user space is made up of "components". These components can be anything, executable programs, libraries, headers, or just data files. 
+
+Each component is stored in a `/comp/<name>` directory. Within each components directory are version directories written in the form `<x>.<y>.<z>` (major.minor.patch).
+
+The actual component files are stored within the version directories, usually within subdirectories like `bin/`, `lib/`, `include/`, etc. In addition, there is a manifest file which describes the component, its dependencies, and what capabilities it requires. Included below is an example manifest file:
+
+```
+(comp (name MyProgram)
+    (launch /bin/myprogram)
+    (required
+        (dynlink >= 1.0)
+        (libstd >= 1.0)
+    )
+    (optional
+        (libother >= 1.0)
+    )
+    (caps
+        fb
+        kbd
+        display
+        acct
+    )
+)
+```
+
+### Loading Components
+
+Any process can load a component using the `comp_load()` function from libstd. This function will construct a new root file descriptor for the component, with all the directories and files within the components directory and any dependencies directories, being bound in a union to the root along with any additional files specified via the capabilities (e.g. if `fb` is specified, the launched process can access the framebuffers via `/dev/fb/`).
+
+Lets take the MyProgram component described above as an example. The libstd component provides a `lib/libstd.so` file and lets also say that libother provides a `lib/libother.so` file. In this case, the launched process would then find both `libstd.so` and `libother.so` in `/lib`. However, simply being able to read these shared libraries is pointless without the dynamic linker, dynlink, which provides the `bin/dynlink.so` file.
+
+It would also be able to access see the `/dev/fb/`, `/dev/kbd`, etc. directories due to its specified capabilities.
+
+The `comp_load()` function will automatically handle versioning, following the rules defined in the component manifest.
+
+This all has one rather large limitation, in that the parent process must have all the capabilities to be passed to the child. If the child needs a capability that the parent does not have, the `comp_load()` function will fail.
+
+### The Init Process
+
+The one exception to this rule is the init process, which is special in that it is the only process "loaded" by the kernel (it is actually loaded by the bootloader and the kernel simply copies the executable into memory) since executable loading is handled in user-space. The init process is granted a `FDROOT` file descriptor to the root of `sysfs` from which it can acquire all capabilities.
+
+This means that the security model forms a tree-like structure, with init having all capabilities and all child processes having some subset of those capabilities.
 
 ## Modules
 
@@ -488,17 +533,17 @@ Source code can be found in the `src/` directory, with public API headers in the
 
 ```plain
 .
-├── meta              // Meta files including screenshots, doxygen, etc.
+├── include           // Public API headers.
 ├── lib               // Third party files, for example doomgeneric.
+├── meta              // Meta files including screenshots, doxygen, etc.
 ├── root              // Files to copy to the root of the generated image.
-└── <src|include>     // Source code and public API headers.
+└── src               // Source code.
     ├── boot          // UEFI bootloader.
-    ├── boxes         // Boxed applications.
+    ├── comp          // Components.
+    ├── init          // Init process.
     ├── kernel        // The kernel and its core subsystems.
-    ├── libpatchwork  // The PatchworkOS system library, gui, etc.
     ├── libstd        // The C standard library.
-    ├── modules       // Kernel modules, drivers, filesystems, etc.
-    └── programs      // User space programs.
+    └── modules       // Kernel modules, drivers, filesystems, etc.
 ```
 
 ### Grub Loopback

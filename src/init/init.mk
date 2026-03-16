@@ -1,7 +1,7 @@
 NOSTDLIB=1
 include Make.defaults
 
-TARGET := $(BINDIR)/$(PROGRAM)
+TARGET := $(BINDIR)/init
 
 CRT_START := bin/libstd/crt0.o bin/libstd/crti.o
 CRT_END := bin/libstd/crtn.o

@@ -3,24 +3,20 @@ IMAGE = bin/PatchworkOS.img
 VERSION_HEADER = include/kernel/version.h
 VERSION_STRING := $(shell git describe --tags --always --dirty --long 2>/dev/null || echo "unknown")
 
-ROOT_DIRS = acpi bin dev efi efi/boot boot boot/modules boot/modules/$(VERSION_STRING) proc sys tmp
+ROOT_DIRS = acct acct/admin comp dev efi efi/boot boot boot/modules boot/modules/$(VERSION_STRING) proc sys
 
 BOOT_TARGET = bin/boot/.built
 KERNEL_TARGET = bin/kernel/.built
 LIBSTD_TARGET = bin/libstd/.built
+INIT_TARGET = bin/init/.built
 
 MODULES_MK = $(shell find src/modules/ -name "*.mk" 2>/dev/null)
 MODULES_NAMES = $(basename $(notdir $(MODULES_MK)))
 MODULES_TARGETS = $(patsubst %,bin/modules/.%.built,$(MODULES_NAMES))
 
-PROGRAMS_MK = $(shell find src/programs/ -name "*.mk" 2>/dev/null)
-PROGRAMS_NAMES = $(basename $(notdir $(PROGRAMS_MK)))
-PROGRAMS_TARGETS = $(patsubst %,bin/programs/.%.built,$(PROGRAMS_NAMES))
-
-# Programs to be installed in /boot
-BOOT_PROGRAMS = init
-# Programs to be installed in /bin
-BIN_PROGRAMS = $(filter-out $(BOOT_PROGRAMS),$(PROGRAMS_NAMES))
+COMP_MK = $(shell find src/comp/ -name "*.mk" 2>/dev/null)
+COMP_NAMES = $(basename $(notdir $(COMP_MK)))
+COMP_TARGETS = $(patsubst %,bin/comp/.%.built,$(COMP_NAMES))
 
 .PHONY: all setup deploy run clean generate_version compile_commands format doxygen clean_programs nuke grub_loopback argon2
 
@@ -29,7 +25,7 @@ all: $(IMAGE)
 $(IMAGE): bin/.deployed
 	@echo "SUCCESS $(IMAGE)"
 
-bin/.deployed: $(BOOT_TARGET) $(KERNEL_TARGET) $(LIBSTD_TARGET) $(LIBPATCHWORK_TARGET) $(MODULES_TARGETS) $(BOXES_TARGETS) $(PROGRAMS_TARGETS) | bin
+bin/.deployed: $(BOOT_TARGET) $(KERNEL_TARGET) $(LIBSTD_TARGET) $(INIT_TARGET) $(MODULES_TARGETS) $(COMP_TARGETS) | bin
 	@echo "DEPLOY  $(IMAGE)"
 	@dd if=/dev/zero of=$(IMAGE) bs=2M count=64 2>/dev/null
 	@mformat -F -C -t 256 -h 16 -s 63 -v "PATCHWORKOS" -i $(IMAGE) ::
@@ -38,6 +34,7 @@ bin/.deployed: $(BOOT_TARGET) $(KERNEL_TARGET) $(LIBSTD_TARGET) $(LIBPATCHWORK_T
 	@mcopy -i $(IMAGE) -s root/* :: 2>/dev/null || true
 	@mcopy -i $(IMAGE) -s bin/boot/bootx64.efi ::/efi/boot 2>/dev/null || true
 	@mcopy -i $(IMAGE) -s bin/kernel/kernel ::/boot 2>/dev/null || true
+	@mcopy -i $(IMAGE) -s bin/init/init ::/boot 2>/dev/null || true
 	@if [ -d bin/modules ] && [ -n "$$(ls -A bin/modules 2>/dev/null)" ]; then \
 		mcopy -i $(IMAGE) -s bin/modules/* ::/boot/modules/$(VERSION_STRING) 2>/dev/null || true; \
 	fi
@@ -47,11 +44,11 @@ bin/.deployed: $(BOOT_TARGET) $(KERNEL_TARGET) $(LIBSTD_TARGET) $(LIBPATCHWORK_T
 #@if [ -d include ]; then \
 		mcopy -i $(IMAGE) -s include/* ::/base/include 2>/dev/null || true; \
 	fi
-	@$(foreach prog,$(BOOT_PROGRAMS),\
-		if [ -f bin/programs/$(prog) ]; then \
+#@$(foreach prog,$(BOOT_PROGRAMS),\
+#if [ -f bin/programs/$(prog) ]; then \
 			mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/boot 2>/dev/null || true; \
 		fi;)
-	@$(foreach prog,$(BIN_PROGRAMS),\
+#@$(foreach prog,$(BIN_PROGRAMS),\
 		if [ -f bin/programs/$(prog) ]; then \
 			mcopy -i $(IMAGE) -s bin/programs/$(prog) ::/bin 2>/dev/null || true; \
 		fi;)
@@ -102,6 +99,11 @@ $(LIBSTD_TARGET): setup | bin/libstd
 	@$(MAKE) -s --no-print-directory -f src/libstd/libstd.mk SRCDIR=src/libstd BUILDDIR=build/libstd BINDIR=bin/libstd all
 	@touch $@
 
+$(INIT_TARGET): setup | bin/init
+	@echo "BUILD   init"
+	@$(MAKE) -s --no-print-directory -f src/init/init.mk SRCDIR=src/init BUILDDIR=build/init BINDIR=bin/init all
+	@touch $@
+
 lib/argon2/.built: $(MODULES_TARGETS)
 	@if [ ! -d "lib/argon2" ]; then \
 		echo "CLONE   argon2"; \
@@ -122,16 +124,16 @@ endef
 
 $(foreach mod,$(MODULES_NAMES),$(eval $(call MODULE_RULE,$(mod))))
 
-define PROGRAM_RULE
-bin/programs/.$(1).built: $(filter %/$(1).mk,$(PROGRAMS_MK)) $(BOXES_TARGETS) | bin/programs
-	@echo "BUILD   program $(1)"
-	@$$(MAKE) -s --no-print-directory -f $$(filter %/$(1).mk,$$(PROGRAMS_MK)) SRCDIR=$$(dir $$(filter %/$(1).mk,$$(PROGRAMS_MK))) BUILDDIR=build/programs/$(1) BINDIR=bin/programs PROGRAM=$(1) all
+define COMP_RULE
+bin/comp/.$(1).built: $(filter %/$(1).mk,$(COMP_MK)) | bin/comp
+	@echo "BUILD   component $(1)"
+	@$$(MAKE) -s --no-print-directory -f $$(filter %/$(1).mk,$$(COMP_MK)) SRCDIR=$$(dir $$(filter %/$(1).mk,$$(COMP_MK))) BUILDDIR=build/comp/$(1) BINDIR=bin/comp COMP=$(1) all
 	@touch $$@
 endef
 
-$(foreach prog,$(PROGRAMS_NAMES),$(eval $(call PROGRAM_RULE,$(prog))))
+$(foreach comp,$(COMP_NAMES),$(eval $(call COMP_RULE,$(comp))))
 
-bin bin/boot bin/kernel bin/libstd bin/libpatchwork bin/modules bin/boxes bin/programs:
+bin bin/boot bin/kernel bin/libstd bin/init bin/modules bin/comp:
 	@mkdir -p $@
 
 lib/acpica_tests/.built: | lib
@@ -222,7 +224,7 @@ clean:
 clean_programs:
 	@echo "CLEAN   programs"
 	@rm -rf build/programs bin/programs
-	@rm -f $(PROGRAMS_TARGETS)
+	@rm -f $(COMP_TARGETS)
 
 nuke: clean
 	@echo "NUKE    all"
