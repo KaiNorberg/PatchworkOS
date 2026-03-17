@@ -168,6 +168,8 @@ const char* st_code_str(st_code_t code)
         return "invalid acpi table";
     case ST_CODE_NO_BOOT_INFO:
         return "bootloader did not provide needed info";
+    case ST_CODE_NOINTERP:
+        return "unable to locate elf interpreter";
 
     // System
     case ST_CODE_MJ_OVERFLOW:

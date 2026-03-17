@@ -38,16 +38,6 @@
  * %llu
  * ```
  *
- * ## cmdline
- *
- * A readable file that contains the command line arguments of the process (argv).
- *
- * Format:
- *
- * ```
- * %s\0%s\0...%s\0
- * ```
- *
  * ## note
  *
  * A writable file that sends notes to the process. Writing to this file will enqueue that data as a
@@ -116,9 +106,9 @@
  *
  * Copies the `parentfd` from the caller process into the `childfd` of the target process.
  *
- * ### start <address>
+ * ### start <entry> <stack>
  *
- * Creates the first thread of the process and starts execution at the specified virtual address.
+ * Creates the first thread of the process and starts execution at the specified entry virtual address and with its stack pointer set to the specified stack virtual address.
  *
  * If the process already has threads, this command will fail.
  *

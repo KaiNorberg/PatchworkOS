@@ -58,6 +58,8 @@ typedef struct
     uint64_t depth;
 } mtx_t;
 
+#define _THRD_STACK 8192
+
 #if __STDC_VERSION__ >= 201112L
 #define thread_local _Thread_local
 #endif

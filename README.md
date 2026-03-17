@@ -227,12 +227,12 @@ iowalk(IOPATH("/dev/pipe/clone"), &out);
 
 proc_fd_t fds = {{.parent = in, .child = 0}, {.parent = out, .child = 1}};
 fd_t proc;
-proc_create(PROC_ARGS("/path/to/program"), &fds, ARRAY_SIZE(fds), PRIO_MAX_USER, PROC_DEFAULT, &proc);
+proc_create(FDCWD, FDROOT, PROC_ARGS("/path/to/program"), &fds, ARRAY_SIZE(fds), PRIO_MAX_USER, PROC_DEFAULT, &proc);
 ```
 
 We first create two pipes by opening the special file `/dev/pipe/clone` twice.
 
-Then we create a new process using the `proc_create()` function. This function takes in several arguments, first it takes in a `proc_args_t` structure containing the command line arguments for the process which we use the `PROC_ARGS()` helper to construct. The second argument is an array of `proc_fd_t` structures allowing us to pass file descriptors to the child, where each `proc_fd_t` structure contains a parent file descriptor and a child file descriptor. The third argument is the size of this array which we use the `ARRAY_SIZE()` helper to compute. The fourth and fifth arguments are the process's priority and flags, and the sixth argument is an output pointer for a file descriptor to the child's proc directory containing files for manipulating the child.
+Then we create a new process using the `proc_create()` function. This function takes in several arguments, first it takes in the root and current working directory to use when resolving paths, then it takes in a `proc_args_t` structure containing the command line arguments for the process which we use the `PROC_ARGS()` helper to construct. The second argument is an array of `proc_fd_t` structures allowing us to pass file descriptors to the child, where each `proc_fd_t` structure contains a parent file descriptor and a child file descriptor. The third argument is the size of this array which we use the `ARRAY_SIZE()` helper to compute. The fourth and fifth arguments are the process's priority and flags, and the sixth argument is an output pointer for a file descriptor to the child's proc directory containing files for manipulating the child.
 
 We could optimize the pipe creation by walking to the second pipe relative to the first one. This optimization can be applied any time we wish to open the same file multiple times:
 
@@ -243,9 +243,9 @@ iowalk(IOPATH("/dev/pipe/clone"), &in);
 iowalk(in, FDROOT, ".", &out);
 ```
 
-It's important to note that `proc_create()` is not a system call; it's a wrapper around the `/proc/clone` file which when opened returns the root of the new processes proc directory. The kernel does nothing more than provide an empty address space that `proc_create()` fills using the `mem` file in the child's proc directory. This means that the path specified to the executable or paths specified within the executable (for example to the dynamic linker) are from the parents perspective.
+It's important to note that `proc_create()` is not a system call; it's a wrapper around the `/proc/clone` file which when opened returns the root of the new processes proc directory. The kernel does nothing more than provide an empty address space that `proc_create()` fills using the `mem` file in the child's proc directory.
 
-A process will be freed when its proc directories reference count reaches zero.
+A process will be freed when its reference count reaches zero, as such "killing" a process is merely freeing its threads to drop their references to the process.
 
 ### Environment Variables
 
@@ -260,7 +260,7 @@ In POSIX, if a page fault were to occur in a process running in some form of she
 In PatchworkOS, a note is a string where the first word of the string is the note type and the rest is arbitrary data. As such, a page fault note might look like:
 
 ```bash
-shell: pagefault at 0x40013b due to stack overflow at 0x7ffffff9af18
+shell: pagefault at 0x40013b when reading present page at 0x7ffffff9af18
 ```
 
 All that happened is that the shell printed the exit status of the process, which is also a string and in this case is set to the note that killed the process.
@@ -283,7 +283,7 @@ fdbind(FDROOT, target, fs);
 
 ## Components
 
-In PatchworkOS, the user space is made up of "components". These components can be anything, executable programs, libraries, headers, or just data files. 
+In PatchworkOS, the user space is made up of "components". These components can be anything, executable programs, libraries, headers, or just data files.
 
 Each component is stored in a `/comp/<name>` directory. Within each components directory are version directories written in the form `<x>.<y>.<z>` (major.minor.patch).
 

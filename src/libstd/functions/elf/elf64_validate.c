@@ -11,6 +11,7 @@ uint64_t elf64_validate(Elf64_File* elf, void* data, uint64_t size)
 
     elf->symtab = NULL;
     elf->dynsym = NULL;
+    elf->interp = NULL;
 
     Elf64_Ehdr* header = (Elf64_Ehdr*)data;
     if (header->e_ident[EI_MAG0] != ELFMAG0 || header->e_ident[EI_MAG1] != ELFMAG1 ||
@@ -266,13 +267,20 @@ uint64_t elf64_validate(Elf64_File* elf, void* data, uint64_t size)
                 return 42;
             }
             unsigned char* interpData = (unsigned char*)((uintptr_t)data + phdr->p_offset);
+            bool nullTerminated = false;
             for (uint64_t j = 0; j < phdr->p_filesz; j++)
             {
                 if (interpData[j] == '\0')
                 {
-                    return 43;
+                    nullTerminated = true;
+                    break;
                 }
             }
+            if (!nullTerminated)
+            {
+                return 43;
+            }
+            elf->interp = (const char*)interpData;
             break;
         case PT_PHDR:
             if (phdr->p_offset != header->e_phoff || phdr->p_filesz != (uint64_t)header->e_phnum * header->e_phentsize)

@@ -95,17 +95,25 @@ _thread_t* _thread_new(thrd_start_t func, void* arg)
         return NULL;
     }
 
+    thread->stack = malloc(_THRD_STACK);
+    if (thread->stack == NULL)
+    {
+        free(thread);
+        return NULL;
+    }
+
     _thread_init(thread);
     thread->func = func;
     thread->arg = arg;
 
     mtx_lock(&entryMutex);
 
-    status_t status = syscall2(SYS_THRD_CREATE, &thread->id, (uintptr_t)_thread_entry, (uintptr_t)thread);
+    status_t status = syscall3(SYS_THRD_CREATE, &thread->id, (uintptr_t)_thread_entry, (uintptr_t)thread->stack, (uintptr_t)thread);
     if (IS_ERR(status))
     {
         errno = ENOMEM;
         mtx_unlock(&entryMutex);
+        free(thread->stack);
         free(thread);
         return NULL;
     }
@@ -114,6 +122,7 @@ _thread_t* _thread_new(thrd_start_t func, void* arg)
     {
         errno = ENOSPC;
         mtx_unlock(&entryMutex);
+        free(thread->stack);
         free(thread);
         return NULL;
     }
@@ -131,6 +140,7 @@ void _thread_free(_thread_t* thread)
     }
     if (thread != &thread0)
     {
+        free(thread->stack);
         free(thread);
     }
 }

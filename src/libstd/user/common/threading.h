@@ -44,6 +44,7 @@ typedef struct _thread
     ioring_t ring;
     ioring_t* activeRing;
     bool hasRing;
+    uint8_t* stack;
 } _thread_t;
 
 void _threading_init(void);

@@ -29,17 +29,7 @@
  * exception/interrupt.
  *
  */
-#define CONFIG_MAX_KERNEL_STACK_PAGES 100
-
-/**
- * @brief User stack configuration.
- * @def CONFIG_MAX_USER_STACK_PAGES
- *
- * The `CONFIG_MAX_USER_STACK_PAGES` constant defines the maximum amount of pages that are allowed to be allocated for a
- * threads user stack, the user stack is used while the thread is in user space.
- *
- */
-#define CONFIG_MAX_USER_STACK_PAGES 100
+#define CONFIG_KERNEL_STACK_PAGES 7
 
 /**
  * @brief Maximum file descriptor configuration.
@@ -48,7 +38,7 @@
  * The `CONFIG_MAX_FD` constant defines the maximum amount of file descriptors that a process is allowed to have open.
  *
  */
-#define CONFIG_MAX_FD 64
+#define CONFIG_MAX_FD 124
 
 /**
  * @brief Serial logging configuration.

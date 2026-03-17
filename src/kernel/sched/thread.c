@@ -28,15 +28,13 @@ static void thread_ctor(void* ptr)
     thread->id = 0;
     list_entry_init(&thread->processEntry);
     atomic_init(&thread->state, THREAD_PARKED);
-    thread->error = 0;
-    thread->kernelStack = (stack_pointer_t){0};
-    thread->userStack = (stack_pointer_t){0};
     thread->wait = (wait_client_t){0};
     thread->simd = (simd_ctx_t){0};
     thread->notes = (note_queue_t){0};
     thread->syscall = (syscall_ctx_t){0};
     thread->perf = (perf_thread_ctx_t){0};
     thread->fsBase = 0;
+    thread->kernelStack = (stack_pointer_t){0};
     memset_s(&thread->frame, sizeof(interrupt_frame_t), 0, sizeof(interrupt_frame_t));
 }
 
@@ -70,12 +68,6 @@ status_t thread_new(thread_t** out, process_t* process)
     thread->id = atomic_fetch_add_explicit(&process->threads.newTid, 1, memory_order_relaxed);
     sched_client_init(&thread->sched);
     atomic_store(&thread->state, THREAD_PARKED);
-    thread->error = 0;
-    stack_pointer_init(&thread->kernelStack,
-        VMM_KERNEL_STACKS_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_KERNEL_STACK_PAGES),
-        CONFIG_MAX_KERNEL_STACK_PAGES);
-    stack_pointer_init(&thread->userStack,
-        VMM_USER_SPACE_MAX - thread_id_to_offset(thread->id, CONFIG_MAX_USER_STACK_PAGES), CONFIG_MAX_USER_STACK_PAGES);
     wait_client_init(&thread->wait);
     status_t status = simd_ctx_init(&thread->simd);
     if (IS_ERR(status))
@@ -84,6 +76,7 @@ status_t thread_new(thread_t** out, process_t* process)
         return status;
     }
     note_queue_init(&thread->notes);
+    stack_pointer_init_buffer(&thread->kernelStack, thread->kernelStackBuffer, CONFIG_KERNEL_STACK_PAGES);
     syscall_ctx_init(&thread->syscall, &thread->kernelStack);
     perf_thread_ctx_init(&thread->perf);
 
@@ -230,7 +223,7 @@ SYSCALL_DEFINE(SYS_THRD_CURRENT)
     return OK;
 }
 
-SYSCALL_DEFINE(SYS_THRD_CREATE, void* entry, void* arg)
+SYSCALL_DEFINE(SYS_THRD_CREATE, void* entry, void* stack, void* arg)
 {
     thread_t* thread = thread_current();
     process_t* process = thread->process;
@@ -253,8 +246,8 @@ SYSCALL_DEFINE(SYS_THRD_CREATE, void* entry, void* arg)
 
     memset(&thread->frame, 0, sizeof(interrupt_frame_t));
     newThread->frame.rip = (uint64_t)entry;
-    newThread->frame.rsp = newThread->userStack.top;
-    newThread->frame.rbp = newThread->userStack.top;
+    newThread->frame.rsp = (uint64_t)stack;
+    newThread->frame.rbp = (uint64_t)stack;
     newThread->frame.rdi = (uint64_t)arg;
     newThread->frame.cs = GDT_CS_RING3;
     newThread->frame.ss = GDT_SS_RING3;

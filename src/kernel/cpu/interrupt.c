@@ -84,17 +84,6 @@ static void exception_kernel_page_fault_handler(interrupt_frame_t* frame)
         return;
     }
 
-    status = exception_grow_stack(thread, faultAddr, &thread->userStack, PML_USER | PML_WRITE | PML_PRESENT);
-    if (IS_ERR(status))
-    {
-        panic(frame, "failed to grow user stack for page fault at address 0x%llx %Y", faultAddr, status);
-    }
-
-    if (ST_CODE(status) == ST_CODE_IN_STACK)
-    {
-        return;
-    }
-
     panic(frame, "invalid page fault at address 0x%llx", faultAddr);
 }
 
@@ -109,27 +98,6 @@ static void exception_user_page_fault_handler(interrupt_frame_t* frame)
         exception_handle_user(frame,
             IOFMT("pagefault at 0x%llx when %s present page at 0x%llx", frame->rip,
                 (frame->errorCode & PAGE_FAULT_WRITE) ? "writing to" : "reading from", faultAddr));
-        return;
-    }
-
-    uintptr_t alignedFaultAddr = ROUND_DOWN(faultAddr, PAGE_SIZE);
-    if (stack_pointer_overlaps_guard(&thread->userStack, alignedFaultAddr, 1))
-    {
-        exception_handle_user(frame,
-            IOFMT("pagefault at 0x%llx due to stack overflow at 0x%llx", frame->rip, faultAddr));
-        return;
-    }
-
-    status_t status = exception_grow_stack(thread, faultAddr, &thread->userStack, PML_USER | PML_WRITE | PML_PRESENT);
-    if (IS_ERR(status))
-    {
-        exception_handle_user(frame,
-            IOFMT("pagefault at 0x%llx failed to grow stack at 0x%llx", frame->rip, faultAddr));
-        return;
-    }
-
-    if (ST_CODE(status) == ST_CODE_IN_STACK)
-    {
         return;
     }
 

@@ -250,8 +250,6 @@ static inline void start_init_process(void)
     initThread->frame.rip = bootInfo->init.entry;
     initThread->frame.cs = GDT_CS_RING3;
     initThread->frame.ss = GDT_SS_RING3;
-    initThread->frame.rsp = initThread->userStack.top;
-    initThread->frame.rbp = initThread->userStack.top;
     initThread->frame.rflags = RFLAGS_INTERRUPT_ENABLE | RFLAGS_ALWAYS_SET;
 
     sched_submit(initThread);

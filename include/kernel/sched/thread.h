@@ -49,15 +49,6 @@ typedef enum
  *
  * A `thread_t` represents an independent thread of execution within a `process_t`.
  *
- * ## Thread Stacks
- * The position of a thread user stack is decided based on its thread id. The user stack of the thread with id 0 is
- * located at the top of the lower half of the address space, the user stack is `CONFIG_MAX_USER_STACK_PAGES` pages
- * long, and below it is the guard page. Below that is the user stack of the thread with id 1, below that is its guard
- * page, it then continues like that for however many threads there are.
- *
- * The kernel stack works the same way, but instead starts just under the kernel code and data section, at the top of
- * the kernel stacks region and each stack is `CONFIG_MAX_KERNEL_STACK_PAGES` pages long.
- *
  */
 typedef struct thread
 {
@@ -71,9 +62,6 @@ typedef struct thread
     /**
      * The last error that occurred while the thread was running, specified using errno codes.
      */
-    errno_t error;
-    stack_pointer_t kernelStack; ///< The kernel stack of the thread.
-    stack_pointer_t userStack;   ///< The user stack of the thread.
     sched_client_t sched;
     wait_client_t wait;
     simd_ctx_t simd;
@@ -87,6 +75,8 @@ typedef struct thread
      */
     interrupt_frame_t frame;
     rcu_entry_t rcu;
+    stack_pointer_t kernelStack;
+    uint8_t kernelStackBuffer[CONFIG_KERNEL_STACK_PAGES * PAGE_SIZE] ALIGNED(64);
 } thread_t;
 
 /**

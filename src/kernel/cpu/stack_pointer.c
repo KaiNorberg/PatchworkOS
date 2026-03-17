@@ -8,7 +8,7 @@
 
 bool stack_pointer_init(stack_pointer_t* stack, uintptr_t maxAddress, uint64_t maxPages)
 {
-    if (stack == NULL || maxPages == 0 || !VMM_IS_PAGE_ALIGNED(maxAddress))
+    if (stack == NULL || maxPages == 0 || maxAddress % 64 != 0)
     {
         return false;
     }
@@ -32,7 +32,7 @@ bool stack_pointer_init(stack_pointer_t* stack, uintptr_t maxAddress, uint64_t m
 
 bool stack_pointer_init_buffer(stack_pointer_t* stack, void* buffer, uint64_t pages)
 {
-    if (stack == NULL || buffer == NULL || pages == 0 || !VMM_IS_PAGE_ALIGNED(buffer))
+    if (stack == NULL || buffer == NULL || pages == 0 || (uintptr_t)buffer % 64 != 0)
     {
         return false;
     }

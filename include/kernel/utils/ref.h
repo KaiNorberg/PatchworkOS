@@ -134,11 +134,7 @@ static inline void* ref_inc(void* ptr)
     }
 
     assert(ref->magic == REF_MAGIC);
-    uint64_t num = atomic_fetch_add_explicit(&ref->count, 1, memory_order_relaxed);
-    if (num == 50)
-    {
-        LOG_DEBUG("Reference count for %p reached 50\n", ptr);
-    }
+    atomic_fetch_add_explicit(&ref->count, 1, memory_order_relaxed);
     return ptr;
 }
 
@@ -166,10 +162,6 @@ static inline void* ref_inc_try(void* ptr)
         }
     } while (!atomic_compare_exchange_weak_explicit(&ref->count, &count, count + 1, memory_order_relaxed,
         memory_order_relaxed));
-    if (count == 50)
-    {
-        LOG_DEBUG("Reference count for %p reached 50\n", ptr);
-    }
     return ptr;
 }
 

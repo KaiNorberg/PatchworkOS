@@ -200,7 +200,7 @@ int main(void)
             .child = FDOUT,
         },
     };
-    status = proc_create(PROC_ARGS("/bin/test"), fds, ARRAY_SIZE(fds), PRIO_DEFAULT, 0, NULL);
+    status = proc_create(FDCWD, FDROOT, PROC_ARGS("/comp/test/1.0.0/bin/test"), fds, ARRAY_SIZE(fds), PRIO_DEFAULT, 0, NULL);
     if (IS_ERR(status))
     {
         printf("init: failed to create test process %Y\n", status);

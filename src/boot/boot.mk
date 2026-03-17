@@ -8,15 +8,15 @@ BOOT_CFLAGS := -DNDEBUG -DEFI_FUNCTION_WRAPPER -D_BOOT_ -Ilib -Iinclude -Iinclud
 
 BOOT_LDFLAGS := -shared -nostdlib -fPIC -Bsymbolic -Llib/gnu-efi/x86_64/lib -Llib/gnu-efi/x86_64/gnuefi -Tlib/gnu-efi/gnuefi/elf_x86_64_efi.lds lib/gnu-efi/x86_64/gnuefi/crt0-efi-x86_64.o
 
-$(BUILDDIR)/main.o: $(SRCDIR)/main.c
+$(BUILDDIR)/boot.o: $(SRCDIR)/boot.c
 	$(MKCWD)
 	@echo "  CC    $<"
 	@gcc $(BOOT_CFLAGS) -c $< -o $@
 
-$(BINDIR)/bootx64.efi: $(BUILDDIR)/main.o
+$(BINDIR)/bootx64.efi: $(BUILDDIR)/boot.o
 	$(MKCWD)
 	@echo "  LD    $@ (EFI)"
-	@ld $(BOOT_LDFLAGS) $< -o $(BUILDDIR)/main.so -lgnuefi -lefi
+	@ld $(BOOT_LDFLAGS) $< -o $(BUILDDIR)/boot.so -lgnuefi -lefi
 	@echo "  OBJCOPY $@"
-	@objcopy -j .text -j .sdata -j .data -j .rodata -j .dynamic -j .dynsym  -j .rel -j .rela -j .rel.* -j .rela.* -j .reloc --target efi-app-x86_64 --subsystem=10 $(BUILDDIR)/main.so $@
-	@rm -f $(BINDIR)/main.so
+	@objcopy -j .text -j .sdata -j .data -j .rodata -j .dynamic -j .dynsym  -j .rel -j .rela -j .rel.* -j .rela.* -j .reloc --target efi-app-x86_64 --subsystem=10 $(BUILDDIR)/boot.so $@
+	@rm -f $(BINDIR)/boot.so

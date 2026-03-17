@@ -91,72 +91,6 @@ static vnode_class_t prioClass = {
         },
 };
 
-static status_t procfs_cmdline_read(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    process_t* process = procfs_get_process(irp);
-
-    if (process->args.buffer == NULL || process->args.length == 0)
-    {
-        irp->result = 0;
-        return OK;
-    }
-
-    LOCK_SCOPE(&process->args.lock);
-    return sglist_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, process->args.buffer, process->args.length);
-}
-
-static status_t procfs_cmdline_write(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    process_t* process = procfs_get_process(irp);
-
-    size_t count = sglist_size(frame->write.buffer);
-    if (count == 0)
-    {
-        irp->result = 0;
-        return OK;
-    }
-
-    char* args = malloc(count + 1);
-    if (args == NULL)
-    {
-        return ERR(FS, NOMEM);
-    }
-
-    size_t bytesWritten;
-    status_t status = sglist_copy_out(frame->write.buffer, count, 0, &bytesWritten, args, count);
-    if (IS_ERR(status))
-    {
-        free(args);
-        return status;
-    }
-    args[bytesWritten] = '\0';
-
-    lock_acquire(&process->args.lock);
-    if (process->args.buffer != NULL)
-    {
-        free(process->args.buffer);
-    }
-    process->args.buffer = args;
-    process->args.length = bytesWritten;
-    lock_release(&process->args.lock);
-
-    irp->result = bytesWritten;
-    return OK;
-}
-
-static vnode_class_t cmdlineClass = {
-    .name = "procfs cmdline",
-    .type = FILE_TYPE_SYSTEM,
-    .handlers =
-        {
-            VNODE_HANDLERS(),
-            [IRP_MJ_READ] = procfs_cmdline_read,
-            [IRP_MJ_WRITE] = procfs_cmdline_write,
-        },
-};
-
 static status_t procfs_note_write(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
@@ -399,8 +333,9 @@ static status_t procfs_ctl_control(irp_t* irp)
             return ERR(FS, DYING);
         }
 
-        uintptr_t addr;
-        if (sscanf(args, "%zu", &addr) != 1)
+        uintptr_t entry;
+        uintptr_t stack;
+        if (sscanf(args, "%zu %zu", &entry, &stack) != 2)
         {
             return ERR(FS, INVAL);
         }
@@ -412,9 +347,9 @@ static status_t procfs_ctl_control(irp_t* irp)
             return status;
         }
 
-        thread->frame.rip = addr;
-        thread->frame.rsp = thread->userStack.top;
-        thread->frame.rbp = thread->userStack.top;
+        thread->frame.rip = entry;
+        thread->frame.rsp = stack;
+        thread->frame.rbp = stack;
         thread->frame.cs = GDT_CS_RING3;
         thread->frame.ss = GDT_SS_RING3;
         thread->frame.rflags = RFLAGS_ALWAYS_SET | RFLAGS_INTERRUPT_ENABLE;
@@ -597,7 +532,6 @@ typedef struct
 
 static const procfs_entry_t dirEntries[] = {
     {"prio", &prioClass},
-    {"cmdline", &cmdlineClass},
     {"note", &noteClass},
     {"pid", &pidClass},
     {"wait", &waitClass},

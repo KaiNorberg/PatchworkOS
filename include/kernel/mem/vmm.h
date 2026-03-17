@@ -32,27 +32,33 @@
  * level page table (PML4) with 256 entries for the lower half and 256 entries for the higher half. By doing this we can
  * very easily copy mappings between address spaces by just copying the relevant PML4 entries.
  *
- * First, at the very top, we have the kernel binary itself and all its data, code, bss, rodata, etc. This region uses
+ * ### Kernel Binary
+ * 
+ * At the very top, we have the kernel binary itself and all its data, code, bss, rodata, etc. This region uses
  * the last index in the page table. This region will never be fully filled and the kernel itself is not guaranteed to
  * be loaded at the very start of this region, the exact address is decided by the `linker.lds` script. This section is
  * mapped identically for all processes.
  *
- * Secondly, we have the per-thread kernel stacks, one stack per thread. Each stack is allocated on demand and can grow
- * dynamically up to `CONFIG_MAX_KERNEL_STACK_PAGES` pages not including its guard page. This section takes up 2 indices
- * in the page table and will be process-specific as each process has its own threads and thus its own kernel stacks.
- *
- * Thirdly, we have the kernel heap, which is used for dynamic memory allocation in the kernel. The kernel heap starts
+ * ### Kernel Heap
+ * 
+ * After the binary we have the kernel heap, which is used for dynamic memory allocation in the kernel. The kernel heap starts
  * at `VMM_KERNEL_HEAP_MIN` and grows up towards `VMM_KERNEL_HEAP_MAX`. This section takes up 2 indices in the
  * page table and is mapped identically for all processes.
  *
- * Fourthly, we have the identity mapped physical memory. All physical memory will be
+ * ### Identity Region
+ * 
+ * Below the kernel heap we have the identity mapped physical memory. All physical memory will be
  * mapped here by simply taking the original physical address and adding `0xFFFF800000000000` to it. This means that the
  * physical address `0x123456` will be mapped to the virtual address `0xFFFF800000123456`. This section takes up all
  * remaining indices below the kernel heap to the end of the higher half and is mapped identically for all processes.
  *
- * Fithly, we have non-canonical memory, which is impossible to access and will trigger a general protection fault if
+ * ### Non-canonical Memory
+ * 
+ * In the middle of the address space is non-canonical memory, which is impossible to access and will trigger a general protection fault if
  * accessed. This section takes up the gap between the lower half and higher half of the address space.
  *
+ * ### User Space
+ * 
  * Finally, we have user space, which starts at `0x400000` (4MiB) and goes up to the top of the lower half. The first
  * 4MiB is left unmapped to catch null pointer dereferences. This section is different for each process.
  *
@@ -63,11 +69,8 @@
 #define VMM_KERNEL_BINARY_MIN \
     PML_INDEX_TO_ADDR(PML_INDEX_AMOUNT - 1, PML4) ///< The minimum address for the content of the kernel binary.
 
-#define VMM_KERNEL_STACKS_MAX VMM_KERNEL_BINARY_MIN                         ///< The maximum address for kernel stacks.
-#define VMM_KERNEL_STACKS_MIN PML_INDEX_TO_ADDR(PML_INDEX_AMOUNT - 3, PML4) ///< The minimum address for kernel stacks.
-
-#define VMM_KERNEL_HEAP_MAX VMM_KERNEL_STACKS_MIN                         ///< The maximum address for the kernel heap.
-#define VMM_KERNEL_HEAP_MIN PML_INDEX_TO_ADDR(PML_INDEX_AMOUNT - 5, PML4) ///< The minimum address for the kernel heap.
+#define VMM_KERNEL_HEAP_MAX VMM_KERNEL_BINARY_MIN                         ///< The maximum address for the kernel heap.
+#define VMM_KERNEL_HEAP_MIN PML_INDEX_TO_ADDR(PML_INDEX_AMOUNT - 3, PML4) ///< The minimum address for the kernel heap.
 
 #define VMM_IDENTITY_MAPPED_MAX VMM_KERNEL_HEAP_MIN   ///< The maximum address for the identity mapped physical memory.
 #define VMM_IDENTITY_MAPPED_MIN PML_HIGHER_HALF_START ///< The minimum address for the identity mapped physical memory.

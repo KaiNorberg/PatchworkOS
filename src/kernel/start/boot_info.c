@@ -20,7 +20,7 @@ boot_info_t* boot_info_get(void)
 
 static void boot_dir_to_higher_half(boot_dir_t* dir)
 {
-    // Pop everything from the lists and then readd them with higher half addresses.
+    // Pop everything from the lists and then read them with higher half addresses.
     list_t children = LIST_CREATE(children);
     list_t files = LIST_CREATE(files);
 

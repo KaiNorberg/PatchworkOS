@@ -88,7 +88,7 @@ typedef struct proc_fd
  */
 typedef struct proc_args
 {
-    const char* buf; ///< A null deliminated string of arguments.
+    char* buf; ///< A null deliminated string of arguments.
     size_t len;
 } proc_args_t;
 
@@ -121,6 +121,8 @@ typedef struct proc_args
 /**
  * @brief System call for creating new processes.
  *
+ * @param cwd The current working directory to for resolving paths.
+ * @param root The root directory to use for resolving paths.
  * @param args The arguments for the new process.
  * @param fds An array of file descriptor mappings.
  * @param count The number of mappings in the array.
@@ -129,7 +131,7 @@ typedef struct proc_args
  * @param proc Optional output pointer for the proc directory of the child.
  * @return An appropriate status value.
  */
-status_t proc_create(proc_args_t args, const proc_fd_t* fds, size_t count, prio_t priority, proc_flags_t flags,
+status_t proc_create(fd_t cwd, fd_t root, proc_args_t args, const proc_fd_t* fds, size_t count, prio_t priority, proc_flags_t flags,
     fd_t* proc);
 
 /**

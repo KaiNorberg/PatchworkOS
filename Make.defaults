@@ -71,12 +71,13 @@ else
 	CFLAGS += -O2 -DNDEBUG
 endif
 
+# The dynamic linker path is temporary during testing. Should be changed to /lib/dynlink.so later.
 ifeq ($(NOSTDLIB),1)
 	LDSTDLIB :=
 	CRT_START :=
 	CRT_END :=
 else
-	LDSTDLIB := -lstd
+	LDSTDLIB := -lstd -Wl,--dynamic-linker=/comp/dynlink/1.0.0/lib/dynlink.so
 	CRT_START := bin/libstd/crt0.o bin/libstd/crti.o
 	CRT_END := bin/libstd/crtn.o
 endif

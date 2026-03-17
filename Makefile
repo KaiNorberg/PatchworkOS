@@ -3,7 +3,17 @@ IMAGE = bin/PatchworkOS.img
 VERSION_HEADER = include/kernel/version.h
 VERSION_STRING := $(shell git describe --tags --always --dirty --long 2>/dev/null || echo "unknown")
 
-ROOT_DIRS = acct acct/admin comp dev efi efi/boot boot boot/modules boot/modules/$(VERSION_STRING) proc sys
+ROOT_DIRS = \
+	acct acct/admin \
+	comp \
+	comp/libstd comp/libstd/1.0.0 comp/libstd/1.0.0/lib \
+	comp/dynlink comp/dynlink/1.0.0 comp/dynlink/1.0.0/lib \
+	comp/test comp/test/1.0.0 comp/test/1.0.0/bin \
+	dev \
+	efi efi/boot \
+	boot boot/modules boot/modules/$(VERSION_STRING) \
+	proc \
+	sys \
 
 BOOT_TARGET = bin/boot/.built
 KERNEL_TARGET = bin/kernel/.built
@@ -39,6 +49,8 @@ bin/.deployed: $(BOOT_TARGET) $(KERNEL_TARGET) $(LIBSTD_TARGET) $(INIT_TARGET) $
 		mcopy -i $(IMAGE) -s bin/modules/* ::/boot/modules/$(VERSION_STRING) 2>/dev/null || true; \
 	fi
 	@mcopy -i $(IMAGE) -s bin/libstd/libstd.so ::/comp/libstd/1.0.0/lib 2>/dev/null || true
+	@mcopy -i $(IMAGE) -s bin/comp/dynlink.so ::/comp/dynlink/1.0.0/lib 2>/dev/null || true
+	@mcopy -i $(IMAGE) -s bin/comp/test ::/comp/test/1.0.0/bin 2>/dev/null || true
 #@mcopy -i $(IMAGE) -s LICENSE ::/base/license 2>/dev/null || true
 #@mcopy -i $(IMAGE) -s bin/libpatchwork/libpatchwork.a ::/base/lib 2>/dev/null || true
 #@if [ -d include ]; then \

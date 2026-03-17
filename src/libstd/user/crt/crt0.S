@@ -15,6 +15,9 @@ _start:
 
     call _init
 
+    // main(argc, argv)
+    mov (%rsp), %rdi
+    lea 8(%rsp), %rsi
     call main
 
     mov %rax, %rdi

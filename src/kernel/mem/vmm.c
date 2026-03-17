@@ -57,7 +57,6 @@ void vmm_init(void)
 
     LOG_DEBUG("address space layout:\n");
     LOG_DEBUG("  kernel binary:    %p-%p\n", VMM_KERNEL_BINARY_MIN, VMM_KERNEL_BINARY_MAX);
-    LOG_DEBUG("  kernel stacks:    %p-%p\n", VMM_KERNEL_STACKS_MIN, VMM_KERNEL_STACKS_MAX);
     LOG_DEBUG("  kernel heap:      %p-%p\n", VMM_KERNEL_HEAP_MIN, VMM_KERNEL_HEAP_MAX);
     LOG_DEBUG("  identity map:     %p-%p\n", VMM_IDENTITY_MAPPED_MIN, VMM_IDENTITY_MAPPED_MAX);
     LOG_DEBUG("  user space:       %p-%p\n", VMM_USER_SPACE_MIN, VMM_USER_SPACE_MAX);

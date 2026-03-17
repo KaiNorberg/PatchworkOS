@@ -25,7 +25,7 @@ typedef struct thread thread_t;
  * of memory starts unmapped and when a page fault occurs within the stack region a new page is mapped to the faulting
  * address.
  *
- * The guard page is always the page just below the bottom of the stack, and is never mapped. If a thread tries to
+ * The guard pages are always the page just below the bottom of the stack, and is never mapped. If a thread tries to
  * access the guard page a page fault will occur, which can be used to detect stack overflows.
  *
  * The exception to the above is when using `stack_pointer_init_buffer()` to create a stack from a provided buffer, in

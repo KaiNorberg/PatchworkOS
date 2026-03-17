@@ -117,7 +117,7 @@ typedef struct
             uint64_t cacheDisabled : 1; ///< If set caching is disabled for the page.
             uint64_t accessed : 1;      ///< If set the page has been accessed (read or written to).
             uint64_t dirty : 1;         ///< If set the page has been written to.
-            uint64_t size : 1;          // Unused
+            uint64_t size : 1;          ///< Unused
             uint64_t global : 1;        ///< If set the page is not flushed from the TLB on a context switch.
             /**
              * If set, then when the entry is unmapped or the page table is freed, the physical page will be freed.

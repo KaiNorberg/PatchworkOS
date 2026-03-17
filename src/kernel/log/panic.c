@@ -114,10 +114,6 @@ static bool panic_is_valid_address(uintptr_t addr)
     {
         return false;
     }
-    if (addr >= VMM_KERNEL_STACKS_MAX - sizeof(uint64_t) * 4 && addr <= VMM_KERNEL_STACKS_MAX)
-    {
-        return false;
-    }
     return true;
 }
 
@@ -431,10 +427,6 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
             else if (cr2 >= VMM_KERNEL_HEAP_MIN && cr2 < VMM_KERNEL_HEAP_MAX)
             {
                 LOG_PANIC("                    (Faulting address is in kernel heap region)\n");
-            }
-            else if (cr2 >= VMM_KERNEL_STACKS_MIN && cr2 < VMM_KERNEL_STACKS_MAX)
-            {
-                LOG_PANIC("                    (Faulting address is in kernel stacks region)\n");
             }
         }
     }

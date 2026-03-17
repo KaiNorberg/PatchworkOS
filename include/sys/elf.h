@@ -783,6 +783,7 @@ typedef struct
     uint64_t size;      ///< The size of the file in bytes
     Elf64_Shdr* symtab; ///< The symbol table section, or `NULL` if not found
     Elf64_Shdr* dynsym; ///< The dynamic symbol table section, or `NULL` if not found
+    const char* interp; ///< The dynamic linker/interpreter path, or `NULL` if not found
 } Elf64_File;
 
 /**
