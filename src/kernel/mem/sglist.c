@@ -151,31 +151,13 @@ status_t sglist_add_vector(sglist_t* list, space_t* space, const iovec_t* vector
     for (size_t i = 0; i < count; i++)
     {
         iovec_t vec;
-        const uint8_t* src = (const uint8_t*)&vector[i];
-        uint8_t* dst = (uint8_t*)&vec;
-        size_t len = sizeof(iovec_t);
-
-        while (len > 0)
+        status_t status = space_copy_out(space, &vec, &vector[i], sizeof(iovec_t));
+        if (IS_ERR(status))
         {
-            phys_addr_t phys;
-            status_t status = space_virt_to_phys(space, src, &phys);
-            if (IS_ERR(status))
-            {
-                return status;
-            }
-
-            size_t offset = phys % PAGE_SIZE;
-            size_t avail = MIN(len, PAGE_SIZE - offset);
-
-            void* kaddr = PFN_TO_VIRT(PHYS_TO_PFN(phys)) + offset;
-            memcpy(dst, kaddr, avail);
-
-            dst += avail;
-            src += avail;
-            len -= avail;
+            return status;
         }
 
-        status_t status = sglist_add(list, space, vec.base, vec.length);
+        status = sglist_add(list, space, vec.base, vec.length);
         if (IS_ERR(status))
         {
             return status;

@@ -167,6 +167,16 @@
  */
 #define WARN_UNUSED_RESULT __attribute__((warn_unused_result))
 
+/**
+ * @brief GCC visibility hidden attribute.
+ *
+ * Tells the compiler that the function or variable with said attribute is not visible outside of the current shared
+ * object or executable.
+ *
+ * Used by the dynamic linker to perform RIP-relative calls.
+ */
+#define HIDDEN __attribute__((visibility("hidden")))
+
 /** @} */
 
 #endif

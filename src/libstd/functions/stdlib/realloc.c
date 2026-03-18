@@ -65,7 +65,7 @@ void* realloc(void* ptr, size_t size)
 
     if (alignedSize > block->size)
     {
-        _heap_header_t* next = CONTAINER_OF_SAFE(block->listEntry.next, _heap_header_t, listEntry);
+        _heap_header_t* next = CONTAINER_OF_SAFE(list_next(&_heapList, &block->listEntry), _heap_header_t, listEntry);
 
         if (next != NULL && !(next->flags & _HEAP_ALLOCATED) && (block->data + block->size == (uint8_t*)next))
         {
@@ -88,7 +88,7 @@ void* realloc(void* ptr, size_t size)
             }
         }
 
-        _heap_header_t* prev = CONTAINER_OF_SAFE(block->listEntry.prev, _heap_header_t, listEntry);
+        _heap_header_t* prev = CONTAINER_OF_SAFE(list_prev(&_heapList, &block->listEntry), _heap_header_t, listEntry);
 
         if (prev != NULL && !(prev->flags & _HEAP_ALLOCATED) && (prev->data + prev->size == (uint8_t*)block))
         {

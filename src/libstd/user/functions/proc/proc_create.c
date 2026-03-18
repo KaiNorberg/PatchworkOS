@@ -85,7 +85,8 @@ static uint64_t setup_stack(void* stack, uint64_t stackSize, uint64_t stackVaddr
     return stackVaddr + spOffset;
 }
 
-static void build_ctl_string(char* ctlStr, const proc_fd_t* fds, size_t count, uint64_t entry, uint64_t initialSp, fd_t extraParentFd, fd_t extraChildFd)
+static void build_ctl_string(char* ctlStr, const proc_fd_t* fds, size_t count, uint64_t entry, uint64_t initialSp,
+    fd_t extraParentFd, fd_t extraChildFd)
 {
     char* p = ctlStr;
     if (fds != NULL)
@@ -126,7 +127,8 @@ static void build_ctl_string(char* ctlStr, const proc_fd_t* fds, size_t count, u
     *p = '\0';
 }
 
-static status_t load_elf(fd_t cwd, fd_t root, const char* path, fd_t* fdOut, void** sourceOut, size_t* sizeOut, Elf64_File* elfOut)
+static status_t load_elf(fd_t cwd, fd_t root, const char* path, fd_t* fdOut, void** sourceOut, size_t* sizeOut,
+    Elf64_File* elfOut)
 {
     iovar_t fdReg = IOREG(IOREG0, FDNONE);
     iovar_t sizeReg = IOREG(IOREG1, SIZE_MAX);
@@ -135,7 +137,7 @@ static status_t load_elf(fd_t cwd, fd_t root, const char* path, fd_t* fdOut, voi
     IOWALKQ(cwd, root, path, IOSOFT, &fdReg, 0);
     IOATTRQ(fdReg, FILE_GET_SIZE, 0, IOHARD, &sizeReg, 0);
     IOMAPQ(fdReg, NULL, sizeReg, 0, IOMAP_READ, IONOLINK, &sourceReg, 0);
-    
+
     status_t status = iosync();
 
     *fdOut = (fd_t)IOREG_LOAD(fdReg);
@@ -166,7 +168,8 @@ static status_t load_elf(fd_t cwd, fd_t root, const char* path, fd_t* fdOut, voi
     return OK;
 }
 
-static status_t allocate_process_memory(fd_t cwd, fd_t root, size_t destSize, Elf64_Addr targetVaddr, size_t stackSize, Elf64_Addr stackVaddr, fd_t* procFdOut, void** destOut, void** stackOut)
+static status_t allocate_process_memory(fd_t cwd, fd_t root, size_t destSize, Elf64_Addr targetVaddr, size_t stackSize,
+    Elf64_Addr stackVaddr, fd_t* procFdOut, void** destOut, void** stackOut)
 {
     iovar_t memReg = IOREG(IOREG1, FDNONE);
     iovar_t destReg = IOREG(IOREG2, NULL);
@@ -205,8 +208,8 @@ static status_t allocate_process_memory(fd_t cwd, fd_t root, size_t destSize, El
     return OK;
 }
 
-status_t proc_create(fd_t cwd, fd_t root, proc_args_t args, const proc_fd_t* fds, size_t count, prio_t priority, proc_flags_t flags,
-    fd_t* proc)
+status_t proc_create(fd_t cwd, fd_t root, proc_args_t args, const proc_fd_t* fds, size_t count, prio_t priority,
+    proc_flags_t flags, fd_t* proc)
 {
     UNUSED(flags); ///< @todo Handle flags within proc_create().
 
@@ -233,7 +236,7 @@ status_t proc_create(fd_t cwd, fd_t root, proc_args_t args, const proc_fd_t* fds
     Elf64_File interpElf;
     void* interpSource = NULL;
     size_t interpSize = 0;
-    
+
     fd_t exeChildFd = FDNONE;
 
     auxv_t auxv[8];
@@ -269,7 +272,6 @@ status_t proc_create(fd_t cwd, fd_t root, proc_args_t args, const proc_fd_t* fds
 
         size_t auxvCount = 0;
         auxv[auxvCount++] = (auxv_t){.type = AUXV_EXECFD, .value = exeChildFd};
-        auxv[auxvCount++] = (auxv_t){.type = AUXV_ENTRY, .value = elf.header->e_entry};
         auxv[auxvCount++] = (auxv_t){.type = AUXV_BASE, .value = INTERPRETER_BASE};
         auxv[auxvCount++] = (auxv_t){.type = AUXV_NULL, .value = 0};
         pAuxv = auxv;
@@ -285,7 +287,7 @@ status_t proc_create(fd_t cwd, fd_t root, proc_args_t args, const proc_fd_t* fds
         status = ERR(LIBSTD, INVALELF);
         goto cleanup_interp;
     }
-    uint64_t destSize = maxAddr - minAddr;
+    size_t destSize = maxAddr - minAddr;
 
     Elf64_Addr targetVaddr = minAddr;
     if (interpSource != NULL)
@@ -293,8 +295,8 @@ status_t proc_create(fd_t cwd, fd_t root, proc_args_t args, const proc_fd_t* fds
         targetVaddr = INTERPRETER_BASE;
     }
 
-    uint64_t stackSize = PAGE_SIZE * 16;
-    uint64_t stackVaddr = 0x7FFFFFFF0000 - stackSize;
+    size_t stackSize = PAGE_SIZE * 16;
+    uintptr_t stackVaddr = 0x7FFFFFFF0000 - stackSize;
 
     fd_t procFd = FDNONE;
     void* dest = NULL;
@@ -334,7 +336,7 @@ status_t proc_create(fd_t cwd, fd_t root, proc_args_t args, const proc_fd_t* fds
         IOWALKQ(procFd, root, "prio", IOSOFT, &prioReg, 0);
         IOWRITEQ(prioReg, IOBUF(prioStr, strlen(prioStr)), 0, IOHARD, NULL, 0);
         IODROPQ(prioReg, IONOLINK, NULL, 0);
-    }    
+    }
 
     char ctlStr[PAGE_SIZE];
     build_ctl_string(ctlStr, fds, count, entry, initialSp, exeChildFd != FDNONE ? exeFd : FDNONE, exeChildFd);
@@ -393,6 +395,6 @@ cleanup_source:
     {
         iodrop(exeFd);
     }
-    
+
     return status;
 }

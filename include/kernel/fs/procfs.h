@@ -108,7 +108,8 @@
  *
  * ### start <entry> <stack>
  *
- * Creates the first thread of the process and starts execution at the specified entry virtual address and with its stack pointer set to the specified stack virtual address.
+ * Creates the first thread of the process and starts execution at the specified entry virtual address and with its
+ * stack pointer set to the specified stack virtual address.
  *
  * If the process already has threads, this command will fail.
  *

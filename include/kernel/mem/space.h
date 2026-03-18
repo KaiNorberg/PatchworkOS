@@ -81,6 +81,7 @@ typedef struct space
     BITMAP_DEFINE(callbackBitmap, PML_MAX_CALLBACK); ///< Bitmap to track available callback IDs.
     BITMAP_DEFINE(cpus, CPU_MAX);                    ///< Bitmap to track which CPUs are using this space.
     atomic_uint16_t shootdownAcks;
+    lock_t cpuLock;
     lock_t lock;
 } space_t;
 

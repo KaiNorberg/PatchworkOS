@@ -34,7 +34,7 @@ static void print_dir(fd_t dir, uint32_t depth)
         return;
     }
 
-    char contents[4096];
+    char contents[2000];
     size_t length;
     status = ioread(dir, IOBUF(contents, sizeof(contents)), 0, &length);
     if (IS_ERR(status))
@@ -196,11 +196,20 @@ int main(void)
 
     proc_fd_t fds[] = {
         {
+            .parent = FDROOT,
+            .child = FDROOT,
+        },
+        {
+            .parent = FDCWD,
+            .child = FDCWD,
+        },
+        {
             .parent = FDOUT,
             .child = FDOUT,
         },
     };
-    status = proc_create(FDCWD, FDROOT, PROC_ARGS("/comp/test/1.0.0/bin/test"), fds, ARRAY_SIZE(fds), PRIO_DEFAULT, 0, NULL);
+    status =
+        proc_create(FDCWD, FDROOT, PROC_ARGS("/comp/test/1.0.0/bin/test"), fds, ARRAY_SIZE(fds), PRIO_DEFAULT, 0, NULL);
     if (IS_ERR(status))
     {
         printf("init: failed to create test process %Y\n", status);

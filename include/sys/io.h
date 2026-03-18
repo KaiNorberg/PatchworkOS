@@ -31,26 +31,10 @@ extern "C"
  *
  * @todo Write I/O Ring user-side interface documentation.
  *
- * @see kernel_io_ioring_get for more information about I/O rings.
+ * @see kernel_io_ioring for more information about I/O rings.
  *
  * @{
  */
-
-/**
- * @brief Convert a size in bytes to pages.
- *
- * @param amount The amount of bytes.
- * @return The amount of pages.
- */
-#define BYTES_TO_PAGES(amount) (((amount) + PAGE_SIZE - 1) / PAGE_SIZE)
-
-/**
- * @brief Size of an object in pages.
- *
- * @param object The object to calculate the page size of.
- * @return The amount of pages.
- */
-#define PAGE_SIZE_OF(object) BYTES_TO_PAGES(sizeof(object))
 
 /**
  * @brief Maximum buffer size for the `IOFMT()` macro.
@@ -476,6 +460,23 @@ typedef struct iopoll
 
 #ifndef _KERNEL_
 
+#ifndef _IORING_GET
+/**
+ * @brief Internal helper to get the I/O ring for the current thread.
+ *
+ * @note This function shouldent be used directly within the I/O header, instead the `_IORING_GET()` macro should be
+ * used. This is primarily so the dynamic linker can also use the I/O header by defining it themselves.
+ *
+ * @return The I/O ring for the current thread.
+ */
+PURE ioring_t* _ioring_get(void);
+#define _IORING_GET() _ioring_get()
+#endif
+
+#ifndef _IORING_STRLEN
+#define _IORING_STRLEN(s) strlen(s)
+#endif
+
 /**
  * @brief System call to initialize the I/O ring.
  *
@@ -761,13 +762,6 @@ static inline void ioprep_flush(iosqe_t* iosqe, iosqe_flags_t flags, clock_t tim
 }
 
 /**
- * @brief Internal helper to get the I/O ring for the current thread.
- *
- * @return The I/O ring for the current thread.
- */
-PURE ioring_t* _ioring_get(void);
-
-/**
  * @brief Internal helper to get a submission queue entry, entering the ring if full.
  *
  * @return A pointer to the next available SQE.
@@ -885,7 +879,7 @@ typedef struct iovar* iovar_t;
         ioreg_t _r = _Generic((_reg), iovar_t: (ioreg_t)(uintptr_t)(_reg), default: (ioreg_t)(size_t)(_reg)); \
         if (_r != IOREG_NONE) \
         { \
-            ioring_t* ring = _ioring_get(); \
+            ioring_t* ring = _IORING_GET(); \
             value = atomic_load_explicit(&ring->ctrl->regs[_r - 1], memory_order_relaxed); \
         } \
         value; \
@@ -903,7 +897,7 @@ typedef struct iovar* iovar_t;
         ioreg_t _r = _Generic((_reg), iovar_t: (ioreg_t)(uintptr_t)(_reg), default: (ioreg_t)(size_t)(_reg)); \
         if (_r != IOREG_NONE) \
         { \
-            ioring_t* ring = _ioring_get(); \
+            ioring_t* ring = _IORING_GET(); \
             atomic_store_explicit(&ring->ctrl->regs[_r - 1], (uint64_t)(_value), memory_order_relaxed); \
         } \
         _r; \
@@ -934,14 +928,7 @@ typedef struct iovar* iovar_t;
  * @param _save The register to save the result into, or `NULL`.
  * @param _data User data to associate with the operation.
  */
-#define IOCANCELQ(_target, _cancel, _link, _save, _data) \
-    ({ \
-        ioring_t* _ring = _ioring_get(); \
-        iosqe_t* _sqe = _iosqe_get(_ring); \
-        ioprep_cancel(_sqe, _IOOPTS_FLAGS(_link, _save, _target, _cancel, 0, 0, 0), CLOCKS_NEVER, (uintptr_t)(_data), \
-            (uintptr_t)_IOVAR_VAL(_target), (iocancel_t)_IOVAR_VAL(_cancel)); \
-        iosqe_put(_ring); \
-    })
+#define IOCANCELQ(_target, _cancel, _link, _save, _data) IOCANCELQT(_target, _cancel, CLOCKS_NEVER, _link, _save, _data)
 
 /**
  * @brief Queue a cancel operation with a timeout.
@@ -957,14 +944,13 @@ typedef struct iovar* iovar_t;
  * @param _data User data to associate with the operation.
  */
 #define IOCANCELQT(_target, _cancel, _timeout, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
+    ({ \
+        ioring_t* _ring = _IORING_GET(); \
         iosqe_t* _sqe = _iosqe_get(_ring); \
         ioprep_cancel(_sqe, _IOOPTS_FLAGS(_link, _save, _target, _cancel, 0, 0, 0), (_timeout), (uintptr_t)(_data), \
             (uintptr_t)_IOVAR_VAL(_target), (iocancel_t)_IOVAR_VAL(_cancel)); \
         iosqe_put(_ring); \
-    } while (0)
+    })
 
 /**
  * @brief Queue a read operation.
@@ -984,15 +970,7 @@ typedef struct iovar* iovar_t;
  */
 #define IOREADQ(...) _IOREADQ_IMPL(__VA_ARGS__)
 #define _IOREADQ_IMPL(_fd, _vector, _count, _offset, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
-        iosqe_t* _sqe = _iosqe_get(_ring); \
-        ioprep_read(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _vector, _count, _offset, 0), CLOCKS_NEVER, \
-            (uintptr_t)(_data), (fd_t)_IOVAR_VAL(_fd), (const iovec_t*)_IOVAR_VAL(_vector), \
-            (size_t)_IOVAR_VAL(_count), (ssize_t)_IOVAR_VAL(_offset)); \
-        iosqe_put(_ring); \
-    } while (0)
+    _IOREADQT_IMPL(_fd, _vector, _count, _offset, CLOCKS_NEVER, _link, _save, _data)
 
 /**
  * @brief Queue a read operation with a timeout.
@@ -1013,15 +991,14 @@ typedef struct iovar* iovar_t;
  */
 #define IOREADQT(...) _IOREADQT_IMPL(__VA_ARGS__)
 #define _IOREADQT_IMPL(_fd, _vector, _count, _offset, _timeout, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
+    ({ \
+        ioring_t* _ring = _IORING_GET(); \
         iosqe_t* _sqe = _iosqe_get(_ring); \
         ioprep_read(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _vector, _count, _offset, 0), (_timeout), \
             (uintptr_t)(_data), (fd_t)_IOVAR_VAL(_fd), (const iovec_t*)_IOVAR_VAL(_vector), \
             (size_t)_IOVAR_VAL(_count), (ssize_t)_IOVAR_VAL(_offset)); \
         iosqe_put(_ring); \
-    } while (0)
+    })
 
 /**
  * @brief Queue a write operation.
@@ -1041,15 +1018,7 @@ typedef struct iovar* iovar_t;
  */
 #define IOWRITEQ(...) _IOWRITEQ_IMPL(__VA_ARGS__)
 #define _IOWRITEQ_IMPL(_fd, _vector, _count, _offset, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
-        iosqe_t* _sqe = _iosqe_get(_ring); \
-        ioprep_write(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _vector, _count, _offset, 0), CLOCKS_NEVER, \
-            (uintptr_t)(_data), (fd_t)_IOVAR_VAL(_fd), (const iovec_t*)_IOVAR_VAL(_vector), \
-            (size_t)_IOVAR_VAL(_count), (ssize_t)_IOVAR_VAL(_offset)); \
-        iosqe_put(_ring); \
-    } while (0)
+    _IOWRITEQT_IMPL(_fd, _vector, _count, _offset, CLOCKS_NEVER, _link, _save, _data)
 
 /**
  * @brief Queue a write operation with a timeout.
@@ -1070,15 +1039,14 @@ typedef struct iovar* iovar_t;
  */
 #define IOWRITEQT(...) _IOWRITEQT_IMPL(__VA_ARGS__)
 #define _IOWRITEQT_IMPL(_fd, _vector, _count, _offset, _timeout, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
+    ({ \
+        ioring_t* _ring = _IORING_GET(); \
         iosqe_t* _sqe = _iosqe_get(_ring); \
         ioprep_write(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _vector, _count, _offset, 0), (_timeout), \
             (uintptr_t)(_data), (fd_t)_IOVAR_VAL(_fd), (const iovec_t*)_IOVAR_VAL(_vector), \
             (size_t)_IOVAR_VAL(_count), (ssize_t)_IOVAR_VAL(_offset)); \
         iosqe_put(_ring); \
-    } while (0)
+    })
 
 /**
  * @brief Queue a poll operation.
@@ -1092,15 +1060,7 @@ typedef struct iovar* iovar_t;
  * @param _save The register to save the result into, or `NULL`.
  * @param _data User data to associate with the operation.
  */
-#define IOPOLLQ(_fd, _events, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
-        iosqe_t* _sqe = _iosqe_get(_ring); \
-        ioprep_poll(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _events, 0, 0, 0), CLOCKS_NEVER, (uintptr_t)(_data), \
-            (fd_t)_IOVAR_VAL(_fd), (ioevents_t)_IOVAR_VAL(_events)); \
-        iosqe_put(_ring); \
-    } while (0)
+#define IOPOLLQ(_fd, _events, _link, _save, _data) IOPOLLQT(_fd, _events, CLOCKS_NEVER, _link, _save, _data)
 
 /**
  * @brief Queue a poll operation with a timeout.
@@ -1116,14 +1076,13 @@ typedef struct iovar* iovar_t;
  * @param _data User data to associate with the operation.
  */
 #define IOPOLLQT(_fd, _events, _timeout, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
+    ({ \
+        ioring_t* _ring = _IORING_GET(); \
         iosqe_t* _sqe = _iosqe_get(_ring); \
         ioprep_poll(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _events, 0, 0, 0), (_timeout), (uintptr_t)(_data), \
             (fd_t)_IOVAR_VAL(_fd), (ioevents_t)_IOVAR_VAL(_events)); \
         iosqe_put(_ring); \
-    } while (0)
+    })
 
 /**
  * @brief Queue a seek operation.
@@ -1139,14 +1098,7 @@ typedef struct iovar* iovar_t;
  * @param _data User data to associate with the operation.
  */
 #define IOSEEKQ(_fd, _origin, _offset, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
-        iosqe_t* _sqe = _iosqe_get(_ring); \
-        ioprep_seek(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, 0, _origin, _offset, 0), CLOCKS_NEVER, (uintptr_t)(_data), \
-            (fd_t)_IOVAR_VAL(_fd), (ioseek_t)_IOVAR_VAL(_origin), (ssize_t)_IOVAR_VAL(_offset)); \
-        iosqe_put(_ring); \
-    } while (0)
+    IOSEEKQT(_fd, _origin, _offset, CLOCKS_NEVER, _link, _save, _data)
 
 /**
  * @brief Queue a seek operation with a timeout.
@@ -1163,14 +1115,13 @@ typedef struct iovar* iovar_t;
  * @param _data User data to associate with the operation.
  */
 #define IOSEEKQT(_fd, _origin, _offset, _timeout, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
+    ({ \
+        ioring_t* _ring = _IORING_GET(); \
         iosqe_t* _sqe = _iosqe_get(_ring); \
         ioprep_seek(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, 0, _origin, _offset, 0), (_timeout), (uintptr_t)(_data), \
             (fd_t)_IOVAR_VAL(_fd), (ioseek_t)_IOVAR_VAL(_origin), (ssize_t)_IOVAR_VAL(_offset)); \
         iosqe_put(_ring); \
-    } while (0)
+    })
 
 /**
  * @brief Queue a memory map operation.
@@ -1190,15 +1141,7 @@ typedef struct iovar* iovar_t;
  * @param _data User data to associate with the operation.
  */
 #define IOMAPQ(_fd, _address, _count, _offset, _map, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
-        iosqe_t* _sqe = _iosqe_get(_ring); \
-        ioprep_map(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _address, _count, _offset, _map), CLOCKS_NEVER, \
-            (uintptr_t)(_data), (fd_t)_IOVAR_VAL(_fd), (void*)_IOVAR_VAL(_address), (size_t)_IOVAR_VAL(_count), \
-            (ssize_t)_IOVAR_VAL(_offset), (iomap_t)_IOVAR_VAL(_map)); \
-        iosqe_put(_ring); \
-    } while (0)
+    IOMAPQT(_fd, _address, _count, _offset, _map, CLOCKS_NEVER, _link, _save, _data)
 
 /**
  * @brief Queue a memory map operation with a timeout.
@@ -1219,15 +1162,14 @@ typedef struct iovar* iovar_t;
  * @param _data User data to associate with the operation.
  */
 #define IOMAPQT(_fd, _address, _count, _offset, _map, _timeout, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
+    ({ \
+        ioring_t* _ring = _IORING_GET(); \
         iosqe_t* _sqe = _iosqe_get(_ring); \
         ioprep_map(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _address, _count, _offset, _map), (_timeout), \
             (uintptr_t)(_data), (fd_t)_IOVAR_VAL(_fd), (void*)_IOVAR_VAL(_address), (size_t)_IOVAR_VAL(_count), \
             (ssize_t)_IOVAR_VAL(_offset), (iomap_t)_IOVAR_VAL(_map)); \
         iosqe_put(_ring); \
-    } while (0)
+    })
 
 /**
  * @brief Queue a walk operation.
@@ -1242,16 +1184,7 @@ typedef struct iovar* iovar_t;
  * @param _save The register to save the result into, or `NULL`.
  * @param _data User data to associate with the operation.
  */
-#define IOWALKQ(_cwd, _root, _path, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
-        iosqe_t* _sqe = _iosqe_get(_ring); \
-        const char* _p = (const char*)_IOVAR_VAL(_path); \
-        ioprep_walk(_sqe, _IOOPTS_FLAGS(_link, _save, _cwd, _root, _path, 0, 0), CLOCKS_NEVER, (uintptr_t)(_data), \
-            (fd_t)_IOVAR_VAL(_cwd), (fd_t)_IOVAR_VAL(_root), _p, _p ? strlen(_p) : 0); \
-        iosqe_put(_ring); \
-    } while (0)
+#define IOWALKQ(_cwd, _root, _path, _link, _save, _data) IOWALKQT(_cwd, _root, _path, CLOCKS_NEVER, _link, _save, _data)
 
 /**
  * @brief Queue a walk operation with a timeout.
@@ -1268,15 +1201,14 @@ typedef struct iovar* iovar_t;
  * @param _data User data to associate with the operation.
  */
 #define IOWALKQT(_cwd, _root, _path, _timeout, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
+    ({ \
+        ioring_t* _ring = _IORING_GET(); \
         iosqe_t* _sqe = _iosqe_get(_ring); \
         const char* _p = (const char*)_IOVAR_VAL(_path); \
         ioprep_walk(_sqe, _IOOPTS_FLAGS(_link, _save, _cwd, _root, _path, 0, 0), (_timeout), (uintptr_t)(_data), \
-            (fd_t)_IOVAR_VAL(_cwd), (fd_t)_IOVAR_VAL(_root), _p, _p ? strlen(_p) : 0); \
+            (fd_t)_IOVAR_VAL(_cwd), (fd_t)_IOVAR_VAL(_root), _p, _p != NULL ? _IORING_STRLEN(_p) : 0); \
         iosqe_put(_ring); \
-    } while (0)
+    })
 
 /**
  * @brief Queue a drop operation.
@@ -1289,15 +1221,7 @@ typedef struct iovar* iovar_t;
  * @param _save The register to save the result into, or `NULL`.
  * @param _data User data to associate with the operation.
  */
-#define IODROPQ(_fd, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
-        iosqe_t* _sqe = _iosqe_get(_ring); \
-        ioprep_drop(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, 0, 0, 0, 0), CLOCKS_NEVER, (uintptr_t)(_data), \
-            (fd_t)_IOVAR_VAL(_fd)); \
-        iosqe_put(_ring); \
-    } while (0)
+#define IODROPQ(_fd, _link, _save, _data) IODROPQT(_fd, CLOCKS_NEVER, _link, _save, _data)
 
 /**
  * @brief Queue a drop operation with a timeout.
@@ -1312,14 +1236,13 @@ typedef struct iovar* iovar_t;
  * @param _data User data to associate with the operation.
  */
 #define IODROPQT(_fd, _timeout, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
+    ({ \
+        ioring_t* _ring = _IORING_GET(); \
         iosqe_t* _sqe = _iosqe_get(_ring); \
         ioprep_drop(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, 0, 0, 0, 0), (_timeout), (uintptr_t)(_data), \
             (fd_t)_IOVAR_VAL(_fd)); \
         iosqe_put(_ring); \
-    } while (0)
+    })
 
 /**
  * @brief Queue a remove operation.
@@ -1332,15 +1255,7 @@ typedef struct iovar* iovar_t;
  * @param _save The register to save the result into, or `NULL`.
  * @param _data User data to associate with the operation.
  */
-#define IOREMOVEQ(_fd, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
-        iosqe_t* _sqe = _iosqe_get(_ring); \
-        ioprep_remove(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, 0, 0, 0, 0), CLOCKS_NEVER, (uintptr_t)(_data), \
-            (fd_t)_IOVAR_VAL(_fd)); \
-        iosqe_put(_ring); \
-    } while (0)
+#define IOREMOVEQ(_fd, _link, _save, _data) IOREMOVEQT(_fd, CLOCKS_NEVER, _link, _save, _data)
 
 /**
  * @brief Queue a remove operation with a timeout.
@@ -1355,14 +1270,13 @@ typedef struct iovar* iovar_t;
  * @param _data User data to associate with the operation.
  */
 #define IOREMOVEQT(_fd, _timeout, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
+    ({ \
+        ioring_t* _ring = _IORING_GET(); \
         iosqe_t* _sqe = _iosqe_get(_ring); \
         ioprep_remove(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, 0, 0, 0, 0), (_timeout), (uintptr_t)(_data), \
             (fd_t)_IOVAR_VAL(_fd)); \
         iosqe_put(_ring); \
-    } while (0)
+    })
 
 /**
  * @brief Queue an attribute operation.
@@ -1377,15 +1291,7 @@ typedef struct iovar* iovar_t;
  * @param _save The register to save the result into, or `NULL`.
  * @param _data User data to associate with the operation.
  */
-#define IOATTRQ(_fd, _attr, _value, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
-        iosqe_t* _sqe = _iosqe_get(_ring); \
-        ioprep_attr(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _attr, _value, 0, 0), CLOCKS_NEVER, (uintptr_t)(_data), \
-            (fd_t)_IOVAR_VAL(_fd), (file_attr_t)_IOVAR_VAL(_attr), (uint64_t)_IOVAR_VAL(_value)); \
-        iosqe_put(_ring); \
-    } while (0)
+#define IOATTRQ(_fd, _attr, _value, _link, _save, _data) IOATTRQT(_fd, _attr, _value, CLOCKS_NEVER, _link, _save, _data)
 
 /**
  * @brief Queue an attribute operation with a timeout.
@@ -1402,14 +1308,13 @@ typedef struct iovar* iovar_t;
  * @param _data User data to associate with the operation.
  */
 #define IOATTRQT(_fd, _attr, _value, _timeout, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
+    ({ \
+        ioring_t* _ring = _IORING_GET(); \
         iosqe_t* _sqe = _iosqe_get(_ring); \
         ioprep_attr(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _attr, _value, 0, 0), (_timeout), (uintptr_t)(_data), \
             (fd_t)_IOVAR_VAL(_fd), (file_attr_t)_IOVAR_VAL(_attr), (uint64_t)_IOVAR_VAL(_value)); \
         iosqe_put(_ring); \
-    } while (0)
+    })
 
 /**
  * @brief Queue a query operation.
@@ -1423,15 +1328,7 @@ typedef struct iovar* iovar_t;
  * @param _save The register to save the result into, or `NULL`.
  * @param _data User data to associate with the operation.
  */
-#define IOQUERYQ(_fd, _info, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
-        iosqe_t* _sqe = _iosqe_get(_ring); \
-        ioprep_query(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _info, 0, 0, 0), CLOCKS_NEVER, (uintptr_t)(_data), \
-            (fd_t)_IOVAR_VAL(_fd), (file_info_t*)_IOVAR_VAL(_info)); \
-        iosqe_put(_ring); \
-    } while (0)
+#define IOQUERYQ(_fd, _info, _link, _save, _data) IOQUERYQT(_fd, _info, CLOCKS_NEVER, _link, _save, _data)
 
 /**
  * @brief Queue a query operation with a timeout.
@@ -1447,14 +1344,13 @@ typedef struct iovar* iovar_t;
  * @param _data User data to associate with the operation.
  */
 #define IOQUERYQT(_fd, _info, _timeout, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
+    ({ \
+        ioring_t* _ring = _IORING_GET(); \
         iosqe_t* _sqe = _iosqe_get(_ring); \
         ioprep_query(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, _info, 0, 0, 0), (_timeout), (uintptr_t)(_data), \
             (fd_t)_IOVAR_VAL(_fd), (file_info_t*)_IOVAR_VAL(_info)); \
         iosqe_put(_ring); \
-    } while (0)
+    })
 
 /**
  * @brief Queue a flush operation.
@@ -1467,15 +1363,7 @@ typedef struct iovar* iovar_t;
  * @param _save The register to save the result into, or `NULL`.
  * @param _data User data to associate with the operation.
  */
-#define IOFLUSHQ(_fd, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
-        iosqe_t* _sqe = _iosqe_get(_ring); \
-        ioprep_flush(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, 0, 0, 0, 0), CLOCKS_NEVER, (uintptr_t)(_data), \
-            (fd_t)_IOVAR_VAL(_fd)); \
-        iosqe_put(_ring); \
-    } while (0)
+#define IOFLUSHQ(_fd, _link, _save, _data) IOFLUSHQT(_fd, CLOCKS_NEVER, _link, _save, _data)
 
 /**
  * @brief Queue a flush operation with a timeout.
@@ -1490,14 +1378,13 @@ typedef struct iovar* iovar_t;
  * @param _data User data to associate with the operation.
  */
 #define IOFLUSHQT(_fd, _timeout, _link, _save, _data) \
-    do \
-    { \
-        ioring_t* _ring = _ioring_get(); \
+    ({ \
+        ioring_t* _ring = _IORING_GET(); \
         iosqe_t* _sqe = _iosqe_get(_ring); \
         ioprep_flush(_sqe, _IOOPTS_FLAGS(_link, _save, _fd, 0, 0, 0, 0), (_timeout), (uintptr_t)(_data), \
             (fd_t)_IOVAR_VAL(_fd)); \
         iosqe_put(_ring); \
-    } while (0)
+    })
 
 /**
  * @brief Wait for an I/O completion.
@@ -1510,7 +1397,7 @@ typedef struct iovar* iovar_t;
  */
 static inline status_t iowait(iocqe_t* out)
 {
-    ioring_t* ring = _ioring_get();
+    ioring_t* ring = _IORING_GET();
     iocqe_t* cqe;
     while ((cqe = iocqe_get(ring)) == NULL)
     {
@@ -1541,7 +1428,7 @@ static inline status_t iowait(iocqe_t* out)
  */
 static inline status_t iosync(void)
 {
-    ioring_t* ring = _ioring_get();
+    ioring_t* ring = _IORING_GET();
     uint32_t stail = atomic_load_explicit(&ring->ctrl->stail, memory_order_relaxed);
     uint32_t chead = atomic_load_explicit(&ring->ctrl->chead, memory_order_relaxed);
     size_t pending = (uint32_t)(stail - chead);

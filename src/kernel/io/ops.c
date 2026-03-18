@@ -35,7 +35,6 @@ static status_t io_op_cancel(irp_t* irp)
             irp_cancel_t handler = irp_cancel_claim(target);
             if (handler != NULL)
             {
-                list_remove(&target->activeEntry);
                 lock_release(&ctx->lock);
 
                 irp_cancel_finish(target, handler);

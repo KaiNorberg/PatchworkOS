@@ -229,6 +229,8 @@ static status_t ioring_complete(irp_t* irp, void* _ptr)
     list_remove(&irp->activeEntry);
     lock_release(&ctx->lock);
 
+    atomic_fetch_sub(&ctx->activeCount, 1);
+
     return OK;
 }
 
@@ -254,10 +256,12 @@ static status_t ioring_sqe_pop(ioring_ctx_t* ctx, ioring_notify_ctx_t* notify)
     {
         return ERR(IO, NOSPACE);
     }
+    atomic_fetch_add(&ctx->activeCount, 1);
 
     irp_t* irp = irp_new(ctx->process, ctx);
     if (irp == NULL)
     {
+        atomic_fetch_sub(&ctx->activeCount, 1);
         return ERR(IO, NOMEM);
     }
 
@@ -403,24 +407,33 @@ SYSCALL_DEFINE(SYS_IORING_TEARDOWN, ioring_id_t id)
         return ERR(IO, NOT_INIT);
     }
 
-    while (atomic_load(&ctx->activeCount) != 0)
+    while (true)
     {
+        bool found = false;
         lock_acquire(&ctx->lock);
-        if (list_is_empty(&ctx->active))
+        irp_t* target;
+        LIST_FOR_EACH(target, &ctx->active, activeEntry)
+        {
+            irp_cancel_t handler = irp_cancel_claim(target);
+            if (handler != NULL)
+            {
+                lock_release(&ctx->lock);
+                irp_cancel_finish(target, handler);
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
         {
             lock_release(&ctx->lock);
             break;
         }
-        irp_t* irp = CONTAINER_OF(list_first(&ctx->active), irp_t, activeEntry);
+    }
 
-        irp_cancel_t handler = irp_cancel_claim(irp);
-        list_remove(&irp->activeEntry);
-        lock_release(&ctx->lock);
-
-        if (handler != NULL)
-        {
-            irp_cancel_finish(irp, handler);
-        }
+    while (atomic_load(&ctx->activeCount) != 0)
+    {
+        ASM("pause");
     }
 
     ioring_unmap(ctx);

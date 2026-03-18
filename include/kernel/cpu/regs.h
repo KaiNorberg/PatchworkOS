@@ -21,6 +21,7 @@
 #define MSR_KERNEL_GS_BASE 0xc0000102
 
 #define EFER_SYSCALL_ENABLE 1
+#define EFER_NXE_ENABLE (1 << 11)
 
 #define RFLAGS_CARRY (1 << 0)
 #define RFLAGS_ALWAYS_SET (1 << 1)

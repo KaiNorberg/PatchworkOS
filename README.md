@@ -80,7 +80,7 @@ Plus its fun.
 
 ### Modernized I/O
 
-The I/O system is designed from the ground up to take advantage of several modern I/O concepts. For example, all open operations use `openat()` semantics, all I/O is vectored (uses scatter-gather lists), asynchronous and dispatched via an I/O Ring supporting timeouts and cancellation. Finally, all I/O is direct and (more or less) zero-copy. This is done with the goal of creating a powerful, flexible and efficient I/O system that can be used for a wide variety of purposes.
+The I/O system is designed from the ground up to take advantage of several modern I/O concepts. For example, all open/walk operations use `openat()` semantics, all I/O is vectored (uses scatter-gather lists), asynchronous and dispatched via an I/O Ring supporting timeouts and cancellation. Finally, all I/O is direct and (more or less) zero-copy. This is done with the goal of creating a powerful, flexible and efficient I/O system that can be used for a wide variety of purposes.
 
 There are two components to asynchronous I/O, the I/O Ring and I/O Request Packets.
 
@@ -490,6 +490,7 @@ Of course, it gets way, way worse than this, but hopefully this clarifies why th
 
 - Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg).
 - Capability security model. See [Security](#security) for more info.
+- Dynamic Linker with GNU hashing.
 - Note that currently a heavy focus has been placed on the kernel and low-level stuff, so user space is quite small... for now.
 
 ---

@@ -131,8 +131,8 @@ typedef struct proc_args
  * @param proc Optional output pointer for the proc directory of the child.
  * @return An appropriate status value.
  */
-status_t proc_create(fd_t cwd, fd_t root, proc_args_t args, const proc_fd_t* fds, size_t count, prio_t priority, proc_flags_t flags,
-    fd_t* proc);
+status_t proc_create(fd_t cwd, fd_t root, proc_args_t args, const proc_fd_t* fds, size_t count, prio_t priority,
+    proc_flags_t flags, fd_t* proc);
 
 /**
  * @brief System call to retrieve the current pid.
@@ -160,6 +160,22 @@ status_t proc_kill(proc_t pid);
  * @param result The string exit result of the process.
  */
 _NORETURN void proc_exit(const char* result);
+
+/**
+ * @brief Convert a size in bytes to pages.
+ *
+ * @param amount The amount of bytes.
+ * @return The amount of pages.
+ */
+#define BYTES_TO_PAGES(amount) (((amount) + PAGE_SIZE - 1) / PAGE_SIZE)
+
+/**
+ * @brief Size of an object in pages.
+ *
+ * @param object The object to calculate the page size of.
+ * @return The amount of pages.
+ */
+#define PAGE_SIZE_OF(object) BYTES_TO_PAGES(sizeof(object))
 
 /** @} */
 

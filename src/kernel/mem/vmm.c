@@ -27,15 +27,16 @@ static space_t kernelSpace;
 static void vmm_cpu_init(vmm_cpu_t* ctx)
 {
     cr4_write(cr4_read() | CR4_PAGE_GLOBAL_ENABLE);
+    msr_write(MSR_EFER, msr_read(MSR_EFER) | EFER_NXE_ENABLE);
 
     ctx->shootdownCount = 0;
     lock_init(&ctx->lock);
 
     cr3_write(PML_ENSURE_LOWER_HALF(kernelSpace.pageTable.pml4));
     ctx->space = &kernelSpace;
-    lock_acquire(&kernelSpace.lock);
+    lock_acquire(&kernelSpace.cpuLock);
     bitmap_set(&kernelSpace.cpus, SELF->id);
-    lock_release(&kernelSpace.lock);
+    lock_release(&kernelSpace.cpuLock);
 }
 
 PERCPU_DEFINE_CTOR(static vmm_cpu_t, pcpu_vmm)
@@ -647,13 +648,13 @@ void vmm_load(space_t* space)
     space_t* oldSpace = pcpu_vmm->space;
     pcpu_vmm->space = NULL;
 
-    lock_acquire(&oldSpace->lock);
+    lock_acquire(&oldSpace->cpuLock);
     bitmap_clear(&oldSpace->cpus, SELF->id);
-    lock_release(&oldSpace->lock);
+    lock_release(&oldSpace->cpuLock);
 
-    lock_acquire(&space->lock);
+    lock_acquire(&space->cpuLock);
     bitmap_set(&space->cpus, SELF->id);
-    lock_release(&space->lock);
+    lock_release(&space->cpuLock);
     pcpu_vmm->space = space;
 
     page_table_load(&space->pageTable);
@@ -702,6 +703,7 @@ void vmm_tlb_shootdown(space_t* space, void* virtAddr, size_t pageAmount)
     atomic_store(&space->shootdownAcks, 0);
 
     cpu_id_t id;
+    lock_acquire(&space->cpuLock);
     BITMAP_FOR_EACH_SET(&id, &space->cpus)
     {
         if (id == SELF->id)
@@ -730,6 +732,7 @@ void vmm_tlb_shootdown(space_t* space, void* virtAddr, size_t pageAmount)
         }
         expectedAcks++;
     }
+    lock_release(&space->cpuLock);
 
     clock_t startTime = clock_uptime();
     while (atomic_load(&space->shootdownAcks) < expectedAcks)

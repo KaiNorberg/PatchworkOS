@@ -63,7 +63,12 @@ static inline uint64_t hash_uint64(uint64_t x)
  */
 static inline uint64_t hash_string(const char* str)
 {
-    return hash_buffer(str, strlen(str));
+    uint64_t hash = 5381;
+    for (; *str; str++)
+    {
+        hash = (hash << 5) + hash + *str;
+    }
+    return hash;
 }
 
 /**
@@ -73,6 +78,7 @@ static inline uint64_t hash_string(const char* str)
 typedef struct map_entry
 {
     map_entry_t* next;
+    uint64_t hash;
 } map_entry_t;
 
 /**
@@ -83,6 +89,7 @@ typedef struct map_entry
 static inline void map_entry_init(map_entry_t* entry)
 {
     entry->next = NULL;
+    entry->hash = 0;
 }
 
 /**
@@ -166,7 +173,7 @@ static inline map_entry_t* map_find(map_t* map, const void* key, uint64_t hash)
     map_entry_t* entry = map->buckets[hash % map->size];
     for (; entry != NULL; entry = entry->next)
     {
-        if (map->cmp(entry, key))
+        if (entry->hash == hash && map->cmp(entry, key))
         {
             return entry;
         }
@@ -184,6 +191,7 @@ static inline map_entry_t* map_find(map_t* map, const void* key, uint64_t hash)
  */
 static inline void map_insert(map_t* map, map_entry_t* entry, uint64_t hash)
 {
+    entry->hash = hash;
     entry->next = map->buckets[hash % map->size];
     map->buckets[hash % map->size] = entry;
 }

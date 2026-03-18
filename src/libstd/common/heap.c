@@ -93,6 +93,7 @@ void _heap_init(void)
 #else
     mtx_init(&_heapLock, mtx_plain);
 #endif
+    list_init(&_heapList);
     for (uint64_t i = 0; i < _HEAP_NUM_BINS; i++)
     {
         list_init(&freeLists[i]);
@@ -115,6 +116,7 @@ _heap_header_t* _heap_block_new(uint64_t minSize)
     {
         return NULL;
     }
+
     newBlock->magic = _HEAP_HEADER_MAGIC;
     newBlock->flags = _HEAP_ZEROED;
     newBlock->size = alignedTotalSize - sizeof(_heap_header_t);
@@ -124,7 +126,7 @@ _heap_header_t* _heap_block_new(uint64_t minSize)
     _heap_header_t* last = CONTAINER_OF_SAFE(list_last(&_heapList), _heap_header_t, listEntry);
     while (last != NULL && (uintptr_t)last > (uintptr_t)newBlock)
     {
-        last = CONTAINER_OF_SAFE(last->listEntry.prev, _heap_header_t, listEntry);
+        last = CONTAINER_OF_SAFE(list_prev(&_heapList, &last->listEntry), _heap_header_t, listEntry);
     }
 
     if (last == NULL)
@@ -277,8 +279,8 @@ void _heap_free(_heap_header_t* block)
 
     block->flags &= ~_HEAP_ALLOCATED;
 
-    _heap_header_t* prev = CONTAINER_OF_SAFE(block->listEntry.prev, _heap_header_t, listEntry);
-    _heap_header_t* next = CONTAINER_OF_SAFE(block->listEntry.next, _heap_header_t, listEntry);
+    _heap_header_t* prev = CONTAINER_OF_SAFE(list_prev(&_heapList, &block->listEntry), _heap_header_t, listEntry);
+    _heap_header_t* next = CONTAINER_OF_SAFE(list_next(&_heapList, &block->listEntry), _heap_header_t, listEntry);
 
     if (next != NULL && !(next->flags & _HEAP_ALLOCATED) && (block->data + block->size == (uint8_t*)next))
     {

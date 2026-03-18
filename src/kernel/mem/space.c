@@ -94,6 +94,7 @@ status_t space_init(space_t* space, uintptr_t startAddress, uintptr_t endAddress
     BITMAP_DEFINE_INIT(space->callbackBitmap, PML_MAX_CALLBACK);
     BITMAP_DEFINE_INIT(space->cpus, CPU_MAX);
     atomic_init(&space->shootdownAcks, 0);
+    lock_init(&space->cpuLock);
     lock_init(&space->lock);
 
     if (flags & SPACE_MAP_KERNEL_BINARY)

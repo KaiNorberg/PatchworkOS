@@ -33,32 +33,33 @@
  * very easily copy mappings between address spaces by just copying the relevant PML4 entries.
  *
  * ### Kernel Binary
- * 
+ *
  * At the very top, we have the kernel binary itself and all its data, code, bss, rodata, etc. This region uses
  * the last index in the page table. This region will never be fully filled and the kernel itself is not guaranteed to
  * be loaded at the very start of this region, the exact address is decided by the `linker.lds` script. This section is
  * mapped identically for all processes.
  *
  * ### Kernel Heap
- * 
- * After the binary we have the kernel heap, which is used for dynamic memory allocation in the kernel. The kernel heap starts
- * at `VMM_KERNEL_HEAP_MIN` and grows up towards `VMM_KERNEL_HEAP_MAX`. This section takes up 2 indices in the
+ *
+ * After the binary we have the kernel heap, which is used for dynamic memory allocation in the kernel. The kernel heap
+ * starts at `VMM_KERNEL_HEAP_MIN` and grows up towards `VMM_KERNEL_HEAP_MAX`. This section takes up 2 indices in the
  * page table and is mapped identically for all processes.
  *
  * ### Identity Region
- * 
+ *
  * Below the kernel heap we have the identity mapped physical memory. All physical memory will be
  * mapped here by simply taking the original physical address and adding `0xFFFF800000000000` to it. This means that the
  * physical address `0x123456` will be mapped to the virtual address `0xFFFF800000123456`. This section takes up all
  * remaining indices below the kernel heap to the end of the higher half and is mapped identically for all processes.
  *
  * ### Non-canonical Memory
- * 
- * In the middle of the address space is non-canonical memory, which is impossible to access and will trigger a general protection fault if
- * accessed. This section takes up the gap between the lower half and higher half of the address space.
+ *
+ * In the middle of the address space is non-canonical memory, which is impossible to access and will trigger a general
+ * protection fault if accessed. This section takes up the gap between the lower half and higher half of the address
+ * space.
  *
  * ### User Space
- * 
+ *
  * Finally, we have user space, which starts at `0x400000` (4MiB) and goes up to the top of the lower half. The first
  * 4MiB is left unmapped to catch null pointer dereferences. This section is different for each process.
  *

@@ -4,7 +4,7 @@ all: $(BINDIR)/bootx64.efi
 
 .PHONY: all
 
-BOOT_CFLAGS := -DNDEBUG -DEFI_FUNCTION_WRAPPER -D_BOOT_ -Ilib -Iinclude -Iinclude/libstd -Isrc/libstd -Ilib/gnu-efi/inc -Ilib/gnu-efi/inc/x86_64 -fpic -ffreestanding -fno-builtin -fno-builtin-memcpy -fno-builtin-memset -fno-tree-loop-distribute-patterns -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args
+BOOT_CFLAGS := -DNDEBUG -DEFI_FUNCTION_WRAPPER -D_BOOT_ -Ilib -Iinclude -Iinclude/libstd -Isrc -Ilib/gnu-efi/inc -Ilib/gnu-efi/inc/x86_64 -fpic -ffreestanding -fno-builtin -fno-builtin-memcpy -fno-builtin-memset -fno-tree-loop-distribute-patterns -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args
 
 BOOT_LDFLAGS := -shared -nostdlib -fPIC -Bsymbolic -Llib/gnu-efi/x86_64/lib -Llib/gnu-efi/x86_64/gnuefi -Tlib/gnu-efi/gnuefi/elf_x86_64_efi.lds lib/gnu-efi/x86_64/gnuefi/crt0-efi-x86_64.o
 

@@ -5,13 +5,14 @@ VERSION_STRING := $(shell git describe --tags --always --dirty --long 2>/dev/nul
 
 ROOT_DIRS = \
 	acct acct/admin \
+	boot boot/modules boot/modules/$(VERSION_STRING) \
 	comp \
 	comp/libstd comp/libstd/1.0.0 comp/libstd/1.0.0/lib \
 	comp/dynlink comp/dynlink/1.0.0 comp/dynlink/1.0.0/lib \
 	comp/test comp/test/1.0.0 comp/test/1.0.0/bin \
 	dev \
 	efi efi/boot \
-	boot boot/modules boot/modules/$(VERSION_STRING) \
+	lib \
 	proc \
 	sys \
 
@@ -49,7 +50,9 @@ bin/.deployed: $(BOOT_TARGET) $(KERNEL_TARGET) $(LIBSTD_TARGET) $(INIT_TARGET) $
 		mcopy -i $(IMAGE) -s bin/modules/* ::/boot/modules/$(VERSION_STRING) 2>/dev/null || true; \
 	fi
 	@mcopy -i $(IMAGE) -s bin/libstd/libstd.so ::/comp/libstd/1.0.0/lib 2>/dev/null || true
+	@mcopy -i $(IMAGE) -s bin/libstd/libstd.so ::/lib 2>/dev/null || true
 	@mcopy -i $(IMAGE) -s bin/comp/dynlink.so ::/comp/dynlink/1.0.0/lib 2>/dev/null || true
+	@mcopy -i $(IMAGE) -s bin/comp/dynlink.so ::/lib 2>/dev/null || true
 	@mcopy -i $(IMAGE) -s bin/comp/test ::/comp/test/1.0.0/bin 2>/dev/null || true
 #@mcopy -i $(IMAGE) -s LICENSE ::/base/license 2>/dev/null || true
 #@mcopy -i $(IMAGE) -s bin/libpatchwork/libpatchwork.a ::/base/lib 2>/dev/null || true
@@ -137,7 +140,7 @@ endef
 $(foreach mod,$(MODULES_NAMES),$(eval $(call MODULE_RULE,$(mod))))
 
 define COMP_RULE
-bin/comp/.$(1).built: $(filter %/$(1).mk,$(COMP_MK)) | bin/comp
+bin/comp/.$(1).built: $(filter %/$(1).mk,$(COMP_MK)) $(LIBSTD_TARGET) | bin/comp
 	@echo "BUILD   component $(1)"
 	@$$(MAKE) -s --no-print-directory -f $$(filter %/$(1).mk,$$(COMP_MK)) SRCDIR=$$(dir $$(filter %/$(1).mk,$$(COMP_MK))) BUILDDIR=build/comp/$(1) BINDIR=bin/comp COMP=$(1) all
 	@touch $$@

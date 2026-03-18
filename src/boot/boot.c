@@ -1,3 +1,5 @@
+#define ELF_HEADER_INLINE
+
 #include <boot/boot_info.h>
 #include <efi.h>
 #include <efilib.h>
@@ -11,12 +13,6 @@
 #include <sys/list.h>
 #include <sys/math.h>
 #include <sys/proc.h>
-
-// Include functions directly to avoid multiple object files
-#include <functions/assert/assert.c>
-#include <functions/elf/elf64_get_loadable_bounds.c>
-#include <functions/elf/elf64_load_segments.c>
-#include <functions/elf/elf64_validate.c>
 
 /**
  * @brief PatchworkOS UEFI Bootloader

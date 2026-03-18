@@ -2,7 +2,14 @@
 #define _SYS_ELF_H 1
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
+
+#ifdef ELF_HEADER_INLINE
+#define ELF_API static inline
+#else
+#define ELF_API
+#endif
 
 /**
  * @brief Executable and linkable format definitions.
@@ -22,6 +29,11 @@
  *
  * @{
  */
+
+/**
+ * @brief The amount of bits PatchworkOS ELF files expect of the architecture. 
+ */
+#define ELF_BITS 64
 
 /**
  * @brief ELF64 Unsigned program address
@@ -832,7 +844,7 @@ typedef struct
  * @param size Size of the ELF file data in bytes
  * @return On success, `0`. On failure, a non-zero error code. Check the implementation.
  */
-uint64_t elf64_validate(Elf64_File* elf, void* data, uint64_t size);
+ELF_API uint64_t elf64_validate(Elf64_File* elf, void* data, uint64_t size);
 
 /**
  * @brief Get the loadable virtual memory bounds of an ELF file
@@ -841,7 +853,7 @@ uint64_t elf64_validate(Elf64_File* elf, void* data, uint64_t size);
  * @param minAddr Output pointer to store the minimum loadable virtual address
  * @param maxAddr Output pointer to store the maximum loadable virtual address
  */
-void elf64_get_loadable_bounds(const Elf64_File* elf, Elf64_Addr* minAddr, Elf64_Addr* maxAddr);
+ELF_API void elf64_get_loadable_bounds(const Elf64_File* elf, Elf64_Addr* minAddr, Elf64_Addr* maxAddr);
 
 /**
  * @brief Load all loadable segments of an ELF file into memory
@@ -871,7 +883,7 @@ void elf64_get_loadable_bounds(const Elf64_File* elf, Elf64_Addr* minAddr, Elf64
  * @param base The base address to load the segments into
  * @param offset The offset in bytes to subtract from each segment's virtual address when loading
  */
-void elf64_load_segments(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset);
+ELF_API void elf64_load_segments(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset);
 
 /**
  * @brief Perform relocations on an ELF file loaded into memory
@@ -896,7 +908,7 @@ void elf64_load_segments(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offse
  * @param private Private data pointer passed to the `resolve_symbol` callback
  * @return `true` if the relocations were successful, false otherwise.
  */
-bool elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset,
+ELF_API bool elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset,
     void* (*resolve_symbol)(const char* name, void* data), void* data);
 
 /**
@@ -907,7 +919,7 @@ bool elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset,
  * @param offset The offset in bytes into the string table
  * @return Pointer to the string in the ELF file or `NULL` if not found
  */
-const char* elf64_get_string(const Elf64_File* elf, Elf64_Xword strTabIndex, Elf64_Off offset);
+ELF_API const char* elf64_get_string(const Elf64_File* elf, Elf64_Xword strTabIndex, Elf64_Off offset);
 
 /**
  * @brief Get a section by its name
@@ -916,7 +928,7 @@ const char* elf64_get_string(const Elf64_File* elf, Elf64_Xword strTabIndex, Elf
  * @param name The name of the section to find
  * @return Pointer to the section header or `NULL` if not found
  */
-Elf64_Shdr* elf64_get_section_by_name(const Elf64_File* elf, const char* name);
+ELF_API Elf64_Shdr* elf64_get_section_by_name(const Elf64_File* elf, const char* name);
 
 /**
  * @brief Get the name of a section
@@ -925,7 +937,7 @@ Elf64_Shdr* elf64_get_section_by_name(const Elf64_File* elf, const char* name);
  * @param section The section to get the name of
  * @return Pointer to the section name string or `NULL` if not found
  */
-const char* elf64_get_section_name(const Elf64_File* elf, const Elf64_Shdr* section);
+ELF_API const char* elf64_get_section_name(const Elf64_File* elf, const Elf64_Shdr* section);
 
 /**
  * @brief Get a symbol by its index from the symbol table
@@ -934,7 +946,7 @@ const char* elf64_get_section_name(const Elf64_File* elf, const Elf64_Shdr* sect
  * @param symbolIndex The index of the symbol to get
  * @return Pointer to the symbol or `NULL` if not found
  */
-Elf64_Sym* elf64_get_symbol_by_index(const Elf64_File* elf, Elf64_Xword symbolIndex);
+ELF_API Elf64_Sym* elf64_get_symbol_by_index(const Elf64_File* elf, Elf64_Xword symbolIndex);
 
 /**
  * @brief Get a symbol by its name from the symbol table
@@ -943,7 +955,7 @@ Elf64_Sym* elf64_get_symbol_by_index(const Elf64_File* elf, Elf64_Xword symbolIn
  * @param name The name of the symbol to find
  * @return Pointer to the symbol or `NULL` if not found
  */
-Elf64_Sym* elf64_get_symbol_by_name(const Elf64_File* elf, const char* name);
+ELF_API Elf64_Sym* elf64_get_symbol_by_name(const Elf64_File* elf, const char* name);
 
 /**
  * @brief Get the name of a symbol
@@ -952,7 +964,7 @@ Elf64_Sym* elf64_get_symbol_by_name(const Elf64_File* elf, const char* name);
  * @param symbol The symbol to get the name of
  * @return Pointer to the symbol name string or `NULL` if not found
  */
-const char* elf64_get_symbol_name(const Elf64_File* elf, const Elf64_Sym* symbol);
+ELF_API const char* elf64_get_symbol_name(const Elf64_File* elf, const Elf64_Sym* symbol);
 
 /**
  * @brief Get a dynamic symbol by its index from the dynamic symbol table
@@ -963,7 +975,7 @@ const char* elf64_get_symbol_name(const Elf64_File* elf, const Elf64_Sym* symbol
  * @param symbolIndex The index of the dynamic symbol to get
  * @return Pointer to the dynamic symbol or `NULL` if not found
  */
-Elf64_Sym* elf64_get_dynamic_symbol_by_index(const Elf64_File* elf, Elf64_Xword symbolIndex);
+ELF_API Elf64_Sym* elf64_get_dynamic_symbol_by_index(const Elf64_File* elf, Elf64_Xword symbolIndex);
 
 /**
  * @brief Get the name of a dynamic symbol
@@ -972,7 +984,690 @@ Elf64_Sym* elf64_get_dynamic_symbol_by_index(const Elf64_File* elf, Elf64_Xword 
  * @param symbol The dynamic symbol to get the name of
  * @return Pointer to the dynamic symbol name string or `NULL` if not found
  */
-const char* elf64_get_dynamic_symbol_name(const Elf64_File* elf, const Elf64_Sym* symbol);
+ELF_API const char* elf64_get_dynamic_symbol_name(const Elf64_File* elf, const Elf64_Sym* symbol);
+
+/**
+ * @brief ELF64 Dynamic Structure
+ * @see https://gabi.xinuos.com/elf/05-dynamic.html
+ */
+typedef struct
+{
+    Elf64_Sxword d_tag;
+    union {
+        Elf64_Xword d_val;
+        Elf64_Addr d_ptr;
+    } d_un;
+} Elf64_Dyn;
+
+/**
+ * @brief Dynamic array tags (`d_tag`).
+ */
+typedef enum
+{
+    DT_NULL = 0,
+    DT_NEEDED = 1,
+    DT_PLTRELSZ = 2,
+    DT_PLTGOT = 3,
+    DT_HASH = 4,
+    DT_STRTAB = 5,
+    DT_SYMTAB = 6,
+    DT_RELA = 7,
+    DT_RELASZ = 8,
+    DT_RELAENT = 9,
+    DT_STRSZ = 10,
+    DT_SYMENT = 11,
+    DT_INIT = 12,
+    DT_FINI = 13,
+    DT_SONAME = 14,
+    DT_RPATH = 15,
+    DT_SYMBOLIC = 16,
+    DT_REL = 17,
+    DT_RELSZ = 18,
+    DT_RELENT = 19,
+    DT_PLTREL = 20,
+    DT_DEBUG = 21,
+    DT_TEXTREL = 22,
+    DT_JMPREL = 23,
+    DT_BIND_NOW = 24,
+    DT_INIT_ARRAY = 25,
+    DT_FINI_ARRAY = 26,
+    DT_INIT_ARRAYSZ = 27,
+    DT_FINI_ARRAYSZ = 28,
+    DT_GNU_HASH = 0x6ffffef5,
+} Elf64_Dynamic_Types;
+
+#if defined(ELF_HEADER_INLINE) || defined(ELF_IMPL)
+
+ELF_API bool elf64_string_compare(const char* str1, const char* str2)
+{
+    if (str1 == NULL || str2 == NULL)
+    {
+        return str1 == str2;
+    }
+
+    while (*str1 && (*str1 == *str2))
+    {
+        str1++;
+        str2++;
+    }
+
+    return *str1 == *str2;
+}
+
+ELF_API void elf64_get_loadable_bounds(const Elf64_File* elf, Elf64_Addr* minAddr, Elf64_Addr* maxAddr)
+{
+    if (elf == NULL || minAddr == NULL || maxAddr == NULL)
+    {
+        return;
+    }
+
+    Elf64_Ehdr* header = (Elf64_Ehdr*)elf->header;
+
+    Elf64_Addr minVaddr = UINT64_MAX;
+    Elf64_Addr maxVaddr = 0;
+    for (uint32_t i = 0; i < header->e_phnum; i++)
+    {
+        Elf64_Phdr* phdr = ELF64_GET_PHDR(elf, i);
+        if (phdr->p_type == PT_LOAD)
+        {
+            if (phdr->p_vaddr < minVaddr)
+            {
+                minVaddr = phdr->p_vaddr;
+            }
+            if (phdr->p_vaddr + phdr->p_memsz > maxVaddr)
+            {
+                maxVaddr = phdr->p_vaddr + phdr->p_memsz;
+            }
+        }
+    }
+
+    *minAddr = minVaddr;
+    *maxAddr = maxVaddr;
+}
+
+ELF_API const char* elf64_get_string(const Elf64_File* elf, Elf64_Xword strTabIndex, Elf64_Off offset)
+{
+    if (elf == NULL)
+    {
+        return NULL;
+    }
+
+    Elf64_Ehdr* header = (Elf64_Ehdr*)elf->header;
+    if (strTabIndex >= header->e_shnum)
+    {
+        return NULL;
+    }
+
+    Elf64_Shdr* strtabHdr = ELF64_GET_SHDR(elf, strTabIndex);
+    if (strtabHdr->sh_type != SHT_STRTAB)
+    {
+        return NULL;
+    }
+
+    if (offset >= strtabHdr->sh_size)
+    {
+        return NULL;
+    }
+
+    char* strTable = (char*)ELF64_AT_OFFSET(elf, strtabHdr->sh_offset);
+    return &strTable[offset];
+}
+
+ELF_API Elf64_Shdr* elf64_get_section_by_name(const Elf64_File* elf, const char* name)
+{
+    if (elf == NULL || name == NULL)
+    {
+        return NULL;
+    }
+
+    Elf64_Ehdr* header = (Elf64_Ehdr*)elf->header;
+
+    uint64_t shstrndx = header->e_shstrndx;
+    if (shstrndx == SHN_XINDEX)
+    {
+        Elf64_Shdr* firstShdr = ELF64_GET_SHDR(elf, 0);
+        shstrndx = firstShdr->sh_link;
+    }
+
+    if (shstrndx == SHN_UNDEF)
+    {
+        return NULL;
+    }
+
+    for (uint64_t i = 0; i < header->e_shnum; i++)
+    {
+        Elf64_Shdr* shdr = ELF64_GET_SHDR(elf, i);
+        const char* sectionName = elf64_get_string(elf, shstrndx, shdr->sh_name);
+        if (sectionName != NULL && elf64_string_compare(sectionName, name))
+        {
+            return shdr;
+        }
+    }
+
+    return NULL;
+}
+
+ELF_API const char* elf64_get_section_name(const Elf64_File* elf, const Elf64_Shdr* section)
+{
+    if (elf == NULL || section == NULL)
+    {
+        return NULL;
+    }
+
+    Elf64_Ehdr* header = (Elf64_Ehdr*)elf->header;
+
+    uint64_t shstrndx = header->e_shstrndx;
+    if (shstrndx == SHN_XINDEX)
+    {
+        Elf64_Shdr* firstShdr = ELF64_GET_SHDR(elf, 0);
+        shstrndx = firstShdr->sh_link;
+    }
+
+    return elf64_get_string(elf, shstrndx, section->sh_name);
+}
+
+ELF_API Elf64_Sym* elf64_get_symbol_by_index(const Elf64_File* elf, Elf64_Xword symbolIndex)
+{
+    if (elf == NULL)
+    {
+        return NULL;
+    }
+
+    if (elf->symtab == NULL)
+    {
+        return NULL;
+    }
+
+    uint64_t symCount = elf->symtab->sh_size / elf->symtab->sh_entsize;
+    if (symbolIndex >= symCount)
+    {
+        return NULL;
+    }
+
+    void* symTableBase = ELF64_AT_OFFSET(elf, elf->symtab->sh_offset);
+    return (Elf64_Sym*)((uintptr_t)symTableBase + (symbolIndex * elf->symtab->sh_entsize));
+}
+
+ELF_API Elf64_Sym* elf64_get_symbol_by_name(const Elf64_File* elf, const char* name)
+{
+    if (elf == NULL || name == NULL)
+    {
+        return NULL;
+    }
+
+    if (elf->symtab == NULL)
+    {
+        return NULL;
+    }
+
+    uint64_t symCount = elf->symtab->sh_size / elf->symtab->sh_entsize;
+    void* symTableBase = ELF64_AT_OFFSET(elf, elf->symtab->sh_offset);
+    Elf64_Shdr* strtabHdr = ELF64_GET_SHDR(elf, elf->symtab->sh_link);
+    char* strTable = (char*)ELF64_AT_OFFSET(elf, strtabHdr->sh_offset);
+
+    for (uint64_t i = 0; i < symCount; i++)
+    {
+        Elf64_Sym* symbol = (Elf64_Sym*)((uintptr_t)symTableBase + (i * elf->symtab->sh_entsize));
+        const char* symbolName = &strTable[symbol->st_name];
+        if (elf64_string_compare(symbolName, name))
+        {
+            return symbol;
+        }
+    }
+
+    return NULL;
+}
+
+ELF_API const char* elf64_get_symbol_name(const Elf64_File* elf, const Elf64_Sym* symbol)
+{
+    if (elf == NULL || symbol == NULL)
+    {
+        return NULL;
+    }
+
+    if (elf->symtab == NULL)
+    {
+        return NULL;
+    }
+
+    Elf64_Shdr* strtabHdr = ELF64_GET_SHDR(elf, elf->symtab->sh_link);
+    char* strTable = (char*)ELF64_AT_OFFSET(elf, strtabHdr->sh_offset);
+    return &strTable[symbol->st_name];
+}
+
+ELF_API const char* elf64_get_dynamic_symbol_name(const Elf64_File* elf, const Elf64_Sym* symbol)
+{
+    if (elf == NULL || symbol == NULL)
+    {
+        return NULL;
+    }
+
+    if (elf->dynsym == NULL)
+    {
+        return NULL;
+    }
+
+    Elf64_Shdr* strtabHdr = ELF64_GET_SHDR(elf, elf->dynsym->sh_link);
+    char* strTable = (char*)ELF64_AT_OFFSET(elf, strtabHdr->sh_offset);
+    return &strTable[symbol->st_name];
+}
+
+ELF_API Elf64_Sym* elf64_get_dynamic_symbol_by_index(const Elf64_File* elf, Elf64_Xword symbolIndex)
+{
+    if (elf == NULL)
+    {
+        return NULL;
+    }
+
+    if (elf->dynsym == NULL)
+    {
+        return NULL;
+    }
+
+    uint64_t symCount = elf->dynsym->sh_size / elf->dynsym->sh_entsize;
+    if (symbolIndex >= symCount)
+    {
+        return NULL;
+    }
+
+    void* symTableBase = ELF64_AT_OFFSET(elf, elf->dynsym->sh_offset);
+    return (Elf64_Sym*)((uintptr_t)symTableBase + (symbolIndex * elf->dynsym->sh_entsize));
+}
+
+ELF_API void elf64_load_segments(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset)
+{
+    if (elf == NULL)
+    {
+        return;
+    }
+
+    Elf64_Ehdr* header = (Elf64_Ehdr*)elf->header;
+    for (uint32_t i = 0; i < header->e_phnum; i++)
+    {
+        Elf64_Phdr* phdr = ELF64_GET_PHDR(elf, i);
+        if (phdr->p_type != PT_LOAD)
+        {
+            continue;
+        }
+
+        void* dest = (void*)(base + (phdr->p_vaddr - offset));
+        void* src = ELF64_AT_OFFSET(elf, phdr->p_offset);
+        for (size_t j = 0; j < phdr->p_filesz; j++)
+        {
+            ((uint8_t*)dest)[j] = ((uint8_t*)src)[j];
+        }
+        for (size_t j = phdr->p_filesz; j < phdr->p_memsz; j++)
+        {
+            ((uint8_t*)dest)[j] = 0;
+        }
+    }
+}
+
+ELF_API uint64_t elf64_validate(Elf64_File* elf, void* data, uint64_t size)
+{
+    // This is a big function, but all it does just verify that every single thing that i can think of is as it should
+    // be.
+    if (elf == NULL || data == NULL || size < sizeof(Elf64_Ehdr))
+    {
+        return 200;
+    }
+
+    elf->symtab = NULL;
+    elf->dynsym = NULL;
+    elf->interp = NULL;
+
+    Elf64_Ehdr* header = (Elf64_Ehdr*)data;
+    if (header->e_ident[EI_MAG0] != ELFMAG0 || header->e_ident[EI_MAG1] != ELFMAG1 ||
+        header->e_ident[EI_MAG2] != ELFMAG2 || header->e_ident[EI_MAG3] != ELFMAG3)
+    {
+        return 1;
+    }
+
+    if (header->e_ident[EI_CLASS] != ELFCLASS64)
+    {
+        return 2;
+    }
+
+    if (header->e_ident[EI_DATA] != ELFDATALSB)
+    {
+        return 3;
+    }
+
+    if (header->e_ident[EI_VERSION] != EV_CURRENT || header->e_version != EV_CURRENT)
+    {
+        return 4;
+    }
+
+    if (header->e_ident[EI_OSABI] != ELFOSABI_NONE && header->e_ident[EI_OSABI] != ELFOSABI_GNU)
+    {
+        return 5;
+    }
+
+    if (header->e_shnum > 0 && header->e_shentsize > UINT64_MAX / header->e_shnum)
+    {
+        return 6;
+    }
+    if (header->e_shoff > size || (header->e_shentsize * header->e_shnum) > size - header->e_shoff)
+    {
+        return 7;
+    }
+    if (header->e_shnum > 0 && header->e_shentsize < sizeof(Elf64_Shdr))
+    {
+        return 8;
+    }
+
+    if (header->e_phnum > 0 && header->e_phentsize > UINT64_MAX / header->e_phnum)
+    {
+        return 9;
+    }
+    if (header->e_phoff > size || (header->e_phentsize * header->e_phnum) > size - header->e_phoff)
+    {
+        return 10;
+    }
+    if (header->e_phnum > 0 && header->e_phentsize < sizeof(Elf64_Phdr))
+    {
+        return 11;
+    }
+
+    Elf64_Shdr* shstrHdr = NULL;
+    uint64_t shstrndx = header->e_shstrndx;
+
+    if (shstrndx == SHN_XINDEX)
+    {
+        if (header->e_shnum == 0)
+        {
+            return 12;
+        }
+        Elf64_Shdr* firstShdr = (Elf64_Shdr*)((uintptr_t)data + header->e_shoff);
+        shstrndx = firstShdr->sh_link;
+    }
+
+    if (shstrndx != SHN_UNDEF)
+    {
+        if (shstrndx >= header->e_shnum)
+        {
+            return 13;
+        }
+        shstrHdr = (Elf64_Shdr*)((uintptr_t)data + header->e_shoff + (shstrndx * header->e_shentsize));
+
+        if (shstrHdr->sh_type != SHT_STRTAB)
+        {
+            return 14;
+        }
+
+        if (shstrHdr->sh_offset > size || shstrHdr->sh_size > size - shstrHdr->sh_offset)
+        {
+            return 15;
+        }
+
+        if (shstrHdr->sh_size == 0)
+        {
+            return 16;
+        }
+        char* strTable = (char*)((uintptr_t)data + shstrHdr->sh_offset);
+        if (strTable[shstrHdr->sh_size - 1] != '\0')
+        {
+            return 17;
+        }
+    }
+
+    uint64_t symtabCount = 0;
+    uint64_t dynsymCount = 0;
+    for (uint64_t i = 0; i < header->e_shnum; i++)
+    {
+        Elf64_Shdr* shdr = (Elf64_Shdr*)((uintptr_t)data + header->e_shoff + (i * header->e_shentsize));
+
+        if (shdr->sh_type != SHT_NOBITS && (shdr->sh_offset > size || shdr->sh_size > size - shdr->sh_offset))
+        {
+            return 18;
+        }
+
+        if (shstrHdr == NULL && shdr->sh_name != 0)
+        {
+            return 19;
+        }
+        if (shstrHdr != NULL && shdr->sh_name >= shstrHdr->sh_size)
+        {
+            return 20;
+        }
+
+        switch (shdr->sh_type)
+        {
+        case SHT_STRTAB:
+            if (shdr->sh_size == 0)
+            {
+                return 21;
+            }
+            char* strTable = (char*)((uintptr_t)data + shdr->sh_offset);
+            if (strTable[shdr->sh_size - 1] != '\0')
+            {
+                return 22;
+            }
+            break;
+        case SHT_SYMTAB:
+        case SHT_DYNSYM:
+            if (shdr->sh_type == SHT_SYMTAB)
+            {
+                symtabCount++;
+                elf->symtab = shdr;
+            }
+            else
+            {
+                dynsymCount++;
+                elf->dynsym = shdr;
+            }
+            if (dynsymCount > 1)
+            {
+                return 23;
+            }
+            if (symtabCount > 1)
+            {
+                return 24;
+            }
+
+            if (shdr->sh_entsize < sizeof(Elf64_Sym))
+            {
+                return 25;
+            }
+            if (shdr->sh_size % shdr->sh_entsize != 0)
+            {
+                return 26;
+            }
+
+            if (shdr->sh_link >= header->e_shnum)
+            {
+                return 27;
+            }
+            Elf64_Shdr* strtabHdr =
+                (Elf64_Shdr*)((uintptr_t)data + header->e_shoff + (shdr->sh_link * header->e_shentsize));
+            if (strtabHdr->sh_type != SHT_STRTAB)
+            {
+                return 28;
+            }
+
+            uint64_t symCount = shdr->sh_size / shdr->sh_entsize;
+            void* symTableBase = (void*)((uintptr_t)data + shdr->sh_offset);
+            for (uint64_t j = 0; j < symCount; j++)
+            {
+                Elf64_Sym* currentSym = (Elf64_Sym*)((uintptr_t)symTableBase + (j * shdr->sh_entsize));
+                if (currentSym->st_name >= strtabHdr->sh_size)
+                {
+                    return 29;
+                }
+            }
+            break;
+        case SHT_RELA:
+            if (shdr->sh_entsize < sizeof(Elf64_Rela))
+            {
+                return 30;
+            }
+            if (shdr->sh_size % shdr->sh_entsize != 0)
+            {
+                return 31;
+            }
+            if (shdr->sh_link >= header->e_shnum)
+            {
+                return 32;
+            }
+            Elf64_Shdr* symtabHdr =
+                (Elf64_Shdr*)((uintptr_t)data + header->e_shoff + (shdr->sh_link * header->e_shentsize));
+            if (symtabHdr->sh_type != SHT_SYMTAB && symtabHdr->sh_type != SHT_DYNSYM)
+            {
+                return 33;
+            }
+            if (shdr->sh_info >= header->e_shnum)
+            {
+                return 34;
+            }
+            break;
+        case SHT_REL:
+            if (shdr->sh_entsize < sizeof(Elf64_Rel))
+            {
+                return 35;
+            }
+            if (shdr->sh_size % shdr->sh_entsize != 0)
+            {
+                return 36;
+            }
+            if (shdr->sh_link >= header->e_shnum)
+            {
+                return 37;
+            }
+            Elf64_Shdr* symtabHdrRel =
+                (Elf64_Shdr*)((uintptr_t)data + header->e_shoff + (shdr->sh_link * header->e_shentsize));
+            if (symtabHdrRel->sh_type != SHT_SYMTAB && symtabHdrRel->sh_type != SHT_DYNSYM)
+            {
+                return 38;
+            }
+            if (shdr->sh_info >= header->e_shnum)
+            {
+                return 39;
+            }
+            break;
+        default:
+            break;
+        }
+    }
+
+    for (uint64_t i = 0; i < header->e_phnum; i++)
+    {
+        Elf64_Phdr* phdr = (Elf64_Phdr*)((uintptr_t)data + header->e_phoff + (i * header->e_phentsize));
+        if (phdr->p_offset > size || phdr->p_filesz > size - phdr->p_offset)
+        {
+            return 40;
+        }
+        switch (phdr->p_type)
+        {
+        case PT_LOAD:
+            if (phdr->p_memsz < phdr->p_filesz)
+            {
+                return 41;
+            }
+            break;
+        case PT_INTERP:
+            if (phdr->p_filesz == 0)
+            {
+                return 42;
+            }
+            unsigned char* interpData = (unsigned char*)((uintptr_t)data + phdr->p_offset);
+            bool nullTerminated = false;
+            for (uint64_t j = 0; j < phdr->p_filesz; j++)
+            {
+                if (interpData[j] == '\0')
+                {
+                    nullTerminated = true;
+                    break;
+                }
+            }
+            if (!nullTerminated)
+            {
+                return 43;
+            }
+            elf->interp = (const char*)interpData;
+            break;
+        case PT_PHDR:
+            if (phdr->p_offset != header->e_phoff || phdr->p_filesz != (uint64_t)header->e_phnum * header->e_phentsize)
+            {
+                return 44;
+            }
+            break;
+        default:
+            break;
+        }
+    }
+
+    elf->header = data;
+    elf->size = size;
+    return 0;
+}
+
+ELF_API bool elf64_relocate(const Elf64_File* elf, Elf64_Addr base, Elf64_Off offset,
+    void* (*resolve_symbol)(const char* name, void* data), void* data)
+{
+    for (uint64_t i = 0; i < elf->header->e_shnum; i++)
+    {
+        Elf64_Shdr* shdr = ELF64_GET_SHDR(elf, i);
+        if (shdr->sh_type != SHT_RELA)
+        {
+            continue;
+        }
+
+        Elf64_Shdr* symtabShdr = ELF64_GET_SHDR(elf, shdr->sh_link);
+        void* symTableBase = ELF64_AT_OFFSET(elf, symtabShdr->sh_offset);
+        uint64_t symCount = symtabShdr->sh_size / symtabShdr->sh_entsize;
+
+        Elf64_Rela* rela = ELF64_AT_OFFSET(elf, shdr->sh_offset);
+        uint64_t relaCount = shdr->sh_size / sizeof(Elf64_Rela);
+
+        for (uint64_t j = 0; j < relaCount; j++)
+        {
+            Elf64_Addr* patchAddr = (Elf64_Addr*)(base + (rela[j].r_offset - offset));
+            Elf64_Xword type = ELF64_R_TYPE(rela[j].r_info);
+            Elf64_Xword symIndex = ELF64_R_SYM(rela[j].r_info);
+
+            if (symIndex >= symCount)
+            {
+                return false;
+            }
+            Elf64_Sym* sym = (Elf64_Sym*)((uintptr_t)symTableBase + (symIndex * symtabShdr->sh_entsize));
+            const char* symName = elf64_get_string(elf, symtabShdr->sh_link, sym->st_name);
+
+            Elf64_Addr value = sym->st_shndx != SHN_UNDEF ? sym->st_value : 0;
+
+            switch (type)
+            {
+            case R_X86_64_64:
+                *patchAddr = base + value + rela[j].r_addend;
+                break;
+            case R_X86_64_PC32:
+                *patchAddr = base + value + rela[j].r_addend - (Elf64_Addr)patchAddr;
+                break;
+            case R_X86_64_GLOB_DAT:
+            case R_X86_64_JUMP_SLOT:
+                if (sym->st_shndx != SHN_UNDEF)
+                {
+                    *patchAddr = base + value + rela[j].r_addend;
+                    break;
+                }
+
+                *patchAddr = (uint64_t)resolve_symbol(symName, data);
+                if (*patchAddr == 0)
+                {
+                    return false;
+                }
+                break;
+            case R_X86_64_RELATIVE:
+                *patchAddr = base + rela[j].r_addend;
+                break;
+            default:
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+#endif
 
 /** @} */
 

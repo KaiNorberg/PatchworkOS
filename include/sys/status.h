@@ -98,6 +98,7 @@ typedef enum
     ST_SRC_ACPI,    ///< ACPI.
     ST_SRC_TEST,    ///< Testing.
     ST_SRC_PROTO,   ///< Networking Protocol.
+    ST_SRC_DYNLINK, ///< Dynamic Linker.
     ST_SRC_MAX,     ///< Maximum source value.
 } st_src_t;
 

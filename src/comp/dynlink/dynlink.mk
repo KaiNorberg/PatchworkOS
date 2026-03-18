@@ -3,6 +3,8 @@ include Make.defaults
 
 TARGET := $(BINDIR)/$(COMP).so
 
+CFLAGS += -fPIC
+ASFLAGS += -fPIC
 LDFLAGS +=
 
 all: $(TARGET)

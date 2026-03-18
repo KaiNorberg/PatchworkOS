@@ -260,6 +260,7 @@ static inline bool page_table_traverse(page_table_t* table, page_table_traverse_
             return false;
         }
         traverse->oldIdx3 = newIdx3;
+        traverse->pml3Valid = true;
         traverse->pml2Valid = false; // Invalidate cache for lower levels
     }
 
@@ -271,6 +272,7 @@ static inline bool page_table_traverse(page_table_t* table, page_table_traverse_
             return false;
         }
         traverse->oldIdx2 = newIdx2;
+        traverse->pml2Valid = true;
         traverse->pml1Valid = false; // Invalidate cache for lower levels
     }
 
@@ -282,6 +284,7 @@ static inline bool page_table_traverse(page_table_t* table, page_table_traverse_
             return false;
         }
         traverse->oldIdx1 = newIdx1;
+        traverse->pml1Valid = true;
     }
 
     traverse->entry = &traverse->pml1->entries[PML_ADDR_TO_INDEX(addr, PML1)];
@@ -837,14 +840,22 @@ static inline bool page_table_find_unmapped_region(page_table_t* table, uintptr_
 
         if (!entry4->present)
         {
+            uintptr_t skipTo = PML_INDEX_TO_ADDR(idx4 + 1, PML4);
+
             if (consecutiveUnmapped == 0)
             {
-                regionStart = currentAddr;
+                uintptr_t alignedAddr = ROUND_UP(currentAddr, alignment);
+                if (alignedAddr < skipTo && alignedAddr < end)
+                {
+                    regionStart = alignedAddr;
+                    consecutiveUnmapped = (MIN(skipTo, end) - alignedAddr) / PAGE_SIZE;
+                }
             }
-
-            uintptr_t skipTo = PML_INDEX_TO_ADDR(idx4 + 1, PML4);
-            uint64_t skippedPages = (MIN(skipTo, end) - currentAddr) / PAGE_SIZE;
-            consecutiveUnmapped += skippedPages;
+            else
+            {
+                uint64_t skippedPages = (MIN(skipTo, end) - currentAddr) / PAGE_SIZE;
+                consecutiveUnmapped += skippedPages;
+            }
 
             if (consecutiveUnmapped >= amount)
             {
@@ -995,7 +1006,7 @@ static inline uint64_t page_table_count_pages_with_flags(page_table_t* table, vo
 
         if (!entry3->present)
         {
-            uint64_t skipPages = MIN(amount, (PML_INDEX_TO_ADDR(idx3 + 1, PML3) - (uintptr_t)addr) / PAGE_SIZE);
+            uint64_t skipPages = MIN(amount, (ROUND_UP((uintptr_t)addr + 1, PML3_SIZE) - (uintptr_t)addr) / PAGE_SIZE);
             addr = (void*)((uintptr_t)addr + skipPages * PAGE_SIZE);
             amount -= skipPages;
             continue;
@@ -1007,7 +1018,7 @@ static inline uint64_t page_table_count_pages_with_flags(page_table_t* table, vo
 
         if (!entry2->present)
         {
-            uint64_t skipPages = MIN(amount, (PML_INDEX_TO_ADDR(idx2 + 1, PML2) - (uintptr_t)addr) / PAGE_SIZE);
+            uint64_t skipPages = MIN(amount, (ROUND_UP((uintptr_t)addr + 1, PML2_SIZE) - (uintptr_t)addr) / PAGE_SIZE);
             addr = (void*)((uintptr_t)addr + skipPages * PAGE_SIZE);
             amount -= skipPages;
             continue;
