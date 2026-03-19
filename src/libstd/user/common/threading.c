@@ -108,8 +108,8 @@ _thread_t* _thread_new(thrd_start_t func, void* arg)
 
     mtx_lock(&entryMutex);
 
-    status_t status =
-        syscall3(SYS_THRD_CREATE, &thread->id, (uintptr_t)_thread_entry, ((uintptr_t)thread->stack + _THRD_STACK) & ~15ULL, (uintptr_t)thread);
+    status_t status = syscall3(SYS_THRD_CREATE, &thread->id, (uintptr_t)_thread_entry,
+        ((uintptr_t)thread->stack + _THRD_STACK) & ~15ULL, (uintptr_t)thread);
     if (IS_ERR(status))
     {
         errno = ENOMEM;

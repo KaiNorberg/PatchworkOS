@@ -281,44 +281,45 @@ iowalk(IOPATH("/mnt/tmpfs"), &target);
 fdbind(FDROOT, target, fs);
 ```
 
-## Components
+## Components (WIP)
 
-In PatchworkOS, the user space is made up of "components". These components can be anything, executable programs, libraries, headers, or just data files.
+In PatchworkOS, user space is made up of "components". These components can be anything, executable programs, libraries, headers, or just data files.
 
 Each component is stored in a `/comp/<name>` directory. Within each components directory are version directories written in the form `<x>.<y>.<z>` (major.minor.patch).
 
-The actual component files are stored within the version directories, usually within subdirectories like `bin/`, `lib/`, `include/`, etc. In addition, there is a manifest file which describes the component, its dependencies, and what capabilities it requires. Included below is an example manifest file:
+The actual component files are stored within the version directories, usually within subdirectories like `bin/`, `lib/`, `include/`, etc. In addition, there is a manifest file which describes the component, its dependencies, and what capabilities it requires.
 
-```
-(comp (name MyProgram)
-    (launch /bin/myprogram)
-    (required
-        (dynlink >= 1.0)
-        (libstd >= 1.0)
+These manifests are written in a simple markup language made for PatchworkOS called LISt Configuration (LISC), a parser for this language is provided in libstd with the purpose of standardizing any configuration files used throughout the OS.
+
+Included below is an example manifest file:
+
+```lisp
+(component
+    (description "An example component.")
+    (author Kai)
+    (license MIT)
+    (launch bin/example)
+    (dependencies
+        (libstd >= 1.0.0)
     )
-    (optional
-        (libother >= 1.0)
-    )
-    (caps
+    (capabilities
         fb
         kbd
-        display
-        acct
     )
 )
 ```
 
-### Loading Components
+### Launching Components
 
-Any process can load a component using the `comp_load()` function from libstd. This function will construct a new root file descriptor for the component, with all the directories and files within the components directory and any dependencies directories, being bound in a union to the root along with any additional files specified via the capabilities (e.g. if `fb` is specified, the launched process can access the framebuffers via `/dev/fb/`).
+Any process can launch a component using the `comp_launch()` function from libstd. This function will construct a new root file descriptor for the component, with all the directories and files within the components directory and any dependencies directories, being bound in a union to the root along with any additional files specified via the capabilities (e.g. if `fb` is specified, the launched process can access the framebuffers via `/dev/fb/`).
 
 Lets take the MyProgram component described above as an example. The libstd component provides a `lib/libstd.so` file and lets also say that libother provides a `lib/libother.so` file. In this case, the launched process would then find both `libstd.so` and `libother.so` in `/lib`. However, simply being able to read these shared libraries is pointless without the dynamic linker, dynlink, which provides the `bin/dynlink.so` file.
 
 It would also be able to access see the `/dev/fb/`, `/dev/kbd`, etc. directories due to its specified capabilities.
 
-The `comp_load()` function will automatically handle versioning, following the rules defined in the component manifest.
+The `comp_launch()` function will automatically handle versioning, following the rules defined in the component manifest.
 
-This all has one rather large limitation, in that the parent process must have all the capabilities to be passed to the child. If the child needs a capability that the parent does not have, the `comp_load()` function will fail.
+This all has one rather large limitation, in that the parent process must have all the capabilities to be passed to the child. If the child needs a capability that the parent does not have, the `comp_launch()` function will fail.
 
 ### The Init Process
 
@@ -326,7 +327,7 @@ The one exception to this rule is the init process, which is special in that it 
 
 This means that the security model forms a tree-like structure, with init having all capabilities and all child processes having some subset of those capabilities.
 
-## Modules
+## Modules (OLD)
 
 PatchworkOS uses a "modular" kernel design, meaning that instead of having one big kernel binary, the kernel is split into several smaller "modules" that can be loaded and unloaded at runtime.
 

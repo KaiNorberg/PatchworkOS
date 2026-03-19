@@ -283,7 +283,8 @@ static Elf64_Sym* _dyn_lookup_symbol(const char* name, dso_t* start, dso_t** fou
                 const char* symname = dso->strtab + dso->symtab[symix].st_name;
                 const uint32_t hashVal = chain[symix - symoffset];
 
-                if ((gnuHash | 1) == (hashVal | 1) && _dyn_strcmp(name, symname) == 0 && dso->symtab[symix].st_shndx != SHN_UNDEF)
+                if ((gnuHash | 1) == (hashVal | 1) && _dyn_strcmp(name, symname) == 0 &&
+                    dso->symtab[symix].st_shndx != SHN_UNDEF)
                 {
                     if ((void*)found != NULL)
                     {
@@ -523,14 +524,14 @@ static dso_t* _dyn_load_elf(fd_t fd, const char* name, bool isMain)
             {
                 initialFlags |= IOMAP_WRITE;
             }
-            
+
             status = iomap(fd, &mapAddr, mapLen, offsetAligned, initialFlags);
             if (IS_ERR(status))
             {
                 iounmap(fileMap, size);
                 return NULL;
             }
-            
+
             if (phdr->p_memsz > phdr->p_filesz)
             {
                 size_t zeroStart = vaddr + phdr->p_filesz;
@@ -540,7 +541,7 @@ static dso_t* _dyn_load_elf(fd_t fd, const char* name, bool isMain)
                     _dyn_memset((void*)zeroStart, 0, zeroEnd - zeroStart);
                 }
             }
-            
+
             if (initialFlags != mapFlags)
             {
                 ioprotect(mapAddr, mapLen, mapFlags);

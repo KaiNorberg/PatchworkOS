@@ -31,7 +31,7 @@
  */
 
 /**
- * @brief The amount of bits PatchworkOS ELF files expect of the architecture. 
+ * @brief The amount of bits PatchworkOS ELF files expect of the architecture.
  */
 #define ELF_BITS 64
 

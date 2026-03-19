@@ -152,7 +152,7 @@ static void exception_handler(interrupt_frame_t* frame)
 void interrupt_handler(interrupt_frame_t* frame)
 {
     if (frame->vector < VECTOR_EXCEPTION_END) // Avoid extra stuff for exceptions
-    {        
+    {
         exception_handler(frame);
         return;
     }

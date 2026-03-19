@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/io.h>
+#include <sys/lisc.h>
 
 /**
  * @brief User space init process.
@@ -86,6 +87,24 @@ static void print_dir(fd_t dir, uint32_t depth)
         iodrop(child);
 
         p += len + 1;
+    }
+}
+
+static void print_lisc(lisc_ref_t list)
+{
+    lisc_ref_t ref;
+    LISC_FOR_EACH(ref, list)
+    {
+        if (lisc_is_list(ref))
+        {
+            printf("(");
+            print_lisc(ref);
+            printf(")");
+        }
+        else
+        {
+            printf("%.*s", (int)lisc_atom_len(ref), lisc_atom_str(ref));
+        }
     }
 }
 
@@ -193,6 +212,31 @@ int main(void)
     iodrop(ramfs);
 
     print_dir(FDROOT, 0);
+
+    const char* testString = "(component"
+                             "    (description \"An example component.\")"
+                             "    (author Kai)"
+                             "    (license MIT)"
+                             "    (launch bin/example)"
+                             "    (dependencies"
+                             "        (libstd >= 1.0.0)"
+                             "        )"
+                             "    (capabilities"
+                             "        fb"
+                             "        kbd"
+                             "        )"
+                             ")";
+
+    lisc_t testLisc;
+    status = lisc_init(&testLisc, testString, strlen(testString));
+    if (IS_ERR(status))
+    {
+        printf("init: failed to init lisc %Y\n", status);
+        printf(testLisc.error);
+        return EXIT_FAILURE;
+    }
+
+    print_lisc(lisc_root(&testLisc));
 
     proc_fd_t fds[] = {
         {
