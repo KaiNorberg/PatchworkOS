@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/io.h>
-#include <sys/lisc.h>
+#include <sys/scon.h>
 
 /**
  * @brief User space init process.
@@ -90,20 +90,20 @@ static void print_dir(fd_t dir, uint32_t depth)
     }
 }
 
-static void print_lisc(lisc_ref_t list)
+static void print_scon(scon_ref_t list)
 {
-    lisc_ref_t ref;
-    LISC_FOR_EACH(ref, list)
+    scon_ref_t ref;
+    SCON_FOR_EACH(ref, list)
     {
-        if (lisc_is_list(ref))
+        if (scon_is_list(ref))
         {
             printf("(");
-            print_lisc(ref);
+            print_scon(ref);
             printf(")");
         }
         else
         {
-            printf("%.*s", (int)lisc_atom_len(ref), lisc_atom_str(ref));
+            printf("%.*s", (int)scon_atom_len(ref), scon_atom_str(ref));
         }
     }
 }
@@ -227,16 +227,16 @@ int main(void)
                              "        )"
                              ")";
 
-    lisc_t testLisc;
-    status = lisc_init(&testLisc, testString, strlen(testString));
+    scon_t testLisc;
+    status = scon_init(&testLisc, testString, strlen(testString));
     if (IS_ERR(status))
     {
-        printf("init: failed to init lisc %Y\n", status);
+        printf("init: failed to init scon %Y\n", status);
         printf(testLisc.error);
         return EXIT_FAILURE;
     }
 
-    print_lisc(lisc_root(&testLisc));
+    print_scon(scon_root(&testLisc));
 
     proc_fd_t fds[] = {
         {

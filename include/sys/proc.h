@@ -177,6 +177,11 @@ _NORETURN void proc_exit(const char* result);
  */
 #define PAGE_SIZE_OF(object) BYTES_TO_PAGES(sizeof(object))
 
+/**
+ * @brief Number of bits in a byte.
+ */
+#define BITS_IN_BYTE 8
+
 /** @} */
 
 #if defined(__cplusplus)

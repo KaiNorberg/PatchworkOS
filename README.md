@@ -289,7 +289,7 @@ Each component is stored in a `/comp/<name>` directory. Within each components d
 
 The actual component files are stored within the version directories, usually within subdirectories like `bin/`, `lib/`, `include/`, etc. In addition, there is a manifest file which describes the component, its dependencies, and what capabilities it requires.
 
-These manifests are written in a simple markup language made for PatchworkOS called LISt Configuration (LISC), a parser for this language is provided in libstd with the purpose of standardizing any configuration files used throughout the OS.
+These manifests are written in a simple markup language made for PatchworkOS called S-expression CONfig (SCON), a parser is provided in libstd with the purpose of standardizing any configuration files used throughout the OS.
 
 Included below is an example manifest file:
 

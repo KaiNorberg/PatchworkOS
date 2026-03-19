@@ -21,7 +21,7 @@
  * Each components version directories contain a "manifest" file, this file stores the configuration for the component,
  * such as its dependencies, capabilities, etc.
  *
- * @see libstd_sys_lisc for more information.
+ * @see libstd_sys_scon for more information.
  *
  * ### Expressions
  *
@@ -31,7 +31,7 @@
  * - `(description "...")` A short description of the component.
  * - `(author ...)` The author of the component.
  * - `(license ...)` The license of the component.
- * - `(launch ...)` The path to the executable to run when the component is launched, only needed for launchable
+ * - `(launch ...)` The path to the executable to run when the component is launched, only needed for launchable.
  * components.
  * - `(module ...)` The path(s) to the kernel module(s) that the component provides, this and launch cannot be specified
  * together. Only needed for components that provide modules.
@@ -61,9 +61,23 @@
  * - `mouse` Access to the `/dev/mouse` directory.
  *
  * @todo Document more capabilities.
- * 
+ *
  * @{
  */
+
+/**
+ * @brief Options for launching a component.
+ * @struct comp_launch_opts_t
+ */
+typedef struct comp_launch_opts
+{
+    const char* version;    ///< The version requirement (e.g., ">= 1.0.0"). If `NULL`, the latest version is chosen.
+    uint8_t _reserved[504]; ///< Reserved for future use.
+} comp_launch_opts_t;
+
+#ifdef static_assert
+static_assert(sizeof(comp_launch_opts_t) == 512, "comp_launch_opts_t must be 512 bytes");
+#endif
 
 /**
  * @brief Launch a component with its declared launch executable.
@@ -71,13 +85,12 @@
  * If the specified component does not specify `(launch ...)` this function will fail.
  *
  * @todo Implement `comp_launch()`.
- * 
- * @param cwd The current working directory to for resolving paths.
- * @param root The root directory to use for resolving paths.
+ *
  * @param name The name of the component to launch.
+ * @param opts Additional launch options, or `NULL` for defaults.
  * @return An appropriate status value.
  */
-status_t comp_launch(fd_t cwd, fd_t root, const char* name);
+status_t comp_launch(const char* name, const comp_launch_opts_t* opts);
 
 /** @} */
 
