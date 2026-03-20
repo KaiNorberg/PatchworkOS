@@ -88,7 +88,7 @@ typedef struct proc_fd
  */
 typedef struct proc_args
 {
-    char* buf; ///< A null deliminated string of arguments.
+    const char* buf; ///< A null deliminated string of arguments.
     size_t len;
 } proc_args_t;
 

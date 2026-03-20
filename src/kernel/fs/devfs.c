@@ -30,17 +30,7 @@ static vnode_class_t dirClass = {
         },
 };
 
-static status_t devfs_clone_open(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    file_t* file = frame->file;
-    if (file == NULL)
-    {
-        return ERR(FS, EXPECT_FILE);
-    }
-
-    return file_redirect(file, root);
-}
+static status_t devfs_clone_open(irp_t* irp);
 
 static vnode_class_t cloneClass = {
     .name = "devfs clone",
@@ -56,6 +46,20 @@ static filesystem_t devfs = {
     .name = DEVFS_NAME,
     .clone = &cloneClass,
 };
+
+static status_t devfs_clone_open(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
+    if (file == NULL)
+    {
+        return ERR(FS, EXPECT_FILE);
+    }
+
+    filesystem_unregister(&devfs);
+
+    return file_redirect(file, root);
+}
 
 void devfs_init(void)
 {

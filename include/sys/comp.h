@@ -35,33 +35,38 @@
  * components.
  * - `(module ...)` The path(s) to the kernel module(s) that the component provides, this and launch cannot be specified
  * together. Only needed for components that provide modules.
- * - `(dependencies ...)` A list of expressions in the format `(name [operator] version) describing components that this
- * component depends on.
- * - `(capabilities ...) A list of capabilities that the component requires to run.
- *
- * The operator within the `(dependencies ...)` expression can be one of the following:
- * - `==` Exactly the specified version.
- * - `!=` Not the specified version.
- * - `>` Greater than the specified version.
- * - `<` Less than the specified version.
- * - `>=` Greater than or equal to the specified version.
- * - `<=` Less than or equal to the specified version.
- *
- * The `?` prefix can be applied to any operator to indicate that the dependency is optional. For example, `(libstd
- * ?>= 1.0.0)`.
+ * - `(dependencies ...)` A list of expressions in the format `(name major.minor.patch)` describing components that this
+ * component depends on with the version being the minimum version required.
+ * - `(capabilities ...)` A list of paths that the component requires to run.
  *
  * ### Capabilities
  *
- * A capability is a string that describes a resource or permission that the component requires to run, included below
- * is a list of capabilities that the manifest file will understand:
+ * A capability is a filesystem path to some resource that a component requires to run.
  *
- * - `comp` Access to everything required to launch and manage other components.
- * - `fb` Access to the `/dev/fb` directory.
- * - `kbd` Access to the `/dev/kbd` directory.
- * - `mouse` Access to the `/dev/mouse` directory.
+ * Example paths:
+ * - `/dev/fb` Access to the framebuffer directory.
+ * - `/dev/kbd` Access to the keyboard directory.
+ * - `/sys/fs` Access to the filesystem directory.
  *
- * @todo Document more capabilities.
- *
+ * ### Bindings
+ * 
+ * The following directories will be, if found within a component, automatically bound to the component's root directory:
+ * 
+ * - `/bin` The component's executable directory.
+ * - `/lib` The component's library directory.
+ * - `/include` The component's C/C++ header files.
+ * - `/data` The component's static assets and read-only data.
+ * - `/cfg` The component's default configuration files.
+ * 
+ * 
+ * ### Minimum Version Selection
+ * 
+ * The component system uses Minimum Version Selection, will always choose the lowest possible version of components that satisfies all dependencies.
+ * 
+ * This ensures that the system is reproducible and that any updates are explicit as the same set of dependencies will always result in the same environment, given the same manifests.
+ * 
+ * We also avoid NP-complete version selection problems which is good for my sanity.
+ * 
  * @{
  */
 
@@ -71,8 +76,7 @@
  */
 typedef struct comp_launch_opts
 {
-    const char* version;    ///< The version requirement (e.g., ">= 1.0.0"). If `NULL`, the latest version is chosen.
-    uint8_t _reserved[504]; ///< Reserved for future use.
+    uint8_t _reserved[512]; ///< Reserved for future use.
 } comp_launch_opts_t;
 
 #ifdef static_assert
@@ -87,10 +91,11 @@ static_assert(sizeof(comp_launch_opts_t) == 512, "comp_launch_opts_t must be 512
  * @todo Implement `comp_launch()`.
  *
  * @param name The name of the component to launch.
+ * @param version The minimum version to launch.
  * @param opts Additional launch options, or `NULL` for defaults.
  * @return An appropriate status value.
  */
-status_t comp_launch(const char* name, const comp_launch_opts_t* opts);
+status_t comp_launch(const char* name, const char* version, const comp_launch_opts_t* opts);
 
 /** @} */
 

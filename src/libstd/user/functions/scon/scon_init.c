@@ -34,7 +34,7 @@ static void scon_error(scon_parse_t* ctx, const char* error)
     }
 
     int len =
-        snprintf(ctx->scon->error, sizeof(ctx->scon->error), "scon:%zu:%zu: %s\n  %4zu |", line, column, error, line);
+        snprintf(ctx->scon->error, sizeof(ctx->scon->error), "scon:%zu:%zu: %s\n  | %4zu | ", line, column, error, line);
     size_t i = lineStart;
     while (i < ctx->size && ctx->input[i] != '\n')
     {
@@ -45,12 +45,11 @@ static void scon_error(scon_parse_t* ctx, const char* error)
     ctx->scon->error[len++] = ' ';
     ctx->scon->error[len++] = ' ';
     ctx->scon->error[len++] = '|';
-    for (size_t j = 0; j < column + 4; j++)
+    for (size_t j = 0; j < column + 6; j++)
     {
         ctx->scon->error[len++] = ' ';
     }
     ctx->scon->error[len++] = '^';
-    ctx->scon->error[len++] = '\n';
     ctx->scon->error[len] = '\0';
 
     if (ctx->scon->items != ctx->scon->small)
@@ -81,9 +80,17 @@ status_t scon_init(scon_t* scon, const char* input, size_t size)
     ctx.index = 0;
     ctx.stackIndex = 0;
 
+    scon->count++;
+    scon->items[0].next = SCON_NONE;
+    scon->items[0].type = SCON_LIST;
+    scon->items[0].list.first = SCON_NONE;
+    scon->items[0].list.last = SCON_NONE;
+
+    ctx.stack[ctx.stackIndex++] = 0;
+
     while (true)
     {
-        while (ctx.index < ctx.size && isspace(ctx.input[ctx.index]))
+        while (ctx.index < ctx.size && isspace((unsigned char)ctx.input[ctx.index]))
         {
             ctx.index++;
         }
@@ -127,13 +134,19 @@ status_t scon_init(scon_t* scon, const char* input, size_t size)
             if (ctx.stackIndex == SCON_MAX_DEPTH)
             {
                 scon_error(&ctx, "too many nested expressions");
-                return ERR(LIBSTD, INVAL);
+                return ERR(LIBSTD, INVALSCON);
             }
 
-            if (ctx.stackIndex == 0 && ctx.index != 0)
+            if (ctx.stackIndex <= 1 && scon->items[0].list.first != SCON_NONE)
             {
                 scon_error(&ctx, "unexpected '('");
-                return ERR(LIBSTD, INVAL);
+                return ERR(LIBSTD, INVALSCON);
+            }
+
+            if (scon->count >= SCON_NONE)
+            {
+                scon_error(&ctx, "too many items");
+                return ERR(LIBSTD, INVALSCON);
             }
 
             uint16_t childIndex = scon->count++;
@@ -143,20 +156,17 @@ status_t scon_init(scon_t* scon, const char* input, size_t size)
             item->list.first = SCON_NONE;
             item->list.last = SCON_NONE;
 
-            if (ctx.stackIndex != 0)
+            uint16_t parent_index = ctx.stack[ctx.stackIndex - 1];
+            scon_item_t* parent = &scon->items[parent_index];
+            if (parent->list.first == SCON_NONE)
             {
-                uint16_t parent_index = ctx.stack[ctx.stackIndex - 1];
-                scon_item_t* parent = &scon->items[parent_index];
-                if (parent->list.first == SCON_NONE)
-                {
-                    parent->list.first = childIndex;
-                }
-                else
-                {
-                    scon->items[parent->list.last].next = childIndex;
-                }
-                parent->list.last = childIndex;
+                parent->list.first = childIndex;
             }
+            else
+            {
+                scon->items[parent->list.last].next = childIndex;
+            }
+            parent->list.last = childIndex;
 
             ctx.stack[ctx.stackIndex++] = childIndex;
             ctx.index++;
@@ -164,10 +174,10 @@ status_t scon_init(scon_t* scon, const char* input, size_t size)
         break;
         case ')':
         {
-            if (ctx.stackIndex == 0)
+            if (ctx.stackIndex <= 1)
             {
                 scon_error(&ctx, "unexpected ')'");
-                return ERR(LIBSTD, INVAL);
+                return ERR(LIBSTD, INVALSCON);
             }
             ctx.stackIndex--;
             ctx.index++;
@@ -175,29 +185,35 @@ status_t scon_init(scon_t* scon, const char* input, size_t size)
         break;
         default:
         {
-            if (ctx.stackIndex == 0)
+            if (ctx.stackIndex <= 1)
             {
                 scon_error(&ctx, "unexpected atom");
-                return ERR(LIBSTD, INVAL);
+                return ERR(LIBSTD, INVALSCON);
             }
 
-            uint16_t child_index = scon->count++;
-            scon_item_t* item = &scon->items[child_index];
+            if (scon->count >= SCON_NONE)
+            {
+                scon_error(&ctx, "too many items");
+                return ERR(LIBSTD, INVALSCON);
+            }
+
+            uint16_t childIndex = scon->count++;
+            scon_item_t* item = &scon->items[childIndex];
             item->next = SCON_NONE;
             item->type = SCON_ATOM;
 
-            uint16_t parent_index = ctx.stack[ctx.stackIndex - 1];
-            scon_item_t* parent = &scon->items[parent_index];
+            uint16_t parentIndex = ctx.stack[ctx.stackIndex - 1];
+            scon_item_t* parent = &scon->items[parentIndex];
 
             if (parent->list.first == SCON_NONE)
             {
-                parent->list.first = child_index;
+                parent->list.first = childIndex;
             }
             else
             {
-                scon->items[parent->list.last].next = child_index;
+                scon->items[parent->list.last].next = childIndex;
             }
-            parent->list.last = child_index;
+            parent->list.last = childIndex;
 
             if (ctx.input[ctx.index] == '"')
             {
@@ -211,7 +227,7 @@ status_t scon_init(scon_t* scon, const char* input, size_t size)
                 if (ctx.index >= ctx.size)
                 {
                     scon_error(&ctx, "missing '\"'");
-                    return ERR(LIBSTD, INVAL);
+                    return ERR(LIBSTD, INVALSCON);
                 }
 
                 item->atom.end = ctx.index;
@@ -220,7 +236,7 @@ status_t scon_init(scon_t* scon, const char* input, size_t size)
             }
 
             item->atom.start = ctx.index;
-            while (ctx.index < ctx.size && !isspace(ctx.input[ctx.index]) && ctx.input[ctx.index] != '(' &&
+            while (ctx.index < ctx.size && !isspace((unsigned char)ctx.input[ctx.index]) && ctx.input[ctx.index] != '(' &&
                 ctx.input[ctx.index] != ')' && ctx.input[ctx.index] != '"')
             {
                 ctx.index++;
@@ -230,17 +246,17 @@ status_t scon_init(scon_t* scon, const char* input, size_t size)
             if (ctx.index < ctx.size && ctx.input[item->atom.end] == '"')
             {
                 scon_error(&ctx, "unexpected '\"'");
-                return ERR(LIBSTD, INVAL);
+                return ERR(LIBSTD, INVALSCON);
             }
         }
         break;
         }
     }
 
-    if (ctx.stackIndex != 0)
+    if (ctx.stackIndex > 1)
     {
         scon_error(&ctx, "missing ')'");
-        return ERR(LIBSTD, INVAL);
+        return ERR(LIBSTD, INVALSCON);
     }
 
     return OK;

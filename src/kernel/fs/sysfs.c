@@ -30,33 +30,6 @@ static vnode_class_t dirClass = {
         },
 };
 
-static status_t sysfs_clone_open(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    file_t* file = frame->file;
-    if (file == NULL)
-    {
-        return ERR(FS, EXPECT_FILE);
-    }
-
-    return file_redirect(file, root);
-}
-
-static vnode_class_t cloneClass = {
-    .name = "sysfs clone",
-    .type = FILE_TYPE_SYSTEM,
-    .handlers =
-        {
-            VNODE_HANDLERS(),
-            [IRP_MJ_OPEN] = sysfs_clone_open,
-        },
-};
-
-static filesystem_t sysfs = {
-    .name = SYSFS_NAME,
-    .clone = &cloneClass,
-};
-
 void sysfs_init(void)
 {
     vnode_t* vnode = vnode_new(volume_new(), &dirClass, 0);
@@ -73,12 +46,6 @@ void sysfs_init(void)
     }
 
     dentry_make_positive(root, vnode);
-
-    status_t status = filesystem_register(&sysfs);
-    if (IS_ERR(status))
-    {
-        panic(NULL, "Failed to register sysfs %Y", status);
-    }
 }
 
 status_t sysfs_root_file(file_t** out)

@@ -26,6 +26,8 @@ typedef struct volume_ops volume_ops_t;
 
 /**
  * @brief Initializes the system filesystem.
+ * 
+ * The sysfs filesystem will not be registered to ensure that only the init process can access it.
  */
 void sysfs_init(void);
 

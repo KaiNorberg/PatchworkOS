@@ -12,7 +12,6 @@ ROOT_DIRS = \
 	comp/test comp/test/1.0.0 comp/test/1.0.0/bin \
 	dev \
 	efi efi/boot \
-	lib \
 	proc \
 	sys \
 
@@ -50,9 +49,7 @@ bin/.deployed: $(BOOT_TARGET) $(KERNEL_TARGET) $(LIBSTD_TARGET) $(INIT_TARGET) $
 		mcopy -i $(IMAGE) -s bin/modules/* ::/boot/modules/$(VERSION_STRING) 2>/dev/null || true; \
 	fi
 	@mcopy -i $(IMAGE) -s bin/libstd/libstd.so ::/comp/libstd/1.0.0/lib 2>/dev/null || true
-	@mcopy -i $(IMAGE) -s bin/libstd/libstd.so ::/lib 2>/dev/null || true
 	@mcopy -i $(IMAGE) -s bin/comp/dynlink.so ::/comp/dynlink/1.0.0/lib 2>/dev/null || true
-	@mcopy -i $(IMAGE) -s bin/comp/dynlink.so ::/lib 2>/dev/null || true
 	@mcopy -i $(IMAGE) -s bin/comp/test ::/comp/test/1.0.0/bin 2>/dev/null || true
 #@mcopy -i $(IMAGE) -s LICENSE ::/base/license 2>/dev/null || true
 #@mcopy -i $(IMAGE) -s bin/libpatchwork/libpatchwork.a ::/base/lib 2>/dev/null || true

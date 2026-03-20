@@ -359,13 +359,37 @@ static inline scon_ref_t scon_find(scon_ref_t list, const char* name)
 }
 
 /**
+ * @brief Retrieve the n-th item in a SCON list.
+ * 
+ * @param list The reference to the list item.
+ * @param n The index of the item to retrieve.
+ * @return A reference to the n-th item, or a reference with index `SCON_NONE` if not found.
+ */
+static inline scon_ref_t scon_get(scon_ref_t list, size_t n)
+{
+    if (!scon_is_valid(list) || !scon_is_list(list))
+    {
+        return (scon_ref_t){.scon = list.scon, .index = SCON_NONE};
+    }
+
+    scon_ref_t item = scon_first(list);
+    for (size_t i = 0; i < n && scon_is_valid(item); i++)
+    {
+        item = scon_next(item);
+    }
+
+    return item;
+}
+
+/**
  * @brief Macro for iterating over the items of a SCON list.
  *
  * @param _item The loop variable, a `scon_ref_t`.
- * @param _list The reference to the list to iterate over.
+ * @param _list The reference to the lis to iterate over.
+ * @param _start The index to start iterating from.
  */
-#define SCON_FOR_EACH(_item, _list) \
-    for (scon_ref_t _item = scon_first(_list); scon_is_valid(_item); (_item) = scon_next(_item))
+#define SCON_FOR_EACH(_item, _list, _start) \
+    for (_item = scon_get(_list, _start); scon_is_valid(_item); (_item) = scon_next(_item))
 
 /** @} */
 

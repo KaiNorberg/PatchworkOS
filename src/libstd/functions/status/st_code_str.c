@@ -170,6 +170,10 @@ const char* st_code_str(st_code_t code)
         return "bootloader did not provide needed info";
     case ST_CODE_NOINTERP:
         return "unable to locate elf interpreter";
+    case ST_CODE_NOVERSION:
+        return "invalid version";
+    case ST_CODE_INVALSCON:
+        return "invalid scon";
 
     // System
     case ST_CODE_MJ_OVERFLOW:

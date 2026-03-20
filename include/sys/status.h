@@ -214,6 +214,8 @@ typedef enum
     ST_CODE_INVAL_ACPI_TABLE,                  ///< Invalid ACPI table.
     ST_CODE_NO_BOOT_INFO,                      ///< Bootloader did not provide needed info.
     ST_CODE_NOINTERP,                          ///< Unable to locate ELF interpreter.
+    ST_CODE_NOVERSION,                         ///< Invalid version.
+    ST_CODE_INVALSCON,                         ///< Invalid SCON.
 
     ST_CODE_MJ_OVERFLOW = (ST_KIND_SYS << 8) | 1, ///< Major number overflow.
     ST_CODE_MJ_NOSYS,                             ///< Major number not found.

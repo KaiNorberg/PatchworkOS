@@ -300,24 +300,26 @@ Included below is an example manifest file:
     (license MIT)
     (launch bin/example)
     (dependencies
-        (libstd >= 1.0.0)
+        (libstd 1.0.0)
     )
     (capabilities
-        fb
-        kbd
+        /dev/fb
+        /dev/kbd
     )
 )
 ```
 
 ### Launching Components
 
-Any process can launch a component using the `comp_launch()` function from libstd. This function will construct a new root file descriptor for the component, with all the directories and files within the components directory and any dependencies directories, being bound in a union to the root along with any additional files specified via the capabilities (e.g. if `fb` is specified, the launched process can access the framebuffers via `/dev/fb/`).
+Any process can launch a component using the `comp_launch()` function from libstd. This function will construct a new root file descriptor for the component, with all the directories and files within the components directory and any dependencies directories, being bound in a union to the root along with any additional files specified via the capabilities.
 
-Lets take the MyProgram component described above as an example. The libstd component provides a `lib/libstd.so` file and lets also say that libother provides a `lib/libother.so` file. In this case, the launched process would then find both `libstd.so` and `libother.so` in `/lib`. However, simply being able to read these shared libraries is pointless without the dynamic linker, dynlink, which provides the `bin/dynlink.so` file.
+Let's take the component described above as an example. The libstd component provides a `lib/libstd.so` file and let's also say that libother provides a `lib/libother.so` file. In this case, the launched process would then find both `libstd.so` and `libother.so` in `/lib`. However, simply being able to read these shared libraries is pointless without the dynamic linker, dynlink, which provides the `bin/dynlink.so` file.
 
-It would also be able to access see the `/dev/fb/`, `/dev/kbd`, etc. directories due to its specified capabilities.
+It would also be able to access see the `/dev/fb/`, `/dev/kbd`, as those were specified directly.
 
-The `comp_launch()` function will automatically handle versioning, following the rules defined in the component manifest.
+The `comp_launch()` function will automatically handle versioning via Minimum Version Selection inspired by GO, this means that the system will always choose the lowest possible version of components that satisfies all dependencies. Meaning that the version specified in a manifest might not be the version that's loaded, instead the version specified is the minimum version.
+
+This ensures that the system is reproducible, that any updates have to be explicit ensuring that an update never breaks the system and that rollbacks are effortless (with the potential for some auto update system in the future) as the same set of dependencies will always result in the same environment, given the same manifests.
 
 This all has one rather large limitation, in that the parent process must have all the capabilities to be passed to the child. If the child needs a capability that the parent does not have, the `comp_launch()` function will fail.
 
@@ -489,7 +491,6 @@ Of course, it gets way, way worse than this, but hopefully this clarifies why th
 
 ### User Space
 
-- Theming via [config files](https://github.com/KaiNorberg/PatchworkOS/blob/main/root/cfg).
 - Capability security model. See [Security](#security) for more info.
 - Dynamic Linker with GNU hashing.
 - Note that currently a heavy focus has been placed on the kernel and low-level stuff, so user space is quite small... for now.

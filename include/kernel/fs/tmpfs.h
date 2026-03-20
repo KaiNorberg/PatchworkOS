@@ -16,7 +16,8 @@
  * @ingroup kernel_fs
  *
  * A simple in-memory filesystem. All data is lost when power is lost.
- *
+ * 
+ * In addition to tmpfs we also have ramfs which represents the ram disk passed from the bootloader. Ramfs can only be cloned once, after the first clone the ramfs filesystem will be unregistered. Tmpfs can be cloned any number of times.
  * @{
  */
 

@@ -751,17 +751,7 @@ static vnode_class_t rootClass = {
         },
 };
 
-static status_t procfs_clone_open(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    file_t* file = frame->file;
-    if (file == NULL)
-    {
-        return ERR(FS, EXPECT_FILE);
-    }
-
-    return file_redirect(file, root);
-}
+static status_t procfs_clone_open(irp_t* irp);
 
 static vnode_class_t cloneClass = {
     .name = "procfs clone",
@@ -777,6 +767,20 @@ static filesystem_t procfs = {
     .name = PROCFS_NAME,
     .clone = &cloneClass,
 };
+
+static status_t procfs_clone_open(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    file_t* file = frame->file;
+    if (file == NULL)
+    {
+        return ERR(FS, EXPECT_FILE);
+    }
+
+    filesystem_unregister(&procfs);
+
+    return file_redirect(file, root);
+}
 
 void procfs_init(void)
 {

@@ -4,10 +4,6 @@
     (license MIT)
     (launch /bin/test)
     (dependencies
-        (libstd >= 1.0.0)
-    )
-    (capabilities
-        fb
-        kbd
+        (libstd 1.0.0)
     )
 )

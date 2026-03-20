@@ -1,0 +1,14 @@
+(component
+    (description "Standard Library.")
+    (author Kai)
+    (license MIT)
+    (capabilities
+        /comp
+        /proc
+        /sys/fs/tmpfs
+        /dev/const
+    )
+    (dependencies
+        (dynlink 1.0.0)
+    )
+)

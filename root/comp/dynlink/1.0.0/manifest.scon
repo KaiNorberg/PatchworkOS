@@ -1,0 +1,5 @@
+(component
+    (description "Dynamic linker.")
+    (author Kai)
+    (license MIT)
+)

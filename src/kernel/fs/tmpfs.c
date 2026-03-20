@@ -712,16 +712,7 @@ static status_t ramfs_load_dir(tmpfs_volume_t* volume, dentry_t* parent, const c
     return OK;
 }
 
-static status_t ramfs_clone_open(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    if (frame->file == NULL)
-    {
-        return ERR(FS, EXPECT_FILE);
-    }
-
-    return file_redirect(frame->file, ramfsRoot);
-}
+static status_t ramfs_clone_open(irp_t* irp);
 
 static vnode_class_t ramfsCloneClass = {
     .name = "ramfs clone",
@@ -737,6 +728,19 @@ static filesystem_t ramfs = {
     .name = "ramfs",
     .clone = &ramfsCloneClass,
 };
+
+static status_t ramfs_clone_open(irp_t* irp)
+{
+    irp_frame_t* frame = irp_current(irp);
+    if (frame->file == NULL)
+    {
+        return ERR(FS, EXPECT_FILE);
+    }
+
+    filesystem_unregister(&ramfs);
+
+    return file_redirect(frame->file, ramfsRoot);
+}
 
 static void ramfs_init(void)
 {

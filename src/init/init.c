@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/comp.h>
 #include <sys/io.h>
 #include <sys/scon.h>
 
@@ -87,24 +88,6 @@ static void print_dir(fd_t dir, uint32_t depth)
         iodrop(child);
 
         p += len + 1;
-    }
-}
-
-static void print_scon(scon_ref_t list)
-{
-    scon_ref_t ref;
-    SCON_FOR_EACH(ref, list)
-    {
-        if (scon_is_list(ref))
-        {
-            printf("(");
-            print_scon(ref);
-            printf(")");
-        }
-        else
-        {
-            printf("%.*s", (int)scon_atom_len(ref), scon_atom_str(ref));
-        }
     }
 }
 
@@ -213,50 +196,10 @@ int main(void)
 
     print_dir(FDROOT, 0);
 
-    const char* testString = "(component"
-                             "    (description \"An example component.\")"
-                             "    (author Kai)"
-                             "    (license MIT)"
-                             "    (launch bin/example)"
-                             "    (dependencies"
-                             "        (libstd >= 1.0.0)"
-                             "        )"
-                             "    (capabilities"
-                             "        fb"
-                             "        kbd"
-                             "        )"
-                             ")";
-
-    scon_t testLisc;
-    status = scon_init(&testLisc, testString, strlen(testString));
+    status = comp_launch("test", "1.0.0", NULL);
     if (IS_ERR(status))
     {
-        printf("init: failed to init scon %Y\n", status);
-        printf(testLisc.error);
-        return EXIT_FAILURE;
-    }
-
-    print_scon(scon_root(&testLisc));
-
-    proc_fd_t fds[] = {
-        {
-            .parent = FDROOT,
-            .child = FDROOT,
-        },
-        {
-            .parent = FDCWD,
-            .child = FDCWD,
-        },
-        {
-            .parent = FDOUT,
-            .child = FDOUT,
-        },
-    };
-    status =
-        proc_create(FDCWD, FDROOT, PROC_ARGS("/comp/test/1.0.0/bin/test"), fds, ARRAY_SIZE(fds), PRIO_DEFAULT, 0, NULL);
-    if (IS_ERR(status))
-    {
-        printf("init: failed to create test process %Y\n", status);
+        printf("init: failed to launch component %Y\n", status);
         return EXIT_FAILURE;
     }
 
