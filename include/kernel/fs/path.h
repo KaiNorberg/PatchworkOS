@@ -38,13 +38,13 @@ typedef struct file file_t;
  * | `write`     | `w` | Open with write permissions. |
  * | `execute`   | `x` | Open with execute permissions. |
  * | `append`    | `a` | Any data written to the file will be appended to the end. |
- * | `create`      | `c` | Create a regular file, or fail if the file already exists but is not a regular file. |
+ * | `create`    | `c` | Create a regular file, or fail if the file already exists but is not a regular file. |
  * | `directory` | `d` | Create a directory, or fail if the file already exists but is not a directory. |
  * | `symlink`   | `s` | Create a symlink, or fail if the file already exists but is not a symlink. |
  * | `hardlink`  | `h` | Create a hardlink, or fail if the file already exists. |
  * | `exclusive` | `e` | Will cause the open to fail if the file already exists. |
- * | `existing`  | `E` | Force failure if the file does not exist even if any creation flags are specified, useful if you want to, for example, ensure you are opening a directory. | 
- * | `truncate`  | `t` | Truncate the file to zero length if it already exists. | 
+ * | `existing`  | `E` | Force failure if the file does not exist even if any creation flags are specified, useful if you want to, for example, ensure you are opening a directory. |
+ * | `truncate`  | `t` | Truncate the file to zero length if it already exists. |
  * | `nofollow`  | `l` | Do not follow symlinks. |
  * | `parents`   | `p` | Create parent directories if they do not exist. |
  * | `locked`    | `L` | Forbid unmounting this binding, useful for hiding directories or files. |
@@ -92,14 +92,6 @@ typedef struct file file_t;
  * bad practice and their loss is not significant.
  *
  * @see https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file
- *
- * ## Rationale
- *
- * The primary intent behind the use of the flags and payload system is to allow for greater composability. With this
- * system, any environment that can open a file, a Lua script, a shell, etc. can create any file, directory, symlink or
- * hardlink with any permissions and flags without needing to rely on custom "PatchworkOS extensions".
- *
- * One can as an exercise imagine the potential of a basic "touch" shell utility with this system.
  *
  * @{
  */

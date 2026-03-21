@@ -49,38 +49,44 @@
  * - `/sys/fs` Access to the filesystem directory.
  *
  * ### Bindings
- * 
- * The following directories will be, if found within a component, automatically bound to the component's root directory:
- * 
+ *
+ * The following directories will be, if found within a component, automatically bound to the component's root
+ * directory:
+ *
  * - `/bin` The component's executable directory.
  * - `/lib` The component's library directory.
  * - `/include` The component's C/C++ header files.
  * - `/data` The component's static assets and read-only data.
  * - `/cfg` The component's default configuration files.
- * 
- * 
+ *
+ *
  * ### Minimum Version Selection
- * 
- * The component system uses Minimum Version Selection, will always choose the lowest possible version of components that satisfies all dependencies.
- * 
- * This ensures that the system is reproducible and that any updates are explicit as the same set of dependencies will always result in the same environment, given the same manifests.
- * 
+ *
+ * The component system uses Minimum Version Selection, will always choose the lowest possible version of components
+ * that satisfies all dependencies.
+ *
+ * This ensures that the system is reproducible and that any updates are explicit as the same set of dependencies will
+ * always result in the same environment, given the same manifests.
+ *
  * We also avoid NP-complete version selection problems which is good for my sanity.
- * 
+ *
  * @{
  */
 
 /**
  * @brief Options for launching a component.
- * @struct comp_launch_opts_t
+ * @struct comp_options_t
  */
-typedef struct comp_launch_opts
+typedef struct comp_options
 {
-    uint8_t _reserved[512]; ///< Reserved for future use.
-} comp_launch_opts_t;
+    fd_t stdin;             ///< Standard input file descriptor.
+    fd_t stdout;            ///< Standard output file descriptor.
+    fd_t stderr;            ///< Standard error file descriptor.
+    uint8_t _reserved[482]; ///< Reserved for future use.
+} comp_options_t;
 
 #ifdef static_assert
-static_assert(sizeof(comp_launch_opts_t) == 512, "comp_launch_opts_t must be 512 bytes");
+static_assert(sizeof(comp_options_t) == 512, "comp_options_t must be 512 bytes");
 #endif
 
 /**
@@ -88,14 +94,12 @@ static_assert(sizeof(comp_launch_opts_t) == 512, "comp_launch_opts_t must be 512
  *
  * If the specified component does not specify `(launch ...)` this function will fail.
  *
- * @todo Implement `comp_launch()`.
- *
  * @param name The name of the component to launch.
  * @param version The minimum version to launch.
  * @param opts Additional launch options, or `NULL` for defaults.
  * @return An appropriate status value.
  */
-status_t comp_launch(const char* name, const char* version, const comp_launch_opts_t* opts);
+status_t comp_launch(const char* name, const char* version, const comp_options_t* opts);
 
 /** @} */
 

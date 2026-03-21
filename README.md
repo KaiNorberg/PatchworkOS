@@ -178,7 +178,7 @@ iowrite(fd, IOBUF("Hello, World!", 13), IOCUR, &bytesWritten);
 iodrop(fd);
 ```
 
-We first open the file using `iowalk()`, using the `IOPATH()` macro to specify the path. This macro expands to `FDCWD, FDROOT, "/path/to/file:rw"`, specifying the default current working directory and root directory. Within the path we specify "read and write access" (`:rw`). We could also specify a payload after a `?` symbol, which would be a raw string passed to the underlying filesystem.
+We first open the file using `iowalk()`, using the `IOPATH()` macro to specify the path. This macro expands to `FDCWD, FDROOT, "/path/to/file:rw"`, specifying the default current working directory and root directory. Within the path we specify "read and write access" (`:rw` see [Path Flags and Payloads](#Path Flags and Payloads)).
 
 > The term "walk" is used instead of "open" since all operations act on file descriptors and the ability to reach files relative to other files is a key part of the security model. As such, performing any operation on a file should be thought of as "walking" to it and then acting upon it, instead of merely "opening" it, after walking to a file we could walk to another file relative to it.
 
@@ -191,6 +191,22 @@ Finally, we close the file using `iodrop()`.
 > The term "drop" is used instead of "close" to cleanly differentiate between closing a file and closing a file descriptor. We only use the terms "open" and "close" when referring to the underlying file (`file_t`), while using terms such as "grab" and "drop" when referring to file descriptors (`fd_t`).
 
 The `iowritet()`, `ioreadt()` and `iowalkt()` functions are also provided that expect an additional `clock_t timeout` argument. There is also an event loop based abstraction around the I/O Ring itself provided via macros with the `Q` suffix.
+
+#### Path Flags and Payloads
+
+A path can contain two additional optional segments, path flags and a payload. Path flags are appended after a `:` charachter and can be written in two forms, either in full form or in short form with the short form being a single letter that can be specified in groups. For example, `/my/path:read:write:execute` could also be written as `/my/path:rwx`. Note that the order of the letters and duplicates are ignored.
+
+Beyond simple permission flags we have behaviour flags such as `:append`, `:parents`, `:truncate`, etc. or creation flags, `:create`, `:directory`, `:symlink` and `:hardlink`. With the simple `:create` creating a regular file.
+
+The payload of a path is specified after a `?` charachter, this payload is treated as a raw string and will be passed to the underlying filesystem, allowing it to handle the payload in any way it chooses. However, typically filesystems will expect a options list in the form of key-value pairs seperated by `&` charachters.
+
+For example, we could create a symlink by walking the path `/my/path/to/source:symlink?/my/path/to/target`. 
+
+Another example is concatfs which is used to concatenate the contents of several directories into a single directory. It expects the targets of the concatenation to be specified in the payload to its clone file, for example `/sys/fs/concatfs/clone?targets=1,2,3,4` where 1, 2, 3 and 4 are file descriptors.
+
+The primary intent behind the use of the flags and payload system is to allow for greater composability. With this system, any environment that can open a file, a Lua script, a shell, etc. can create any file, directory, symlink or hardlink with any permissions and flags without needing to rely on custom "PatchworkOS extensions".
+
+One can as an exercise imagine the potential of a basic "touch" shell utility with this system.
 
 ### Process Creation
 
@@ -311,11 +327,9 @@ Included below is an example manifest file:
 
 ### Launching Components
 
-Any process can launch a component using the `comp_launch()` function from libstd. This function will construct a new root file descriptor for the component, with all the directories and files within the components directory and any dependencies directories, being bound in a union to the root along with any additional files specified via the capabilities.
+Any process can launch a component using the `comp_launch()` function from libstd. This function will construct a new root file descriptor for the component, with all the directories and files within the components directory and any dependencies directories, being concatenated via concatfs into a set of standard directories such as `/bin`, `/lib`, etc. and with any additional files specified via the capabilities being bound to the expected locations.
 
-Let's take the component described above as an example. The libstd component provides a `lib/libstd.so` file and let's also say that libother provides a `lib/libother.so` file. In this case, the launched process would then find both `libstd.so` and `libother.so` in `/lib`. However, simply being able to read these shared libraries is pointless without the dynamic linker, dynlink, which provides the `bin/dynlink.so` file.
-
-It would also be able to access see the `/dev/fb/`, `/dev/kbd`, as those were specified directly.
+Let's take the component described above as an example. The libstd component provides a `lib/libstd.so` file and let's also say that libother provides a `lib/libother.so` file. In this case, the launched process would then find both `libstd.so` and `libother.so` in `/lib`. It would also be able to access see the `/dev/fb/`, `/dev/kbd`, as those were specified directly.
 
 The `comp_launch()` function will automatically handle versioning via Minimum Version Selection inspired by GO, this means that the system will always choose the lowest possible version of components that satisfies all dependencies. Meaning that the version specified in a manifest might not be the version that's loaded, instead the version specified is the minimum version.
 
@@ -485,7 +499,7 @@ Of course, it gets way, way worse than this, but hopefully this clarifies why th
 
 ### File System
 
-- Vnode and dentry based VFS with RCU traversal, hardlinks, symlinks, etc.
+- Vnode and dentry based VFS with RCU traversal, hardlinks, symlinks, Plan9 inspired union mounts via concatfs, etc.
 - Custom [Framebuffer BitMaP](https://github.com/KaiNorberg/fbmp) (.fbmp) image format, allows for faster loading by removing the need for parsing.
 - Custom [Grayscale Raster Font](https://github.com/KaiNorberg/grf) (.grf) font format, allows for antialiasing and kerning without complex vector graphics.
 

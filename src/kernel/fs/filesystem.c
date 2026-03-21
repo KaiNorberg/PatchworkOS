@@ -110,12 +110,12 @@ file_volume_t volume_new(void)
     return atomic_fetch_add(&nextId, 1);
 }
 
-bool options_next(const char** iter, char* buffer, size_t size, char** key, char** value)
+bool options_next(const char** iter, char* buffer, size_t size, const char** key, char** value)
 {
     while (*iter != NULL && **iter != '\0')
     {
         const char* start = *iter;
-        const char* end = strchr(start, ',');
+        const char* end = strchr(start, '&');
         size_t len = end != NULL ? (size_t)(end - start) : strlen(start);
 
         *iter = end != NULL ? end + 1 : NULL;

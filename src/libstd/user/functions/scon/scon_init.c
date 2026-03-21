@@ -33,8 +33,8 @@ static void scon_error(scon_parse_t* ctx, const char* error)
         }
     }
 
-    int len =
-        snprintf(ctx->scon->error, sizeof(ctx->scon->error), "scon:%zu:%zu: %s\n  | %4zu | ", line, column, error, line);
+    int len = snprintf(ctx->scon->error, sizeof(ctx->scon->error), "scon:%zu:%zu: %s\n  | %4zu | ", line, column, error,
+        line);
     size_t i = lineStart;
     while (i < ctx->size && ctx->input[i] != '\n')
     {
@@ -236,8 +236,8 @@ status_t scon_init(scon_t* scon, const char* input, size_t size)
             }
 
             item->atom.start = ctx.index;
-            while (ctx.index < ctx.size && !isspace((unsigned char)ctx.input[ctx.index]) && ctx.input[ctx.index] != '(' &&
-                ctx.input[ctx.index] != ')' && ctx.input[ctx.index] != '"')
+            while (ctx.index < ctx.size && !isspace((unsigned char)ctx.input[ctx.index]) &&
+                ctx.input[ctx.index] != '(' && ctx.input[ctx.index] != ')' && ctx.input[ctx.index] != '"')
             {
                 ctx.index++;
             }

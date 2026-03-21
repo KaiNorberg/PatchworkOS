@@ -131,7 +131,7 @@ status_t scon_init(scon_t* scon, const char* input, size_t size);
  * @brief Deinitialize the SCON structure.
  *
  * @note Will not free the input buffer.
- * 
+ *
  * @param scon Pointer to the SCON structure to deinitialize.
  */
 void scon_deinit(scon_t* scon);
@@ -360,7 +360,7 @@ static inline scon_ref_t scon_find(scon_ref_t list, const char* name)
 
 /**
  * @brief Retrieve the n-th item in a SCON list.
- * 
+ *
  * @param list The reference to the list item.
  * @param n The index of the item to retrieve.
  * @return A reference to the n-th item, or a reference with index `SCON_NONE` if not found.

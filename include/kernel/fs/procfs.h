@@ -24,7 +24,7 @@
  * file descriptor to the root of that process's proc directory.
  *
  * Procfs can only be cloned once, after the first clone the Procfs filesystem will be unregistered.
- * 
+ *
  * @note Anytime a file descriptor is referred to it is from the perspective of the target process unless stated
  * otherwise.
  *

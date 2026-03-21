@@ -74,19 +74,6 @@ typedef struct vnode
 } vnode_t;
 
 /**
- * @brief Macro to safely type cast a vnode to its filesystem-specific structure.
- *
- * @param _vnode The vnode to type cast.
- * @param _type The type of the filesystem-specific vnode.
- */
-#define VNODE_GET(_vnode, _type) \
-    ({ \
-        assert((_vnode) == NULL || sizeof(_type) >= (_vnode)->cls != NULL ? (_vnode)->cls->cache->size \
-                                                                          : sizeof(vnode_t)); \
-        (_type*)(_vnode); \
-    })
-
-/**
  * @brief Create a new vnode.
  *
  * Does not associate the vnode with a dentry, that is done when a dentry is made positive with

@@ -9,8 +9,7 @@
 
 typedef struct
 {
-    union
-    {
+    union {
         struct
         {
             uint32_t major;
@@ -47,7 +46,7 @@ typedef struct
 {
     char* path;
     size_t length;
-} comp_cap_t;   
+} comp_cap_t;
 
 typedef struct
 {
@@ -101,9 +100,15 @@ static void comp_loader_deinit(comp_loader_t* loader)
 
 static int64_t comp_version_compare(comp_version_t a, comp_version_t b)
 {
-    int64_t aInt = ((int64_t)a.major * COMP_VERSION_BASE * COMP_VERSION_BASE) + ((int64_t)a.minor * COMP_VERSION_BASE) + a.patch;
-    int64_t bInt = ((int64_t)b.major * COMP_VERSION_BASE * COMP_VERSION_BASE) + ((int64_t)b.minor * COMP_VERSION_BASE) + b.patch;
-    return aInt - bInt;
+    if (a.major != b.major)
+    {
+        return (int64_t)a.major - (int64_t)b.major;
+    }
+    if (a.minor != b.minor)
+    {
+        return (int64_t)a.minor - (int64_t)b.minor;
+    }
+    return (int64_t)a.patch - (int64_t)b.patch;
 }
 
 static status_t comp_version_parse(const char* version, size_t versionLen, comp_version_t* out)
@@ -155,7 +160,8 @@ static status_t comp_version_parse(const char* version, size_t versionLen, comp_
     return OK;
 }
 
-static status_t comp_add(comp_loader_t* loader, const char* name, size_t nameLen, const char* version, size_t versionLen, comp_req_t** out)
+static status_t comp_add(comp_loader_t* loader, const char* name, size_t nameLen, const char* version,
+    size_t versionLen, comp_req_t** out)
 {
     if (loader == NULL || name == NULL || nameLen >= MAX_NAME || version == NULL || out == NULL)
     {
@@ -167,7 +173,7 @@ static status_t comp_add(comp_loader_t* loader, const char* name, size_t nameLen
     {
         return ERR(LIBSTD, NOMEM);
     }
-    
+
     memcpy(req->name, name, nameLen);
     req->name[nameLen] = '\0';
 
@@ -182,7 +188,7 @@ static status_t comp_add(comp_loader_t* loader, const char* name, size_t nameLen
     map_entry_init(&req->mapEntry);
     list_push_back(&loader->reqs, &req->entry);
     map_insert(&loader->map, &req->mapEntry, hash_string(req->name));
-    req->manifest = NULL;   
+    req->manifest = NULL;
     req->manifestLength = 0;
     req->processed = false;
 
@@ -190,7 +196,8 @@ static status_t comp_add(comp_loader_t* loader, const char* name, size_t nameLen
     return OK;
 }
 
-static status_t comp_find_lowest_available(comp_loader_t* loader, const char* name, comp_version_t reqVersion, char* out, size_t outLen, comp_version_t* outVersion)
+static status_t comp_find_lowest_available(comp_loader_t* loader, const char* name, comp_version_t reqVersion,
+    char* out, size_t outLen, comp_version_t* outVersion)
 {
     if (loader == NULL || name == NULL || out == NULL)
     {
@@ -243,7 +250,7 @@ static status_t comp_find_lowest_available(comp_loader_t* loader, const char* na
 
         p += len + 1;
     }
-    
+
     if (selectedP == NULL)
     {
         free(versions);
@@ -277,9 +284,10 @@ static status_t comp_check(comp_loader_t* loader, comp_req_t* req)
     memcpy(manifestPath + compLen, req->name, nameLength);
     manifestPath[compLen + nameLength] = '/';
     manifestPath[compLen + nameLength + 1] = '\0';
-    
+
     comp_version_t actualVersion;
-    status_t status = comp_find_lowest_available(loader, req->name, req->version, manifestPath + compLen + nameLength + 1, sizeof(manifestPath) - compLen - nameLength - 1 - 15, &actualVersion);
+    status_t status = comp_find_lowest_available(loader, req->name, req->version,
+        manifestPath + compLen + nameLength + 1, sizeof(manifestPath) - compLen - nameLength - 1 - 15, &actualVersion);
     if (IS_ERR(status))
     {
         return status;
@@ -324,7 +332,7 @@ static status_t comp_check(comp_loader_t* loader, comp_req_t* req)
     scon_ref_t dep;
     SCON_FOR_EACH(dep, dependencies, 1)
     {
-        if (!scon_is_list(dep)) 
+        if (!scon_is_list(dep))
         {
             continue;
         }
@@ -345,7 +353,7 @@ static status_t comp_check(comp_loader_t* loader, comp_req_t* req)
         size_t nameLen;
         if (IS_ERR(scon_atom_get(nameAtom, &nameStr, &nameLen)))
         {
-            continue;  
+            continue;
         }
 
         const char* versionStr;
@@ -369,7 +377,7 @@ static status_t comp_check(comp_loader_t* loader, comp_req_t* req)
         if (depReq == NULL)
         {
             status = comp_add(loader, depName, nameLen, versionStr, versionLen, &depReq);
-            if (IS_ERR(status)) 
+            if (IS_ERR(status))
             {
                 return status;
             }
@@ -409,7 +417,7 @@ static status_t comp_load_dependencies(comp_loader_t* loader)
         LIST_FOR_EACH(req, &loader->reqs, entry)
         {
             if (req->processed)
-            {   
+            {
                 continue;
             }
 
@@ -455,7 +463,7 @@ static void comp_mark_reachable(comp_loader_t* loader, comp_req_t* req)
     scon_ref_t dep;
     SCON_FOR_EACH(dep, dependencies, 1)
     {
-        if (!scon_is_list(dep)) 
+        if (!scon_is_list(dep))
         {
             continue;
         }
@@ -499,7 +507,7 @@ static status_t comp_cull_orphans(comp_loader_t* loader, comp_req_t* main)
 
     comp_req_t* req;
     LIST_FOR_EACH(req, &loader->reqs, entry)
-    {        
+    {
         req->processed = false;
     }
 
@@ -509,7 +517,7 @@ static status_t comp_cull_orphans(comp_loader_t* loader, comp_req_t* main)
     LIST_FOR_EACH_SAFE(req, temp, &loader->reqs, entry)
     {
         if (!req->processed)
-        {            
+        {
             list_remove(&req->entry);
             map_remove(&loader->map, &req->mapEntry, hash_string(req->name));
             if (req->manifest != NULL)
@@ -549,7 +557,8 @@ static status_t comp_cap_set_add(comp_cap_set_t* set, const char* path, size_t l
     for (size_t i = 0; i < set->count; i++)
     {
         size_t existBaseLen = 0;
-        while (existBaseLen < set->caps[i].length && set->caps[i].path[existBaseLen] != ':' && set->caps[i].path[existBaseLen] != '?')
+        while (existBaseLen < set->caps[i].length && set->caps[i].path[existBaseLen] != ':' &&
+            set->caps[i].path[existBaseLen] != '?')
         {
             existBaseLen++;
         }
@@ -679,7 +688,7 @@ static status_t comp_load_capabilities(comp_loader_t* loader, fd_t root)
             break;
         }
 
-        file_type_t type;
+        file_type_t type = 0;
         status = ioattr(src, FILE_GET_TYPE, &type);
         if (IS_ERR(status))
         {
@@ -688,7 +697,8 @@ static status_t comp_load_capabilities(comp_loader_t* loader, fd_t root)
         }
 
         fd_t target;
-        status = iowalk(root, root, IOFMT("%s:%s", caps.caps[i].path, type == FILE_TYPE_DIRECTORY ? "dp" : "cp"), &target);
+        status =
+            iowalk(root, root, IOFMT("%s:%s", caps.caps[i].path, type == FILE_TYPE_DIRECTORY ? "dp" : "cp"), &target);
         if (IS_ERR(status))
         {
             iodrop(src);
@@ -735,8 +745,8 @@ static status_t comp_load_union(comp_loader_t* loader, fd_t root)
         for (uint32_t i = 0; i < COMP_DIR_MAX; i++)
         {
             char path[MAX_PATH];
-            snprintf(path, sizeof(path), "/comp/%s/%u.%u.%u/%s", req->name,
-                     req->version.major, req->version.minor, req->version.patch, dirNames[i]);
+            snprintf(path, sizeof(path), "/comp/%s/%u.%u.%u/%s", req->name, req->version.major, req->version.minor,
+                req->version.patch, dirNames[i]);
 
             fd_t dir;
             status_t status = iowalk(FDCWD, FDROOT, path, &dir);
@@ -751,7 +761,6 @@ static status_t comp_load_union(comp_loader_t* loader, fd_t root)
                     iodrop(dir);
                 }
             }
-
         }
     }
 
@@ -770,20 +779,29 @@ static status_t comp_load_union(comp_loader_t* loader, fd_t root)
             break;
         }
 
-        if (unions[i].count == 1)
+        char concatPath[MAX_PATH] = "/sys/fs/concatfs/clone?targets=\0";
+        for (uint32_t j = 0; j < unions[i].count; j++)
         {
-            status = fdbind(root, target, unions[i].sources[0]);
-            if (IS_ERR(status))
-            {
-                break;
-            }
+            snprintf(concatPath + strlen(concatPath), sizeof(concatPath) - strlen(concatPath), "%llu,",
+                unions[i].sources[j]);
+        }
+        concatPath[strlen(concatPath) - 1] = '\0';
+
+        fd_t concatfs;
+        status = iowalk(FDCWD, FDROOT, concatPath, &concatfs);
+        if (IS_ERR(status))
+        {
             iodrop(target);
-            continue;
+            break;
         }
 
-        /// @todo Implement unionfs.
-        status = ERR(LIBSTD, IMPL);
-        break;
+        status = fdbind(root, target, concatfs);
+        iodrop(concatfs);
+        iodrop(target);
+        if (IS_ERR(status))
+        {
+            continue;
+        }
     }
 
     for (uint32_t i = 0; i < COMP_DIR_MAX; i++)
@@ -797,7 +815,7 @@ static status_t comp_load_union(comp_loader_t* loader, fd_t root)
     return status;
 }
 
-status_t comp_launch(const char* name, const char* version, const comp_launch_opts_t* opts)
+status_t comp_launch(const char* name, const char* version, const comp_options_t* opts)
 {
     UNUSED(opts);
 
@@ -871,7 +889,7 @@ status_t comp_launch(const char* name, const char* version, const comp_launch_op
     path[launchPathLen] = '\0';
     launchPath = path;
     launchPathLen++;
-    
+
     status = comp_cull_orphans(&loader, main);
     if (IS_ERR(status))
     {
@@ -880,7 +898,7 @@ status_t comp_launch(const char* name, const char* version, const comp_launch_op
     }
 
     fd_t root;
-    status = iowalk(FDROOT, FDCWD, "/sys/fs/tmpfs/clone:rwx", &root);
+    status = iowalk(FDCWD, FDROOT, "/sys/fs/tmpfs/clone:rwx", &root);
     if (IS_ERR(status))
     {
         comp_loader_deinit(&loader);
@@ -903,17 +921,24 @@ status_t comp_launch(const char* name, const char* version, const comp_launch_op
         return status;
     }
 
-    proc_fd_t fds[] =
-    {
+    proc_fd_t fds[5] = {
         {.parent = root, .child = FDROOT},
         {.parent = root, .child = FDCWD},
-        /*{.parent = FDIN, .child = FDIN},
-        {.parent = FDOUT, .child = FDOUT},
-        {.parent = FDERR, .child = FDERR},*/
     };
-    status = proc_create(root, root, (proc_args_t){.buf = launchPath, .len = launchPathLen}, fds, ARRAY_SIZE(fds), PRIO_DEFAULT, PROC_DEFAULT, NULL);
+    if (opts != NULL)
+    {
+        fds[2].parent = opts->stdin;
+        fds[2].child = FDIN;
+        fds[3].parent = opts->stdout;
+        fds[3].child = FDOUT;
+        fds[4].parent = opts->stderr;
+        fds[4].child = FDERR;
+    }
+    status = proc_create(root, root, (proc_args_t){.buf = launchPath, .len = launchPathLen}, fds, opts != NULL ? 5 : 2,
+        PRIO_DEFAULT, PROC_DEFAULT, NULL);
     if (IS_ERR(status))
     {
+        printf("proc_create failed: %Y\n", status);
         iodrop(root);
         comp_loader_deinit(&loader);
         return status;

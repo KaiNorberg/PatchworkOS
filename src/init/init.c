@@ -194,9 +194,11 @@ int main(void)
     fddup(ramfs, (fd_t[]){FDCWD});
     iodrop(ramfs);
 
-    print_dir(FDROOT, 0);
-
-    status = comp_launch("test", "1.0.0", NULL);
+    comp_options_t opts;
+    opts.stdin = FDIN;
+    opts.stdout = FDOUT;
+    opts.stderr = FDERR;
+    status = comp_launch("test", "1.0.0", &opts);
     if (IS_ERR(status))
     {
         printf("init: failed to launch component %Y\n", status);

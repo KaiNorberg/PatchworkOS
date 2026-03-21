@@ -22,5 +22,5 @@ _start_early:
 .bss
 .align 64
 _stack_bottom:
-    .skip 4096 * 4
+    .skip 4096 * 8
 _stack_top:

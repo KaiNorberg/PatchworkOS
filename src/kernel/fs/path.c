@@ -589,7 +589,6 @@ static status_t path_verify(path_state_t* state, size_t length)
     }
 
     state->end = p;
-    p++;
 
     while (true)
     {
@@ -598,6 +597,11 @@ static status_t path_verify(path_state_t* state, size_t length)
             memcpy(state->payload, p + 1, end - p - 1);
             state->payload[end - p - 1] = '\0';
             return OK;
+        }
+
+        if (p < end && *p == ':')
+        {
+            p++;
         }
 
         if (p >= end)
@@ -615,8 +619,8 @@ static status_t path_verify(path_state_t* state, size_t length)
             p++;
         }
 
-        size_t length = p - token;
-        mode_t mode = path_flag_to_mode(token, length);
+        size_t tokenLength = p - token;
+        mode_t mode = path_flag_to_mode(token, tokenLength);
         if (mode == MODE_NONE)
         {
             return ERR(VFS, INVALFLAG);

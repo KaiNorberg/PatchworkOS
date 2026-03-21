@@ -40,7 +40,7 @@ static status_t tmpfs_regular_open(irp_t* irp)
 
     if (frame->file->mode & MODE_TRUNCATE)
     {
-        tmpfs_vnode_t* vnode = VNODE_GET(frame->vnode, tmpfs_vnode_t);
+        tmpfs_vnode_t* vnode = CONTAINER_OF(frame->vnode, tmpfs_vnode_t, vnode);
         MUTEX_SCOPE(&vnode->vnode.mutex);
         pagevec_deinit(&vnode->pages);
         vnode->size = 0;
@@ -53,7 +53,7 @@ static status_t tmpfs_regular_open(irp_t* irp)
 static status_t tmpfs_regular_read(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
-    tmpfs_vnode_t* vnode = VNODE_GET(frame->vnode, tmpfs_vnode_t);
+    tmpfs_vnode_t* vnode = CONTAINER_OF(frame->vnode, tmpfs_vnode_t, vnode);
 
     MUTEX_SCOPE(&vnode->vnode.mutex);
 
@@ -84,7 +84,7 @@ static status_t tmpfs_regular_read(irp_t* irp)
 static status_t tmpfs_regular_write(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
-    tmpfs_vnode_t* vnode = VNODE_GET(frame->vnode, tmpfs_vnode_t);
+    tmpfs_vnode_t* vnode = CONTAINER_OF(frame->vnode, tmpfs_vnode_t, vnode);
 
     MUTEX_SCOPE(&vnode->vnode.mutex);
 
@@ -135,7 +135,7 @@ static status_t tmpfs_regular_write(irp_t* irp)
 static status_t tmpfs_regular_seek(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
-    tmpfs_vnode_t* vnode = VNODE_GET(frame->vnode, tmpfs_vnode_t);
+    tmpfs_vnode_t* vnode = CONTAINER_OF(frame->vnode, tmpfs_vnode_t, vnode);
 
     MUTEX_SCOPE(&vnode->vnode.mutex);
 
@@ -145,7 +145,7 @@ static status_t tmpfs_regular_seek(irp_t* irp)
 static status_t tmpfs_regular_mmap(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
-    tmpfs_vnode_t* vnode = VNODE_GET(frame->vnode, tmpfs_vnode_t);
+    tmpfs_vnode_t* vnode = CONTAINER_OF(frame->vnode, tmpfs_vnode_t, vnode);
 
     MUTEX_SCOPE(&vnode->vnode.mutex);
 
@@ -194,7 +194,7 @@ static status_t tmpfs_regular_mmap(irp_t* irp)
 static status_t tmpfs_regular_attr(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
-    tmpfs_vnode_t* vnode = VNODE_GET(frame->vnode, tmpfs_vnode_t);
+    tmpfs_vnode_t* vnode = CONTAINER_OF(frame->vnode, tmpfs_vnode_t, vnode);
 
     MUTEX_SCOPE(&vnode->vnode.mutex);
 
@@ -272,7 +272,7 @@ static status_t tmpfs_regular_attr(irp_t* irp)
 static status_t tmpfs_regular_query(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
-    tmpfs_vnode_t* vnode = VNODE_GET(frame->vnode, tmpfs_vnode_t);
+    tmpfs_vnode_t* vnode = CONTAINER_OF(frame->vnode, tmpfs_vnode_t, vnode);
 
     file_info_t info = {0};
 
@@ -314,7 +314,7 @@ static status_t tmpfs_regular_query(irp_t* irp)
 static status_t tmpfs_regular_reclaim(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
-    tmpfs_vnode_t* vnode = VNODE_GET(frame->vnode, tmpfs_vnode_t);
+    tmpfs_vnode_t* vnode = CONTAINER_OF(frame->vnode, tmpfs_vnode_t, vnode);
 
     MUTEX_SCOPE(&vnode->vnode.mutex);
 
@@ -387,7 +387,7 @@ static tmpfs_vnode_t* tmpfs_vnode_create(tmpfs_volume_t* volume, const vnode_cla
         return NULL;
     }
 
-    tmpfs_vnode_t* tvnode = VNODE_GET(vnode, tmpfs_vnode_t);
+    tmpfs_vnode_t* tvnode = CONTAINER_OF(vnode, tmpfs_vnode_t, vnode);
     tvnode->volume = volume; // No ref, volume is kept alive by the root.
     pagevec_init(&tvnode->pages);
     tvnode->size = 0;
@@ -400,7 +400,7 @@ static tmpfs_vnode_t* tmpfs_vnode_create(tmpfs_volume_t* volume, const vnode_cla
 static status_t tmpfs_dir_create(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
-    tmpfs_vnode_t* dir = VNODE_GET(frame->vnode, tmpfs_vnode_t);
+    tmpfs_vnode_t* dir = CONTAINER_OF(frame->vnode, tmpfs_vnode_t, vnode);
     dentry_t* target = frame->create.dentry;
 
     MUTEX_SCOPE(&dir->vnode.mutex);
@@ -438,7 +438,7 @@ static status_t tmpfs_dir_create(irp_t* irp)
             return ERR(FS, INVAL);
         }
 
-        tmpfs_vnode_t* vnode = VNODE_GET(file->path.dentry->vnode, tmpfs_vnode_t);
+        tmpfs_vnode_t* vnode = CONTAINER_OF(file->path.dentry->vnode, tmpfs_vnode_t, vnode);
         MUTEX_SCOPE(&vnode->vnode.mutex);
         vnode->nlink++;
 
@@ -497,7 +497,7 @@ static status_t tmpfs_dir_remove(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
     dentry_t* target = frame->remove.dentry;
-    tmpfs_vnode_t* dir = VNODE_GET(frame->vnode, tmpfs_vnode_t);
+    tmpfs_vnode_t* dir = CONTAINER_OF(frame->vnode, tmpfs_vnode_t, vnode);
 
     MUTEX_SCOPE(&dir->vnode.mutex);
 
@@ -511,7 +511,7 @@ static status_t tmpfs_dir_remove(irp_t* irp)
 
     MUTEX_SCOPE(&target->vnode->mutex);
 
-    tmpfs_vnode_t* targetVnode = VNODE_GET(target->vnode, tmpfs_vnode_t);
+    tmpfs_vnode_t* targetVnode = CONTAINER_OF(target->vnode, tmpfs_vnode_t, vnode);
     dentry_remove(target);
     targetVnode->nlink--;
 

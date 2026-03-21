@@ -3,10 +3,10 @@
     (author Kai)
     (license MIT)
     (capabilities
-        /comp
-        /proc
-        /sys/fs/tmpfs
-        /dev/const
+        /comp:rx
+        /proc:rwx
+        /sys/fs/tmpfs:rwx
+        /dev/const:rwx
     )
     (dependencies
         (dynlink 1.0.0)

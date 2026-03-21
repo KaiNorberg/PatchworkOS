@@ -39,7 +39,7 @@
  * After opening this file, the returned file can be bound to complete a traditional mount operation or used directly.
  *
  * The payload specified in the path while opening this file is used to specify options for the new volume, for example
- * `/sys/fs/myfs/clone?option1=value1,option2=value2`. The interpretation of these options is up to the filesystem.
+ * `/sys/fs/myfs/clone?option1=value1&option2=value2`. The interpretation of these options is up to the filesystem.
  *
  * @note For filesystems that do not support multiple volumes, the clone file may simply return the same root dentry
  * each time.
@@ -90,7 +90,7 @@ file_volume_t volume_new(void);
 /**
  * @brief Helper function for iterating over options passed to a filesystem mount operation.
  *
- * Each helper option is specified as `key=value` pairs, with multiple options separated by commas.
+ * Each helper option is specified as `key=value` pairs, with multiple options separated by `&` characters.
  *
  * @param iter Pointer to the current iterator position. Updated on each call.
  * @param buffer Buffer to store the current option.
@@ -99,12 +99,12 @@ file_volume_t volume_new(void);
  * @param value Pointer to store the value of the current option.
  * @return `true` if an option was found, `false` if no more options are available.
  */
-bool options_next(const char** iter, char* buffer, size_t size, char** key, char** value);
+bool options_next(const char** iter, char* buffer, size_t size, const char** key, char** value);
 
 /**
  * @brief Helper macro for iterating over options passed to a filesystem mount operation.
  *
- * Each helper option is specified as `key=value` pairs, with multiple options separated by commas.
+ * Each helper option is specified as `key=value` pairs, with multiple options separated by `&` characters.
  *
  * @param options The options string.
  * @param key The key variable.

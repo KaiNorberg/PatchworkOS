@@ -82,6 +82,7 @@ typedef struct dentry
     char name[MAX_NAME]; ///< The name of the dentry, immutable after creation.
     vnode_t* vnode;      ///< Will be `NULL` if the dentry is negative, once positive it will never be modified.
     dentry_t* parent;    ///< The parent dentry, can be `NULL`, immutable after creation.
+    void* data;          ///< Private data to store in the dentry, can be `NULL`.
     list_entry_t siblingEntry;
     list_t children;
     map_entry_t mapEntry;       ///< Entry in the dentry cache hash map.
@@ -125,6 +126,19 @@ void dentry_remove(dentry_t* dentry);
  * @return On success, the dentry, might be negative. On failure, returns `NULL`.
  */
 dentry_t* dentry_rcu_get(const dentry_t* parent, const char* name, size_t length);
+
+/**
+ * @brief Ger a dentry from the dentry cache.
+ *
+ * Will only check the dentry cache and return a dentry if it exists there, will not call the filesystem's lookup
+ * function.
+ *
+ * @param parent The parent path.
+ * @param name The name of the dentry.
+ * @param length The length of the name.
+ * @return On success, the dentry, might be negative. On failure, returns `NULL`.
+ */
+dentry_t* dentry_get(const dentry_t* parent, const char* name, size_t length);
 
 /**
  * @brief Make a dentry positive by associating it with an vnode.

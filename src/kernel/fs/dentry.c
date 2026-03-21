@@ -149,6 +149,7 @@ dentry_t* dentry_new(dentry_t* parent, const char* name)
         dentry->name[MAX_NAME - 1] = '\0';
     }
     dentry->parent = parent != NULL ? REF(parent) : NULL;
+    dentry->data = NULL;
 
     if (!dentry_map_add(dentry))
     {
@@ -207,7 +208,7 @@ dentry_t* dentry_rcu_get(const dentry_t* parent, const char* name, size_t length
     return dentry;
 }
 
-static dentry_t* dentry_get(const dentry_t* parent, const char* name, size_t length)
+dentry_t* dentry_get(const dentry_t* parent, const char* name, size_t length)
 {
     RCU_READ_SCOPE();
 

@@ -15,7 +15,7 @@ typedef struct volume_ops volume_ops_t;
  * @defgroup kernel_fs_devfs Device Filesystem
  *
  * The devfs is a virtual filesystem that provides access to devices and resources.
- * 
+ *
  * Devfs can only be cloned once, after the first clone the devfs filesystem will be unregistered.
  *
  * @{

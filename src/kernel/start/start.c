@@ -6,6 +6,7 @@
 #include <kernel/cpu/syscall.h>
 #include <kernel/drivers/const.h>
 #include <kernel/drivers/pic.h>
+#include <kernel/fs/concatfs.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/filesystem.h>
 #include <kernel/fs/path.h>
@@ -95,6 +96,7 @@ static void start_finalize(void)
     devfs_init();
     procfs_init();
     tmpfs_init();
+    concatfs_init();
 
     log_expose();
 

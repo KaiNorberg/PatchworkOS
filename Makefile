@@ -7,7 +7,7 @@ ROOT_DIRS = \
 	acct acct/admin \
 	boot boot/modules boot/modules/$(VERSION_STRING) \
 	comp \
-	comp/libstd comp/libstd/1.0.0 comp/libstd/1.0.0/lib \
+	comp/libstd comp/libstd/1.0.0 comp/libstd/1.0.0/lib comp/libstd/1.0.0/include \
 	comp/dynlink comp/dynlink/1.0.0 comp/dynlink/1.0.0/lib \
 	comp/test comp/test/1.0.0 comp/test/1.0.0/bin \
 	dev \
@@ -49,6 +49,7 @@ bin/.deployed: $(BOOT_TARGET) $(KERNEL_TARGET) $(LIBSTD_TARGET) $(INIT_TARGET) $
 		mcopy -i $(IMAGE) -s bin/modules/* ::/boot/modules/$(VERSION_STRING) 2>/dev/null || true; \
 	fi
 	@mcopy -i $(IMAGE) -s bin/libstd/libstd.so ::/comp/libstd/1.0.0/lib 2>/dev/null || true
+	@mcopy -i $(IMAGE) -s include/ ::/comp/libstd/1.0.0/ 2>/dev/null || true
 	@mcopy -i $(IMAGE) -s bin/comp/dynlink.so ::/comp/dynlink/1.0.0/lib 2>/dev/null || true
 	@mcopy -i $(IMAGE) -s bin/comp/test ::/comp/test/1.0.0/bin 2>/dev/null || true
 #@mcopy -i $(IMAGE) -s LICENSE ::/base/license 2>/dev/null || true
@@ -240,7 +241,7 @@ clean_programs:
 
 nuke: clean
 	@echo "NUKE    all"
-	@rm -rf lib/doomgeneric lib/lua lib/acpica lib/acpica_tests lib/argon2 include/argon2 meta/docs lib/gnu-efi 
+	@rm -rf lib/doomgeneric lib/lua lib/acpica lib/acpica_tests lib/argon2 include/argon2 meta/docs lib/gnu-efi
 
 QEMU_MEMORY ?= 2G
 QEMU_CPUS ?= $(shell nproc 2>/dev/null || echo 8)
