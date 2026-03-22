@@ -67,7 +67,6 @@ vendor/acpica
 vendor/acpica_tests
 vendor/argon2
 vendor/gnu-efi
-vendor/OVMFbin/OVMF_VARS-pure-efi.fd
 vendor/doomgeneric
 vendor/lua
 temp.md

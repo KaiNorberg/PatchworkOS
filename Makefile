@@ -11,7 +11,7 @@ export LIBSTD_DIR := $(COMP_DIR)/core/libstd
 export KERNEL_HEADERS_DIR := $(COMP_DIR)/core/kernel-headers
 
 VERSION_STRING := $(shell git describe --tags --always --dirty --long 2>/dev/null || echo "unknown")
-VERSION_HEADER = $(KERNEL_HEADERS_DIR)/version.h
+VERSION_HEADER = $(KERNEL_HEADERS_DIR)/include/kernel/version.h
 
 INITRD_DIR = $(BIN_DIR)/initrd
 INITRD_TAR = $(BIN_DIR)/initrd.tar

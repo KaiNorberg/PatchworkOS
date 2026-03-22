@@ -163,7 +163,6 @@ static status_t initrd_load(void)
             printf("init: unknown tar entry type %u for %s\n", entry.type, entry.name);
             continue;
         }
-
     }
 
     free(data);
