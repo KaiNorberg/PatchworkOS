@@ -1,0 +1,5 @@
+(component
+    (description "Kernel headers.")
+    (author Kai)
+    (license MIT)
+)

@@ -1,0 +1,16 @@
+include $(ROOT_DIR)/Make.defaults
+
+LDSTDLIB := -lstd -Wl,--dynamic-linker=/lib/dynlink.so
+
+LDFLAGS += -L$(BIN_DIR)/comp/libstd
+
+ifeq ($(COMP_TYPE),shared)
+CFLAGS += -fPIC
+ASFLAGS += -fPIC
+endif
+
+SRC := $(shell find $(MY_DIR) -name '*.c' -o -name '*.S')
+
+COMP_BUILD_DIR = $(BUILD_DIR)/comp/$(COMP_NAME)
+COMP_BIN_DIR = $(BIN_DIR)/comp/$(COMP_NAME)
+STAGE_DIR = $(INITRD_DIR)/comp/$(COMP_NAME)/$(COMP_VERSION)

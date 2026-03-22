@@ -171,14 +171,14 @@ Using the synchronous I/O wrappers in PatchworkOS, we would write:
 
 ```c
 fd_t fd;
-iowalk(IOPATH("/path/to/file:rw"), &fd);
+iowalk(FDCWD, FDROOT, "/path/to/file:rw", &fd);
 
 size_t bytesWritten;
 iowrite(fd, IOBUF("Hello, World!", 13), IOCUR, &bytesWritten);
 iodrop(fd);
 ```
 
-We first open the file using `iowalk()`, using the `IOPATH()` macro to specify the path. This macro expands to `FDCWD, FDROOT, "/path/to/file:rw"`, specifying the default current working directory and root directory. Within the path we specify "read and write access" (`:rw` see [Path Flags and Payloads](#Path Flags and Payloads)).
+We first open the file using `iowalk()`, specifying the default current working directory and root directory along with a path. Within the path we specify that we want "read and write" permissions (`:rw` see [Path Flags and Payloads](#Path Flags and Payloads)).
 
 > The term "walk" is used instead of "open" since all operations act on file descriptors and the ability to reach files relative to other files is a key part of the security model. As such, performing any operation on a file should be thought of as "walking" to it and then acting upon it, instead of merely "opening" it, after walking to a file we could walk to another file relative to it.
 
@@ -238,8 +238,8 @@ Using the synchronous I/O wrappers in PatchworkOS, we would write:
 fd_t in;
 fd_t out;
 
-iowalk(IOPATH("/dev/pipe/clone"), &in);
-iowalk(IOPATH("/dev/pipe/clone"), &out);
+iowalk(FDCWD, FDROOT, "/dev/pipe/clone", &in);
+iowalk(FDCWD, FDROOT, "/dev/pipe/clone", &out);
 
 proc_fd_t fds = {{.parent = in, .child = 0}, {.parent = out, .child = 1}};
 fd_t proc;
@@ -255,7 +255,7 @@ We could optimize the pipe creation by walking to the second pipe relative to th
 ```c
 fd_t in;
 fd_t out;
-iowalk(IOPATH("/dev/pipe/clone"), &in);
+iowalk(FDCWD, FDROOT, "/dev/pipe/clone", &in);
 iowalk(in, FDROOT, ".", &out);
 ```
 
@@ -292,8 +292,8 @@ Then we can use `fdbind()` to bind the root of the filesystem instance into our 
 ```c
 fd_t fs;
 fd_t target;
-iowalk(IOPATH("/sys/fs/tmpfs/clone"), &fs);
-iowalk(IOPATH("/mnt/tmpfs"), &target);
+iowalk(FDCWD, FDROOT, "/sys/fs/tmpfs/clone", &fs);
+iowalk(FDCWD, FDROOT, "/mnt/tmpfs", &target);
 fdbind(FDROOT, target, fs);
 ```
 
@@ -339,7 +339,7 @@ This all has one rather large limitation, in that the parent process must have a
 
 ### The Init Process
 
-The one exception to this rule is the init process, which is special in that it is the only process "loaded" by the kernel (it is actually loaded by the bootloader and the kernel simply copies the executable into memory) since executable loading is handled in user-space. The init process is granted a `FDROOT` file descriptor to the root of `sysfs` from which it can acquire all capabilities.
+The one exception to this rule is the init process, which is special in that it is the only process "loaded" by the kernel (it is actually loaded by the bootloader and the kernel simply copies the executable into memory) since executable loading is handled in user-space. The init process is granted a `FDROOT` file descriptor to the root of `sysfs` from which it can acquire all capabilities. It uses these capabilities to load the RAM disk and setup user space.
 
 This means that the security model forms a tree-like structure, with init having all capabilities and all child processes having some subset of those capabilities.
 
@@ -546,22 +546,18 @@ make compile_commands
 
 ### Repo Structure
 
-Source code can be found in the `src/` directory, with public API headers in the `include/` directory, private API headers are located alongside their respective source files.
-
 ```plain
 .
-├── include           // Public API headers.
-├── lib               // Third party files, for example doomgeneric.
-├── meta              // Meta files including screenshots, doxygen, etc.
-├── root              // Files to copy to the root of the generated image.
-└── src               // Source code.
-    ├── boot          // UEFI bootloader.
-    ├── comp          // Components.
-    ├── init          // Init process.
-    ├── kernel        // The kernel and its core subsystems.
-    ├── libstd        // The C standard library.
-    └── modules       // Kernel modules, drivers, filesystems, etc.
+├── tools         // Utility tools.
+├── vendor        // Third party files, for example doomgeneric.
+├── meta          // Meta files, including screenshots, doxygen, etc.
+├── boot          // UEFI bootloader source code.
+├── comp          // Components, including kernel modules, source code, headers, data, etc.
+├── init          // Init process source code.
+└── kernel        // The sourc code for the kernel and its core subsystems.
 ```
+
+Note that the kernels headers are found within `comp/core/kernel-headers/include` and standard library headers are found within `comp/core/libstd/include`.
 
 ### Grub Loopback
 

@@ -1,0 +1,93 @@
+OBJ = $(patsubst $(SRC_DIR)/%, $(COMP_BUILD_DIR)/%.o, $(SRC))
+
+DEP = $(OBJ:.o=.d)
+-include $(DEP)
+
+ifeq ($(COMP_TYPE),data)
+TARGET :=
+SRC :=
+STAGE_DEST := $(STAGE_DIR)/
+endif
+
+ifneq ($(SRC),)
+$(COMP_BUILD_DIR)/%.c.o: $(SRC_DIR)/%.c
+	$(MKCWD)
+	@echo "  CC    $<"
+	@$(CC) $(CFLAGS) -MMD -MP -MF $(@:.o=.d) -c -o $@ $<
+
+$(COMP_BUILD_DIR)/%.S.o: $(SRC_DIR)/%.S
+	$(MKCWD)
+	@echo "  AS    $<"
+	@$(AS) $(ASFLAGS) -MMD -MP -MF $(@:.o=.d) -c -o $@ $<
+endif
+
+ifeq ($(COMP_TYPE),executable)
+TARGET = $(COMP_BIN_DIR)/$(COMP_NAME)
+$(TARGET): $(OBJ)
+	$(MKCWD)
+	@echo "  LD    $@"
+	@$(LD) -o $@ $(CRT_START) $^ $(LDFLAGS) $(LDSTDLIB) $(CRT_END)
+STAGE_DEST = $(STAGE_DIR)/bin/
+endif
+
+ifeq ($(COMP_TYPE),module)
+TARGET = $(COMP_BIN_DIR)/$(COMP_NAME).ko
+$(TARGET): $(OBJ)
+	$(MKCWD)
+	@echo "  LD-KO $@"
+	@$(LD) -r -o $@ $^
+STAGE_DEST = $(STAGE_DIR)/module/
+endif
+
+ifeq ($(COMP_TYPE),static)
+TARGET = $(COMP_BIN_DIR)/$(COMP_NAME).a
+$(TARGET): $(OBJ)
+	$(MKCWD)
+	@echo "  AR    $@"
+	@$(AR) rcs $@ $^
+STAGE_DEST = $(STAGE_DIR)/lib/
+endif
+
+ifeq ($(COMP_TYPE),shared)
+TARGET = $(COMP_BIN_DIR)/$(COMP_NAME).so
+$(TARGET): $(OBJ)
+	$(MKCWD)
+	@echo "  LD-SO $@"
+	@$(LD) -shared -o $@ $^ $(LDFLAGS) $(LDSTDLIB)
+STAGE_DEST = $(STAGE_DIR)/lib/
+endif
+
+ifeq ($(COMP_TYPE),static-shared)
+TARGET = $(COMP_BIN_DIR)/$(COMP_NAME).a $(COMP_BIN_DIR)/$(COMP_NAME).so
+$(COMP_BIN_DIR)/$(COMP_NAME).a: $(OBJ)
+	$(MKCWD)
+	@echo "  AR    $@"
+	@$(AR) rcs $@ $^
+$(COMP_BIN_DIR)/$(COMP_NAME).so: $(OBJ)
+	$(MKCWD)
+	@echo "  LD-SO $@"
+	@$(LD) -shared -o $@ $^ $(LDFLAGS) $(LDSTDLIB)
+STAGE_DEST = $(STAGE_DIR)/lib/
+endif
+
+all: $(TARGET) before-stage stage after-stage
+
+stage:
+	@echo "  STAGE $(COMP_NAME) $(COMP_VERSION)"
+	@mkdir -p $(STAGE_DEST)
+ifneq ($(TARGET),)
+	@cp $(TARGET) $(STAGE_DEST)
+endif
+
+	@cat $(MY_DIR)/manifest.scon > $(STAGE_DIR)/manifest.scon
+
+	@if [ -d "$(MY_DIR)/data" ]; then \
+		cp -r $(MY_DIR)/data $(STAGE_DIR)/data; \
+	fi
+	@if [ -d "$(MY_DIR)/include" ]; then \
+		cp -r $(MY_DIR)/include $(STAGE_DIR)/include; \
+	fi
+
+.PHONY: before-stage after-stage
+before-stage:
+after-stage:

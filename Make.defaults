@@ -1,10 +1,10 @@
+CC := gcc
+AS := gcc
+LD := gcc
+AR := ar
+OBJCOPY := objcopy
 MKCWD = @mkdir -p $(@D)
 
-CC = gcc
-AS = gcc
-LD = gcc
-AR = ar
-OBJCOPY = objcopy
 CFLAGS := \
 	-std=gnu11 \
 	-ffreestanding \
@@ -18,22 +18,17 @@ CFLAGS := \
 	-Wall \
 	-Wextra \
 	-Werror \
-	-Wno-deprecated-pragma \
+	-Wno-pragmas \
 	-Wno-unused-function \
 	-Wno-unused-variable \
 	-Wno-ignored-qualifiers \
 	-Wno-unused-but-set-variable \
 	-Wno-implicit-fallthrough \
-	-Wno-deprecated-non-prototype \
 	-Wno-unused-but-set-parameter \
-	-Wno-unused-command-line-argument \
-	-Wno-initializer-overrides \
+	-Wno-unused-parameter \
+	-Wno-missing-braces \
 	-Wno-override-init \
-	-isystem include \
-	-Ilib \
-	-Isrc \
-	-I$(SRCDIR) \
-	-D_PATCHWORK_OS_
+	-isystem $(STAGING_DIR)/include
 
 CFLAGS_DISABLE_SIMD := \
 	-mno-mmx -mno-3dnow \
@@ -46,20 +41,10 @@ ASFLAGS := \
 	-nostdinc \
 	-ffreestanding \
 	-fno-builtin \
-	-Iinclude \
-	-I$(SRCDIR) \
-	-D_PATCHWORK_OS_
+	-isystem $(STAGING_DIR)/include
 
 LDFLAGS := \
 	-nostdlib \
-	-Lbin/libelf \
-	-Lbin/libstd \
-	-Lbin/libpatchwork \
-	-z noexecstack \
-	-Wno-unused-command-line-argument \
-	-no-pie 
-
-LDFLAGS_SHARED := $(filter-out -no-pie,$(LDFLAGS)) -shared
 
 ifeq ($(TESTING),1)
 	CFLAGS += -D_TESTING_
@@ -73,40 +58,5 @@ else
 	CFLAGS += -O2 -DNDEBUG
 endif
 
-ifeq ($(NOSTDLIB),1)
-	LDSTDLIB :=
-	CRT_START :=
-	CRT_END :=
-else
-	LDSTDLIB := -lstd -Wl,--dynamic-linker=/lib/dynlink.so
-	CRT_START := bin/libstd/crt0.o bin/libstd/crti.o
-	CRT_END := bin/libstd/crtn.o
-endif
-
-CFLAGS_MODULE := \
-	$(CFLAGS_DISABLE_SIMD) \
-	-fno-strict-aliasing \
-	-fno-common \
-	-fno-pie \
-	-mno-red-zone \
-	-fPIC \
-	-D_KERNEL_MODULE_ \
-	-D_KERNEL_ \
-	-D__STDC_WANT_LIB_EXT1__=1
-
-ASFLAGS_MODULE := \
-	-fPIC \
-	-D_KERNEL_MODULE_ \
-	-D_KERNEL_ \
-	-D__STDC_WANT_LIB_EXT1__=1
-
-LDFLAGS_MODULE := \
-	-shared \
-	-fPIC \
-	-Tinclude/kernel/module.lds
-
-define find_sources
-$(shell find $(1) -name "*.c" -o -name "*.S" 2>/dev/null)
-endef
-
-SRC = $(call find_sources,$(SRCDIR))
+CRT_START := $(BIN_DIR)/comp/libstd/crt0.o $(BIN_DIR)/comp/libstd/crti.o
+CRT_END := $(BIN_DIR)/comp/libstd/crtn.o
