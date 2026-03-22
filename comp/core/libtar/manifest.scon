@@ -1,5 +1,0 @@
-(component
-    (description "Header only tar library.")
-    (author Kai)
-    (license MIT)
-)

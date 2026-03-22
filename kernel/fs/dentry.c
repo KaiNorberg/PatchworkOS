@@ -98,13 +98,11 @@ static void dentry_free(dentry_t* dentry)
         mutex_release(&dentry->parent->vnode->mutex);
 
         UNREF(dentry->parent);
-        dentry->parent = NULL;
     }
 
     if (dentry->vnode != NULL)
     {
         UNREF(dentry->vnode);
-        dentry->vnode = NULL;
     }
 
     rcu_call(&dentry->rcu, rcu_call_cache_free, dentry);
@@ -200,7 +198,6 @@ dentry_t* dentry_rcu_get(const dentry_t* parent, const char* name, size_t length
     {
         if (dentry->vnode->cls->access != NULL && !dentry->vnode->cls->access(dentry))
         {
-            UNREF(dentry);
             return NULL;
         }
     }

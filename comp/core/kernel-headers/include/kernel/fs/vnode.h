@@ -71,6 +71,7 @@ typedef struct vnode
     mutex_t mutex;
     irp_t* reclaim; ///< Pre-allocated IRP used to reclaim the vnode, needed to avoid out of memory errors when
                     /// reclaiming a vnode.
+    rcu_entry_t rcu;
 } vnode_t;
 
 /**

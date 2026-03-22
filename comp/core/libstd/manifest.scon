@@ -1,6 +1,6 @@
 (component
     (description "Standard Library.")
-    (author Kai)
+    (author "Kai Norberg")
     (license MIT)
     (capabilities
         /comp:rx

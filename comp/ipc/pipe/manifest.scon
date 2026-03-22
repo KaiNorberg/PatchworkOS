@@ -1,0 +1,6 @@
+(component
+    (description "Pipe Inter Process Comuncation primitive.")
+    (author "Kai Norberg")
+    (license MIT)
+    (module mod/pipe.ko)
+)

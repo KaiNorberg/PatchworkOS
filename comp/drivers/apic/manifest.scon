@@ -1,0 +1,6 @@
+(component
+    (description "A driver for the APIC, local APIC and IOAPIC.")
+    (author "Kai Norberg")
+    (license MIT)
+    (module mod/apic.ko)
+)

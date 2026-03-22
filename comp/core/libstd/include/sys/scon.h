@@ -26,7 +26,7 @@ typedef struct scon scon_t;
  * ```lisp
  * (component
  *     (description "An example component.")
- *     (author Kai)
+ *     (author "Kai Norberg")
  *     (license MIT)
  *     (launch bin/example)
  *     (dependencies

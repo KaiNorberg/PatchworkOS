@@ -1,0 +1,6 @@
+(component
+    (description "A driver for the CMOS Real Time Clock.")
+    (author "Kai Norberg")
+    (license MIT)
+    (module mod/rtc.ko)
+)

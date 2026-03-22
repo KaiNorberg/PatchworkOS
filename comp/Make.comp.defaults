@@ -9,8 +9,34 @@ CFLAGS += -fPIC
 ASFLAGS += -fPIC
 endif
 
+ifeq ($(COMP_TYPE),module)
+CFLAGS += \
+	$(CFLAGS_DISABLE_SIMD) \
+	-fno-strict-aliasing \
+	-fno-common \
+	-fno-pie \
+	-mno-red-zone \
+	-fPIC \
+	-D_KERNEL_MODULE_ \
+	-D_KERNEL_ \
+	-D__STDC_WANT_LIB_EXT1__=1
+
+ASFLAGS += \
+	-fPIC \
+	-D_KERNEL_MODULE_ \
+	-D_KERNEL_ \
+	-D__STDC_WANT_LIB_EXT1__=1
+
+LDFLAGS += \
+	-shared \
+	-fPIC \
+	-Tkernel/module.lds
+endif
+
 SRC := $(shell find $(MY_DIR) -name '*.c' -o -name '*.S')
 
 COMP_BUILD_DIR = $(BUILD_DIR)/comp/$(COMP_NAME)
 COMP_BIN_DIR = $(BIN_DIR)/comp/$(COMP_NAME)
+STAGE_INDEX_DIR = $(INITRD_DIR)/comp/.index
+STAGE_BY_DEVICE_DIR = $(STAGE_INDEX_DIR)/device
 STAGE_DIR = $(INITRD_DIR)/comp/$(COMP_NAME)/$(COMP_VERSION)

@@ -52,14 +52,14 @@ static void print_dir(fd_t dir, uint32_t depth)
     while (p < end)
     {
         size_t len = strlen(p);
-        if (len == 0 || p[0] == '.')
+        if (len == 0 || (p[0] == '.' && strcmp(p, ".index") != 0))
         {
             p += len + 1;
             continue;
         }
 
         fd_t child;
-        status = iowalk(dir, dir, p, &child);
+        status = iowalk(dir, FDROOT, p, &child);
         if (IS_ERR(status))
         {
             printf("init: failed to walk to child (%s) %Y\n", p, status);
@@ -150,7 +150,7 @@ static status_t initrd_load(void)
         case TAR_TYPE_SYMLINK:
         {
             fd_t symlink;
-            status = iowalk(FDCWD, FDROOT, IOFMT("/%s:ps?%.*s", entry.name, entry.size, entry.data), &symlink);
+            status = iowalk(FDCWD, FDROOT, IOFMT("/%s:ps?%s", entry.name, entry.linkname), &symlink);
             if (IS_ERR(status))
             {
                 printf("init: failed to create symlink %s: %Y\n", entry.name, status);

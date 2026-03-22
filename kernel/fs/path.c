@@ -140,11 +140,13 @@ static inline status_t path_state_acquire(path_state_t* state)
 {
     if (REF_TRY(state->dentry) == NULL)
     {
+        rcu_read_unlock();
         return ERR(VFS, NOENT);
     }
     if (REF_TRY(state->binding) == NULL)
     {
         UNREF(state->dentry);
+        rcu_read_unlock();
         return ERR(VFS, NOENT);
     }
 
@@ -249,11 +251,14 @@ static status_t path_symlink_complete(irp_t* irp, void* ctx)
     memcpy(state->token, link, linkLen);
     state->end = state->path + newLen;
 
+    path_state_release(state);
+
     if (link[0] == '/')
     {
         if (state->root == NULL)
         {
-            path_state_free_acquired(state);
+            rcu_read_unlock();
+            path_state_free(state);
             return ERR(VFS, INVAL);
         }
 
@@ -266,7 +271,6 @@ static status_t path_symlink_complete(irp_t* irp, void* ctx)
         state->ptr = state->token;
     }
 
-    path_state_release(state);
     return path_walk_loop(irp, state);
 }
 
@@ -274,6 +278,7 @@ static status_t path_symlink(irp_t* irp, path_state_t* state, dentry_t* symlink)
 {
     if (++state->symlinkDepth > PATH_MAX_SYMLINK)
     {
+        rcu_read_unlock();
         path_state_free(state);
         return ERR(VFS, LOOP);
     }
@@ -313,7 +318,7 @@ static status_t path_create_complete(irp_t* irp, void* ctx)
 
     if (IS_ERR(irp->status))
     {
-        path_state_free(state);
+        path_state_free_acquired(state);
         return OK;
     }
 
@@ -360,14 +365,13 @@ static status_t path_lookup_complete(irp_t* irp, void* ctx)
             }
         }
 
-        path_state_free(state);
+        path_state_free_acquired(state);
         return OK;
     }
 
     path_state_release(state);
 
     state->dentry = state->lookup;
-    state->lookup = NULL;
 
     if (DENTRY_IS_TYPE(state->dentry, FILE_TYPE_SYMLINK) && !(state->mode & MODE_NOFOLLOW))
     {
@@ -531,6 +535,8 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state)
             status_t status = path_dotdot(state);
             if (IS_ERR(status))
             {
+                rcu_read_unlock();
+                path_state_free(state);
                 return status;
             }
 

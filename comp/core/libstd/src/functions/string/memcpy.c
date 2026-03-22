@@ -1,9 +1,15 @@
 #include <stdint.h>
 #include <string.h>
 #include <sys/cpuid.h>
+#include <assert.h>
 
 static void* memcpy_no_simd(void* _RESTRICT s1, const void* _RESTRICT s2, size_t n)
 {
+    assert(n == 0 || (s1 != NULL && s2 != NULL));
+    assert((uintptr_t)s1 + n <= (uintptr_t)s2 || (uintptr_t)s2 + n <= (uintptr_t)s1);
+    assert((uintptr_t)s1 < 0x0000800000000000 || (uintptr_t)s1 >= 0xFFFF800000000000);
+    assert((uintptr_t)s2 < 0x0000800000000000 || (uintptr_t)s2 >= 0xFFFF800000000000);
+
     uint8_t* d = s1;
     const uint8_t* s = s2;
 

@@ -12,7 +12,7 @@
 static void vnode_free(vnode_t* vnode)
 {
     assert(vnode != NULL);
-    cache_free(vnode);
+    rcu_call(&vnode->rcu, rcu_call_cache_free, vnode);
 }
 
 static void vnode_reclaim(vnode_t* vnode)

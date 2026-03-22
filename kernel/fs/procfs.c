@@ -606,7 +606,6 @@ static status_t procfs_dir_reclaim(irp_t* irp)
 
     if (process != NULL)
     {
-        process_kill(process, "kill");
         UNREF(process);
     }
     frame->vnode->data = NULL;

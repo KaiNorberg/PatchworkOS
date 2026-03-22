@@ -36,7 +36,7 @@ $(TARGET): $(OBJ)
 	$(MKCWD)
 	@echo "  LD-KO $@"
 	@$(LD) -r -o $@ $^
-STAGE_DEST = $(STAGE_DIR)/module/
+STAGE_DEST = $(STAGE_DIR)/mod/
 endif
 
 ifeq ($(COMP_TYPE),static)
@@ -77,6 +77,12 @@ stage:
 	@mkdir -p $(STAGE_DEST)
 ifneq ($(TARGET),)
 	@cp $(TARGET) $(STAGE_DEST)
+endif
+ifneq ($(COMP_DEVICES),)
+	@for dev in $(COMP_DEVICES); do \
+	    mkdir -p $(STAGE_BY_DEVICE_DIR)/$$dev; \
+		ln -sf /comp/$(COMP_NAME)/$(COMP_VERSION) $(STAGE_BY_DEVICE_DIR)/$$dev/$(COMP_NAME); \
+	done
 endif
 
 	@cat $(MY_DIR)/manifest.scon > $(STAGE_DIR)/manifest.scon

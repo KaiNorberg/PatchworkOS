@@ -312,7 +312,7 @@ Included below is an example manifest file:
 ```lisp
 (component
     (description "An example component.")
-    (author Kai)
+    (author "Kai Norberg")
     (license MIT)
     (launch bin/example)
     (dependencies

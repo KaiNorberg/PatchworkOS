@@ -366,6 +366,7 @@ static vnode_class_t dirClass = {
 static vnode_class_t symlinkClass = {
     .name = "tmpfs symlink",
     .type = FILE_TYPE_SYMLINK,
+    .cache = &cache,
     .handlers =
         {
             VNODE_HANDLERS(),

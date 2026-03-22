@@ -1,0 +1,6 @@
+(component
+    (description "Symmetric Multiprocessing support via APIC")
+    (author "Kai Norberg")
+    (license MIT)
+    (module mod/smp.ko)
+)

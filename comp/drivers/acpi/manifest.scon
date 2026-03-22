@@ -1,0 +1,6 @@
+(component
+    (description "ACPI driver providing ACPI table handling, AML parsing and device management.")
+    (author "Kai Norberg")
+    (license MIT)
+    (module mod/acpi.ko)
+)

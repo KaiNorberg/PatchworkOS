@@ -196,11 +196,10 @@ completely custom strings defined by the module itself.
  * @param _description A short description of the module.
  * @param _version The version of the module.
  * @param _licence The licence of the module.
- * @param _deviceTypes A semicolon-separated list of device type strings that the module supports.
  */
-#define MODULE_INFO(_name, _author, _description, _version, _licence, _deviceTypes) \
+#define MODULE_INFO(_name, _author, _description, _version, _licence) \
     const char _moduleInfo[] __attribute__((section(MODULE_INFO_SECTION), used)) = \
-        _name ";" _author ";" _description ";" _version ";" _licence ";" OS_VERSION ";" _deviceTypes "\0"
+        _name ";" _author ";" _description ";" _version ";" _licence ";" OS_VERSION "\0"
 
 /**
  * @brief Reserved prefix for module global symbols.

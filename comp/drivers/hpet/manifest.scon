@@ -1,0 +1,6 @@
+(component
+    (description "A High Precision Event Timer driver.")
+    (author "Kai Norberg")
+    (license MIT)
+    (module mod/hpet.ko)
+)

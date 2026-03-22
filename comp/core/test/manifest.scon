@@ -1,6 +1,6 @@
 (component
     (description "Test component.")
-    (author Kai)
+    (author "Kai Norberg")
     (license MIT)
     (launch /bin/test)
     (dependencies

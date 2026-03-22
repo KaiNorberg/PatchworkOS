@@ -88,6 +88,7 @@ status_t thread_new(thread_t** out, process_t* process)
     list_push_back_rcu(&process->threads.list, &thread->processEntry);
     lock_release(&process->threads.lock);
 
+    LOG_DEBUG("creating thread pid=%d tid=%d\n", process->id, thread->id);
     *out = thread;
     return OK;
 }
