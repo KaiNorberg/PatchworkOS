@@ -363,7 +363,9 @@ The `/dev/announce` file allows the kernel to provide user-space with a stream o
 
 > Details on this format can be found the <comp/core/kernel-headers/include/kernel/drivers/announce.h> file.
 
-When the module manager receives a massage like the one above, it will look inside the `/comp/.index/devices` directory, in which there are subdirectories named after each device type, in this case this would be the `/comp/.index/devices/PNP0303` directory. Inside that directly is a series of symlinks to components that provide kernel modules that are able to handle that device type.
+When the module manager receives a massage like the one above, it will look inside the `/comp/.index/devices` directory, in which there are subdirectories named after each device type, in this case this would be the `/comp/.index/devices/PNP0303` directory. Inside that subdirectory is a series of symlinks to components that provide kernel modules that are able to handle that device type.
+
+Some modules may return a "DEFERRED" status, this would cause the module manager to defer the loading of that module and try again when any new device is attached.
 
 ### Make your own Module
 
@@ -380,7 +382,7 @@ Since kernel modules are just components, we must first create a new component. 
 )
 ```
 
-This file specifies basic metadata about our component, most importantly that it provides a kernel module which the module manager can find at `mod/hello.ko` within the components directory.
+This file specifies basic metadata about our component, most importantly that it provides a kernel module which the module manager can find at `mod/hello.ko` within our components directory.
 
 Now we can create a `hello.mk` file, in the same directory as the manifest file, to which we write the following code:
 
@@ -394,11 +396,11 @@ include $(COMP_DIR)/Make.comp.defaults
 include $(COMP_DIR)/Make.comp.rules
 ```
 
-This `.mk` file describes our component to the build system, giving it its name, version, type and most importantly what devices it can handle. In this case we specify `BOOT_ALWAYS` which is a special device that the module manager will pretend to have received during boot, allowing modules that specify it to always be loaded.
+This `.mk` file describes our component to the build system, giving it its name, version, type and most importantly what devices it can handle. In this case we specify `BOOT_ALWAYS` which is a special device that the module manager will pretend was attached during boot, allowing modules that specify it to always be loaded.
 
-This means that there will be a symlink at `/comp/.index/devices/BOOT_ALWAYS/hello` pointing to our component at `/comp/hello/1.0.0`.
+> Note that the `hello.mk` will cause the build system to create a symlink at `/comp/.index/devices/BOOT_ALWAYS/hello` pointing to our component at `/comp/hello/1.0.0`.
 
-We are now able to write the actual module, we create a `src` directory within `comp/hello` within which we create a `hello.c` file containing the included code:
+We are now able to write the actual module, we will create a `src` directory within `comp/hello` within which we create a `hello.c` file containing the included code:
 
 ```c
 #include <kernel/module/module.h>
@@ -419,7 +421,19 @@ status_t _module_procedure(const module_event_t* event)
 }
 ```
 
-That's all, if the steps were followed correctly we should now see a "Hello, World!" message within the kernels logs during boot.
+The final directory structure should look something like this:
+
+```
+/
+├── comp
+│   ├── hello
+│   │   ├── src
+│   │   │   └── hello.c
+│   │   ├── manifest.scon
+│   │   └── hello.mk
+```
+
+We can now run the `make all run` command and should see a "Hello, World!" message within the kernels logs during boot.
 
 If this didn't work, or bugs are encountered, please open an issue.
 
