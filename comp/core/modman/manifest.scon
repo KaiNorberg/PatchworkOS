@@ -1,0 +1,13 @@
+(component
+    (description "Module Manager.")
+    (author "Kai Norberg")
+    (license MIT)
+    (launch /bin/modman)
+    (dependencies
+        (libstd 1.0.0)
+    )
+    (capabilities
+        /dev/announce
+        /sys/mod
+    )
+)

@@ -613,21 +613,33 @@ static status_t ps2_attach_device(const char* type, const char* name)
         return ERR(DRIVER, INVAL);
     }
 
-    ps2_device_t targetDevice;
-    if (module_device_types_contains(PS2_KEYBOARD_PNP_IDS, type))
+    ps2_device_t targetDevice = PS2_DEV_NONE;
+    for (size_t i = 0; i < ARRAY_SIZE(knownKeyboards); i++)
     {
-        targetDevice = PS2_DEV_FIRST;
+        if (strcmp(knownKeyboards[i].pnpId, type) == 0)
+        {
+            targetDevice = PS2_DEV_FIRST;
+            break;
+        }
     }
-    else if (module_device_types_contains(PS2_MOUSE_PNP_IDS, type))
+    if (targetDevice == PS2_DEV_NONE)
     {
-        targetDevice = PS2_DEV_SECOND;
+        for (size_t i = 0; i < ARRAY_SIZE(knownMice); i++)
+        {
+            if (strcmp(knownMice[i].pnpId, type) == 0)
+            {
+                targetDevice = PS2_DEV_SECOND;
+                break;
+            }
+        }
     }
-    else
+
+    if (targetDevice == PS2_DEV_NONE)
     {
         LOG_ERR("ps2 device '%s' has unknown type '%s'\n", name, type);
         return ERR(DRIVER, INVAL);
     }
-
+    
     if (devices[targetDevice].attached)
     {
         LOG_ERR("ps2 device '%s' cannot be attached to %s port (port already attached)\n", name,
@@ -689,6 +701,8 @@ static status_t ps2_attach_device(const char* type, const char* name)
         LOG_INFO("delaying ps2 device '%s' initialization (waiting for other device)\n", name);
         return OK;
     }
+
+    LOG_INFO("all ps2 devices attached\n");
 
     for (ps2_device_t dev = 0; dev < PS2_DEV_COUNT; dev++)
     {

@@ -94,9 +94,9 @@ static void exception_user_page_fault_handler(interrupt_frame_t* frame)
     uintptr_t faultAddr = (uintptr_t)cr2_read();
 
     char msg[MAX_PATH];
-    snprintf(msg, MAX_PATH, "pagefault at 0x%llx when %s %s at 0x%llx", frame->rip,
+    snprintf(msg, MAX_PATH, "pagefault at 0x%llx when %s %sat 0x%llx", frame->rip,
         (frame->errorCode & PAGE_FAULT_WRITE) ? "writing to" : "reading from",
-        (frame->errorCode & PAGE_FAULT_PRESENT) ? "present" : "0x%llx", faultAddr);
+        (frame->errorCode & PAGE_FAULT_PRESENT) ? "present " : " ", faultAddr);
 
     exception_handle_user(frame, msg);
 }

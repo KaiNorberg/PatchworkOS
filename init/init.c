@@ -281,13 +281,15 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    print_dir(FDROOT, 0);
+    // print_dir(FDROOT, 0);
+
+    /// @todo Add configuration to specify what the init process should start.
 
     comp_options_t opts;
     opts.stdin = FDIN;
     opts.stdout = FDOUT;
     opts.stderr = FDERR;
-    status = comp_launch("test", "1.0.0", &opts);
+    status = comp_launch("modman", "1.0.0", &opts);
     if (IS_ERR(status))
     {
         printf("init: failed to launch component %Y\n", status);

@@ -3,4 +3,7 @@
     (author "Kai Norberg")
     (license MIT)
     (module mod/rtc.ko)
+    (dependencies
+        (acpi 1.0.0)
+    )
 )

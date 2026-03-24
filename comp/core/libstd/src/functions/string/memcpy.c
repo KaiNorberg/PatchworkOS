@@ -1,7 +1,7 @@
+#include <assert.h>
 #include <stdint.h>
 #include <string.h>
 #include <sys/cpuid.h>
-#include <assert.h>
 
 static void* memcpy_no_simd(void* _RESTRICT s1, const void* _RESTRICT s2, size_t n)
 {

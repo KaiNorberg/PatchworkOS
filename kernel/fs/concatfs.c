@@ -167,6 +167,12 @@ static status_t concatfs_lookup_next(irp_t* irp, concatfs_lookup_state_t* state)
         }
     }
 
+    if (state->current != NULL)
+    {
+        UNREF(state->current);
+        state->current = NULL;
+    }
+
     state->current = dentry_new(target, state->target->name);
     if (state->current == NULL)
     {

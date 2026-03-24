@@ -98,6 +98,7 @@ $(IMAGE): $(BIN_DIR)/initrd.tar
 	@mcopy -i $(IMAGE) -s $(BIN_DIR)/boot/bootx64.efi ::/efi/boot/ 2>/dev/null || true
 	@mcopy -i $(IMAGE) -s $(BIN_DIR)/kernel/kernel ::/boot/ 2>/dev/null || true
 	@mcopy -i $(IMAGE) -s $(BIN_DIR)/init/init ::/boot/ 2>/dev/null || true
+	@mcopy -i $(IMAGE) -s $(ROOT_DIR)/init/init.scon ::/boot/ 2>/dev/null || true
 	@mcopy -i $(IMAGE) -s $(BIN_DIR)/initrd.tar ::/boot/ 2>/dev/null || true
 
 clean:

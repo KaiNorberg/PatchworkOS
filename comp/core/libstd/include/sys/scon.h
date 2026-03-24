@@ -137,6 +137,24 @@ status_t scon_init(scon_t* scon, const char* input, size_t size);
 void scon_deinit(scon_t* scon);
 
 /**
+ * @brief Transfer the memory owned by one `scon_t` structure to another.
+ *
+ * @param dst Pointer to the destination SCON structure.
+ * @param src Pointer to the source SCON structure.
+ */
+static inline void scon_transfer(scon_t* dst, scon_t* src)
+{
+    *dst = *src;
+    if (src->items == src->small)
+    {
+        dst->items = dst->small;
+    }
+    src->items = src->small;
+    src->count = 0;
+    src->capacity = SCON_SMALL_MAX;
+}
+
+/**
  * @brief Get the root item of the SCON structure.
  *
  * @param scon Pointer to the SCON structure.

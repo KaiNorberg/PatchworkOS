@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/io.h>
+#include <sys/scon.h>
 
 /**
  * @brief Component Management
@@ -74,6 +75,36 @@
  */
 
 /**
+ * @brief Component version structure.
+ * @struct comp_version_t
+ */
+typedef struct
+{
+    union {
+        struct
+        {
+            uint32_t major;
+            uint32_t minor;
+            uint32_t patch;
+        };
+        uint32_t array[3];
+    };
+} comp_version_t;
+
+/**
+ * @brief Component dependency structure.
+ * @struct comp_dependency_t
+ */
+typedef struct
+{
+    char name[MAX_NAME];
+    comp_version_t version;
+    scon_t scon;
+    char* manifest;
+    size_t manifestLength;
+} comp_dependency_t;
+
+/**
  * @brief Options for launching a component.
  * @struct comp_options_t
  */
@@ -92,7 +123,7 @@ static_assert(sizeof(comp_options_t) == 512, "comp_options_t must be 512 bytes")
 /**
  * @brief Launch a component with its declared launch executable.
  *
- * If the specified component does not specify `(launch ...)` this function will fail.
+ * If the specified component does not specify `(launch ...)` or if any dependency specifies a kernel module, this function will fail.
  *
  * @param name The name of the component to launch.
  * @param version The minimum version to launch.
@@ -100,6 +131,29 @@ static_assert(sizeof(comp_options_t) == 512, "comp_options_t must be 512 bytes")
  * @return An appropriate status value.
  */
 status_t comp_launch(const char* name, const char* version, const comp_options_t* opts);
+
+/**
+ * @brief Find all dependencies for a given component.
+ *
+ * The output array must be freed using `comp_dependencies_free()`.
+ *
+ * The output array will also contain the component itself.
+ * 
+ * @param name The name of the component.
+ * @param version The minimum version of the component.
+ * @param outDeps Output pointer for the dynamically allocated array of dependencies.
+ * @param outCount Output pointer for the number of dependencies found.
+ * @return An appropriate status value.
+ */
+status_t comp_dependencies_get(const char* name, const char* version, comp_dependency_t** outDeps, size_t* outCount);
+
+/**
+ * @brief Free an array of component dependencies.
+ *
+ * @param deps The array of dependencies to free.
+ * @param count The number of dependencies in the array.
+ */
+void comp_dependencies_free(comp_dependency_t* deps, size_t count);
 
 /** @} */
 

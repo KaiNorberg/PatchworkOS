@@ -1,7 +1,7 @@
 .code64
 
 #include "kernel/cpu/interrupt.h"
-#include "trampoline.h"
+#include "kernel/drivers/apic/trampoline.h"
 
 .extern trampoline_c_entry
 

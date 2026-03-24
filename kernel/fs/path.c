@@ -294,16 +294,14 @@ static status_t path_symlink(irp_t* irp, path_state_t* state, dentry_t* symlink)
     status = irp_get_sglist(irp, &list);
     if (IS_ERR(status))
     {
-        path_state_release(state);
-        path_state_free(state);
+        path_state_free_acquired(state);
         return status;
     }
 
     status = sglist_add(list, &process_get_kernel()->space, state->linkBuffer, MAX_PATH);
     if (IS_ERR(status))
     {
-        path_state_release(state);
-        path_state_free(state);
+        path_state_free_acquired(state);
         return status;
     }
 
@@ -446,14 +444,14 @@ static status_t path_done(irp_t* irp, path_state_t* state)
     }
     UNREF_DEFER(dentry);
 
-    binding_t* mount = REF_TRY(state->binding);
-    if (mount == NULL)
+    binding_t* binding = REF_TRY(state->binding);
+    if (binding == NULL)
     {
         rcu_read_unlock();
         path_state_free(state);
         return ERR(VFS, NOENT);
     }
-    UNREF_DEFER(mount);
+    UNREF_DEFER(binding);
 
     if (state->mode & MODE_EXCLUSIVE)
     {
@@ -464,7 +462,7 @@ static status_t path_done(irp_t* irp, path_state_t* state)
 
     rcu_read_unlock();
 
-    file_t* file = file_new(dentry, mount, state->mode);
+    file_t* file = file_new(dentry, binding, state->mode);
     if (file == NULL)
     {
         path_state_free(state);

@@ -41,6 +41,12 @@ static void file_close(file_t* file)
         return;
     }
 
+    if (file->close != NULL)
+    {
+        irp_complete(file->close, OK);
+        file->close = NULL;
+    }
+
     file_free(file);
 }
 

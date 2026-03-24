@@ -194,13 +194,13 @@ The `iowritet()`, `ioreadt()` and `iowalkt()` functions are also provided that e
 
 #### Path Flags and Payloads
 
-A path can contain two additional optional segments, path flags and a payload. Path flags are appended after a `:` charachter and can be written in two forms, either in full form or in short form with the short form being a single letter that can be specified in groups. For example, `/my/path:read:write:execute` could also be written as `/my/path:rwx`. Note that the order of the letters and duplicates are ignored.
+A path can contain two additional optional segments, path flags and a payload. Path flags are appended after a `:` character and can be written in two forms, either in full form or in short form with the short form being a single letter that can be specified in groups. For example, `/my/path:read:write:execute` could also be written as `/my/path:rwx`. Note that the order of the letters and duplicates are ignored.
 
-Beyond simple permission flags we have behaviour flags such as `:append`, `:parents`, `:truncate`, etc. or creation flags, `:create`, `:directory`, `:symlink` and `:hardlink`. With the simple `:create` creating a regular file.
+Beyond simple permission flags we have behavior flags such as `:append`, `:parents`, `:truncate`, etc. or creation flags, `:create`, `:directory`, `:symlink` and `:hardlink`. With the simple `:create` creating a regular file.
 
-The payload of a path is specified after a `?` charachter, this payload is treated as a raw string and will be passed to the underlying filesystem, allowing it to handle the payload in any way it chooses. However, typically filesystems will expect a options list in the form of key-value pairs seperated by `&` charachters.
+The payload of a path is specified after a `?` character, this payload is treated as a raw string and will be passed to the underlying filesystem, allowing it to handle the payload in any way it chooses. However, typically filesystems will expect an options list in the form of key-value pairs separated by `&` characters.
 
-For example, we could create a symlink by walking the path `/my/path/to/source:symlink?/my/path/to/target`. 
+For example, we could create a symlink by walking the path `/my/path/to/source:symlink?/my/path/to/target`.
 
 Another example is concatfs which is used to concatenate the contents of several directories into a single directory. It expects the targets of the concatenation to be specified in the payload to its clone file, for example `/sys/fs/concatfs/clone?targets=1,2,3,4` where 1, 2, 3 and 4 are file descriptors.
 
@@ -343,25 +343,68 @@ The one exception to this rule is the init process, which is special in that it 
 
 This means that the security model forms a tree-like structure, with init having all capabilities and all child processes having some subset of those capabilities.
 
-## Modules (OLD)
+## Modules
 
 PatchworkOS uses a "modular" kernel design, meaning that instead of having one big kernel binary, the kernel is split into several smaller "modules" that can be loaded and unloaded at runtime.
 
 This is highly convenient for development, but it also has practical advantages, for example, there is no need to load a driver for a device that is not attached to the system, saving memory.
 
+> While the kernel used by PatchworkOS is distinctly (and intentionally) not a micro-kernel, drivers are loaded into the kernel, it does share some design ideas with micro-kernel designs. We try to design the kernel such that it is only responsible for the mechanism required to perform some task while user space is responsible for policy. For example, process and module loading is handled in user-space, and, as time goes on, the usage of 9P for services will most likely further reduce the size of the kernel.
+
+### The Module Manager (modman)
+
+The module manager is a user-space component, being no different to any other component, that is granted two capabilities the `/dev/announce` file and the `/sys/mod` directory.
+
+The `/dev/announce` file allows the kernel to provide user-space with a stream of messages describing device state changes. Usually, a device being attached or detached. For example:
+
+```
+123456789 attach PNP0303 - \_SB_.PCI0.SF8_.KBD_
+```
+
+> Details on this format can be found the <comp/core/kernel-headers/include/kernel/drivers/announce.h> file.
+
+When the module manager receives a massage like the one above, it will look inside the `/comp/.index/devices` directory, in which there are subdirectories named after each device type, in this case this would be the `/comp/.index/devices/PNP0303` directory. Inside that directly is a series of symlinks to components that provide kernel modules that are able to handle that device type.
+
 ### Make your own Module
 
 Making a module is intended to be as straightforward as possible. For the sake of demonstration, we will create a simple "Hello, World!" module.
 
-First, we create a new directory in `src/kernel/modules/` named `hello`, and inside that directory we create a `hello.c` file to which we write the following code:
+Since kernel modules are just components, we must first create a new component. We begin by creating the `comp/hello` directory, in which we must create a `manifest.scon` file for our component, to which we write the following code:
+
+```lisp
+(component
+    (description "Example Hello World module.")
+    (author "Your name here")
+    (license MIT)
+    (module mod/hello.ko)
+)
+```
+
+This file specifies basic metadata about our component, most importantly that it provides a kernel module which the module manager can find at `mod/hello.ko` within the components directory.
+
+Now we can create a `hello.mk` file, in the same directory as the manifest file, to which we write the following code:
+
+```bash
+COMP_NAME = hello
+COMP_VERSION = 1.0.0
+COMP_TYPE = module
+COMP_DEVICES = BOOT_ALWAYS
+
+include $(COMP_DIR)/Make.comp.defaults
+include $(COMP_DIR)/Make.comp.rules
+```
+
+This `.mk` file describes our component to the build system, giving it its name, version, type and most importantly what devices it can handle. In this case we specify `BOOT_ALWAYS` which is a special device that the module manager will pretend to have received during boot, allowing modules that specify it to always be loaded.
+
+This means that there will be a symlink at `/comp/.index/devices/BOOT_ALWAYS/hello` pointing to our component at `/comp/hello/1.0.0`.
+
+We are now able to write the actual module, we create a `src` directory within `comp/hello` within which we create a `hello.c` file containing the included code:
 
 ```c
 #include <kernel/module/module.h>
 #include <kernel/log/log.h>
 
-#include <stdint.h>
-
-uint64_t _module_procedure(const module_event_t* event)
+status_t _module_procedure(const module_event_t* event)
 {
     switch (event->type)
     {
@@ -372,51 +415,13 @@ uint64_t _module_procedure(const module_event_t* event)
         break;
     }
 
-    return 0;
+    return OK;
 }
-
-MODULE_INFO("Hello", "<author>", "A simple hello world module", "1.0", "MIT", "BOOT_ALWAYS");
 ```
 
-An explanation of the code will be provided later.
+That's all, if the steps were followed correctly we should now see a "Hello, World!" message within the kernels logs during boot.
 
-Now we need to add the module to the build system. To do this, just copy an existing module's `.mk` file without making any modifications. For example, we can copy `src/modules/drivers/ps2/ps2.mk` to `src/modules/hello/hello.mk`. The build system will handle the rest, including copying the module to the final image.
-
-Now, we can build and run PatchworkOS using `make all run`, or we could use `make all` and then flash the generated `bin/PatchworkOS.img` file to a USB drive.
-
-Now to validate that the module is working, you can either watch the boot log and spot the `Hello, World!` message, or you could use `grep` on the `/sys/klog` file in the terminal program like so:
-
-```bash
-cat /sys/klog | grep "Hello, World!"
-```
-
-This should output something like:
-
-```bash
-[   0.747-00-I] Hello, World!
-```
-
-That's all, if this did not work, make sure you followed all the steps correctly. If there is still issues, feel free to open an issue.
-
-### What can I do now?
-
-Whatever you want. You can include any kernel header, or even headers from other modules, create your own modules and include their headers or anything else. There is no need to worry about linking, dependencies or exporting/importing symbols, the kernels module loader will handle all of it for you. Go nuts.
-
-### Code Explanation
-
-This code in the `hello.c` file does a few things. First, it includes the relevant kernel headers.
-
-Second, it defines a `_module_procedure()` function. This function serves as the entry point for the module and will be called by the kernel to notify the module of events, for example the module being loaded or a device attached. On the load event, it will print using the kernels logging system `"Hello, World!"`, resulting in the message being readable from `/sys/klog`.
-
-Finally, it defines the modules information. This information is, from left to right, the name of the module, the author of the module (that's you), a short description of the module, the module version, the license of the module, and finally a list of "device types", in this case just `BOOT_ALWAYS`, but more could be added by separating them with a semicolon (`;`).
-
-The list of device types is what causes the kernel to actually load the module. We will avoid going into too much detail (you can check the documentation for that), but included is a brief explanation.
-
-The module loader itself has no idea what these type strings actually are, but subsystems can specify that "a device of the type represented by this string is now available", the module loader can then load either one or all modules that have specified in their list of device types that it can handle the specified type. This means that any new subsystem, ACPI, USB, PCI, etc., can implement dynamic module loading using whatever types they want.
-
-So what is `BOOT_ALWAYS`? It is the type of special device that the kernel will pretend to "attach" during boot. In this case, it simply causes our hello module to be loaded during boot.
-
-For more information, check the [Module Documentation](https://kainorberg.github.io/PatchworkOS/html/dd/d41/group__kernel__module.html).
+If this didn't work, or bugs are encountered, please open an issue.
 
 ## ACPI (WIP)
 

@@ -226,11 +226,6 @@ status_t sglist_copy_in(sglist_t* list, size_t count, size_t offset, size_t* cop
         *copied = copySize - remaining;
     }
 
-    if (remaining == 0)
-    {
-        return INFO(MMU, EOF);
-    }
-
     return OK;
 }
 

@@ -30,6 +30,7 @@ ASFLAGS += \
 LDFLAGS += \
 	-shared \
 	-fPIC \
+	-Lcomp/core/kernel-headers/include \
 	-Tkernel/module.lds
 endif
 

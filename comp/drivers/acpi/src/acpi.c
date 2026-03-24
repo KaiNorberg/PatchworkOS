@@ -78,7 +78,7 @@ status_t _module_procedure(const module_event_t* event)
 {
     switch (event->type)
     {
-    case MODULE_EVENT_DEVICE_ATTACH:
+    case MODULE_EVENT_LOAD:
     {
         boot_info_t* bootInfo = boot_info_get();
         if (bootInfo == NULL || bootInfo->rsdp == NULL)

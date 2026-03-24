@@ -1,9 +1,8 @@
 #pragma once
 
 #include <kernel/fs/devfs.h>
+#include <kernel/fs/stringstream.h>
 #include <kernel/sched/wait.h>
-#include <kernel/sync/lock.h>
-#include <kernel/utils/fifo.h>
 
 #include <stdint.h>
 #include <sys/kbd.h>
@@ -45,22 +44,6 @@ typedef struct kbd kbd_t;
  */
 
 /**
- * @brief Size of the keyboard client buffer.
- */
-#define KBD_CLIENT_BUFFER_SIZE 512
-
-/**
- * @brief Keyboard event client structure.
- * @struct kbd_client_t
- */
-typedef struct kbd_client
-{
-    list_entry_t entry;
-    fifo_t fifo;
-    uint8_t buffer[KBD_CLIENT_BUFFER_SIZE];
-} kbd_client_t;
-
-/**
  * @brief Keyboard structure.
  * @struct kbd_t
  */
@@ -69,11 +52,9 @@ typedef struct kbd
     const char* name;
     struct
     {
-        list_t pending; ///< List of pending IRPs.
-        list_t clients;
-        lock_t lock;
         dentry_t* dir;
         list_t files;
+        stringstream_t stream;
     } internal;
 } kbd_t;
 

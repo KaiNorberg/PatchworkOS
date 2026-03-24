@@ -46,6 +46,8 @@ const char* st_code_str(st_code_t code)
         return "operation is pending";
     case ST_CODE_COMPLETE:
         return "operation has been completed";
+    case ST_CODE_DEFERRED:
+        return "operation has been deferred";
 
     // Memory
     case ST_CODE_NOMEM:

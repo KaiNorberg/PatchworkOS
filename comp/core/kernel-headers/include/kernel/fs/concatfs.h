@@ -12,7 +12,7 @@
  * to appear as a single, unified directory by concatenating their contents without recursion.
  *
  * @note This is distinct from typical "UnionFS" or "OverlayFS" implementations in that it does apply to subdirectories
- * and that since it is blindly concatenating contents multiple files of the same name can appear in the same directory.
+ * and that, since it is blindly concatenating contents, multiple files of the same name can appear in the same directory.
  * The gain is that it provides far more predictable behavior than traditional union file systems.
  *
  * ## Payload

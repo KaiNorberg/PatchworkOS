@@ -70,6 +70,20 @@ clock_t clock_uptime(void);
 time_t clock_epoch(void);
 
 /**
+ * @brief Check if a system uptime clock source is available.
+ *
+ * @return `true` if available, `false` otherwise.
+ */
+bool clock_uptime_avail(void);
+
+/**
+ * @brief Check if a system epoch clock source is available.
+ *
+ * @return `true` if available, `false` otherwise.
+ */
+bool clock_epoch_avail(void);
+
+/**
  * @brief Wait for a specified number of nanoseconds.
  *
  * This function uses a busy-wait loop, making it highly CPU inefficient, but its useful during early

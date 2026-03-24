@@ -21,23 +21,6 @@ static dentry_t* root = NULL;
 
 static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
-static status_t mouse_cancel(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    mouse_t* mouse = frame->vnode->data;
-
-    lock_acquire(&mouse->internal.lock);
-
-    if (list_contains(&irp->entry))
-    {
-        list_remove(&irp->entry);
-    }
-
-    lock_release(&mouse->internal.lock);
-
-    return OK;
-}
-
 static status_t mouse_name_read(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
@@ -58,116 +41,13 @@ static vnode_class_t nameClass = {
         },
 };
 
-static status_t mouse_events_open(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    file_t* file = frame->file;
-    if (frame->file == NULL)
-    {
-        return ERR(IO, EXPECT_FILE);
-    }
-
-    mouse_t* mouse = frame->vnode->data;
-    assert(mouse != NULL);
-
-    mouse_client_t* client = calloc(1, sizeof(mouse_client_t));
-    if (client == NULL)
-    {
-        return ERR(DRIVER, NOMEM);
-    }
-    list_entry_init(&client->entry);
-    fifo_init(&client->fifo, client->buffer, sizeof(client->buffer));
-
-    lock_acquire(&mouse->internal.lock);
-    list_push_back(&mouse->internal.clients, &client->entry);
-    lock_release(&mouse->internal.lock);
-
-    file->data = client;
-    return OK;
-}
-
-static status_t mouse_events_close(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    file_t* file = frame->file;
-    if (frame->file == NULL)
-    {
-        return ERR(IO, EXPECT_FILE);
-    }
-    mouse_t* mouse = frame->vnode->data;
-    assert(mouse != NULL);
-
-    mouse_client_t* client = file->data;
-    if (client != NULL)
-    {
-        lock_acquire(&mouse->internal.lock);
-        list_remove(&client->entry);
-        lock_release(&mouse->internal.lock);
-
-        free(client);
-    }
-    return OK;
-}
-
-static status_t mouse_events_read(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    mouse_t* mouse = frame->vnode->data;
-    assert(mouse != NULL);
-
-    if (frame->file == NULL)
-    {
-        return ERR(IO, EXPECT_FILE);
-    }
-
-    mouse_client_t* client = frame->file->data;
-    assert(client != NULL);
-
-    LOCK_SCOPE(&mouse->internal.lock);
-
-    if (fifo_bytes_readable(&client->fifo) == 0)
-    {
-        return irp_delay(irp, &mouse->internal.pending, mouse_cancel);
-    }
-
-    return fifo_read_sglist(&client->fifo, frame->read.buffer, 0, &irp->result);
-}
-
-static status_t mouse_events_poll(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    mouse_t* mouse = frame->vnode->data;
-    assert(mouse != NULL);
-
-    if (frame->file == NULL)
-    {
-        return ERR(IO, EXPECT_FILE);
-    }
-
-    mouse_client_t* client = frame->file->data;
-    assert(client != NULL);
-
-    LOCK_SCOPE(&mouse->internal.lock);
-
-    if (fifo_bytes_readable(&client->fifo) > 0)
-    {
-        irp->result = IOEVENT_READ;
-        return OK;
-    }
-
-    return irp_delay(irp, &mouse->internal.pending, mouse_cancel);
-}
-
 static vnode_class_t eventsClass = {
     .name = "mouse events",
     .type = FILE_TYPE_DEVICE,
     .handlers =
         {
             VNODE_HANDLERS(),
-            [IRP_MJ_OPEN] = mouse_events_open,
-            [IRP_MJ_READ] = mouse_events_read,
-            [IRP_MJ_POLL] = mouse_events_poll,
-            [IRP_MJ_CLOSE] = mouse_events_close,
+            STRINGSTREAM_HANDLERS(),
         },
 };
 
@@ -179,14 +59,7 @@ static status_t mouse_dir_reclaim(irp_t* irp)
         return OK;
     }
 
-    if (!list_is_empty(&mouse->internal.pending))
-    {
-        panic(NULL, "Attempted to free mouse with pending IRPs");
-    }
-    if (!list_is_empty(&mouse->internal.clients))
-    {
-        panic(NULL, "Attempted to free mouse with clients");
-    }
+    stringstream_deinit(&mouse->internal.stream);
 
     return OK;
 }
@@ -226,9 +99,7 @@ status_t mouse_register(mouse_t* mouse)
         }
     }
 
-    list_init(&mouse->internal.pending);
-    list_init(&mouse->internal.clients);
-    lock_init(&mouse->internal.lock);
+    stringstream_init(&mouse->internal.stream);
     mouse->internal.dir = NULL;
     list_init(&mouse->internal.files);
 
@@ -253,7 +124,7 @@ status_t mouse_register(mouse_t* mouse)
         {
             .name = "events",
             .cls = &eventsClass,
-            .data = mouse,
+            .data = &mouse->internal.stream,
         },
     };
 
@@ -279,49 +150,7 @@ void mouse_unregister(mouse_t* mouse)
 
 static void mouse_broadcast(mouse_t* mouse, const char* string, size_t length)
 {
-    list_t pending = LIST_CREATE(pending);
-
-    {
-        LOCK_SCOPE(&mouse->internal.lock);
-
-        mouse_client_t* client;
-        LIST_FOR_EACH(client, &mouse->internal.clients, entry)
-        {
-            if (fifo_bytes_writeable(&client->fifo) >= length)
-            {
-                fifo_write(&client->fifo, string, length, NULL);
-            }
-        }
-        irp_claim_list(&pending, &mouse->internal.pending);
-    }
-
-    while (!list_is_empty(&pending))
-    {
-        irp_t* irp = CONTAINER_OF(list_pop_front(&pending), irp_t, entry);
-        irp_frame_t* frame = irp_current(irp);
-        if (frame->major == IRP_MJ_READ)
-        {
-            status_t status = mouse_events_read(irp);
-            if (IS_INFO(status) && IS_CODE(status, PENDING))
-            {
-                continue;
-            }
-            irp_complete(irp, status);
-        }
-        else if (frame->major == IRP_MJ_POLL)
-        {
-            status_t status = mouse_events_poll(irp);
-            if (IS_INFO(status) && IS_CODE(status, PENDING))
-            {
-                continue;
-            }
-            irp_complete(irp, status);
-        }
-        else
-        {
-            irp_complete(irp, ERR(DRIVER, INVAL));
-        }
-    }
+    stringstream_broadcast(&mouse->internal.stream, string, length);
 }
 
 void mouse_press(mouse_t* mouse, uint8_t button)

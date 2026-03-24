@@ -1,7 +1,7 @@
-COMP_NAME = pci
+COMP_NAME = hello
 COMP_VERSION = 1.0.0
 COMP_TYPE = module
-COMP_DEVICES = 
+COMP_DEVICES = BOOT_ALWAYS
 
 include $(COMP_DIR)/Make.comp.defaults
 include $(COMP_DIR)/Make.comp.rules

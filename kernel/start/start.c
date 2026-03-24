@@ -4,6 +4,7 @@
 #include <kernel/cpu/ipi.h>
 #include <kernel/cpu/irq.h>
 #include <kernel/cpu/syscall.h>
+#include <kernel/drivers/announce.h>
 #include <kernel/drivers/const.h>
 #include <kernel/drivers/pic.h>
 #include <kernel/fs/concatfs.h>
@@ -29,6 +30,7 @@
 #include <kernel/sched/wait.h>
 #include <kernel/start/boot_info.h>
 #include <kernel/start/start.h>
+#include <kernel/drivers/announce.h>
 
 #include <boot/boot_info.h>
 
@@ -99,59 +101,12 @@ static void start_finalize(void)
     concatfs_init();
 
     log_expose();
+    module_expose();
+    announce_init();
     boot_info_expose_initrd();
 
     perf_init();
     const_init();
-
-    boot_info_t* bootInfo = boot_info_get();
-
-    /*if (bootInfo->gop.virtAddr != NULL)
-    {
-        status_t status = module_device_attach("BOOT_GOP", "BOOT_GOP", MODULE_LOAD_ALL, NULL);
-        if (IS_ERR(status))
-        {
-            panic(NULL, "Failed to load modules with BOOT_GOP due to %s", st_code_str(status));
-        }
-    }
-    else
-    {
-        LOG_WARN("no GOP provided by bootloader\n");
-    }
-
-    if (bootInfo->rsdp != NULL)
-    {
-        status_t status = module_device_attach("BOOT_RSDP", "BOOT_RSDP", MODULE_LOAD_ALL, NULL);
-        if (IS_ERR(status))
-        {
-            panic(NULL, "Failed to load modules with BOOT_RSDP due to %s", st_code_str(status));
-        }
-    }
-    else
-    {
-        LOG_WARN("no RSDP provided by bootloader\n");
-    }
-
-    status_t status = module_device_attach("BOOT_ALWAYS", "BOOT_ALWAYS", MODULE_LOAD_ALL, NULL);
-    if (IS_ERR(status))
-    {
-        panic(NULL, "Failed to load modules with BOOT_ALWAYS due to %s", st_code_str(status));
-    }
-
-    boot_info_free();
-
-    if (timer_source_amount() == 0)
-    {
-        panic(NULL, "No timer source registered, most likely no timer sources with a provided driver was found");
-    }
-    if (irq_chip_amount() == 0)
-    {
-        panic(NULL, "No IRQ chip registered, most likely no IRQ chips with a provided driver was found");
-    }
-    if (ipi_chip_amount() == 0)
-    {
-        panic(NULL, "No IPI chip registered, most likely no IPI chips with a provided driver was found");
-    }*/
 
     LOG_INFO("kernel initalized using %llu kb of memory\n", pmm_used_pages() * PAGE_SIZE / 1024);
 }

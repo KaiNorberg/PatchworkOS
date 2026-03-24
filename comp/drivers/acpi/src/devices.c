@@ -15,6 +15,7 @@
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/module/module.h>
+#include <kernel/drivers/announce.h>
 #include <kernel/utils/ref.h>
 
 #include <errno.h>
@@ -552,24 +553,12 @@ status_t acpi_devices_init(void)
     }
 
     for (size_t i = 0; i < ids.length; i++)
-    {
-        uint64_t loadedModules;
-        status_t status = module_device_attach(ids.array[i].hid, ids.array[i].path, MODULE_LOAD_ONE, &loadedModules);
+    {        
+        status_t status = announce_device(ids.array[i].hid, ids.array[i].cid[0] != '\0' ? ids.array[i].cid : NULL, ids.array[i].path, ANNOUNCE_ATTACH);
         if (IS_ERR(status))
         {
-            LOG_ERR("failed to load module for HID '%s' due to '%s'\n", ids.array[i].hid, st_code_str(status));
+            LOG_ERR("failed to announce '%s' due to '%s'\n", ids.array[i].hid, st_code_str(status));
             continue;
-        }
-
-        if (loadedModules != 0 || ids.array[i].cid[0] == '\0')
-        {
-            continue;
-        }
-
-        status = module_device_attach(ids.array[i].cid, ids.array[i].path, MODULE_LOAD_ONE, NULL);
-        if (IS_ERR(status))
-        {
-            LOG_ERR("failed to load module for CID '%s' due to '%s'\n", ids.array[i].cid, st_code_str(status));
         }
     }
 

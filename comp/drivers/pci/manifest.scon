@@ -1,6 +1,0 @@
-(component
-    (description "An ACPI PCI host bridge driver.")
-    (author "Kai Norberg")
-    (license MIT)
-    (module mod/pci.ko)
-)

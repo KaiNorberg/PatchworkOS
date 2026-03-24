@@ -1,0 +1,6 @@
+(component
+    (description "Example Hello World module.")
+    (author "Your name here")
+    (license MIT)
+    (module mod/hello.ko)
+)

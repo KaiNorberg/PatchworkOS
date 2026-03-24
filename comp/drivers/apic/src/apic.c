@@ -1,6 +1,8 @@
 #include <kernel/drivers/apic/apic_timer.h>
 #include <kernel/drivers/apic/ioapic.h>
 #include <kernel/drivers/apic/lapic.h>
+#include <kernel/drivers/apic/smp.h>
+#include <kernel/sched/clock.h>
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/log/log.h>
@@ -26,6 +28,12 @@ status_t _module_procedure(const module_event_t* event)
     {
     case MODULE_EVENT_DEVICE_ATTACH:
     {
+        // We need uptime for SMP initialization.
+        if (!clock_uptime_avail())
+        {
+            return INFO(MODULE, DEFERRED);
+        }
+
         status_t status = lapic_global_init();
         if (IS_ERR(status))
         {
@@ -45,6 +53,8 @@ status_t _module_procedure(const module_event_t* event)
             return status;
         }
         PERCPU_INIT();
+
+        smp_start_others();
     }
     break;
     case MODULE_EVENT_DEVICE_DETACH:

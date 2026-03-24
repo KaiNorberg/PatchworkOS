@@ -35,7 +35,7 @@ TARGET = $(COMP_BIN_DIR)/$(COMP_NAME).ko
 $(TARGET): $(OBJ)
 	$(MKCWD)
 	@echo "  LD-KO $@"
-	@$(LD) -r -o $@ $^
+	@$(LD) -o $@ $^ $(LDFLAGS)
 STAGE_DEST = $(STAGE_DIR)/mod/
 endif
 

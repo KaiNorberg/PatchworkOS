@@ -18,7 +18,7 @@
 
 static const clock_source_t* sources[CLOCK_MAX_SOURCES] = {0};
 static uint32_t sourceCount = 0;
-static const clock_source_t* bestNsSource = NULL;
+static const clock_source_t* bestUptimeSource = NULL;
 static const clock_source_t* bestEpochSource = NULL;
 static rwlock_t sourcesLock = RWLOCK_CREATE();
 
@@ -28,15 +28,15 @@ static _Atomic(clock_t) lastNsTime = ATOMIC_VAR_INIT(0);
 
 static void clock_update_best_sources(void)
 {
-    bestNsSource = NULL;
+    bestUptimeSource = NULL;
     bestEpochSource = NULL;
 
     for (uint32_t i = 0; i < sourceCount; i++)
     {
         const clock_source_t* source = sources[i];
-        if (source->read_ns != NULL && (bestNsSource == NULL || source->precision < bestNsSource->precision))
+        if (source->read_ns != NULL && (bestUptimeSource == NULL || source->precision < bestUptimeSource->precision))
         {
-            bestNsSource = source;
+            bestUptimeSource = source;
         }
         if (source->read_epoch != NULL && (bestEpochSource == NULL || source->precision < bestEpochSource->precision))
         {
@@ -98,12 +98,12 @@ void clock_source_unregister(const clock_source_t* source)
 clock_t clock_uptime(void)
 {
     RWLOCK_READ_SCOPE(&sourcesLock);
-    if (bestNsSource == NULL)
+    if (bestUptimeSource == NULL)
     {
         return 0;
     }
 
-    return bestNsSource->read_ns();
+    return bestUptimeSource->read_ns();
 }
 
 time_t clock_epoch(void)
@@ -115,6 +115,18 @@ time_t clock_epoch(void)
     }
 
     return bestEpochSource->read_epoch();
+}
+
+bool clock_uptime_avail(void)
+{
+    RWLOCK_READ_SCOPE(&sourcesLock);
+    return bestUptimeSource != NULL;
+}
+
+bool clock_epoch_avail(void)
+{
+    RWLOCK_READ_SCOPE(&sourcesLock);
+    return bestEpochSource != NULL;
 }
 
 void clock_wait(clock_t nanoseconds)

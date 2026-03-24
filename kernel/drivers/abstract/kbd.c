@@ -21,23 +21,6 @@ static dentry_t* root = NULL;
 
 static atomic_uint64_t newId = ATOMIC_VAR_INIT(0);
 
-static status_t kbd_cancel(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    kbd_t* kbd = frame->vnode->data;
-
-    lock_acquire(&kbd->internal.lock);
-
-    if (list_contains(&irp->entry))
-    {
-        list_remove(&irp->entry);
-    }
-
-    lock_release(&kbd->internal.lock);
-
-    return OK;
-}
-
 static status_t kbd_name_read(irp_t* irp)
 {
     irp_frame_t* frame = irp_current(irp);
@@ -58,113 +41,13 @@ static vnode_class_t nameClass = {
         },
 };
 
-static status_t kbd_events_open(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    file_t* file = frame->file;
-    if (frame->file == NULL)
-    {
-        return ERR(IO, EXPECT_FILE);
-    }
-
-    kbd_t* kbd = frame->vnode->data;
-    assert(kbd != NULL);
-
-    kbd_client_t* client = calloc(1, sizeof(kbd_client_t));
-    if (client == NULL)
-    {
-        return ERR(DRIVER, NOMEM);
-    }
-    list_entry_init(&client->entry);
-    fifo_init(&client->fifo, client->buffer, sizeof(client->buffer));
-
-    lock_acquire(&kbd->internal.lock);
-    list_push_back(&kbd->internal.clients, &client->entry);
-    lock_release(&kbd->internal.lock);
-
-    file->data = client;
-    return OK;
-}
-
-static status_t kbd_events_close(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    file_t* file = frame->file;
-    if (frame->file == NULL)
-    {
-        return ERR(IO, EXPECT_FILE);
-    }
-    kbd_t* kbd = frame->vnode->data;
-    assert(kbd != NULL);
-
-    kbd_client_t* client = file->data;
-    lock_acquire(&kbd->internal.lock);
-    list_remove(&client->entry);
-    lock_release(&kbd->internal.lock);
-
-    free(client);
-    return OK;
-}
-
-static status_t kbd_events_read(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    kbd_t* kbd = frame->vnode->data;
-    assert(kbd != NULL);
-
-    if (frame->file == NULL)
-    {
-        return ERR(IO, EXPECT_FILE);
-    }
-
-    kbd_client_t* client = frame->file->data;
-    assert(client != NULL);
-
-    LOCK_SCOPE(&kbd->internal.lock);
-
-    if (fifo_bytes_readable(&client->fifo) == 0)
-    {
-        return irp_delay(irp, &kbd->internal.pending, kbd_cancel);
-    }
-
-    return fifo_read_sglist(&client->fifo, frame->read.buffer, 0, &irp->result);
-}
-
-static status_t kbd_events_poll(irp_t* irp)
-{
-    irp_frame_t* frame = irp_current(irp);
-    kbd_t* kbd = frame->vnode->data;
-    assert(kbd != NULL);
-
-    if (frame->file == NULL)
-    {
-        return ERR(IO, EXPECT_FILE);
-    }
-
-    kbd_client_t* client = frame->file->data;
-    assert(client != NULL);
-
-    LOCK_SCOPE(&kbd->internal.lock);
-
-    if (fifo_bytes_readable(&client->fifo) > 0)
-    {
-        irp->result = IOEVENT_READ;
-        return OK;
-    }
-
-    return irp_delay(irp, &kbd->internal.pending, kbd_cancel);
-}
-
 static vnode_class_t eventsClass = {
     .name = "kbd events",
     .type = FILE_TYPE_DEVICE,
     .handlers =
         {
             VNODE_HANDLERS(),
-            [IRP_MJ_OPEN] = kbd_events_open,
-            [IRP_MJ_READ] = kbd_events_read,
-            [IRP_MJ_POLL] = kbd_events_poll,
-            [IRP_MJ_CLOSE] = kbd_events_close,
+            STRINGSTREAM_HANDLERS(),
         },
 };
 
@@ -176,14 +59,7 @@ static status_t kbd_dir_reclaim(irp_t* irp)
         return OK;
     }
 
-    if (!list_is_empty(&kbd->internal.pending))
-    {
-        panic(NULL, "Attempted to free keyboard with pending IRPs");
-    }
-    if (!list_is_empty(&kbd->internal.clients))
-    {
-        panic(NULL, "Attempted to free keyboard with clients");
-    }
+    stringstream_deinit(&kbd->internal.stream);
 
     return OK;
 }
@@ -223,9 +99,7 @@ status_t kbd_register(kbd_t* kbd)
         }
     }
 
-    list_init(&kbd->internal.pending);
-    list_init(&kbd->internal.clients);
-    lock_init(&kbd->internal.lock);
+    stringstream_init(&kbd->internal.stream);
     kbd->internal.dir = NULL;
     list_init(&kbd->internal.files);
 
@@ -250,7 +124,7 @@ status_t kbd_register(kbd_t* kbd)
         {
             .name = "events",
             .cls = &eventsClass,
-            .data = kbd,
+            .data = &kbd->internal.stream,
         },
     };
     if (!devfs_dentrys_new(&kbd->internal.files, kbd->internal.dir, files, ARRAY_SIZE(files)))
@@ -275,39 +149,7 @@ void kbd_unregister(kbd_t* kbd)
 
 static void kbd_broadcast(kbd_t* kbd, const char* string, size_t length)
 {
-    list_t pending = LIST_CREATE(pending);
-
-    {
-        LOCK_SCOPE(&kbd->internal.lock);
-
-        kbd_client_t* client;
-        LIST_FOR_EACH(client, &kbd->internal.clients, entry)
-        {
-            if (fifo_bytes_writeable(&client->fifo) >= length)
-            {
-                fifo_write(&client->fifo, string, length, NULL);
-            }
-        }
-        irp_claim_list(&pending, &kbd->internal.pending);
-    }
-
-    while (!list_is_empty(&pending))
-    {
-        irp_t* irp = CONTAINER_OF(list_pop_front(&pending), irp_t, entry);
-        irp_frame_t* frame = irp_current(irp);
-        if (frame->major == IRP_MJ_READ)
-        {
-            irp_complete(irp, kbd_events_read(irp));
-        }
-        else if (frame->major == IRP_MJ_POLL)
-        {
-            irp_complete(irp, kbd_events_poll(irp));
-        }
-        else
-        {
-            irp_complete(irp, ERR(DRIVER, INVAL));
-        }
-    }
+    stringstream_broadcast(&kbd->internal.stream, string, length);
 }
 
 void kbd_press(kbd_t* kbd, keycode_t code)

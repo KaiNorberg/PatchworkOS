@@ -152,6 +152,7 @@ typedef enum
     ST_CODE_TEST_FAIL,                            ///< Test failure.
     ST_CODE_PENDING,                              ///< Operation is pending.
     ST_CODE_COMPLETE,                             ///< Operation has been completed.
+    ST_CODE_DEFERRED,                                ///< Operation has been deferred.
 
     ST_CODE_NOMEM = (ST_KIND_MEM << 8) | 1, ///< Out of memory.
     ST_CODE_NOSPACE,                        ///< No space left.

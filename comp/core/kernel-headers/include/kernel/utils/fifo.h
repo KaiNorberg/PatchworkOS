@@ -214,11 +214,12 @@ static inline status_t fifo_write(fifo_t* fifo, const void* buffer, size_t count
  *
  * @param fifo The fifo buffer structure.
  * @param list The destination Scatter-Gather List.
+ * @param count The maximum number of bytes to read.
  * @param offset The offset within the Scatter-Gather List to start writing to.
  * @param bytesRead Output pointer for the amount of bytes read, can be `NULL`.
  * @return An appropriate status value.
  */
-static inline status_t fifo_read_sglist(fifo_t* fifo, sglist_t* list, size_t offset, size_t* bytesRead)
+static inline status_t fifo_read_sglist(fifo_t* fifo, sglist_t* list, size_t count, size_t offset, size_t* bytesRead)
 {
     size_t readable = fifo_bytes_readable(fifo);
     if (readable == 0)
@@ -230,10 +231,15 @@ static inline status_t fifo_read_sglist(fifo_t* fifo, sglist_t* list, size_t off
         return OK;
     }
 
-    size_t firstSize = fifo->size - fifo->tail;
-    if (firstSize > readable)
+    if (count > readable)
     {
-        firstSize = readable;
+        count = readable;
+    }
+
+    size_t firstSize = fifo->size - fifo->tail;
+    if (firstSize > count)
+    {
+        firstSize = count;
     }
 
     size_t copied1 = 0;
@@ -248,7 +254,7 @@ static inline status_t fifo_read_sglist(fifo_t* fifo, sglist_t* list, size_t off
 
     if (copied1 == firstSize)
     {
-        size_t remaining = readable - firstSize;
+        size_t remaining = count - firstSize;
         if (remaining > 0)
         {
             size_t copied2 = 0;
@@ -284,17 +290,23 @@ static inline status_t fifo_read_sglist(fifo_t* fifo, sglist_t* list, size_t off
  *
  * @param fifo Pointer to the fifo buffer structure.
  * @param list The source Scatter-Gather List.
+ * @param count The maximum number of bytes to write.
  * @param offset The offset within the Scatter-Gather List to start reading from.
  * @param bytesWritten Output pointer for the amount of bytes written, can be `NULL`.
  * @return An appropriate status value.
  */
-static inline status_t fifo_write_sglist(fifo_t* fifo, sglist_t* list, size_t offset, size_t* bytesWritten)
+static inline status_t fifo_write_sglist(fifo_t* fifo, sglist_t* list, size_t count, size_t offset, size_t* bytesWritten)
 {
     size_t writeable = fifo_bytes_writeable(fifo);
-    size_t firstSize = fifo->size - fifo->head;
-    if (firstSize > writeable)
+    if (count > writeable)
     {
-        firstSize = writeable;
+        count = writeable;
+    }
+
+    size_t firstSize = fifo->size - fifo->head;
+    if (firstSize > count)
+    {
+        firstSize = count;
     }
 
     size_t copied1 = 0;
@@ -309,7 +321,7 @@ static inline status_t fifo_write_sglist(fifo_t* fifo, sglist_t* list, size_t of
 
     if (copied1 == firstSize)
     {
-        size_t remaining = writeable - firstSize;
+        size_t remaining = count - firstSize;
         if (remaining > 0)
         {
             size_t copied2 = 0;

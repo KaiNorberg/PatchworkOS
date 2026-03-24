@@ -41,14 +41,13 @@ static process_t* procfs_get_process(irp_t* irp)
 
 static status_t procfs_prio_read(irp_t* irp)
 {
-    irp_frame_t* frame = irp_current(irp);
     process_t* process = procfs_get_process(irp);
 
     prio_t priority = atomic_load(&process->priority);
 
     char prioStr[MAX_NAME];
     uint32_t length = snprintf(prioStr, MAX_NAME, "%llu", priority);
-    return sglist_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, prioStr, length);
+    return irp_read_helper(irp, prioStr, length);
 }
 
 static status_t procfs_prio_write(irp_t* irp)
@@ -149,12 +148,11 @@ static vnode_class_t noteClass = {
 
 static status_t procfs_pid_read(irp_t* irp)
 {
-    irp_frame_t* frame = irp_current(irp);
     process_t* process = procfs_get_process(irp);
 
     char pidStr[MAX_NAME];
     uint32_t length = snprintf(pidStr, MAX_NAME, "%llu", process->id);
-    return sglist_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, pidStr, length);
+    return irp_read_helper(irp, pidStr, length);
 }
 
 static vnode_class_t pidClass = {.name = "procfs pid",
@@ -181,7 +179,6 @@ static status_t procfs_wait_cancel(irp_t* irp)
 
 static status_t procfs_wait_read(irp_t* irp)
 {
-    irp_frame_t* frame = irp_current(irp);
     process_t* process = procfs_get_process(irp);
 
     if (!(atomic_load(&process->flags) & PROCESS_DYING))
@@ -191,8 +188,7 @@ static status_t procfs_wait_read(irp_t* irp)
     }
 
     lock_acquire(&process->result.lock);
-    status_t status = sglist_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, process->result.buffer,
-        strlen(process->result.buffer));
+    status_t status = irp_read_helper(irp, process->result.buffer, strlen(process->result.buffer));
     lock_release(&process->result.lock);
     return status;
 }
@@ -225,7 +221,6 @@ static vnode_class_t waitClass = {
 
 static status_t procfs_perf_read(irp_t* irp)
 {
-    irp_frame_t* frame = irp_current(irp);
     process_t* process = procfs_get_process(irp);
     size_t userPages = space_user_page_count(&process->space);
 
@@ -246,7 +241,7 @@ static status_t procfs_perf_read(irp_t* irp)
         return ERR(FS, IMPL);
     }
 
-    return sglist_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, statStr, length);
+    return irp_read_helper(irp, statStr, length);
 }
 
 static vnode_class_t perfClass = {
@@ -395,7 +390,7 @@ static status_t procfs_mem_read(irp_t* irp)
     if (addr >= process->space.endAddress || addr < process->space.startAddress)
     {
         irp->result = 0;
-        return OK;
+        return INFO(FS, EOF);
     }
 
     if (addr + count > process->space.endAddress || addr + count < addr)
@@ -410,6 +405,10 @@ static status_t procfs_mem_read(irp_t* irp)
 
     if (copied > 0)
     {
+        if (*frame->read.offset >= process->space.endAddress)
+        {
+            return INFO(FS, EOF);
+        }
         return OK;
     }
 

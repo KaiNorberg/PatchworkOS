@@ -224,8 +224,7 @@ void process_kill(process_t* process, const char* result)
         {
         case IRP_MJ_READ:
             lock_acquire(&process->result.lock);
-            status_t status = sglist_copy_in(frame->read.buffer, SIZE_MAX, 0, &irp->result, process->result.buffer,
-                strlen(process->result.buffer));
+            status_t status = irp_read_helper(irp, process->result.buffer, strlen(process->result.buffer));
             lock_release(&process->result.lock);
             irp_complete(irp, status);
             break;

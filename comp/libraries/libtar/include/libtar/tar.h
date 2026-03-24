@@ -250,7 +250,8 @@ static inline status_t tar_next(tar_iter_t* iter, tar_entry_t* entry)
 
     if (header->typeflag == TAR_TYPE_SYMLINK)
     {
-        snprintf(entry->linkname, sizeof(entry->linkname), "%.*s", (int)sizeof(header->linkname), (const char*)header->linkname);
+        snprintf(entry->linkname, sizeof(entry->linkname), "%.*s", (int)sizeof(header->linkname),
+            (const char*)header->linkname);
     }
 
     entry->type = header->typeflag;

@@ -11,8 +11,8 @@
 
 /**
  * @brief Trampoline for CPU initialization
- * @defgroup kernel_smp_trampoline Trampoline
- * @ingroup kernel_smp
+ * @defgroup kernel_drivers_apic_trampoline Trampoline
+ * @ingroup kernel_drivers_apic
  *
  * The trampoline is a small piece of code used during the initialization of other CPUs in a multiprocessor system. The
  * code itself must be position-independent and fit within a single memory page, this is why we do all the weird offset

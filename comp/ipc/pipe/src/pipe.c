@@ -129,7 +129,7 @@ static status_t pipe_read(irp_t* irp)
         return irp_delay(irp, &data->readers, pipe_cancel);
     }
 
-    status_t status = fifo_read_sglist(&data->fifo, frame->read.buffer, 0, &irp->result);
+    status_t status = fifo_read_sglist(&data->fifo, frame->read.buffer, SIZE_MAX, 0, &irp->result);
 
     irp_t* writer;
     irp_t* temp;
@@ -147,7 +147,7 @@ static status_t pipe_read(irp_t* irp)
         list_remove(&writer->entry);
 
         irp_frame_t* writerFrame = irp_current(writer);
-        irp_complete(writer, fifo_write_sglist(&data->fifo, writerFrame->write.buffer, 0, &writer->result));
+        irp_complete(writer, fifo_write_sglist(&data->fifo, writerFrame->write.buffer, SIZE_MAX, 0, &writer->result));
     }
 
     irp_t* poll;
@@ -208,7 +208,7 @@ static status_t pipe_write(irp_t* irp)
         return irp_delay(irp, &data->writers, pipe_cancel);
     }
 
-    status_t status = fifo_write_sglist(&data->fifo, frame->write.buffer, 0, &irp->result);
+    status_t status = fifo_write_sglist(&data->fifo, frame->write.buffer, SIZE_MAX, 0, &irp->result);
 
     irp_t* reader;
     irp_t* temp;
@@ -226,7 +226,7 @@ static status_t pipe_write(irp_t* irp)
         list_remove(&reader->entry);
 
         irp_frame_t* readerFrame = irp_current(reader);
-        irp_complete(reader, fifo_read_sglist(&data->fifo, readerFrame->read.buffer, 0, &reader->result));
+        irp_complete(reader, fifo_read_sglist(&data->fifo, readerFrame->read.buffer, SIZE_MAX, 0, &reader->result));
     }
 
     irp_t* poll;

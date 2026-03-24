@@ -1,5 +1,4 @@
-#include "trampoline.h"
-
+#include <kernel/drivers/apic/trampoline.h>
 #include <kernel/acpi/tables.h>
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/interrupt.h>
@@ -13,24 +12,7 @@
 
 #include <stdint.h>
 
-/**
- * @brief Symmetric Multiprocessing support via APIC.
- * @defgroup kernel_smp SMP
- * @ingroup kernel
- *
- * Symmetric Multiprocessing (SMP) support is implemented using the Advanced Programmable Interrupt Controller (APIC)
- * system.
- *
- * SMP initialization will panic if it, at any point, fails. This is because error recovery during CPU initialization is
- * way outside the scope of my patience.
- *
- * @{
- */
-
-/**
- * @brief Starts the other CPUs in the system.
- */
-static void smp_start_others(void)
+void smp_start_others(void)
 {
     cli_push();
 
@@ -91,17 +73,3 @@ static void smp_start_others(void)
 }
 
 /** @} */
-
-status_t _module_procedure(const module_event_t* event)
-{
-    switch (event->type)
-    {
-    case MODULE_EVENT_LOAD:
-        smp_start_others();
-        break;
-    default:
-        break;
-    }
-
-    return OK;
-}

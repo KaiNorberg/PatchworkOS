@@ -1,5 +1,4 @@
-#include "trampoline.h"
-
+#include <kernel/drivers/apic/trampoline.h>
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/percpu.h>

@@ -1,6 +1,7 @@
 #include <kernel/fs/vnode.h>
 
 #include <kernel/fs/vfs.h>
+#include <kernel/io/irp.h>
 #include <kernel/log/log.h>
 #include <kernel/mem/cache.h>
 #include <kernel/sched/clock.h>
@@ -29,6 +30,12 @@ static void vnode_reclaim(vnode_t* vnode)
 
         UNREF(vnode);
         return;
+    }
+
+    if (vnode->reclaim != NULL)
+    {
+        irp_complete(vnode->reclaim, OK);
+        vnode->reclaim = NULL;
     }
 
     vnode_free(vnode);

@@ -231,7 +231,7 @@ status_t acpi_tables_expose(void)
     tablesDir = sysfs_dentry_new(acpiRoot, "tables", &tableClass, NULL);
     if (tablesDir == NULL)
     {
-        LOG_ERR("failed to create ACPI tables sysfs directory");
+        LOG_ERR("failed to create ACPI tables sysfs directory\n");
         return ERR(ACPI, NOMEM);
     }
 

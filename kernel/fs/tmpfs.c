@@ -63,9 +63,9 @@ static status_t tmpfs_regular_read(irp_t* irp)
     if (offset >= vnode->size)
     {
         irp->result = 0;
-        return OK;
+        return INFO(FS, EOF);
     }
-
+    
     size_t remaining = vnode->size - offset;
     size_t copied = 0;
 
@@ -77,6 +77,11 @@ static status_t tmpfs_regular_read(irp_t* irp)
 
     *frame->read.offset += copied;
     irp->result = copied;
+
+    if (*frame->read.offset >= vnode->size)
+    {
+        return INFO(FS, EOF);
+    }
 
     return OK;
 }

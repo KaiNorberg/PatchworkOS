@@ -1,6 +1,9 @@
 (component
-    (description "A driver for the APIC, local APIC and IOAPIC.")
+    (description "A driver for the APIC, local APIC and IOAPIC with handling for application CPU startup.")
     (author "Kai Norberg")
     (license MIT)
     (module mod/apic.ko)
+    (dependencies
+        (acpi 1.0.0)
+    )
 )

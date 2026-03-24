@@ -50,6 +50,19 @@ static void irp_unwind_stack(irp_t* irp)
             status = frame->complete(irp, frame->ctx);
         }
 
+        if (IS_INFO(status) && (IS_CODE(status, PENDING) || IS_CODE(status, COMPLETE)))
+        {
+            if (vnode != NULL)
+            {
+                UNREF(vnode);
+            }
+            if (file != NULL)
+            {
+                UNREF(file);
+            }
+            return;
+        }
+
         if (IS_ERR(status) && irp->status == OK)
         {
             irp->status = status;
@@ -68,11 +81,6 @@ static void irp_unwind_stack(irp_t* irp)
         if (file != NULL)
         {
             UNREF(file);
-        }
-
-        if (IS_INFO(status) && (IS_CODE(status, PENDING) || IS_CODE(status, COMPLETE)))
-        {
-            return;
         }
     }
 
@@ -329,10 +337,10 @@ status_t irp_read_helper(irp_t* irp, const void* buffer, size_t size)
     irp_frame_t* frame = irp_current(irp);
     assert(frame->major == IRP_MJ_READ);
 
-    if (*frame->read.offset > size)
+    if (*frame->read.offset >= size)
     {
         irp->result = 0;
-        return OK;
+        return INFO(IO, EOF);
     }
 
     size_t available = size - *frame->read.offset;
@@ -344,6 +352,12 @@ status_t irp_read_helper(irp_t* irp, const void* buffer, size_t size)
     }
 
     *frame->read.offset += irp->result;
+
+    if (*frame->read.offset >= size)
+    {
+        return INFO(IO, EOF);
+    }
+
     return OK;
 }
 
