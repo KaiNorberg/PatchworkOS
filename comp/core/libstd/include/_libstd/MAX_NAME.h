@@ -8,6 +8,6 @@
  * Patchwork supports, including a `\0` char.
  *
  */
-#define MAX_NAME 32
+#define MAX_NAME 256
 
 #endif

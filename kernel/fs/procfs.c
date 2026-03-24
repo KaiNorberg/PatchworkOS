@@ -232,7 +232,7 @@ static status_t procfs_perf_read(irp_t* irp)
     clock_t kernelClocks = atomic_load(&process->perf.kernelClocks);
     clock_t startTime = process->perf.startTime;
 
-    char statStr[MAX_PATH];
+    char statStr[MAX_NAME];
     int length = snprintf(statStr, sizeof(statStr),
         "user_clocks %llu\nkernel_sched_clocks %llu\nstart_clocks %llu\nuser_pages %llu\nthread_count %llu", userClocks,
         kernelClocks, startTime, userPages, threadCount);
@@ -548,7 +548,7 @@ static status_t procfs_dir_lookup(irp_t* irp)
 
     for (size_t i = 0; i < ARRAY_SIZE(dirEntries); i++)
     {
-        if (strcmp(target->name, dirEntries[i].name) != 0)
+        if (!dstr_eq(&target->name, dirEntries[i].name, strlen(dirEntries[i].name)))
         {
             continue;
         }
@@ -656,7 +656,7 @@ static status_t procfs_file_clone_open(irp_t* irp)
     UNREF_DEFER(vnode);
     vnode->data = REF(child);
 
-    dentry_t* dentry = dentry_new(NULL, "process");
+    dentry_t* dentry = dentry_new(NULL, "process", 8);
     if (dentry == NULL)
     {
         return ERR(FS, NOMEM);
@@ -688,7 +688,7 @@ static status_t procfs_root_lookup(irp_t* irp)
 
     for (size_t i = 0; i < ARRAY_SIZE(rootEntries); i++)
     {
-        if (strcmp(target->name, rootEntries[i].name) != 0)
+        if (!dstr_eq(&target->name, rootEntries[i].name, strlen(rootEntries[i].name)))
         {
             continue;
         }
@@ -789,7 +789,7 @@ void procfs_init(void)
     }
     UNREF_DEFER(vnode);
 
-    root = dentry_new(NULL, NULL);
+    root = dentry_new(NULL, NULL, 0);
     if (root == NULL)
     {
         panic(NULL, "Failed to create procfs root dentry");

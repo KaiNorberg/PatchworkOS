@@ -8,6 +8,6 @@
  * including the `\0` char.
  *
  */
-#define MAX_PATH 256 // Max length of a path including '\0'.
+#define MAX_PATH 1024 // Max length of a path including '\0'.
 
 #endif

@@ -153,14 +153,9 @@ typedef struct file_info
     file_number_t number; ///< File number.
     file_volume_t volume; ///< Volume ID.
     file_type_t type;     ///< File type.
-    char name[MAX_PATH];  ///< File name.
+    char name[MAX_NAME];  ///< File name.
     char mode[MAX_NAME];  ///< File mode represented by their short-hand.
-    uint8_t _reserved[118];
 } file_info_t;
-
-#ifdef static_assert
-static_assert(sizeof(file_info_t) == 512, "file_info_t is not 512 bytes");
-#endif
 
 /** @} */
 

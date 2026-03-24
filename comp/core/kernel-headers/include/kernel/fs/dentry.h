@@ -12,6 +12,7 @@
 #include <sys/fs.h>
 #include <sys/list.h>
 #include <sys/map.h>
+#include <sys/dstr.h>
 
 typedef struct dentry dentry_t;
 typedef struct vnode vnode_t;
@@ -79,7 +80,7 @@ typedef struct dentry
 {
     ref_t ref;
     dentry_id_t id;
-    char name[MAX_NAME]; ///< The name of the dentry, immutable after creation.
+    dstr_t name; ///< The name of the dentry, immutable after creation.
     vnode_t* vnode;      ///< Will be `NULL` if the dentry is negative, once positive it will never be modified.
     dentry_t* parent;    ///< The parent dentry, can be `NULL`, immutable after creation.
     void* data;          ///< Private data to store in the dentry, can be `NULL`.
@@ -98,9 +99,10 @@ typedef struct dentry
  *
  * @param parent The parent dentry, can be `NULL`.
  * @param name The name of the dentry, can be `NULL` if `parent` is also `NULL`.
+ * @param length The length of the name.
  * @return On success, the new negative dentry. On failure, returns `NULL`.
  */
-dentry_t* dentry_new(dentry_t* parent, const char* name);
+dentry_t* dentry_new(dentry_t* parent, const char* name, size_t length);
 
 /**
  * @brief Remove a dentry from the dentry cache.

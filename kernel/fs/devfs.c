@@ -70,7 +70,7 @@ void devfs_init(void)
     }
     UNREF_DEFER(vnode);
 
-    root = dentry_new(NULL, NULL);
+    root = dentry_new(NULL, NULL, 0);
     if (root == NULL)
     {
         panic(NULL, "Failed to create devfs root dentry");
@@ -100,7 +100,7 @@ dentry_t* devfs_dentry_new(dentry_t* parent, const char* name, const vnode_class
     assert(DENTRY_IS_POSITIVE(parent));
     assert(parent->vnode->volume == root->vnode->volume);
 
-    dentry_t* dentry = dentry_new(parent, name);
+    dentry_t* dentry = dentry_new(parent, name, strlen(name));
     if (dentry == NULL)
     {
         return NULL;

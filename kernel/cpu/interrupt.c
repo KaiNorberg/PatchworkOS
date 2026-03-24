@@ -93,8 +93,8 @@ static void exception_user_page_fault_handler(interrupt_frame_t* frame)
     process_t* process = thread->process;
     uintptr_t faultAddr = (uintptr_t)cr2_read();
 
-    char msg[MAX_PATH];
-    snprintf(msg, MAX_PATH, "pagefault at 0x%llx when %s %sat 0x%llx", frame->rip,
+    char msg[MAX_NAME];
+    snprintf(msg, MAX_NAME, "pagefault at 0x%llx when %s %sat 0x%llx", frame->rip,
         (frame->errorCode & PAGE_FAULT_WRITE) ? "writing to" : "reading from",
         (frame->errorCode & PAGE_FAULT_PRESENT) ? "present " : " ", faultAddr);
 
@@ -103,7 +103,7 @@ static void exception_user_page_fault_handler(interrupt_frame_t* frame)
 
 static void exception_handler(interrupt_frame_t* frame)
 {
-    char msg[MAX_PATH];
+    char msg[MAX_NAME];
 
     switch (frame->vector)
     {
@@ -112,7 +112,7 @@ static void exception_handler(interrupt_frame_t* frame)
         {
             panic(frame, "divide by zero");
         }
-        snprintf(msg, MAX_PATH, "divbyzero at 0x%llx", frame->rip);
+        snprintf(msg, MAX_NAME, "divbyzero at 0x%llx", frame->rip);
         exception_handle_user(frame, msg);
         break;
     case VECTOR_INVALID_OPCODE:
@@ -120,7 +120,7 @@ static void exception_handler(interrupt_frame_t* frame)
         {
             panic(frame, "invalid opcode");
         }
-        snprintf(msg, MAX_PATH, "illegal instruction at 0x%llx", frame->rip);
+        snprintf(msg, MAX_NAME, "illegal instruction at 0x%llx", frame->rip);
         exception_handle_user(frame, msg);
         break;
     case VECTOR_DOUBLE_FAULT:
@@ -133,7 +133,7 @@ static void exception_handler(interrupt_frame_t* frame)
         {
             panic(frame, "general protection fault");
         }
-        snprintf(msg, MAX_PATH, "segfault at 0x%llx", frame->rip);
+        snprintf(msg, MAX_NAME, "segfault at 0x%llx", frame->rip);
         exception_handle_user(frame, msg);
         break;
     case VECTOR_PAGE_FAULT:

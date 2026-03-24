@@ -114,7 +114,7 @@ typedef struct scon
     scon_item_t* items;                ///< Pointer to the array of allocated items.
     uint16_t count;                    ///< The total number of allocated items.
     uint16_t capacity;                 ///< The current capacity of the items array.
-    char error[MAX_PATH]; ///< If an error occurs, a detailed human-readable error string will be stored here.
+    char error[MAX_NAME]; ///< If an error occurs, a detailed human-readable error string will be stored here.
 } scon_t;
 
 /**

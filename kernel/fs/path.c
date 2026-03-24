@@ -404,7 +404,7 @@ static status_t path_walk_lookup(irp_t* irp, path_state_t* state, const char* na
     memcpy(buffer, name, len);
     buffer[len] = '\0';
 
-    dentry_t* newDentry = dentry_new(state->dentry, buffer);
+    dentry_t* newDentry = dentry_new(state->dentry, buffer, len);
     if (newDentry == NULL)
     {
         path_state_free_acquired(state);
@@ -689,14 +689,13 @@ status_t path_to_name(const path_t* path, char* pathname, size_t length)
             return ERR(VFS, NOENT);
         }
 
-        size_t len = strnlen_s(dentry->name, MAX_NAME);
-        if ((size_t)(ptr - pathname) < len + 1)
+        if ((size_t)(ptr - pathname) < dentry->name.length + 1)
         {
             return ERR(VFS, NAMETOOLONG);
         }
 
-        ptr -= len;
-        memcpy(ptr, dentry->name, len);
+        ptr -= dentry->name.length;
+        memcpy(ptr, dentry->name.data, dentry->name.length);
 
         ptr--;
         *ptr = '/';

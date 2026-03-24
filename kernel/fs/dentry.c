@@ -28,8 +28,7 @@ static bool dentry_cmp(map_entry_t* entry, const void* key)
 {
     dentry_t* dentry = CONTAINER_OF(entry, dentry_t, mapEntry);
     const dentry_key_t* k = key;
-    return dentry->parent == k->parent && dentry->name[k->length] == '\0' &&
-        memcmp(dentry->name, k->name, k->length) == 0;
+    return dentry->parent == k->parent && dstr_eq(&dentry->name, k->name, k->length);
 }
 
 #define DENTRY_MAP_SIZE 4096
@@ -50,9 +49,8 @@ static bool dentry_map_add(dentry_t* dentry)
         return true;
     }
 
-    size_t length = strlen(dentry->name);
-    uint64_t hash = dentry_hash(dentry->parent->id, dentry->name, length);
-    dentry_key_t key = {.parent = dentry->parent, .name = dentry->name, .length = length};
+    uint64_t hash = dentry_hash(dentry->parent->id, dentry->name.data, dentry->name.length);
+    dentry_key_t key = {.parent = dentry->parent, .name = dentry->name.data, .length = dentry->name.length};
 
     seqlock_write_acquire(&lock);
     map_entry_t* entry = map_find(&dentryMap, &key, hash);
@@ -78,7 +76,7 @@ static void dentry_map_remove(dentry_t* dentry)
         return;
     }
 
-    uint64_t hash = dentry_hash(dentry->parent->id, dentry->name, strlen(dentry->name));
+    uint64_t hash = dentry_hash(dentry->parent->id, dentry->name.data, dentry->name.length);
 
     seqlock_write_acquire(&lock);
     map_remove(&dentryMap, &dentry->mapEntry, hash);
@@ -116,7 +114,6 @@ static void dentry_ctor(void* ptr)
 
     dentry->ref = (ref_t){0};
     dentry->id = vfs_id_get();
-    dentry->name[0] = '\0';
     dentry->vnode = NULL;
     dentry->parent = NULL;
     list_entry_init(&dentry->siblingEntry);
@@ -129,7 +126,7 @@ static void dentry_ctor(void* ptr)
 
 static cache_t cache = CACHE_CREATE(cache, "dentry", sizeof(dentry_t), CACHE_LINE, dentry_ctor, NULL);
 
-dentry_t* dentry_new(dentry_t* parent, const char* name)
+dentry_t* dentry_new(dentry_t* parent, const char* name, size_t length)
 {
     dentry_t* dentry = cache_alloc(&cache);
     if (dentry == NULL)
@@ -140,13 +137,21 @@ dentry_t* dentry_new(dentry_t* parent, const char* name)
     ref_init(&dentry->ref, dentry_free);
     if (name != NULL)
     {
-        strncpy(dentry->name, name, MAX_NAME);
-        dentry->name[MAX_NAME - 1] = '\0';
+        status_t status = dstr_init(&dentry->name, name, length);
+        if (IS_ERR(status))
+        {
+            UNREF(dentry);
+            return NULL;
+        }
     }
     else
     {
-        strncpy(dentry->name, "__root__", MAX_NAME);
-        dentry->name[MAX_NAME - 1] = '\0';
+        status_t status = dstr_init(&dentry->name, "__root__", 8);
+        if (IS_ERR(status))
+        {
+            UNREF(dentry);
+            return NULL;
+        }
     }
     dentry->parent = parent != NULL ? REF(parent) : NULL;
     dentry->data = NULL;

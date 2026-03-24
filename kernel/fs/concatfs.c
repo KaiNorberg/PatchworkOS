@@ -154,7 +154,7 @@ static status_t concatfs_lookup_next(irp_t* irp, concatfs_lookup_state_t* state)
 
     dentry_t* target = state->parent->targets[state->layer];
 
-    dentry_t* check = dentry_get(target, state->target->name, strlen(state->target->name));
+    dentry_t* check = dentry_get(target, state->target->name.data, state->target->name.length);
     if (check != NULL)
     {
         UNREF_DEFER(check);
@@ -173,7 +173,7 @@ static status_t concatfs_lookup_next(irp_t* irp, concatfs_lookup_state_t* state)
         state->current = NULL;
     }
 
-    state->current = dentry_new(target, state->target->name);
+    state->current = dentry_new(target, state->target->name.data, state->target->name.length);
     if (state->current == NULL)
     {
         irp->status = ERR(FS, NOMEM);
@@ -383,7 +383,7 @@ static status_t concatfs_clone_open(irp_t* irp)
         return ERR(FS, NOMEM);
     }
 
-    dentry_t* root = dentry_new(NULL, NULL);
+    dentry_t* root = dentry_new(NULL, NULL, 0);
     if (root == NULL)
     {
         UNREF(vnode);

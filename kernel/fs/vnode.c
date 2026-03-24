@@ -121,7 +121,7 @@ status_t vnode_generic_query(irp_t* irp)
 
     if (frame->file != NULL && DENTRY_IS_POSITIVE(frame->file->path.dentry))
     {
-        strncpy(info.name, frame->file->path.dentry->name, MAX_NAME);
+        strncpy(info.name, frame->file->path.dentry->name.data, MIN(sizeof(info.name), frame->file->path.dentry->name.length));
         info.mask |= FILE_MASK_NAME;
     }
 
@@ -169,7 +169,7 @@ status_t vnode_generic_dir_read(irp_t* irp)
     {
         if (DENTRY_IS_POSITIVE(child))
         {
-            if (!diremit(&emit, child->name))
+            if (!diremit(&emit, child->name.data))
             {
                 goto done;
             }

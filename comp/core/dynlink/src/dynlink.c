@@ -674,7 +674,7 @@ static void _dyn_load_dependencies(dso_t* mainDso)
                 continue;
             }
 
-            char path[MAX_PATH];
+            static char path[MAX_PATH];
             _dyn_strcpy(path, "/lib/");
 
             size_t len = 5;

@@ -23,6 +23,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/defs.h>
 #include <sys/fs.h>
 #include <sys/list.h>
 #include <sys/math.h>
@@ -310,7 +311,7 @@ static status_t tmpfs_regular_query(irp_t* irp)
     info.number = vnode->vnode.number;
     info.mask |= FILE_MASK_NUMBER;
 
-    strcpy(info.name, frame->file->path.dentry->name);
+    strncpy(info.name, frame->file->path.dentry->name.data, MIN(sizeof(info.name), frame->file->path.dentry->name.length));
     info.mask |= FILE_MASK_NAME;
 
     return sglist_copy_in(frame->query.buffer, sizeof(file_info_t), 0, &irp->result, &info, sizeof(file_info_t));
@@ -462,7 +463,7 @@ static status_t tmpfs_dir_create(irp_t* irp)
         cls = &regularClass;
     }
 
-    tmpfs_vnode_t* vnode = tmpfs_vnode_create(dir->volume, cls, vnode_hash(dir->vnode.number, target->name));
+    tmpfs_vnode_t* vnode = tmpfs_vnode_create(dir->volume, cls, vnode_hash(dir->vnode.number, target->name.data));
     if (vnode == NULL)
     {
         return ERR(FS, NOMEM);
@@ -572,7 +573,7 @@ static status_t tmpfs_clone_open(irp_t* irp)
     }
     UNREF_DEFER(volume);
 
-    dentry_t* root = dentry_new(NULL, NULL);
+    dentry_t* root = dentry_new(NULL, NULL, 0);
     if (root == NULL)
     {
         return ERR(FS, NOMEM);

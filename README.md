@@ -78,23 +78,25 @@ This can often result in unorthodox APIs that seem overcomplicated at first, but
 
 Plus its fun.
 
-### Modernized I/O
+### I/O
 
-The I/O system is designed from the ground up to take advantage of several modern I/O concepts. For example, all open/walk operations use `openat()` semantics, all I/O is vectored (uses scatter-gather lists), asynchronous and dispatched via an I/O Ring supporting timeouts and cancellation. Finally, all I/O is direct and (more or less) zero-copy. This is done with the goal of creating a powerful, flexible and efficient I/O system that can be used for a wide variety of purposes.
+The I/O system is designed with several modern I/O concepts in mind. For example, all open/walk operations use `openat()` semantics, all I/O is vectored (uses scatter-gather lists), asynchronous and dispatched via an I/O Ring supporting timeouts and cancellation. All I/O is direct and (more or less) zero-copy.
 
 There are two components to asynchronous I/O, the I/O Ring and I/O Request Packets.
 
-The I/O Ring acts as the user-kernel space boundary and is made up of two queues mapped into user space. The first queue is the submission queue, which is used by the user to submit I/O requests to the kernel. The second queue is the completion queue, which is used by the kernel to notify the user of the completion of I/O requests. This system also features a virtual register system, allowing I/O Requests to store the result of their operation to a virtual register, which another I/O Request can read from into their arguments, allowing for very complex operations to be performed asynchronously.
+The I/O Ring acts as the user-kernel space boundary and is made up of two circular queues mapped into user space. The first queue is used by the user space to submit I/O requests to the kernel. The second queue is used by the kernel to return the result of the I/O request. This system also features a virtual register system, allowing I/O Requests to store the result of their operation to a virtual register, which another I/O Request can read from into their arguments, allowing for several operations that may rely on the result of previous operations to be executed asynchronously.
 
-The I/O Request Packet is a self-contained structure that contains the information needed to perform an I/O operation. When the kernel receives a submission queue entry, it will parse it and create an I/O Request Packet from it. The I/O Request Packet will then be sent to the appropriate vnode (file system, device, etc.) for processing, once the I/O Request is completed, the kernel will write the result of the operation into the completion queue.
+The I/O Request Packet (IRP) is a self-contained structure that contains all the information needed to perform an I/O operation. When the kernel receives a submission queue entry, it will parse it and create an I/O Request Packet. The I/O Request Packet will then be sent to the appropriate vnode (file system, device, etc.) for processing, once the I/O Request is completed, the kernel will write the result of the operation into the completion queue.
 
-For reading or writing, the I/O Request Packet uses a Scatter Gather List, which is an array of entries, each containing a page frame number, offset and length. These are created by reading the user space `iovec_t` structures from the submission queue entry and converting them into page frame numbers. Finally, since the kernel identity maps all of physical memory into its address space, it can directly read from or write to the user space buffers without needing to copy them into kernel space or even map them in, thus achieving direct and zero-copy I/O.
+If the target vnode can't complete the IRP immediately, it simply returns a "PENDING" status and the kernel continues without blocking.
 
-Built on top of this system are several layers of abstractions. For example, the `iowrite()` function is a simple synchronous wrapper around the I/O ring and of course `fwrite()` is a wrapper around `iowrite()` that works as expected. Many helper functions are also provided, for example `iowritep()` is a version of `iowrite()` that will use the virtual register system to perform an open, write and close using a single system call.
+For reading or writing, the I/O Request Packet uses a Scatter Gather List, which is an array of entries, each containing a page frame number, offset and length. Since the kernel identity maps all of physical memory into its address space, it can directly read from or write to any buffers provided by user-space without needing to copy them into kernel space or map them.
 
-Finally, even the "error" handling or status system allows for certain optimizations. For example, if a read is performed on a file such that no more data remains, the returned status will be an informational `ST_CODE_EOF` status. In certain cases, this means we can skip an additional read to check for EOF, potentially skipping a system call.
+Built on top of this system are several layers of abstractions. For example, the `iowrite()` function is a simple synchronous wrapper around the I/O ring and `fwrite()` (provided by ANSI C) is a wrapper around `iowrite()` that works as expected. Many helper functions are also provided, for example `iowritep()` is a version of `iowrite()` that will use the virtual register system to perform a walk, write and drop using a single system call.
 
-The combination of this system and our "everything is a file" philosophy means that since files are interacted with via asynchronous I/O and everything is a file, practically all operations can be asynchronous and dispatched via a I/O Ring.
+The "error" handling or status system allows for certain optimizations. For example, if a read is performed on a file such that no more data remains, the returned status will be an informational `EOF` status. In certain cases, this means we can skip an additional read to check for EOF, potentially saving us a system call.
+
+The combination of this system and our "everything is a file" philosophy means that, since files are interacted with via async I/O and everything is a file, practically all operations can be asynchronous and dispatched via a I/O Ring.
 
 ### Security
 
@@ -297,7 +299,7 @@ iowalk(FDCWD, FDROOT, "/mnt/tmpfs", &target);
 fdbind(FDROOT, target, fs);
 ```
 
-## Components (WIP)
+## Components
 
 In PatchworkOS, user space is made up of "components". These components can be anything, executable programs, libraries, headers, or just data files.
 
@@ -620,16 +622,11 @@ Currently untested on Intel hardware (broke student, no access to hardware). Let
 
 ## Roadmap
 
-### Current Work
-
-- Continue refactoring the kernel to replace synchronous code with asynchronous code.
-- Replace local sockets with 9P file servers.
-- Completely redo user-space to use new async and 9P, as the kernel has simply outgrown user-space.
-
 ### Notable Future Plans
 
+- User accounts, login manager. Argon2id?
 - Consider if a GTK-inspired GUI could be performant enough using CPU rendering. Use transparency and prerendering for shadows?
-- Port LUA and use it for dynamic system configuration.
+- Reimplement the rest of user space.
 - Driver support, for example USB.
 
 ### Known Limitations

@@ -253,7 +253,7 @@ static status_t module_attach(const char* type, const char* compat, const char* 
                 continue;
             }
 
-            char path[MAX_PATH];
+            static char path[MAX_PATH];
             size_t pathLen;
             status = ioreadp(FDCWD, FDROOT, IOFMT("/comp/.index/device/%s/%s:read:nofollow", targetType, symlink), IOBUF(path, sizeof(path) - 1), 0, &pathLen);
             if (IS_ERR(status))
@@ -264,8 +264,8 @@ static status_t module_attach(const char* type, const char* compat, const char* 
             }
             path[pathLen] = '\0';
 
-            char compName[MAX_PATH];
-            char compVersion[MAX_PATH];
+            static char compName[MAX_PATH];
+            static char compVersion[MAX_PATH];
             if (sscanf(path, "/comp/%[^/]/%s", compName, compVersion) != 2)
             {
                 printf("modman: failed to parse path %s\n", path);
