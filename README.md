@@ -45,7 +45,7 @@ make run
 
 This is not a UNIX clone; it's intended to be a (hopefully) interesting experiment in operating system design while remaining approachable and educational. Sometimes this leads to bad results, and sometimes, with a bit of luck, good ones.
 
-The goal is still to make a “real” operating system, one that runs on real hardware and has the performance one would expect from a modern operating system without jumping ahead to user space features or drivers, a floppy disk driver with a round-robin scheduler is not enough.
+The goal is still to make a “real” operating system, one that runs on real hardware and has the performance one would expect from a modern operating system without jumping ahead to userspace features or drivers, a floppy disk driver with a round-robin scheduler is not enough.
 
 Will this project ever reach its goals? Probably not, but that’s not the point.
 
@@ -84,13 +84,13 @@ The I/O system is designed with several modern I/O concepts in mind. For example
 
 There are two components to asynchronous I/O, the I/O Ring and I/O Request Packets.
 
-The I/O Ring acts as the user-kernel space boundary and is made up of two circular queues mapped into user space. The first queue is used by the user space to submit I/O requests to the kernel. The second queue is used by the kernel to return the result of the I/O request. This system also features a virtual register system, allowing I/O Requests to store the result of their operation to a virtual register, which another I/O Request can read from into their arguments, allowing for several operations that may rely on the result of previous operations to be executed asynchronously.
+The I/O Ring acts as the user-kernel space boundary and is made up of two circular queues mapped into userspace. The first queue is used by the userspace to submit I/O requests to the kernel. The second queue is used by the kernel to return the result of the I/O request. This system also features a virtual register system, allowing I/O Requests to store the result of their operation to a virtual register, which another I/O Request can read from into their arguments, allowing for several operations that may rely on the result of previous operations to be executed asynchronously.
 
 The I/O Request Packet (IRP) is a self-contained structure that contains all the information needed to perform an I/O operation. When the kernel receives a submission queue entry, it will parse it and create an I/O Request Packet. The I/O Request Packet will then be sent to the appropriate vnode (file system, device, etc.) for processing, once the I/O Request is completed, the kernel will write the result of the operation into the completion queue.
 
 If the target vnode can't complete the IRP immediately, it simply returns a "PENDING" status and the kernel continues without blocking.
 
-For reading or writing, the I/O Request Packet uses a Scatter Gather List, which is an array of entries, each containing a page frame number, offset and length. Since the kernel identity maps all of physical memory into its address space, it can directly read from or write to any buffers provided by user-space without needing to copy them into kernel space or map them.
+For reading or writing, the I/O Request Packet uses a Scatter Gather List, which is an array of entries, each containing a page frame number, offset and length. Since the kernel identity maps all of physical memory into its address space, it can directly read from or write to any buffers provided by userspace without needing to copy them into kernel space or map them.
 
 Built on top of this system are several layers of abstractions. For example, the `iowrite()` function is a simple synchronous wrapper around the I/O ring and `fwrite()` (provided by ANSI C) is a wrapper around `iowrite()` that works as expected. Many helper functions are also provided, for example `iowritep()` is a version of `iowrite()` that will use the virtual register system to perform a walk, write and drop using a single system call.
 
@@ -301,7 +301,7 @@ fdbind(FDROOT, target, fs);
 
 ## Components
 
-In PatchworkOS, user space is made up of "components". These components can be anything, executable programs, libraries, headers, or just data files.
+In PatchworkOS, userspace is made up of "components". These components can be anything, executable programs, libraries, headers, or just data files.
 
 Each component is stored in a `/comp/<name>` directory. Within each components directory are version directories written in the form `<x>.<y>.<z>` (major.minor.patch).
 
@@ -341,7 +341,7 @@ This all has one rather large limitation, in that the parent process must have a
 
 ### The Init Process
 
-The one exception to this rule is the init process, which is special in that it is the only process "loaded" by the kernel (it is actually loaded by the bootloader and the kernel simply copies the executable into memory) since executable loading is handled in user-space. The init process is granted a `FDROOT` file descriptor to the root of `sysfs` from which it can acquire all capabilities. It uses these capabilities to load the RAM disk and setup user space.
+The one exception to this rule is the init process, which is special in that it is the only process "loaded" by the kernel (it is actually loaded by the bootloader and the kernel simply copies the executable into memory) since executable loading is handled in userspace. The init process is granted a `FDROOT` file descriptor to the root of `sysfs` from which it can acquire all capabilities. It uses these capabilities to load the RAM disk and setup userspace.
 
 This means that the security model forms a tree-like structure, with init having all capabilities and all child processes having some subset of those capabilities.
 
@@ -351,13 +351,13 @@ PatchworkOS uses a "modular" kernel design, meaning that instead of having one b
 
 This is highly convenient for development, but it also has practical advantages, for example, there is no need to load a driver for a device that is not attached to the system, saving memory.
 
-> While the kernel used by PatchworkOS is distinctly (and intentionally) not a micro-kernel, drivers are loaded into the kernel, it does share some design ideas with micro-kernel designs. We try to design the kernel such that it is only responsible for the mechanism required to perform some task while user space is responsible for policy. For example, process and module loading is handled in user-space, and, as time goes on, the usage of 9P for services will most likely further reduce the size of the kernel.
+> While the kernel used by PatchworkOS is distinctly (and intentionally) not a micro-kernel, drivers are loaded into the kernel, it does share some design ideas with micro-kernel designs. We try to design the kernel such that it is only responsible for the mechanism required to perform some task while userspace is responsible for policy. For example, process and module loading is handled in userspace, and, as time goes on, the usage of 9P for services will most likely further reduce the size of the kernel.
 
 ### The Module Manager (modman)
 
-The module manager is a user-space component, being no different to any other component, that is granted two capabilities the `/dev/announce` file and the `/sys/mod` directory.
+The module manager is a userspace component, being no different to any other component, that is granted two capabilities the `/dev/announce` file and the `/sys/mod` directory.
 
-The `/dev/announce` file allows the kernel to provide user-space with a stream of messages describing device state changes. Usually, a device being attached or detached. For example:
+The `/dev/announce` file allows the kernel to provide userspace with a stream of messages describing device state changes. Usually, a device being attached or detached. For example:
 
 ```
 123456789 attach PNP0303 - \_SB_.PCI0.SF8_.KBD_
@@ -528,7 +528,7 @@ Of course, it gets way, way worse than this, but hopefully this clarifies why th
 
 - Capability security model. See [Security](#security) for more info.
 - Dynamic Linker with GNU hashing.
-- Note that currently a heavy focus has been placed on the kernel and low-level stuff, so user space is quite small... for now.
+- Note that currently a heavy focus has been placed on the kernel and low-level stuff, so userspace is quite small... for now.
 
 ---
 
@@ -626,7 +626,7 @@ Currently untested on Intel hardware (broke student, no access to hardware). Let
 
 - User accounts, login manager. Argon2id?
 - Consider if a GTK-inspired GUI could be performant enough using CPU rendering. Use transparency and prerendering for shadows?
-- Reimplement the rest of user space.
+- Reimplement the rest of userspace.
 - Driver support, for example USB.
 
 ### Known Limitations
@@ -654,4 +654,4 @@ Distributed under the MIT License. See [LICENSE](https://github.com/KaiNorberg/P
 
 ## Nostalgia
 
-[The first Reddit post and image of PatchworkOS](https://www.reddit.com/r/osdev/comments/18gbsng/a_little_over_2_years_ago_i_posted_a_screenshot/) from back when getting to user space was a massive milestone and the kernel was supposed to be a UNIX-like microkernel.
+[The first Reddit post and image of PatchworkOS](https://www.reddit.com/r/osdev/comments/18gbsng/a_little_over_2_years_ago_i_posted_a_screenshot/) from back when getting to userspace was a massive milestone and the kernel was supposed to be a UNIX-like microkernel.
