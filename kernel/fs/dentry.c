@@ -83,6 +83,14 @@ static void dentry_map_remove(dentry_t* dentry)
     seqlock_write_release(&lock);
 }
 
+static void dentry_free_rcu(void* arg)
+{
+    dentry_t* dentry = arg;
+ 
+    dstr_deinit(&dentry->name);
+    cache_free(dentry);
+}
+
 static void dentry_free(dentry_t* dentry)
 {
     dentry_map_remove(dentry);
@@ -105,7 +113,7 @@ static void dentry_free(dentry_t* dentry)
         dentry->vnode = NULL;
     }
 
-    rcu_call(&dentry->rcu, rcu_call_cache_free, dentry);
+    rcu_call(&dentry->rcu, dentry_free_rcu, dentry);
 }
 
 static void dentry_ctor(void* ptr)
