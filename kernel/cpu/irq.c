@@ -9,11 +9,11 @@
 #include <kernel/sync/rwlock.h>
 
 #include <assert.h>
+#include <libstd/bitmap.h>
+#include <libstd/list.h>
+#include <libstd/math.h>
+#include <libstd/status.h>
 #include <stdlib.h>
-#include <sys/bitmap.h>
-#include <sys/list.h>
-#include <sys/math.h>
-#include <sys/status.h>
 
 static irq_t irqs[VECTOR_EXTERNAL_AMOUNT] = {0};
 

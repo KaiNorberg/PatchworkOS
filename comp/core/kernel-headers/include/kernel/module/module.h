@@ -1,31 +1,33 @@
 #pragma once
 
-#include <kernel/module/symbol.h>
-#include <sys/fs.h>
-#include <sys/list.h>
 #include <kernel/fs/dentry.h>
-#include <sys/status.h>
+#include <kernel/module/symbol.h>
+#include <libstd/fs.h>
+#include <libstd/list.h>
+#include <libstd/status.h>
 
 /**
  * @brief Kernel module management.
  * @defgroup kernel_module Module Management
  * @ingroup kernel
  *
- * A module is a dynamically loadable kernel object that can extend the kernel's functionality at runtime by, for example, implementing drivers or IPC objects.
+ * A module is a dynamically loadable kernel object that can extend the kernel's functionality at runtime by, for
+ * example, implementing drivers or IPC objects.
  *
  * ## /sys/mod/load
  *
  * Loading modules is handled by writing a raw ELF buffer to the `/sys/mod/load` file.
  *
- * This ELF buffer should be prepended by three NULL-terminated strings, the first string being the name of the module, the second being device type and the
- * third being the device name.
- * 
- * If the device type string or the device name string is equal to "-", the module will be loaded but will not receive a device attach event, usefull for loading dependencies.
+ * This ELF buffer should be prepended by three NULL-terminated strings, the first string being the name of the module,
+ * the second being device type and the third being the device name.
+ *
+ * If the device type string or the device name string is equal to "-", the module will be loaded but will not receive a
+ * device attach event, usefull for loading dependencies.
  *
  * The kernel will then verify the provided binary, copy it and finally perform the needed relocation and linking.
  *
  * @todo Implement module unloading.
- * 
+ *
  * @{
  */
 

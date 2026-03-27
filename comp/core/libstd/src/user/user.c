@@ -6,10 +6,10 @@
 #include "user/common/file.h"
 #include "user/common/note.h"
 
-#include <sys/fs.h>
-#include <sys/io.h>
-#include <sys/proc.h>
-#include <sys/status.h>
+#include <libstd/fs.h>
+#include <libstd/io.h>
+#include <libstd/proc.h>
+#include <libstd/status.h>
 
 static void _populate_std_descriptors(void)
 {

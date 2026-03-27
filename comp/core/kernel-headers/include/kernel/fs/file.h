@@ -6,11 +6,11 @@
 #include <kernel/mem/paging_types.h>
 #include <kernel/utils/ref.h>
 
+#include <libstd/fs.h>
+#include <libstd/proc.h>
+#include <libstd/status.h>
 #include <stdatomic.h>
 #include <stdint.h>
-#include <sys/fs.h>
-#include <sys/proc.h>
-#include <sys/status.h>
 
 typedef struct wait_queue wait_queue_t;
 

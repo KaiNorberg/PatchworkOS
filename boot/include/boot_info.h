@@ -5,10 +5,10 @@
 #include <gnu-efi/efi.h>
 
 #include <_libstd/MAX_NAME.h>
+#include <libstd/defs.h>
+#include <libstd/elf.h>
+#include <libstd/list.h>
 #include <stdint.h>
-#include <sys/defs.h>
-#include <sys/elf.h>
-#include <sys/list.h>
 
 /**
  * @brief Boot information.

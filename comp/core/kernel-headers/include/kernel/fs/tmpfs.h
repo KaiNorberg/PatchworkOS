@@ -7,8 +7,8 @@
 #include <kernel/mem/paging_types.h>
 #include <kernel/mem/pmm.h>
 
-#include <sys/fs.h>
-#include <sys/list.h>
+#include <libstd/fs.h>
+#include <libstd/list.h>
 
 /**
  * @brief Temporary Filesystem.

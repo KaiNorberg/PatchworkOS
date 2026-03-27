@@ -1,7 +1,7 @@
-#include <sys/comp.h>
-#include <sys/fs.h>
-#include <sys/proc.h>
-#include <sys/scon.h>
+#include <libstd/comp.h>
+#include <libstd/fs.h>
+#include <libstd/proc.h>
+#include <libstd/scon.h>
 #include <stdio.h>
 #include <string.h>
 #include <user/common/comp.h>

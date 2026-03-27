@@ -13,10 +13,10 @@
 #include <kernel/sync/mutex.h>
 
 #include <kernel/sync/rcu.h>
+#include <libstd/fs.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/fs.h>
 
 typedef struct path_flag_short
 {

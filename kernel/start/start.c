@@ -4,6 +4,9 @@
 #include <kernel/cpu/ipi.h>
 #include <kernel/cpu/irq.h>
 #include <kernel/cpu/syscall.h>
+#include <kernel/drivers/abstract/fb.h>
+#include <kernel/drivers/abstract/kbd.h>
+#include <kernel/drivers/abstract/mouse.h>
 #include <kernel/drivers/announce.h>
 #include <kernel/drivers/const.h>
 #include <kernel/drivers/pic.h>
@@ -30,7 +33,6 @@
 #include <kernel/sched/wait.h>
 #include <kernel/start/boot_info.h>
 #include <kernel/start/start.h>
-#include <kernel/drivers/announce.h>
 
 #include <boot/boot_info.h>
 
@@ -99,6 +101,10 @@ static void start_finalize(void)
     procfs_init();
     tmpfs_init();
     concatfs_init();
+
+    fb_init();
+    kbd_init();
+    mouse_init();
 
     log_expose();
     module_expose();

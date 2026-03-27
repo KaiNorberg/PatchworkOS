@@ -3,9 +3,9 @@
 #include <kernel/acpi/aml/encoding/data_integers.h>
 #include <kernel/acpi/aml/integer.h>
 
+#include <libstd/status.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <sys/status.h>
 
 typedef struct aml_object aml_object_t;
 typedef struct aml_opregion aml_opregion_t;

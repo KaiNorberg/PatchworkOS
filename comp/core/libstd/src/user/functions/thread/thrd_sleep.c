@@ -1,8 +1,8 @@
+#include <libstd/proc.h>
+#include <libstd/syscall.h>
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <sys/proc.h>
-#include <sys/syscall.h>
 #include <threads.h>
 #include <time.h>
 

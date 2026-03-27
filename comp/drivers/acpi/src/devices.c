@@ -12,18 +12,18 @@
 #include <kernel/acpi/resources.h>
 #include <kernel/acpi/tables.h>
 #include <kernel/cpu/irq.h>
+#include <kernel/drivers/announce.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/module/module.h>
-#include <kernel/drivers/announce.h>
 #include <kernel/utils/ref.h>
 
 #include <errno.h>
+#include <libstd/status.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/status.h>
 
 static status_t acpi_id_object_to_string(aml_object_t* idObject, char* out, size_t outSize)
 {
@@ -553,8 +553,9 @@ status_t acpi_devices_init(void)
     }
 
     for (size_t i = 0; i < ids.length; i++)
-    {        
-        status_t status = announce_device(ids.array[i].hid, ids.array[i].cid[0] != '\0' ? ids.array[i].cid : NULL, ids.array[i].path, ANNOUNCE_ATTACH);
+    {
+        status_t status = announce_device(ids.array[i].hid, ids.array[i].cid[0] != '\0' ? ids.array[i].cid : NULL,
+            ids.array[i].path, ANNOUNCE_ATTACH);
         if (IS_ERR(status))
         {
             LOG_ERR("failed to announce '%s' due to '%s'\n", ids.array[i].hid, st_code_str(status));

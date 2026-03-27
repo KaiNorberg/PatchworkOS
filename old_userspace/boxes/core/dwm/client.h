@@ -4,8 +4,8 @@
 
 #include <patchwork/cmd.h>
 #include <patchwork/event.h>
-#include <sys/fs.h>
-#include <sys/list.h>
+#include <libstd/fs.h>
+#include <libstd/list.h>
 
 #define CLIENT_RECV_BUFFER_SIZE (sizeof(cmd_buffer_t) + 128)
 

@@ -4,9 +4,9 @@
 #include <kernel/fs/stringstream.h>
 #include <kernel/sched/wait.h>
 
+#include <libstd/kbd.h>
+#include <libstd/proc.h>
 #include <stdint.h>
-#include <sys/kbd.h>
-#include <sys/proc.h>
 
 typedef struct kbd kbd_t;
 
@@ -38,7 +38,7 @@ typedef struct kbd kbd_t;
  * 030_030^005_
  * ```
  *
- * @see libstd_sys_kbd for keycode definitions.
+ * @see libstd_kbd for keycode definitions.
  *
  * @{
  */
@@ -57,6 +57,11 @@ typedef struct kbd
         stringstream_t stream;
     } internal;
 } kbd_t;
+
+/**
+ * @brief Initialize the keyboard abstraction.
+ */
+void kbd_init(void);
 
 /**
  * @brief Register a new keyboard.

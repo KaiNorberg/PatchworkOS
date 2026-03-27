@@ -3,8 +3,8 @@
 #include <kernel/log/log.h>
 #include <kernel/sync/lock.h>
 
-#include <sys/defs.h>
-#include <sys/list.h>
+#include <libstd/defs.h>
+#include <libstd/list.h>
 
 #include <assert.h>
 #include <stdatomic.h>

@@ -9,11 +9,11 @@
 #include <kernel/proc/process.h>
 #include <kernel/sync/rwlock.h>
 
-#include <sys/fs.h>
-#include <sys/list.h>
-#include <sys/map.h>
-#include <sys/math.h>
-#include <sys/proc.h>
+#include <libstd/fs.h>
+#include <libstd/list.h>
+#include <libstd/map.h>
+#include <libstd/math.h>
+#include <libstd/proc.h>
 
 /**
  * @brief Filesystem structure.

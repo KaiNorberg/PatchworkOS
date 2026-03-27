@@ -1,6 +1,6 @@
+#include <libstd/fs.h>
+#include <libstd/io.h>
 #include <stdio.h>
-#include <sys/fs.h>
-#include <sys/io.h>
 
 int remove(const char* pathname)
 {

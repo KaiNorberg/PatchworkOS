@@ -2,14 +2,14 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <libstd/defs.h>
+#include <libstd/status.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/defs.h>
-#include <sys/status.h>
 
 #include "digits.h"
 

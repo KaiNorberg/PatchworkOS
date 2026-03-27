@@ -7,11 +7,11 @@
 
 #include <boot/boot_info.h>
 
-#include <sys/bitmap.h>
-#include <sys/list.h>
-#include <sys/map.h>
-#include <sys/proc.h>
-#include <sys/status.h>
+#include <libstd/bitmap.h>
+#include <libstd/list.h>
+#include <libstd/map.h>
+#include <libstd/proc.h>
+#include <libstd/status.h>
 
 /**
  * @brief Address Space handling.

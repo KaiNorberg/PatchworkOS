@@ -1,14 +1,15 @@
 #pragma once
 
+#include <libstd/status.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <sys/status.h>
 
 /**
  * @brief Tar parser library.
- * @defgroup tar libtar
+ * @defgroup comp_libtar libtar
+ * @ingroup comp
  *
  * The included library provides functions for parsing tar archives, specifically UStar format.
  *

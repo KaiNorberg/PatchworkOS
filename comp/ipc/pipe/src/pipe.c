@@ -12,10 +12,10 @@
 #include <kernel/utils/fifo.h>
 
 #include <assert.h>
+#include <libstd/fs.h>
+#include <libstd/io.h>
+#include <libstd/math.h>
 #include <stdlib.h>
-#include <sys/fs.h>
-#include <sys/io.h>
-#include <sys/math.h>
 
 /**
  * @brief Pipes.

@@ -1,9 +1,9 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/io.h>
-#include <sys/proc.h>
-#include <sys/status.h>
+#include <libstd/io.h>
+#include <libstd/proc.h>
+#include <libstd/status.h>
 #include <threads.h>
 #include <time.h>
 

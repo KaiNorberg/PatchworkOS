@@ -1,0 +1,5 @@
+(component
+    (description "Header only tar library.")
+    (author "Kai Norberg")
+    (license MIT)
+)

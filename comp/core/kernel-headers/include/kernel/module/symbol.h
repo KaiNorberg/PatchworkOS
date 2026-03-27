@@ -2,10 +2,10 @@
 
 #include <boot/boot_info.h>
 
-#include <sys/elf.h>
-#include <sys/list.h>
-#include <sys/map.h>
-#include <sys/status.h>
+#include <libstd/elf.h>
+#include <libstd/list.h>
+#include <libstd/map.h>
+#include <libstd/status.h>
 
 /**
  * @brief Kernel Symbol Resolution and Management.

@@ -6,13 +6,13 @@
 #include <kernel/mem/paging.h>
 #include <kernel/mem/paging_types.h>
 #include <kernel/version.h>
+#include <libstd/defs.h>
+#include <libstd/elf.h>
+#include <libstd/io.h>
+#include <libstd/list.h>
+#include <libstd/math.h>
+#include <libstd/proc.h>
 #include <stddef.h>
-#include <sys/defs.h>
-#include <sys/elf.h>
-#include <sys/io.h>
-#include <sys/list.h>
-#include <sys/math.h>
-#include <sys/proc.h>
 
 /**
  * @brief PatchworkOS UEFI Bootloader

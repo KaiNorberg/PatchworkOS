@@ -5,11 +5,11 @@
 #include <kernel/log/log.h>
 #include <kernel/mem/pmm.h>
 
-#include <sys/defs.h>
+#include <libstd/defs.h>
 
+#include <libstd/cpuid.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/cpuid.h>
 
 static uint8_t initCtx[PAGE_SIZE] ALIGNED(64);
 

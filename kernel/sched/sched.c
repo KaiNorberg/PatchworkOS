@@ -18,13 +18,13 @@
 #include <kernel/utils/rbtree.h>
 
 #include <assert.h>
+#include <libstd/bitmap.h>
+#include <libstd/list.h>
+#include <libstd/math.h>
+#include <libstd/proc.h>
 #include <stdatomic.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <sys/bitmap.h>
-#include <sys/list.h>
-#include <sys/math.h>
-#include <sys/proc.h>
 #include <time.h>
 
 static wait_queue_t sleepQueue = WAIT_QUEUE_CREATE(sleepQueue);

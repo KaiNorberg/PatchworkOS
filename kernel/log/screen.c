@@ -6,8 +6,8 @@
 #include <kernel/start/boot_info.h>
 #include <kernel/sync/lock.h>
 
+#include <libstd/math.h>
 #include <string.h>
-#include <sys/math.h>
 
 static bool hidden = false;
 

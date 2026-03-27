@@ -12,10 +12,10 @@
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rwlock.h>
 
+#include <libstd/fs.h>
+#include <libstd/list.h>
+#include <libstd/map.h>
 #include <stdlib.h>
-#include <sys/fs.h>
-#include <sys/list.h>
-#include <sys/map.h>
 
 typedef struct
 {

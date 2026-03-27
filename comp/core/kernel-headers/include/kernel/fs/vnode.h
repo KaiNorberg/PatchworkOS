@@ -7,11 +7,11 @@
 #include <kernel/sync/rcu.h>
 #include <kernel/utils/ref.h>
 
+#include <libstd/fs.h>
+#include <libstd/map.h>
+#include <libstd/proc.h>
 #include <stdatomic.h>
 #include <stdint.h>
-#include <sys/fs.h>
-#include <sys/map.h>
-#include <sys/proc.h>
 #include <time.h>
 
 typedef struct vnode vnode_t;

@@ -1,4 +1,4 @@
-#include <sys/comp.h>
+#include <libstd/comp.h>
 #include <stdlib.h>
 #include <string.h>
 #include <user/common/comp.h>

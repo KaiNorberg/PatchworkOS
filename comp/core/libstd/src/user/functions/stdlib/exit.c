@@ -1,7 +1,7 @@
+#include <libstd/fs.h>
+#include <libstd/io.h>
+#include <libstd/proc.h>
 #include <stdlib.h>
-#include <sys/fs.h>
-#include <sys/io.h>
-#include <sys/proc.h>
 
 #include "user/common/exit_stack.h"
 #include "user/common/file.h"

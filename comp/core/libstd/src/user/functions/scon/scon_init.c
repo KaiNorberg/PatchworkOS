@@ -1,8 +1,8 @@
 #include <ctype.h>
+#include <libstd/scon.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/scon.h>
 
 typedef struct
 {

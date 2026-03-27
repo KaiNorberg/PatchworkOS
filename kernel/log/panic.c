@@ -18,13 +18,13 @@
 
 #include <boot/boot_info.h>
 
+#include <libstd/fs.h>
+#include <libstd/math.h>
+#include <libstd/proc.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/fs.h>
-#include <sys/math.h>
-#include <sys/proc.h>
 
 extern uint64_t _kernel_start;
 extern uint64_t _kernel_end;

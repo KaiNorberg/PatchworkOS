@@ -1,8 +1,8 @@
 #pragma once
 
+#include <libstd/status.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <sys/status.h>
 
 /**
  * @brief EISA ID to string and vice versa conversion

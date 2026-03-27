@@ -1,4 +1,4 @@
-#include <sys/comp.h>
+#include <libstd/comp.h>
 #include <stdlib.h>
 
 void comp_dependencies_free(comp_dependency_t* deps, size_t count)

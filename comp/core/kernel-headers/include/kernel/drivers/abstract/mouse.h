@@ -4,9 +4,9 @@
 #include <kernel/fs/stringstream.h>
 #include <kernel/sched/wait.h>
 
+#include <libstd/kbd.h>
+#include <libstd/proc.h>
 #include <stdint.h>
-#include <sys/kbd.h>
-#include <sys/proc.h>
 
 /**
  * @brief Mouse driver abstraction.
@@ -58,6 +58,11 @@ typedef struct
         stringstream_t stream;
     } internal;
 } mouse_t;
+
+/**
+ * @brief Initialize the mouse abstraction.
+ */
+void mouse_init(void);
 
 /**
  * @brief Register a new mouse.

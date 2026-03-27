@@ -8,8 +8,8 @@
 
 #include <assert.h>
 #include <stdint.h>
-#include <sys/fs.h>
-#include <sys/kbd.h>
+#include <libstd/fs.h>
+#include <libstd/kbd.h>
 
 #if defined(__cplusplus)
 extern "C"

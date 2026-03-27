@@ -1,10 +1,10 @@
 #include <errno.h>
+#include <libstd/auxv.h>
+#include <libstd/elf.h>
+#include <libstd/fs.h>
+#include <libstd/io.h>
+#include <libstd/proc.h>
 #include <stdlib.h>
-#include <sys/auxv.h>
-#include <sys/elf.h>
-#include <sys/fs.h>
-#include <sys/io.h>
-#include <sys/proc.h>
 
 #define INTERPRETER_BASE 0x700000000000
 

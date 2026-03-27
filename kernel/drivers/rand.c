@@ -4,10 +4,10 @@
 #include <kernel/log/log.h>
 #include <kernel/sched/clock.h>
 
+#include <libstd/cpuid.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/cpuid.h>
 
 static atomic_uint64_t seed = ATOMIC_VAR_INIT(0x123456789ABCDEF0);
 

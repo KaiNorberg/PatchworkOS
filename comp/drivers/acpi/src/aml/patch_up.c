@@ -7,8 +7,8 @@
 #include <kernel/log/panic.h>
 
 #include <errno.h>
+#include <libstd/list.h>
 #include <stdlib.h>
-#include <sys/list.h>
 
 static list_t unresolvedObjects;
 

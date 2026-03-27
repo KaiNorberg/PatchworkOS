@@ -13,9 +13,9 @@
 #include <kernel/sync/rcu.h>
 #include <kernel/utils/ref.h>
 
-#include <sys/list.h>
-#include <sys/proc.h>
-#include <sys/status.h>
+#include <libstd/list.h>
+#include <libstd/proc.h>
+#include <libstd/status.h>
 #include <threads.h>
 
 typedef struct process process_t;

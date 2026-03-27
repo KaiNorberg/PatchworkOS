@@ -4,8 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/io.h>
-#include <sys/list.h>
+#include <libstd/io.h>
+#include <libstd/list.h>
 
 static inline uint64_t display_events_read(display_t* disp, event_t* event)
 {

@@ -5,10 +5,10 @@
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rwlock.h>
 
+#include <libstd/list.h>
+#include <libstd/status.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <sys/list.h>
-#include <sys/status.h>
 
 typedef struct cpu cpu_t;
 

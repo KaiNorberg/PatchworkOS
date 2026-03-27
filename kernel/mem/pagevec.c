@@ -2,9 +2,9 @@
 
 #include <kernel/mem/pmm.h>
 
+#include <libstd/math.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/math.h>
 
 void pagevec_deinit(pagevec_t* vec)
 {

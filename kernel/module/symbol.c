@@ -4,11 +4,11 @@
 #include <kernel/log/panic.h>
 #include <kernel/sync/rwlock.h>
 
+#include <libstd/list.h>
+#include <libstd/status.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/list.h>
-#include <sys/status.h>
 
 static symbol_addr_t** addrArray = NULL;
 static size_t addrAmount = 0;

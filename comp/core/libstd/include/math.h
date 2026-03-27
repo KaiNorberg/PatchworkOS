@@ -174,9 +174,13 @@ double cbrt(double x);
 float cbrtf(float x);
 long double cbrtl(long double x);
 
-double fabs(double x);
-float fabsf(float x);
-long double fabsl(long double x);
+// double fabs(double x);
+// float fabsf(float x);
+// long double fabsl(long double x);
+
+#define fabs(x) __builtin_fabs(x)
+#define fabsf(x) __builtin_fabsf(x)
+#define fabsl(x) __builtin_fabsl(x)
 
 double hypot(double x, double y);
 float hypotf(float x, float y);
@@ -206,13 +210,21 @@ double tgamma(double x);
 float tgammaf(float x);
 long double tgammal(long double x);
 
-double ceil(double x);
-float ceilf(float x);
-long double ceill(long double x);
+// double ceil(double x);
+// float ceilf(float x);
+// long double ceill(long double x);
 
-double floor(double x);
-float floorf(float x);
-long double floorl(long double x);
+#define ceil(x) __builtin_ceil(x)
+#define ceilf(x) __builtin_ceilf(x)
+#define ceill(x) __builtin_ceill(x)
+
+// double floor(double x);
+// float floorf(float x);
+// long double floorl(long double x);
+
+#define floor(x) __builtin_floor(x)
+#define floorf(x) __builtin_floorf(x)
+#define floorl(x) __builtin_floorl(x)
 
 double nearbyint(double x);
 float nearbyintf(float x);

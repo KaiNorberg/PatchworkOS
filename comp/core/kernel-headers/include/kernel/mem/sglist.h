@@ -5,10 +5,10 @@
 #include <kernel/mem/pmm.h>
 
 #include <errno.h>
+#include <libstd/io.h>
+#include <libstd/list.h>
+#include <libstd/status.h>
 #include <stdlib.h>
-#include <sys/io.h>
-#include <sys/list.h>
-#include <sys/status.h>
 
 typedef struct process process_t;
 typedef struct space space_t;

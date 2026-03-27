@@ -2,11 +2,11 @@
 #include "file.h"
 
 #include <errno.h>
+#include <libstd/fs.h>
+#include <libstd/io.h>
+#include <libstd/proc.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/fs.h>
-#include <sys/io.h>
-#include <sys/proc.h>
 
 static uint8_t _stdinBuff[BUFSIZ];
 static uint8_t _stdoutBuff[BUFSIZ];

@@ -1,8 +1,8 @@
+#include <libstd/sync.h>
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/sync.h>
 #include <threads.h>
 
 #include "user/common/threading.h"

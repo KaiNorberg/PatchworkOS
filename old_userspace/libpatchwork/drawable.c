@@ -144,7 +144,7 @@ void draw_polygon(drawable_t* draw, const point_t* points, uint64_t pointCount, 
                 double sampleX = x + samples[s][0];
                 double sampleY = y + samples[s][1];
 
-                if (polygon_contains(sampleX, sampleY, points, pointCount))
+                if (vertices_contains(sampleX, sampleY, points, pointCount))
                 {
                     samplesInside++;
                 }

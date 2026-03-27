@@ -1,8 +1,8 @@
 #ifndef _THREADS_H
 #define _THREADS_H 1
 
+#include <libstd/syscall.h>
 #include <stdatomic.h>
-#include <sys/syscall.h>
 
 #if defined(__cplusplus)
 extern "C"

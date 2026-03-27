@@ -121,7 +121,8 @@ status_t vnode_generic_query(irp_t* irp)
 
     if (frame->file != NULL && DENTRY_IS_POSITIVE(frame->file->path.dentry))
     {
-        strncpy(info.name, frame->file->path.dentry->name.data, MIN(sizeof(info.name), frame->file->path.dentry->name.length));
+        strncpy(info.name, frame->file->path.dentry->name.data,
+            MIN(sizeof(info.name), frame->file->path.dentry->name.length));
         info.mask |= FILE_MASK_NAME;
     }
 

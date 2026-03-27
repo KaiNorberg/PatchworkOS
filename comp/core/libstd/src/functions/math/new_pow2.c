@@ -1,4 +1,4 @@
-#include <sys/math.h>
+#include <libstd/math.h>
 
 uint64_t next_pow2(uint64_t n)
 {

@@ -1,9 +1,9 @@
+#include <libstd/comp.h>
+#include <libstd/io.h>
+#include <libstd/scon.h>
 #include <libtar/tar.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/comp.h>
-#include <sys/io.h>
-#include <sys/scon.h>
 
 /**
  * @brief User space init process.
@@ -292,7 +292,14 @@ int main(void)
     status = comp_launch("modman", "1.0.0", &opts);
     if (IS_ERR(status))
     {
-        printf("init: failed to launch component %Y\n", status);
+        printf("init: failed to launch modman %Y\n", status);
+        return EXIT_FAILURE;
+    }
+
+    status = comp_launch("authman", "1.0.0", &opts);
+    if (IS_ERR(status))
+    {
+        printf("init: failed to launch authman %Y\n", status);
         return EXIT_FAILURE;
     }
 

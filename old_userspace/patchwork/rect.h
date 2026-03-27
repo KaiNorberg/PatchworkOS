@@ -2,7 +2,7 @@
 #define PATCHWORK_RECT_H 1
 
 #include <stdint.h>
-#include <sys/math.h>
+#include <libstd/math.h>
 
 #if defined(__cplusplus)
 extern "C"

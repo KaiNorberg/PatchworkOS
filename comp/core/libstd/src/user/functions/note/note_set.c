@@ -1,6 +1,6 @@
 #include <user/common/note.h>
 
-#include <sys/proc.h>
+#include <libstd/proc.h>
 
 #include <errno.h>
 

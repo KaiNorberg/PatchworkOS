@@ -639,7 +639,7 @@ static status_t ps2_attach_device(const char* type, const char* name)
         LOG_ERR("ps2 device '%s' has unknown type '%s'\n", name, type);
         return ERR(DRIVER, INVAL);
     }
-    
+
     if (devices[targetDevice].attached)
     {
         LOG_ERR("ps2 device '%s' cannot be attached to %s port (port already attached)\n", name,

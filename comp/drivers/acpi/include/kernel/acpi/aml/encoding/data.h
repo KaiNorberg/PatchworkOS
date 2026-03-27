@@ -1,7 +1,7 @@
 #pragma once
 
 #include <kernel/acpi/aml/integer.h>
-#include <sys/status.h>
+#include <libstd/status.h>
 
 #include <stdbool.h>
 #include <stdint.h>

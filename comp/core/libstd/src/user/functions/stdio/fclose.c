@@ -1,6 +1,6 @@
+#include <libstd/proc.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/proc.h>
 
 #include "user/common/file.h"
 

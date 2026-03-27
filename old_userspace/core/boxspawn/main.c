@@ -3,9 +3,9 @@
 #include <patchwork/patchwork.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/fs.h>
-#include <sys/proc.h>
-#include <sys/status.h>
+#include <libstd/fs.h>
+#include <libstd/proc.h>
+#include <libstd/status.h>
 #include <time.h>
 
 #define BUFFER_MAX 0x1000

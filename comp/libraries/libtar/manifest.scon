@@ -1,5 +1,8 @@
 (component
-    (description "Header only tar library.")
+    (description "Low-level drawing library.")
     (author "Kai Norberg")
     (license MIT)
+    (dependencies
+        (libstd 1.0.0)
+    )
 )

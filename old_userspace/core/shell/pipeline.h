@@ -1,9 +1,9 @@
 #pragma once
 
 #include <patchwork/patchwork.h>
-#include <sys/fs.h>
-#include <sys/list.h>
-#include <sys/proc.h>
+#include <libstd/fs.h>
+#include <libstd/list.h>
+#include <libstd/proc.h>
 
 typedef struct
 {

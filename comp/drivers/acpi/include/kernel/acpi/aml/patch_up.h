@@ -1,9 +1,9 @@
 #pragma once
 
+#include <libstd/list.h>
+#include <libstd/status.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <sys/list.h>
-#include <sys/status.h>
 
 typedef struct aml_unresolved aml_unresolved_t;
 typedef struct aml_object aml_object_t;

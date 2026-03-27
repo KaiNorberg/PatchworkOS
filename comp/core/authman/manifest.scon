@@ -1,0 +1,13 @@
+(component
+    (description "Authentication Manager.")
+    (author "Kai Norberg")
+    (license MIT)
+    (launch /bin/authman)
+    (dependencies
+        (libstd 1.0.0)
+        (libdraw 1.0.0)
+    )
+    (capabilities
+        /dev/fb
+    )
+)

@@ -15,10 +15,10 @@
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rwlock.h>
 
+#include <libstd/list.h>
+#include <libstd/map.h>
 #include <stdatomic.h>
 #include <stdint.h>
-#include <sys/list.h>
-#include <sys/map.h>
 
 cpu_t* _cpus[CPU_MAX] = {0};
 uint16_t _cpuAmount = 0;

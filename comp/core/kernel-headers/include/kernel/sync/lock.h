@@ -7,9 +7,9 @@
 #endif
 
 #include <kernel/drivers/com.h>
+#include <libstd/defs.h>
 #include <stdatomic.h>
 #include <stdbool.h>
-#include <sys/defs.h>
 
 /**
  * @brief Ticket spinlock.

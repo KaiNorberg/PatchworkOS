@@ -1,9 +1,9 @@
 #pragma once
 
 #include <kernel/acpi/aml/encoding/arg.h>
+#include <libstd/defs.h>
+#include <libstd/status.h>
 #include <stdint.h>
-#include <sys/defs.h>
-#include <sys/status.h>
 
 /**
  * @brief ACPI resource settings.

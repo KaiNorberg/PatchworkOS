@@ -1,6 +1,6 @@
-#include <sys/fs.h>
-#include <sys/io.h>
-#include <sys/proc.h>
+#include <libstd/fs.h>
+#include <libstd/io.h>
+#include <libstd/proc.h>
 
 status_t proc_kill(proc_t pid)
 {

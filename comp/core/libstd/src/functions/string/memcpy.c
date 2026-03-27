@@ -1,9 +1,9 @@
 #include <assert.h>
+#include <libstd/cpuid.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/cpuid.h>
 
-static void* memcpy_no_simd(void* _RESTRICT s1, const void* _RESTRICT s2, size_t n)
+static void* _memcpy_no_simd(void* _RESTRICT s1, const void* _RESTRICT s2, size_t n)
 {
     assert(n == 0 || (s1 != NULL && s2 != NULL));
     assert((uintptr_t)s1 + n <= (uintptr_t)s2 || (uintptr_t)s2 + n <= (uintptr_t)s1);
@@ -54,32 +54,35 @@ static void* memcpy_no_simd(void* _RESTRICT s1, const void* _RESTRICT s2, size_t
 
 void* memcpy(void* _RESTRICT s1, const void* _RESTRICT s2, size_t n)
 {
-    return memcpy_no_simd(s1, s2, n);
+    return _memcpy_no_simd(s1, s2, n);
 }
 
 #else
 
 // Check memcpy.s
-extern void* memcpy_sse2(void* _RESTRICT s1, const void* _RESTRICT s2, size_t n);
+extern void* _memcpy_sse2(void* _RESTRICT s1, const void* _RESTRICT s2, size_t n);
 
-static void* (*memcpy_impl)(void* _RESTRICT, const void* _RESTRICT, size_t) = NULL;
+static void* _memcpy_select(void* _RESTRICT s1, const void* _RESTRICT s2, size_t n);
+static void* (*memcpy_impl)(void* _RESTRICT, const void* _RESTRICT, size_t) = _memcpy_select;
+
+static void* _memcpy_select(void* _RESTRICT s1, const void* _RESTRICT s2, size_t n)
+{
+    cpuid_instruction_sets_t sets = cpuid_detect_instruction_sets();
+
+    if (sets & CPUID_INSTRUCTION_SET_SSE2)
+    {
+        memcpy_impl = _memcpy_sse2;
+    }
+    else
+    {
+        memcpy_impl = _memcpy_no_simd;
+    }
+
+    return memcpy_impl(s1, s2, n);
+}
 
 void* memcpy(void* _RESTRICT s1, const void* _RESTRICT s2, size_t n)
 {
-    if (memcpy_impl == NULL)
-    {
-        cpuid_instruction_sets_t sets = cpuid_detect_instruction_sets();
-
-        if (sets & CPUID_INSTRUCTION_SET_SSE2)
-        {
-            memcpy_impl = memcpy_sse2;
-        }
-        else
-        {
-            memcpy_impl = memcpy_no_simd;
-        }
-    }
-
     return memcpy_impl(s1, s2, n);
 }
 

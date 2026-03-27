@@ -1,7 +1,7 @@
 #include <kernel/acpi/aml/runtime/eisa_id.h>
 
+#include <libstd/status.h>
 #include <string.h>
-#include <sys/status.h>
 
 #define AML_EISA_ID_BYTE(c) ((uint32_t)(((c) - 0x40) & 0x1F))
 

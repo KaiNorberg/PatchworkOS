@@ -32,7 +32,7 @@ typedef struct image image_t;
  * @param angle The angle to rotate by, in radians.
  * @param center The center point to rotate around.
  */
-void polygon_rotate(point_t* points, uint64_t pointCount, double angle, point_t center);
+void vertices_rotate(point_t* points, uint64_t pointCount, double angle, point_t center);
 
 /**
  * @brief Check if a point is inside a polygon.
@@ -45,7 +45,7 @@ void polygon_rotate(point_t* points, uint64_t pointCount, double angle, point_t 
  * @param pointCount The number of points in the polygon.
  * @return `true` if the point is inside the polygon, `false` otherwise.
  */
-bool polygon_contains(double px, double py, const point_t* points, uint64_t pointCount);
+bool vertices_contains(double px, double py, const point_t* points, uint64_t pointCount);
 
 /** @} */
 

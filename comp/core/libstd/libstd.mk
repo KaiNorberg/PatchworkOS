@@ -1,6 +1,7 @@
 COMP_NAME = libstd
 COMP_VERSION = 1.0.0
 COMP_TYPE = static-shared
+COMP_DEPENDS =
 
 include $(COMP_DIR)/Make.comp.defaults
 

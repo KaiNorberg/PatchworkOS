@@ -2,8 +2,8 @@
 
 #include <kernel/acpi/aml/object.h>
 
+#include <libstd/status.h>
 #include <stdint.h>
-#include <sys/status.h>
 
 /**
  * @brief Method Evaluation

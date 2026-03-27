@@ -6,11 +6,11 @@
 #include <kernel/acpi/aml/token.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
-#include <sys/status.h>
+#include <libstd/status.h>
 
+#include <libstd/math.h>
 #include <stddef.h>
 #include <stdlib.h>
-#include <sys/math.h>
 
 // Used to check for memory leaks
 static uint64_t totalObjects = 0;

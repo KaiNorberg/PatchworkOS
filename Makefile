@@ -74,7 +74,9 @@ $(BIN_DIR)/.kernel.built: staging
 	@touch $@
 
 define COMP_RULE
-$(BIN_DIR)/.$(1).built: staging
+COMP_DEPS_$(1) := $$(strip $$(shell grep -E '^[[:space:]]*COMP_DEPENDS[[:space:]]*(\+|:)?=' $$(filter %/$(1).mk,$$(COMP_MKS)) | cut -d '=' -f 2))
+
+$(BIN_DIR)/.$(1).built: staging $$(patsubst %,$(BIN_DIR)/.%.built,$$(COMP_DEPS_$(1)))
 	@echo "BUILD   component $(1)"
 	@$$(MAKE) -s --no-print-directory -f $$(filter %/$(1).mk,$$(COMP_MKS)) \
 		SRC_DIR=$$(patsubst %/,%/src,$$(dir $$(filter %/$(1).mk,$$(COMP_MKS)))) \

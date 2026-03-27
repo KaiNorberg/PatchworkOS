@@ -37,9 +37,9 @@ typedef _Atomic(int) sig_atomic_t;
 
 typedef void (*sighandler_t)(int);
 
-_PUBLIC sighandler_t signal(int sig, sighandler_t func);
+sighandler_t signal(int sig, sighandler_t func);
 
-_PUBLIC int raise(int sig);
+int raise(int sig);
 
 /** @} */
 

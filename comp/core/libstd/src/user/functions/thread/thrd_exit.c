@@ -1,9 +1,9 @@
+#include <libstd/sync.h>
+#include <libstd/syscall.h>
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/sync.h>
-#include <sys/syscall.h>
 #include <threads.h>
 
 #include "user/common/threading.h"

@@ -1,7 +1,7 @@
 #pragma once
 
+#include <libstd/defs.h>
 #include <stdint.h>
-#include <sys/defs.h>
 
 #define XCR0_XSAVE_SAVE_X87 (1 << 0)
 #define XCR0_XSAVE_SAVE_SSE (1 << 1)

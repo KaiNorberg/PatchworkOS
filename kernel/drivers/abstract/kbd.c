@@ -11,11 +11,11 @@
 #include <kernel/sync/lock.h>
 
 #include <kernel/utils/fifo.h>
+#include <libstd/fs.h>
+#include <libstd/math.h>
+#include <libstd/proc.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/fs.h>
-#include <sys/math.h>
-#include <sys/proc.h>
 
 static dentry_t* root = NULL;
 
@@ -83,20 +83,20 @@ static vnode_class_t rootClass = {
         },
 };
 
+void kbd_init(void)
+{
+    root = devfs_dentry_new(NULL, "kbd", &rootClass, NULL);
+    if (root == NULL)
+    {
+        panic(NULL, "Failed to create kbd root dentry");
+    }
+}
+
 status_t kbd_register(kbd_t* kbd)
 {
     if (kbd == NULL || kbd->name == NULL)
     {
         return ERR(DRIVER, INVAL);
-    }
-
-    if (root == NULL)
-    {
-        root = devfs_dentry_new(NULL, "kbd", &rootClass, NULL);
-        if (root == NULL)
-        {
-            return ERR(DRIVER, NOMEM);
-        }
     }
 
     stringstream_init(&kbd->internal.stream);

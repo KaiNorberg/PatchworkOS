@@ -1,7 +1,7 @@
-#include <kernel/drivers/apic/trampoline.h>
 #include <kernel/cpu/cpu.h>
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/percpu.h>
+#include <kernel/drivers/apic/trampoline.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
 #include <kernel/mem/pmm.h>

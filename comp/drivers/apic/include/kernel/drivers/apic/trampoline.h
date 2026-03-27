@@ -5,8 +5,8 @@
 
 #include <kernel/drivers/apic/lapic.h>
 
+#include <libstd/proc.h>
 #include <stdint.h>
-#include <sys/proc.h>
 #endif
 
 /**

@@ -1,2 +1,2 @@
 #define ELF_IMPL
-#include <sys/elf.h>
+#include <libstd/elf.h>

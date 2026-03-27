@@ -21,7 +21,7 @@
  *
  * @todo Implement the 9P protocol.
  *
- * @see libstd_sys_9p for the 9P protocol definitions.
+ * @see libstd_9p for the 9P protocol definitions.
  * @see http://rfc.nop.hu/plan9/rfc9p.pdf for the 9P protocol specification.
  *
  * @{

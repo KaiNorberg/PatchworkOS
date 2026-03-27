@@ -11,10 +11,10 @@
 #include <kernel/sched/timer.h>
 
 #include <kernel/sync/rwlock.h>
+#include <libstd/math.h>
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <sys/math.h>
 
 static const clock_source_t* sources[CLOCK_MAX_SOURCES] = {0};
 static uint32_t sourceCount = 0;

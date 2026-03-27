@@ -4,8 +4,8 @@
 #include <kernel/cpu/regs.h>
 #include <kernel/sync/lock.h>
 
-#include <sys/list.h>
-#include <sys/proc.h>
+#include <libstd/list.h>
+#include <libstd/proc.h>
 
 typedef struct thread thread_t;
 typedef struct cpu cpu_t;

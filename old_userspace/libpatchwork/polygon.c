@@ -1,7 +1,7 @@
 #include <math.h>
 #include <patchwork/polygon.h>
 
-void polygon_rotate(point_t* points, uint64_t pointCount, double angle, point_t center)
+void vertices_rotate(point_t* points, uint64_t pointCount, double angle, point_t center)
 {
     if (points == NULL || pointCount == 0)
     {
@@ -24,7 +24,7 @@ void polygon_rotate(point_t* points, uint64_t pointCount, double angle, point_t 
     }
 }
 
-bool polygon_contains(double px, double py, const point_t* points, uint64_t pointCount)
+bool vertices_contains(double px, double py, const point_t* points, uint64_t pointCount)
 {
     int winding = 0;
 

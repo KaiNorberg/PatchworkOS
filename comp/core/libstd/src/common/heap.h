@@ -1,10 +1,10 @@
 #pragma once
 
+#include <libstd/defs.h>
+#include <libstd/list.h>
+#include <libstd/proc.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <sys/defs.h>
-#include <sys/list.h>
-#include <sys/proc.h>
 
 #ifdef _KERNEL_
 #include <kernel/sync/lock.h>

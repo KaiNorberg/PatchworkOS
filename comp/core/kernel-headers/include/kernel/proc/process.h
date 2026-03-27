@@ -13,9 +13,9 @@
 #include <kernel/sync/rcu.h>
 #include <kernel/utils/ref.h>
 
+#include <libstd/map.h>
+#include <libstd/status.h>
 #include <stdatomic.h>
-#include <sys/map.h>
-#include <sys/status.h>
 
 /**
  * @brief Process management.

@@ -21,13 +21,13 @@
 #include <kernel/utils/ref.h>
 
 #include <assert.h>
+#include <libstd/defs.h>
+#include <libstd/fs.h>
+#include <libstd/list.h>
+#include <libstd/math.h>
+#include <libstd/status.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/defs.h>
-#include <sys/fs.h>
-#include <sys/list.h>
-#include <sys/math.h>
-#include <sys/status.h>
 
 static cache_t cache = CACHE_CREATE(cache, "tmpfs_vnode", sizeof(tmpfs_vnode_t), CACHE_LINE, NULL, NULL);
 
@@ -66,7 +66,7 @@ static status_t tmpfs_regular_read(irp_t* irp)
         irp->result = 0;
         return INFO(FS, EOF);
     }
-    
+
     size_t remaining = vnode->size - offset;
     size_t copied = 0;
 
@@ -311,7 +311,8 @@ static status_t tmpfs_regular_query(irp_t* irp)
     info.number = vnode->vnode.number;
     info.mask |= FILE_MASK_NUMBER;
 
-    strncpy(info.name, frame->file->path.dentry->name.data, MIN(sizeof(info.name), frame->file->path.dentry->name.length));
+    strncpy(info.name, frame->file->path.dentry->name.data,
+        MIN(sizeof(info.name), frame->file->path.dentry->name.length));
     info.mask |= FILE_MASK_NAME;
 
     return sglist_copy_in(frame->query.buffer, sizeof(file_info_t), 0, &irp->result, &info, sizeof(file_info_t));

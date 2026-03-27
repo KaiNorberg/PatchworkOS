@@ -1,5 +1,5 @@
+#include <libstd/io.h>
 #include <stdlib.h>
-#include <sys/io.h>
 
 #define IOLOAD_CHUNK_SIZE 4096
 

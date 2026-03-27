@@ -11,9 +11,9 @@
 #include <kernel/sync/lock.h>
 
 #include <assert.h>
+#include <libstd/math.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/math.h>
 
 void note_handler_init(note_handler_t* handler)
 {

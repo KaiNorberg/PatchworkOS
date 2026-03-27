@@ -1,8 +1,8 @@
 #pragma once
 
+#include <libstd/kbd.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <sys/kbd.h>
 
 /**
  * @brief PS/2 Scanmap.

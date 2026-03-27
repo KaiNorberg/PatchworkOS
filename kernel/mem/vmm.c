@@ -19,8 +19,8 @@
 #include <boot/boot_info.h>
 
 #include <assert.h>
-#include <sys/math.h>
-#include <sys/proc.h>
+#include <libstd/math.h>
+#include <libstd/proc.h>
 
 static space_t kernelSpace;
 

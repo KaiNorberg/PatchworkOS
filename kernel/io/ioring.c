@@ -12,8 +12,8 @@
 #include <kernel/proc/process.h>
 #include <kernel/sched/clock.h>
 
-#include <sys/io.h>
-#include <sys/list.h>
+#include <libstd/io.h>
+#include <libstd/list.h>
 #include <time.h>
 
 static inline bool ioring_acquire(ioring_ctx_t* ctx)

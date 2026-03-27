@@ -7,8 +7,8 @@
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rwlock.h>
 
+#include <libstd/status.h>
 #include <string.h>
-#include <sys/status.h>
 
 static ipi_chip_t* registeredChip = NULL;
 static rwlock_t chipLock = RWLOCK_CREATE();

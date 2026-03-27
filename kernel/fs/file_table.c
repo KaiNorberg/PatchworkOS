@@ -4,7 +4,7 @@
 #include <kernel/proc/process.h>
 #include <kernel/sched/thread.h>
 
-#include <sys/bitmap.h>
+#include <libstd/bitmap.h>
 
 void file_table_init(file_table_t* table)
 {

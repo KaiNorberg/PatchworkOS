@@ -1,7 +1,7 @@
 #pragma once
 
+#include <libstd/status.h>
 #include <stdint.h>
-#include <sys/status.h>
 
 typedef struct aml_object aml_object_t;
 typedef struct aml_term_list_ctx aml_term_list_ctx_t;

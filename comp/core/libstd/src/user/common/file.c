@@ -1,12 +1,12 @@
 #include "file.h"
 
 #include <errno.h>
+#include <libstd/fs.h>
+#include <libstd/io.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/fs.h>
-#include <sys/io.h>
 
 static list_t files;
 static mtx_t filesMtx;

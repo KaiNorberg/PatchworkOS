@@ -1,6 +1,6 @@
+#include <libstd/math.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/math.h>
 
 #include "common/heap.h"
 

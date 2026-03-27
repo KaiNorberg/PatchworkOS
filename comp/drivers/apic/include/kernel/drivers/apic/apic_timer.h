@@ -1,7 +1,7 @@
 #pragma once
 
+#include <libstd/status.h>
 #include <stdint.h>
-#include <sys/status.h>
 
 /**
  * @brief Advanced Programmable Interrupt Controller Timer.

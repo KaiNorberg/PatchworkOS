@@ -12,9 +12,9 @@
 #include <kernel/sync/sync_ctl.h>
 #include <kernel/utils/ref.h>
 
+#include <libstd/map.h>
+#include <libstd/sync.h>
 #include <stdlib.h>
-#include <sys/map.h>
-#include <sys/sync.h>
 
 typedef struct
 {

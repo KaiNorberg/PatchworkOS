@@ -1,7 +1,7 @@
 #include "user/common/threading.h"
 
 #include <errno.h>
-#include <sys/proc.h>
+#include <libstd/proc.h>
 
 int* _errno_get(void)
 {

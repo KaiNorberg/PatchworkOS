@@ -2,8 +2,8 @@
 
 #include <kernel/acpi/aml/integer.h>
 
+#include <libstd/status.h>
 #include <stdint.h>
-#include <sys/status.h>
 
 typedef struct aml_state aml_state_t;
 typedef struct aml_object aml_object_t;

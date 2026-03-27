@@ -1,8 +1,8 @@
 #pragma once
 
+#include <libstd/defs.h>
+#include <libstd/status.h>
 #include <stdint.h>
-#include <sys/defs.h>
-#include <sys/status.h>
 
 /**
  * @brief Input / Output Advanced Programmable Interrupt Controller.

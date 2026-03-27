@@ -1,5 +1,5 @@
-#include <sys/fs.h>
-#include <sys/io.h>
+#include <libstd/fs.h>
+#include <libstd/io.h>
 
 status_t ioqueryp(fd_t cwd, fd_t root, const char* path, file_info_t* info)
 {

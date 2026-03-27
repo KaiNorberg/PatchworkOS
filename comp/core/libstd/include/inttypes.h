@@ -153,12 +153,12 @@ typedef struct
 
 /* 7.8.2 Functions for greatest-width integer types */
 
-_PUBLIC intmax_t imaxabs(intmax_t j);
+intmax_t imaxabs(intmax_t j);
 
-_PUBLIC imaxdiv_t imaxdiv(intmax_t numer, intmax_t denom);
+imaxdiv_t imaxdiv(intmax_t numer, intmax_t denom);
 
-_PUBLIC intmax_t strtoimax(const char* _RESTRICT nptr, char** _RESTRICT endptr, int base);
-_PUBLIC uintmax_t strtoumax(const char* _RESTRICT nptr, char** _RESTRICT endptr, int base);
+intmax_t strtoimax(const char* _RESTRICT nptr, char** _RESTRICT endptr, int base);
+uintmax_t strtoumax(const char* _RESTRICT nptr, char** _RESTRICT endptr, int base);
 
 #ifdef __cplusplus
 }

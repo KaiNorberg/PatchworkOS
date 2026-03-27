@@ -3,9 +3,9 @@
 #include <kernel/fs/filesystem.h>
 #include <kernel/fs/vnode.h>
 #include <kernel/proc/process.h>
+#include <libstd/fs.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/fs.h>
 
 typedef struct
 {

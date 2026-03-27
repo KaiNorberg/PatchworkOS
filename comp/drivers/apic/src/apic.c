@@ -9,7 +9,7 @@
 #include <kernel/module/module.h>
 #include <kernel/start/start.h>
 
-#include <sys/defs.h>
+#include <libstd/defs.h>
 
 /**
  * @brief Advanced Programmable Interrupt Controller.

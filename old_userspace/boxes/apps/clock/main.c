@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/defs.h>
+#include <libstd/defs.h>
 #include <time.h>
 
 #define WINDOW_WIDTH 500
@@ -31,7 +31,7 @@ static void draw_marker(drawable_t* draw, point_t center, int64_t radius, const 
         rotatedMarker[i].y += center.y - radius;
     }
 
-    polygon_rotate(rotatedMarker, pointCount, angle, center);
+    vertices_rotate(rotatedMarker, pointCount, angle, center);
     draw_polygon(draw, rotatedMarker, pointCount, pixel);
 }
 
@@ -45,7 +45,7 @@ static void draw_hand(drawable_t* draw, point_t center, const point_t* handPoint
         rotatedHand[i].x += center.x;
         rotatedHand[i].y += center.y;
     }
-    polygon_rotate(rotatedHand, pointCount, angle, center);
+    vertices_rotate(rotatedHand, pointCount, angle, center);
     draw_polygon(draw, rotatedHand, pointCount, pixel);
 }
 

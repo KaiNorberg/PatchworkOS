@@ -13,11 +13,11 @@
 #include <kernel/sync/lock.h>
 
 #include <assert.h>
+#include <libstd/fs.h>
+#include <libstd/list.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/fs.h>
-#include <sys/list.h>
 
 static dentry_t* root = NULL;
 

@@ -14,11 +14,11 @@
 #include <kernel/start/start.h>
 #include <kernel/sync/lock.h>
 
+#include <libstd/arch.h>
+#include <libstd/list.h>
+#include <libstd/math.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/arch.h>
-#include <sys/list.h>
-#include <sys/math.h>
 
 static void thread_ctor(void* ptr)
 {

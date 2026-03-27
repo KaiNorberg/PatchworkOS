@@ -1,6 +1,6 @@
 #include <ctype.h>
+#include <libstd/scon.h>
 #include <stdlib.h>
-#include <sys/scon.h>
 
 void scon_deinit(scon_t* scon)
 {

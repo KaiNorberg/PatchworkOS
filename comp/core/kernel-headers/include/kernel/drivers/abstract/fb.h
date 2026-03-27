@@ -5,8 +5,8 @@
 #include <kernel/fs/vnode.h>
 #include <kernel/mem/vmm.h>
 
+#include <libstd/proc.h>
 #include <stdint.h>
-#include <sys/proc.h>
 
 typedef struct fb fb_t;
 
@@ -64,6 +64,11 @@ typedef struct fb
         dentry_t* data;
     } internal;
 } fb_t;
+
+/**
+ * @brief Initialize the framebuffer abstraction.
+ */
+void fb_init(void);
 
 /**
  * @brief Register a new framebuffer.

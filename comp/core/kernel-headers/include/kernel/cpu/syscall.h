@@ -4,7 +4,7 @@
 #include <kernel/cpu/interrupt.h>
 #include <kernel/cpu/stack_pointer.h>
 
-#include <sys/syscall.h>
+#include <libstd/syscall.h>
 #endif
 
 /**

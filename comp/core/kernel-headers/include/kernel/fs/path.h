@@ -4,10 +4,10 @@
 
 #include <alloca.h>
 #include <ctype.h>
+#include <libstd/fs.h>
+#include <libstd/status.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <sys/fs.h>
-#include <sys/status.h>
 
 typedef struct irp irp_t;
 typedef struct path path_t;

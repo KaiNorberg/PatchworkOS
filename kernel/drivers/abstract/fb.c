@@ -80,20 +80,20 @@ static vnode_class_t rootClass = {
         },
 };
 
+void fb_init(void)
+{
+    root = devfs_dentry_new(NULL, "fb", &rootClass, NULL);
+    if (root == NULL)
+    {
+        panic(NULL, "Failed to create fb root dentry");
+    }
+}
+
 status_t fb_register(fb_t* fb)
 {
     if (fb == NULL || fb->name == NULL || fb->format == NULL)
     {
         return ERR(DRIVER, INVAL);
-    }
-
-    if (root == NULL)
-    {
-        root = devfs_dentry_new(NULL, "fb", &rootClass, NULL);
-        if (root == NULL)
-        {
-            return ERR(DRIVER, NOMEM);
-        }
     }
 
     char id[MAX_NAME];

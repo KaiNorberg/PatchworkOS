@@ -1,7 +1,7 @@
 #include <errno.h>
+#include <libstd/defs.h>
 #include <math.h>
 #include <stdbool.h>
-#include <sys/defs.h>
 
 // https://cppreference.com/w/c/numeric/math/sin.html
 double sin(double x)

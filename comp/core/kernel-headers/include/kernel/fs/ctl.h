@@ -3,9 +3,9 @@
 #include <kernel/fs/file.h>
 #include <kernel/fs/vnode.h>
 
+#include <libstd/status.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <sys/status.h>
 
 /**
  * @brief Control file helpers.

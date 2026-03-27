@@ -4,7 +4,7 @@
 #include <kernel/io/irp.h>
 #include <kernel/sync/lock.h>
 #include <kernel/utils/fifo.h>
-#include <sys/list.h>
+#include <libstd/list.h>
 
 /**
  * @brief Helper for creating files providing a stream of strings.
@@ -62,9 +62,11 @@ typedef struct stringstream
  * @param _stream The name of the stringstream variable.
  */
 #define STRINGSTREAM_CREATE(_stream) \
-    {.pending = LIST_CREATE((_stream).pending), \
+    { \
+        .pending = LIST_CREATE((_stream).pending), \
         .clients = LIST_CREATE((_stream).clients), \
-        .lock = LOCK_CREATE(),}
+        .lock = LOCK_CREATE(), \
+    }
 
 /**
  * @brief Initialize a stringstream.

@@ -2,9 +2,9 @@
 
 #include <errno.h>
 #include <kernel/mem/sglist.h>
+#include <libstd/status.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/status.h>
 
 /**
  * @brief First-in first-out buffer.
@@ -295,7 +295,8 @@ static inline status_t fifo_read_sglist(fifo_t* fifo, sglist_t* list, size_t cou
  * @param bytesWritten Output pointer for the amount of bytes written, can be `NULL`.
  * @return An appropriate status value.
  */
-static inline status_t fifo_write_sglist(fifo_t* fifo, sglist_t* list, size_t count, size_t offset, size_t* bytesWritten)
+static inline status_t fifo_write_sglist(fifo_t* fifo, sglist_t* list, size_t count, size_t offset,
+    size_t* bytesWritten)
 {
     size_t writeable = fifo_bytes_writeable(fifo);
     if (count > writeable)

@@ -9,11 +9,11 @@
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 
-#include <sys/defs.h>
+#include <libstd/defs.h>
 
 #include <assert.h>
+#include <libstd/syscall.h>
 #include <stdlib.h>
-#include <sys/syscall.h>
 
 PERCPU_DEFINE_CTOR(static void, pcpu_syscall)
 {

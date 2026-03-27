@@ -25,12 +25,12 @@
 #include <kernel/cpu/regs.h>
 
 #include <assert.h>
+#include <libstd/fs.h>
+#include <libstd/list.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/fs.h>
-#include <sys/list.h>
 
 typedef struct
 {

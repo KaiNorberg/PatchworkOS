@@ -11,11 +11,11 @@
 #include <kernel/sched/clock.h>
 
 #include <assert.h>
+#include <libstd/map.h>
+#include <libstd/math.h>
+#include <libstd/proc.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/map.h>
-#include <sys/math.h>
-#include <sys/proc.h>
 
 static bool space_pmm_bitmap_alloc_pages(pfn_t* pfns, size_t pageAmount)
 {

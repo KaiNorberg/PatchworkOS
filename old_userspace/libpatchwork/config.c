@@ -7,8 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <sys/fs.h>
-#include <sys/list.h>
+#include <libstd/fs.h>
+#include <libstd/list.h>
 
 typedef struct config_pair
 {

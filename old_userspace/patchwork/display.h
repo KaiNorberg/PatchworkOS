@@ -1,4 +1,4 @@
-#include <sys/io.h>
+#include <libstd/io.h>
 #ifndef PATCHWORK_DISPLAY_H
 #define PATCHWORK_DISPLAY_H 1
 
@@ -8,7 +8,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <sys/proc.h>
+#include <libstd/proc.h>
 
 #if defined(__cplusplus)
 extern "C"

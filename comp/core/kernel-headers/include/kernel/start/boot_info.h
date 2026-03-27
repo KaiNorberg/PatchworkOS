@@ -1,12 +1,12 @@
 #pragma once
 
 #include <boot/boot_info.h>
-#include <sys/defs.h>
+#include <libstd/defs.h>
 
 /**
  * @brief Kernel-side boot information handling.
- * @defgroup kernel_init_boot_info Boot Information
- * @ingroup kernel_init
+ * @defgroup kernel_start_boot_info Boot Information
+ * @ingroup kernel_start
  *
  * @{
  */

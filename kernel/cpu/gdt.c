@@ -3,7 +3,7 @@
 #include <kernel/cpu/tss.h>
 #include <kernel/mem/pmm.h>
 
-#include <sys/proc.h>
+#include <libstd/proc.h>
 
 static gdt_t gdt ALIGNED(PAGE_SIZE);
 

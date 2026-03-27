@@ -3,6 +3,8 @@ OBJ = $(patsubst $(SRC_DIR)/%, $(COMP_BUILD_DIR)/%.o, $(SRC))
 DEP = $(OBJ:.o=.d)
 -include $(DEP)
 
+COMP_DEP_BUILT = $(foreach dep,$(COMP_DEPENDS),$(BIN_DIR)/.$(dep).built)
+
 ifeq ($(COMP_TYPE),data)
 TARGET :=
 SRC :=
@@ -23,50 +25,50 @@ endif
 
 ifeq ($(COMP_TYPE),executable)
 TARGET = $(COMP_BIN_DIR)/$(COMP_NAME)
-$(TARGET): $(OBJ)
+$(TARGET): $(OBJ) $(COMP_DEP_BUILT)
 	$(MKCWD)
 	@echo "  LD    $@"
-	@$(LD) -o $@ $(CRT_START) $^ $(LDFLAGS) $(LDSTDLIB) $(CRT_END)
+	@$(LD) -o $@ $(CRT_START) $(OBJ) $(LDFLAGS) $(LDSTDLIB) $(CRT_END)
 STAGE_DEST = $(STAGE_DIR)/bin/
 endif
 
 ifeq ($(COMP_TYPE),module)
 TARGET = $(COMP_BIN_DIR)/$(COMP_NAME).ko
-$(TARGET): $(OBJ)
+$(TARGET): $(OBJ) $(COMP_DEP_BUILT)
 	$(MKCWD)
 	@echo "  LD-KO $@"
-	@$(LD) -o $@ $^ $(LDFLAGS)
+	@$(LD) -o $@ $(OBJ) $(LDFLAGS)
 STAGE_DEST = $(STAGE_DIR)/mod/
 endif
 
 ifeq ($(COMP_TYPE),static)
 TARGET = $(COMP_BIN_DIR)/$(COMP_NAME).a
-$(TARGET): $(OBJ)
+$(TARGET): $(OBJ) $(COMP_DEP_BUILT)
 	$(MKCWD)
 	@echo "  AR    $@"
-	@$(AR) rcs $@ $^
+	@$(AR) rcs $@ $(OBJ)
 STAGE_DEST = $(STAGE_DIR)/lib/
 endif
 
 ifeq ($(COMP_TYPE),shared)
 TARGET = $(COMP_BIN_DIR)/$(COMP_NAME).so
-$(TARGET): $(OBJ)
+$(TARGET): $(OBJ) $(COMP_DEP_BUILT)
 	$(MKCWD)
 	@echo "  LD-SO $@"
-	@$(LD) -shared -o $@ $^ $(LDFLAGS) $(LDSTDLIB)
+	@$(LD) -shared -o $@ $(OBJ) $(LDFLAGS) $(LDSTDLIB)
 STAGE_DEST = $(STAGE_DIR)/lib/
 endif
 
 ifeq ($(COMP_TYPE),static-shared)
 TARGET = $(COMP_BIN_DIR)/$(COMP_NAME).a $(COMP_BIN_DIR)/$(COMP_NAME).so
-$(COMP_BIN_DIR)/$(COMP_NAME).a: $(OBJ)
+$(COMP_BIN_DIR)/$(COMP_NAME).a: $(OBJ) $(COMP_DEP_BUILT)
 	$(MKCWD)
 	@echo "  AR    $@"
-	@$(AR) rcs $@ $^
-$(COMP_BIN_DIR)/$(COMP_NAME).so: $(OBJ)
+	@$(AR) rcs $@ $(OBJ)
+$(COMP_BIN_DIR)/$(COMP_NAME).so: $(OBJ) $(COMP_DEP_BUILT)
 	$(MKCWD)
 	@echo "  LD-SO $@"
-	@$(LD) -shared -o $@ $^ $(LDFLAGS) $(LDSTDLIB)
+	@$(LD) -shared -o $@ $(OBJ) $(LDFLAGS) $(LDSTDLIB)
 STAGE_DEST = $(STAGE_DIR)/lib/
 endif
 

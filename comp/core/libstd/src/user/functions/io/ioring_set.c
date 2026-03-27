@@ -1,9 +1,9 @@
 #include "user/common/threading.h"
 
+#include <libstd/fs.h>
+#include <libstd/io.h>
+#include <libstd/proc.h>
 #include <stdlib.h>
-#include <sys/fs.h>
-#include <sys/io.h>
-#include <sys/proc.h>
 #include <threads.h>
 
 ioring_t* ioring_set(ioring_t* ring)

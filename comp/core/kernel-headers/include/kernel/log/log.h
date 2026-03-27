@@ -1,14 +1,14 @@
 #pragma once
 
 #include <boot/boot_info.h>
+#include <libstd/defs.h>
+#include <libstd/fs.h>
+#include <libstd/list.h>
+#include <libstd/math.h>
+#include <libstd/proc.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <sys/defs.h>
-#include <sys/fs.h>
-#include <sys/list.h>
-#include <sys/math.h>
-#include <sys/proc.h>
 
 typedef struct dentry dentry_t;
 

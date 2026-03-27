@@ -20,8 +20,8 @@ extern "C"
 
 typedef long jmp_buf[10];
 
-_PUBLIC int setjmp(jmp_buf env);
-_PUBLIC void longjmp(jmp_buf env, int value);
+int setjmp(jmp_buf env);
+void longjmp(jmp_buf env, int value);
 
 #define _setjmp(env) setjmp(env)
 #define _longjmp(env, value) longjmp(env, value)

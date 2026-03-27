@@ -1,13 +1,13 @@
 #pragma once
 
+#include <libstd/comp.h>
+#include <libstd/fs.h>
+#include <libstd/list.h>
+#include <libstd/map.h>
+#include <libstd/scon.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <sys/comp.h>
-#include <sys/fs.h>
-#include <sys/list.h>
-#include <sys/map.h>
-#include <sys/scon.h>
 
 typedef struct
 {
@@ -32,7 +32,8 @@ typedef struct
 void _comp_loader_init(_comp_loader_t* loader);
 void _comp_loader_deinit(_comp_loader_t* loader);
 status_t _comp_version_parse(const char* version, size_t versionLen, comp_version_t* out);
-status_t _comp_add(_comp_loader_t* loader, const char* name, size_t nameLen, const char* version, size_t versionLen, _comp_req_t** out);
+status_t _comp_add(_comp_loader_t* loader, const char* name, size_t nameLen, const char* version, size_t versionLen,
+    _comp_req_t** out);
 status_t _comp_load_dependencies(_comp_loader_t* loader);
 status_t _comp_cull_orphans(_comp_loader_t* loader, _comp_req_t* main);
 status_t _comp_load_capabilities(_comp_loader_t* loader, fd_t root);

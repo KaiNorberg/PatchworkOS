@@ -1,12 +1,12 @@
+#include <libstd/comp.h>
+#include <libstd/defs.h>
+#include <libstd/fs.h>
+#include <libstd/io.h>
+#include <libstd/list.h>
+#include <libstd/map.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/comp.h>
-#include <sys/io.h>
-#include <sys/fs.h>
-#include <sys/list.h>
-#include <sys/map.h>
-#include <sys/defs.h>
 
 static char announcement[PAGE_SIZE];
 
@@ -16,7 +16,7 @@ typedef struct module
     char name[MAX_NAME];
 } module_t;
 
-typedef struct 
+typedef struct
 {
     list_entry_t entry;
     comp_dependency_t* deps;
@@ -97,10 +97,8 @@ static status_t module_load_loop(module_loader_t* loader)
                 continue;
             }
 
-            iovec_t vecs[2] = {
-                {.base = (void*)loader->deviceType, .length = strlen(loader->deviceType) + 1},
-                {.base = (void*)loader->deviceName, .length = strlen(loader->deviceName) + 1}
-            };
+            iovec_t vecs[2] = {{.base = (void*)loader->deviceType, .length = strlen(loader->deviceType) + 1},
+                {.base = (void*)loader->deviceName, .length = strlen(loader->deviceName) + 1}};
 
             char attachPath[MAX_PATH];
             snprintf(attachPath, sizeof(attachPath), "/sys/mod/instances/%s/attach:write", dep->name);
@@ -120,7 +118,10 @@ static status_t module_load_loop(module_loader_t* loader)
         }
 
         fd_t fd;
-        status_t status = iowalk(FDCWD, FDROOT, IOFMT("/comp/%s/%u.%u.%u/%.*s:read", dep->name, dep->version.major, dep->version.minor, dep->version.patch, (int)moduleBinaryPathLen, moduleBinaryPath), &fd);
+        status_t status = iowalk(FDCWD, FDROOT,
+            IOFMT("/comp/%s/%u.%u.%u/%.*s:read", dep->name, dep->version.major, dep->version.minor, dep->version.patch,
+                (int)moduleBinaryPathLen, moduleBinaryPath),
+            &fd);
         if (IS_ERR(status))
         {
             printf("  %s: failed to open module %Y\n", dep->name, status);
@@ -148,22 +149,19 @@ static status_t module_load_loop(module_loader_t* loader)
         const char* attachType = isMain ? loader->deviceType : "-";
         const char* attachName = isMain ? loader->deviceName : "-";
 
-        iovec_t vecs[4] = {
-            {.base = (void*)dep->name, .length = strlen(dep->name) + 1},
+        iovec_t vecs[4] = {{.base = (void*)dep->name, .length = strlen(dep->name) + 1},
             {.base = (void*)attachType, .length = strlen(attachType) + 1},
-            {.base = (void*)attachName, .length = strlen(attachName) + 1},
-            {.base = addr, .length = size}
-        };
+            {.base = (void*)attachName, .length = strlen(attachName) + 1}, {.base = addr, .length = size}};
 
         status = iowritep(FDCWD, FDROOT, "/sys/mod/load:write", vecs, 4, 0, NULL);
         iounmap(addr, size);
-    
+
         if (IS_ERR(status))
         {
             printf("  %s: failed to load module %Y\n", dep->name, status);
             return status;
         }
-        
+
         module_mark_loaded(dep->name);
 
         if (IS_CODE(status, DEFERRED))
@@ -201,7 +199,6 @@ static status_t module_load(const char* name, const char* version, const char* d
     strncpy(loader->deviceName, deviceName, MAX_PATH - 1);
     loader->deviceName[MAX_PATH - 1] = '\0';
 
-    printf("modman: dependencies for %s %s: %llu\n", name, version, loader->count);
     status = module_load_loop(loader);
     if (IS_ERR(status) || !IS_CODE(status, DEFERRED))
     {
@@ -255,7 +252,8 @@ static status_t module_attach(const char* type, const char* compat, const char* 
 
             static char path[MAX_PATH];
             size_t pathLen;
-            status = ioreadp(FDCWD, FDROOT, IOFMT("/comp/.index/device/%s/%s:read:nofollow", targetType, symlink), IOBUF(path, sizeof(path) - 1), 0, &pathLen);
+            status = ioreadp(FDCWD, FDROOT, IOFMT("/comp/.index/device/%s/%s:read:nofollow", targetType, symlink),
+                IOBUF(path, sizeof(path) - 1), 0, &pathLen);
             if (IS_ERR(status))
             {
                 printf("modman: failed to read symlink %s %Y\n", symlink, status);
@@ -297,7 +295,7 @@ static status_t module_attach(const char* type, const char* compat, const char* 
 
         status_t status = module_load_loop(loader);
         if (IS_ERR(status))
-        {       
+        {
             printf("modman: failed to load deferred module %s %Y\n", loader->deps[loader->current].name, status);
             module_loader_free(loader);
             continue;
@@ -375,7 +373,8 @@ int main(int argc, char** argv)
                     status = module_attach(type, strcmp(compat, "-") == 0 ? NULL : compat, name);
                     if (IS_ERR(status))
                     {
-                        printf("modman: failed to attach %s %s %s %s %Y\n", timestamp, change, type, compat, name, status);
+                        printf("modman: failed to attach %s %s %s %s %Y\n", timestamp, change, type, compat, name,
+                            status);
                     }
                 }
             }

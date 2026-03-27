@@ -2,7 +2,7 @@
 
 #include <kernel/acpi/aml/runtime/convert.h>
 #include <kernel/log/log.h>
-#include <sys/status.h>
+#include <libstd/status.h>
 
 static status_t aml_concat_resolve_to_integer(aml_state_t* state, aml_object_t* source, aml_uint_t* out)
 {

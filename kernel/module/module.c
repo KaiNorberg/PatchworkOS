@@ -11,9 +11,9 @@
 #include <kernel/start/boot_info.h>
 #include <kernel/sync/lock.h>
 
+#include <libstd/elf.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/elf.h>
 
 static dentry_t* instancesDir = NULL;
 static dentry_t* loadFile = NULL;
@@ -330,7 +330,7 @@ static status_t module_load_write(irp_t* irp)
         free(data);
         return ERR(MODULE, NOMEM);
     }
-    
+
     if (strcmp(deviceType, "-") == 0 || strcmp(deviceName, "-") == 0)
     {
         LOG_INFO("module loaded successfully without attaching at %p\n", module->baseAddr);

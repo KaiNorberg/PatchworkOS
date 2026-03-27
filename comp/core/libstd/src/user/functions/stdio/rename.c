@@ -1,8 +1,8 @@
 #include <errno.h>
+#include <libstd/fs.h>
+#include <libstd/io.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/fs.h>
-#include <sys/io.h>
 
 int rename(const char* oldpath, const char* newpath)
 {

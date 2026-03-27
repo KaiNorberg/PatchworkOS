@@ -1,4 +1,4 @@
-#include <sys/proc.h>
+#include <libstd/proc.h>
 
 #include "user/common/exit_stack.h"
 #include "user/common/file.h"

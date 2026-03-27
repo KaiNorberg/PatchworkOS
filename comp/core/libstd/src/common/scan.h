@@ -2,12 +2,12 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <libstd/defs.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/defs.h>
 
 #include "digits.h"
 

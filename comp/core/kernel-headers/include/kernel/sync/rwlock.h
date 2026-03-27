@@ -3,8 +3,8 @@
 #include <kernel/cpu/cli.h>
 #include <kernel/cpu/interrupt.h>
 
+#include <libstd/defs.h>
 #include <stdatomic.h>
-#include <sys/defs.h>
 
 #ifndef NDEBUG
 #include <kernel/log/panic.h>

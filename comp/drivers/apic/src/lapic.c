@@ -9,7 +9,7 @@
 #include <kernel/utils/utils.h>
 
 #include <assert.h>
-#include <sys/defs.h>
+#include <libstd/defs.h>
 
 static void* lapicBase = NULL;
 

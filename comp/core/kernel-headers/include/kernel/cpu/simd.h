@@ -1,8 +1,8 @@
 #pragma once
 
+#include <libstd/status.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <sys/status.h>
 
 /**
  * @brief SIMD context management

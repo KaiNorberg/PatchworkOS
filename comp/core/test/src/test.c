@@ -1,6 +1,6 @@
+#include <libstd/defs.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/defs.h>
 
 int main(int argc, char** argv)
 {

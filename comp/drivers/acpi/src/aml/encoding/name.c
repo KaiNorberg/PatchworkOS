@@ -9,9 +9,9 @@
 #include <kernel/acpi/aml/token.h>
 #include <kernel/log/log.h>
 
+#include <libstd/list.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/list.h>
 
 status_t aml_seg_count_read(aml_term_list_ctx_t* ctx, uint8_t* out)
 {

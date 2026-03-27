@@ -2,14 +2,14 @@
 
 #include <kernel/mem/paging_types.h>
 
+#include <libstd/status.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <sys/status.h>
 
 /**
  * @brief Page Vector structure.
- * @defgroup Page Vector
- * @ingroup kernel_mem_pagevec
+ * @defgroup kernel_mem_pagevec Page Vector
+ * @ingroup kernel_mem
  *
  * A Page Vector is intended as a lightweight alternative to the Scatter Gather List structure, primarily used for
  * backing shared memory buffers.

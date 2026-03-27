@@ -5,8 +5,8 @@
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rcu.h>
 
+#include <libstd/bitmap.h>
 #include <stdlib.h>
-#include <sys/bitmap.h>
 
 static BITMAP_CREATE_ZERO(ack, CPU_MAX);
 static uint64_t grace = 0;

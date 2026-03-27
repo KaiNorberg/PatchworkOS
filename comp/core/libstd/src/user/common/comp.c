@@ -124,8 +124,8 @@ status_t _comp_version_parse(const char* version, size_t versionLen, comp_versio
     return OK;
 }
 
-status_t _comp_add(_comp_loader_t* loader, const char* name, size_t nameLen, const char* version,
-    size_t versionLen, _comp_req_t** out)
+status_t _comp_add(_comp_loader_t* loader, const char* name, size_t nameLen, const char* version, size_t versionLen,
+    _comp_req_t** out)
 {
     if (loader == NULL || name == NULL || nameLen >= MAX_NAME || version == NULL || out == NULL)
     {

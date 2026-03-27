@@ -2,8 +2,8 @@
 
 #include <kernel/fs/vfs.h>
 #include <kernel/log/log.h>
+#include <libstd/list.h>
 #include <stdlib.h>
-#include <sys/list.h>
 
 static void binding_free(binding_t* binding)
 {

@@ -5,7 +5,7 @@ AR := ar
 OBJCOPY := objcopy
 MKCWD = @mkdir -p $(@D)
 
-CFLAGS := \
+CFLAGS += \
 	-std=gnu11 \
 	-ffreestanding \
 	-fno-builtin \
@@ -30,20 +30,20 @@ CFLAGS := \
 	-Wno-override-init \
 	-isystem $(STAGING_DIR)/include
 
-CFLAGS_DISABLE_SIMD := \
+CFLAGS_DISABLE_SIMD += \
 	-mno-mmx -mno-3dnow \
 	-mno-80387 -mno-sse \
 	-mno-sse2 -mno-sse3 \
 	-mno-ssse3 -mno-sse4 \
 	-mno-avx -mno-avx2
 
-ASFLAGS := \
+ASFLAGS += \
 	-nostdinc \
 	-ffreestanding \
 	-fno-builtin \
 	-isystem $(STAGING_DIR)/include
 
-LDFLAGS := \
+LDFLAGS += \
 	-nostdlib \
 
 ifeq ($(TESTING),1)
@@ -58,5 +58,5 @@ else
 	CFLAGS += -O2 -DNDEBUG
 endif
 
-CRT_START := $(BIN_DIR)/comp/libstd/crt0.o $(BIN_DIR)/comp/libstd/crti.o
-CRT_END := $(BIN_DIR)/comp/libstd/crtn.o
+CRT_START += $(BIN_DIR)/comp/crt0.o $(BIN_DIR)/comp/crti.o
+CRT_END += $(BIN_DIR)/comp/crtn.o

@@ -22,12 +22,12 @@
 
 #include <kernel/cpu/regs.h>
 
+#include <libstd/fs.h>
+#include <libstd/list.h>
+#include <libstd/map.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/fs.h>
-#include <sys/list.h>
-#include <sys/map.h>
 
 static dentry_t* root = NULL;
 

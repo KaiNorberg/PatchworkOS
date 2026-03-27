@@ -22,7 +22,7 @@ LDFLAGS += \
 	-e _start_early \
 	-z noexecstack \
 	-Wno-unused-command-line-argument \
-	-L$(BIN_DIR)/comp/libstd \
+	-L$(BIN_DIR)/comp \
 	-static
 
 CFLAGS += \

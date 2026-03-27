@@ -2,11 +2,11 @@
 
 #include <kernel/acpi/aml/encoding/name.h>
 
+#include <libstd/defs.h>
+#include <libstd/list.h>
+#include <libstd/map.h>
+#include <libstd/status.h>
 #include <stdint.h>
-#include <sys/defs.h>
-#include <sys/list.h>
-#include <sys/map.h>
-#include <sys/status.h>
 
 /**
  * @brief Namespace and Namespace Overlays

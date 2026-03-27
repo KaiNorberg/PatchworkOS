@@ -14,9 +14,9 @@
 #include <kernel/sched/timer.h>
 #include <kernel/utils/test.h>
 
+#include <libstd/list.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/list.h>
 
 static bool aml_tests_check_object_leak(void)
 {

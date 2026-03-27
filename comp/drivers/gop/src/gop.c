@@ -12,8 +12,8 @@
 #include <kernel/start/boot_info.h>
 #include <kernel/start/start.h>
 
+#include <libstd/math.h>
 #include <string.h>
-#include <sys/math.h>
 
 /**
  * @brief GOP (Graphics Output Protocol) driver.

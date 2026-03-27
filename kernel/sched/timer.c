@@ -10,9 +10,9 @@
 #include <kernel/sched/timer.h>
 
 #include <kernel/sync/rwlock.h>
+#include <libstd/math.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <sys/math.h>
 #include <time.h>
 
 static const timer_source_t* sources[TIMER_MAX_SOURCES] = {0};

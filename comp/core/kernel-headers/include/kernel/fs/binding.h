@@ -4,10 +4,10 @@
 #include <kernel/sync/rcu.h>
 #include <kernel/utils/ref.h>
 
+#include <libstd/list.h>
+#include <libstd/map.h>
 #include <stdatomic.h>
 #include <stdint.h>
-#include <sys/list.h>
-#include <sys/map.h>
 
 typedef struct binding binding_t;
 typedef struct dentry dentry_t;

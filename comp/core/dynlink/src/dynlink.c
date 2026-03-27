@@ -13,11 +13,11 @@ static ioring_t* _ioring;
         _len; \
     })
 
-#include <sys/auxv.h>
-#include <sys/elf.h>
-#include <sys/fs.h>
-#include <sys/io.h>
-#include <sys/math.h>
+#include <libstd/auxv.h>
+#include <libstd/elf.h>
+#include <libstd/fs.h>
+#include <libstd/io.h>
+#include <libstd/math.h>
 
 /**
  * @brief Dynamic Linker

@@ -4,7 +4,7 @@
 #include <kernel/fs/file.h>
 #include <kernel/sync/lock.h>
 
-#include <sys/bitmap.h>
+#include <libstd/bitmap.h>
 
 /**
  * @brief File Table

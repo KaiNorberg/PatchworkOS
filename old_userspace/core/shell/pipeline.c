@@ -6,9 +6,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/argsplit.h>
-#include <sys/fs.h>
-#include <sys/proc.h>
+#include <libstd/argsplit.h>
+#include <libstd/fs.h>
+#include <libstd/proc.h>
 
 status_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd_t stdout, fd_t stderr)
 {

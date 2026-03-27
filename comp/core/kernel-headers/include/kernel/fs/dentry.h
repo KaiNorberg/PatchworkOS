@@ -7,12 +7,12 @@
 #include <kernel/sync/seqlock.h>
 #include <kernel/utils/ref.h>
 
+#include <libstd/dstr.h>
+#include <libstd/fs.h>
+#include <libstd/list.h>
+#include <libstd/map.h>
 #include <stdatomic.h>
 #include <stdint.h>
-#include <sys/fs.h>
-#include <sys/list.h>
-#include <sys/map.h>
-#include <sys/dstr.h>
 
 typedef struct dentry dentry_t;
 typedef struct vnode vnode_t;
@@ -80,10 +80,10 @@ typedef struct dentry
 {
     ref_t ref;
     dentry_id_t id;
-    dstr_t name; ///< The name of the dentry, immutable after creation.
-    vnode_t* vnode;      ///< Will be `NULL` if the dentry is negative, once positive it will never be modified.
-    dentry_t* parent;    ///< The parent dentry, can be `NULL`, immutable after creation.
-    void* data;          ///< Private data to store in the dentry, can be `NULL`.
+    dstr_t name;      ///< The name of the dentry, immutable after creation.
+    vnode_t* vnode;   ///< Will be `NULL` if the dentry is negative, once positive it will never be modified.
+    dentry_t* parent; ///< The parent dentry, can be `NULL`, immutable after creation.
+    void* data;       ///< Private data to store in the dentry, can be `NULL`.
     list_entry_t siblingEntry;
     list_t children;
     map_entry_t mapEntry;       ///< Entry in the dentry cache hash map.

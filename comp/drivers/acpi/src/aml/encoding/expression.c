@@ -20,7 +20,7 @@
 #include <kernel/sched/clock.h>
 #include <kernel/sched/timer.h>
 
-#include <sys/proc.h>
+#include <libstd/proc.h>
 
 status_t aml_operand_read(aml_term_list_ctx_t* ctx, aml_type_t allowedTypes, aml_object_t** out)
 {

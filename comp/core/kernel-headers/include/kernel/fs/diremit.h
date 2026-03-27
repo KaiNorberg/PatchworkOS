@@ -1,7 +1,7 @@
 #pragma once
 
 #include <kernel/io/irp.h>
-#include <sys/status.h>
+#include <libstd/status.h>
 
 /**
  * @brief Helpers for implementing directory reads.

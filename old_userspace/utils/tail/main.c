@@ -4,8 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/fs.h>
-#include <sys/io.h>
+#include <libstd/fs.h>
+#include <libstd/io.h>
 
 int main(int argc, char* argv[])
 {

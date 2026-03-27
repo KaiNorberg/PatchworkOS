@@ -1,8 +1,8 @@
 #include <kernel/drivers/announce.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/stringstream.h>
-#include <kernel/sched/clock.h>
 #include <kernel/log/log.h>
+#include <kernel/sched/clock.h>
 
 static mutex_t mutex = MUTEX_CREATE(mutex);
 static dentry_t* announce = NULL;
@@ -11,7 +11,11 @@ static stringstream_t stream = STRINGSTREAM_CREATE(stream);
 static vnode_class_t announceClass = {
     .name = "announce",
     .type = FILE_TYPE_SYSTEM,
-    .handlers = {VNODE_HANDLERS(), STRINGSTREAM_HANDLERS(),},
+    .handlers =
+        {
+            VNODE_HANDLERS(),
+            STRINGSTREAM_HANDLERS(),
+        },
 };
 
 void announce_init(void)
@@ -55,7 +59,8 @@ status_t announce_device(const char* type, const char* compat, const char* name,
     }
 
     char buffer[256];
-    int length = snprintf(buffer, sizeof(buffer), "%llu %s %s %s %s\n", clock_uptime(), changeString, type, compat != NULL ? compat : "-", name);
+    int length = snprintf(buffer, sizeof(buffer), "%llu %s %s %s %s\n", clock_uptime(), changeString, type,
+        compat != NULL ? compat : "-", name);
     if (length < 0 || length >= (int)sizeof(buffer))
     {
         return ERR(FS, INVAL);

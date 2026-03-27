@@ -1,10 +1,6 @@
 #ifndef _INTERNAL_CONFIG_H
 #define _INTERNAL_CONFIG_H 1
 
-#ifndef _IS_STATIC
-#define _IS_STATIC 1
-#endif
-
 ///////////////////////////////////////////////
 
 #if (__STDC_WANT_LIB_EXT1__ + 0) != 0
@@ -35,37 +31,6 @@
 #else
 #define _RESTRICT restrict
 #define _INLINE inline
-#endif
-
-#ifdef _IS_STATIC
-#define _PUBLIC
-#define _LOCAL
-#else
-#if defined _WIN32 || defined __CYGWIN__
-#ifdef _BUILD
-#ifdef __GNUC__
-#define _PUBLIC __attribute__((dllexport))
-#else
-#define _PUBLIC __declspec(dllexport)
-#endif
-#else
-#ifdef __GNUC__
-#define _PUBLIC __attribute__((dllimport))
-#else
-#define _PUBLIC __declspec(dllimport)
-#endif
-#endif
-#define _LOCAL
-#else
-#if __GNUC__ >= 4
-#define _PUBLIC __attribute__((visibility("default")))
-#define _LOCAL __attribute__((visibility("hidden")))
-#else
-#define _PUBLIC
-#define _LOCAL
-#endif
-#endif
-
 #endif
 
 #endif

@@ -1,7 +1,7 @@
+#include <libstd/proc.h>
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <sys/proc.h>
 #include <threads.h>
 
 #include "user/common/threading.h"

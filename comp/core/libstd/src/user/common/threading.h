@@ -1,10 +1,10 @@
 #pragma once
 
 #include <errno.h>
+#include <libstd/io.h>
+#include <libstd/proc.h>
 #include <stdatomic.h>
 #include <stdbool.h>
-#include <sys/io.h>
-#include <sys/proc.h>
 #include <threads.h>
 
 /**

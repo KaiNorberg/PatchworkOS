@@ -14,8 +14,8 @@
 #include <kernel/sync/mutex.h>
 #include <kernel/sync/seqlock.h>
 
+#include <libstd/list.h>
 #include <stdlib.h>
-#include <sys/list.h>
 
 typedef struct
 {
@@ -86,7 +86,7 @@ static void dentry_map_remove(dentry_t* dentry)
 static void dentry_free_rcu(void* arg)
 {
     dentry_t* dentry = arg;
- 
+
     dstr_deinit(&dentry->name);
     cache_free(dentry);
 }

@@ -4,14 +4,14 @@
 
 #ifndef _KERNEL_
 
-.global memcpy_sse2
-.type memcpy_sse2, @function
+.global _memcpy_sse2
+.type _memcpy_sse2, @function
 
 // rdi = dest
 // rsi = src
 // rdx = n
 // return rdi
-memcpy_sse2:
+_memcpy_sse2:
     movq %rdi, %rax
     testq %rdx, %rdx
     jz .done

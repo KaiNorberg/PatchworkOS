@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/fs.h>
-#include <sys/status.h>
+#include <libstd/fs.h>
+#include <libstd/status.h>
 
 int main(int argc, char** argv)
 {

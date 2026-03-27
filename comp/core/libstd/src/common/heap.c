@@ -1,11 +1,11 @@
 #include "heap.h"
 
+#include <libstd/bitmap.h>
+#include <libstd/fs.h>
+#include <libstd/io.h>
+#include <libstd/math.h>
+#include <libstd/proc.h>
 #include <string.h>
-#include <sys/bitmap.h>
-#include <sys/fs.h>
-#include <sys/io.h>
-#include <sys/math.h>
-#include <sys/proc.h>
 
 #ifdef _KERNEL_
 #include <kernel/log/panic.h>

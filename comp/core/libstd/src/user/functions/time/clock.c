@@ -1,4 +1,4 @@
-#include <sys/syscall.h>
+#include <libstd/syscall.h>
 #include <time.h>
 
 clock_t clock(void)

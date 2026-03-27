@@ -9,7 +9,7 @@
 #include <kernel/utils/utils.h>
 
 #include <assert.h>
-#include <sys/defs.h>
+#include <libstd/defs.h>
 
 static uint32_t ioapic_read(ioapic_t* ioapic, ioapic_register_t reg)
 {

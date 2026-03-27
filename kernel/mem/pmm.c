@@ -8,14 +8,14 @@
 #include <kernel/sync/lock.h>
 
 #include <boot/boot_info.h>
+#include <libstd/bitmap.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <sys/bitmap.h>
 
+#include <libstd/io.h>
+#include <libstd/math.h>
+#include <libstd/proc.h>
 #include <string.h>
-#include <sys/io.h>
-#include <sys/math.h>
-#include <sys/proc.h>
 
 static const char* efiMemTypeToString[] = {
     "reserved",

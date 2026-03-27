@@ -4,11 +4,11 @@
 #include <kernel/cpu/interrupt.h>
 
 #include <kernel/sched/sched.h>
+#include <libstd/fs.h>
+#include <libstd/list.h>
+#include <libstd/proc.h>
 #include <stdatomic.h>
 #include <stdint.h>
-#include <sys/fs.h>
-#include <sys/list.h>
-#include <sys/proc.h>
 
 typedef struct rcu_entry rcu_entry_t;
 

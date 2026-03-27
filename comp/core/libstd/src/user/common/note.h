@@ -1,8 +1,8 @@
 #pragma once
 
+#include <libstd/note.h>
 #include <signal.h>
 #include <stdint.h>
-#include <sys/note.h>
 
 #define _NOTE_MAX_HANDLERS 32
 

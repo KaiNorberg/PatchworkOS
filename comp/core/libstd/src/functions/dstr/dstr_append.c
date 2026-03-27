@@ -1,6 +1,6 @@
-#include <sys/dstr.h>
+#include <libstd/dstr.h>
+#include <libstd/status.h>
 #include <stdlib.h>
-#include <sys/status.h>
 #include <string.h>
 
 status_t dstr_append(dstr_t* dstr, const char* data, size_t length)

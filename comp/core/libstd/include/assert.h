@@ -8,8 +8,8 @@ extern "C"
 
 #include "_libstd/config.h"
 
-_PUBLIC void _assert_99(const char* const, const char* const, const char* const);
-_PUBLIC void _assert_89(const char* const);
+void _assert_99(const char* const, const char* const, const char* const);
+void _assert_89(const char* const);
 
 /* If NDEBUG is set, assert() is a null operation. */
 #undef assert

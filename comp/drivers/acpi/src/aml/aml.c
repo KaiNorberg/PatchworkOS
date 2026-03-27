@@ -12,7 +12,7 @@
 
 #include <kernel/log/log.h>
 
-#include <sys/math.h>
+#include <libstd/math.h>
 
 static mutex_t bigMutex;
 

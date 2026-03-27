@@ -1,10 +1,10 @@
 #pragma once
 
-#include <sys/defs.h>
+#include <libstd/defs.h>
 
 #include <boot/boot_info.h>
 
-#include <sys/list.h>
+#include <libstd/list.h>
 
 typedef struct interrupt_frame interrupt_frame_t;
 typedef struct cpu cpu_t;
