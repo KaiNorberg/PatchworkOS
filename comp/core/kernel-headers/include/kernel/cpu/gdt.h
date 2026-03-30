@@ -2,7 +2,7 @@
 
 #ifndef __ASSEMBLER__
 #include <kernel/cpu/tss.h>
-#include <libstd/defs.h>
+#include <libc/defs.h>
 
 #include <stdint.h>
 #endif

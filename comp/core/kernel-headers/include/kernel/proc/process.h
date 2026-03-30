@@ -13,8 +13,8 @@
 #include <kernel/sync/rcu.h>
 #include <kernel/utils/ref.h>
 
-#include <libstd/map.h>
-#include <libstd/status.h>
+#include <libc/map.h>
+#include <libc/status.h>
 #include <stdatomic.h>
 
 /**

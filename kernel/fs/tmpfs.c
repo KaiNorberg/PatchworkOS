@@ -21,11 +21,11 @@
 #include <kernel/utils/ref.h>
 
 #include <assert.h>
-#include <libstd/defs.h>
-#include <libstd/fs.h>
-#include <libstd/list.h>
-#include <libstd/math.h>
-#include <libstd/status.h>
+#include <libc/defs.h>
+#include <libc/fs.h>
+#include <libc/list.h>
+#include <libc/math.h>
+#include <libc/status.h>
 #include <stdlib.h>
 #include <string.h>
 

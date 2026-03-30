@@ -4,9 +4,9 @@
 #include <kernel/cpu/interrupt.h>
 
 #include <kernel/sched/sched.h>
-#include <libstd/fs.h>
-#include <libstd/list.h>
-#include <libstd/proc.h>
+#include <libc/fs.h>
+#include <libc/list.h>
+#include <libc/proc.h>
 #include <stdatomic.h>
 #include <stdint.h>
 

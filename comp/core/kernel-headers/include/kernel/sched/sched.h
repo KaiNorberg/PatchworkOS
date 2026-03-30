@@ -3,10 +3,10 @@
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 #include <kernel/utils/rbtree.h>
-#include <libstd/defs.h>
+#include <libc/defs.h>
 
-#include <libstd/list.h>
-#include <libstd/proc.h>
+#include <libc/list.h>
+#include <libc/proc.h>
 
 typedef struct process process_t;
 typedef struct thread thread_t;

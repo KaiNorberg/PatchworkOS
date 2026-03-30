@@ -7,7 +7,7 @@
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rwlock.h>
 
-#include <libstd/status.h>
+#include <libc/status.h>
 #include <string.h>
 
 static ipi_chip_t* registeredChip = NULL;

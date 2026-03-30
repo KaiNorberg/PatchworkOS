@@ -1,11 +1,11 @@
 #pragma once
 
-#include <_libstd/MAX_PATH.h>
+#include <_libc/MAX_PATH.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/fs/vnode.h>
 #include <kernel/mem/vmm.h>
 
-#include <libstd/proc.h>
+#include <libc/proc.h>
 #include <stdint.h>
 
 typedef struct fb fb_t;

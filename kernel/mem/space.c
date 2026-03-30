@@ -11,9 +11,9 @@
 #include <kernel/sched/clock.h>
 
 #include <assert.h>
-#include <libstd/map.h>
-#include <libstd/math.h>
-#include <libstd/proc.h>
+#include <libc/map.h>
+#include <libc/math.h>
+#include <libc/proc.h>
 #include <stdlib.h>
 #include <string.h>
 

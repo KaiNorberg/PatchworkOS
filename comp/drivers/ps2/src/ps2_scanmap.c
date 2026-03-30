@@ -1,5 +1,5 @@
 #include "ps2_scanmap.h"
-#include <libstd/kbd.h>
+#include <libc/kbd.h>
 
 static const keycode_t set2Map[256] = {
     [0x00] = KBD_NONE,

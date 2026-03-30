@@ -5,7 +5,7 @@
 #include <kernel/cpu/irq.h>
 #include <kernel/cpu/port.h>
 
-#include <libstd/fs.h>
+#include <libc/fs.h>
 
 /**
  * @brief Device and Power Management

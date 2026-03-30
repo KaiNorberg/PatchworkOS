@@ -25,8 +25,8 @@
 #include <kernel/cpu/regs.h>
 
 #include <assert.h>
-#include <libstd/fs.h>
-#include <libstd/list.h>
+#include <libc/fs.h>
+#include <libc/list.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

@@ -2,7 +2,7 @@
 
 #include <errno.h>
 #include <kernel/mem/sglist.h>
-#include <libstd/status.h>
+#include <libc/status.h>
 #include <stdint.h>
 #include <string.h>
 

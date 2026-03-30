@@ -1,6 +1,6 @@
 #pragma once
 
-#include <libstd/defs.h>
+#include <libc/defs.h>
 
 #include <stdint.h>
 

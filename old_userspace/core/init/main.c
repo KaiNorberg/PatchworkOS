@@ -1,11 +1,11 @@
-#include <_libstd/clock_t.h>
+#include <_libc/clock_t.h>
 #include <errno.h>
 #include <patchwork/patchwork.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libstd/fs.h>
-#include <libstd/proc.h>
+#include <libc/fs.h>
+#include <libc/proc.h>
 #include <threads.h>
 #include <time.h>
 

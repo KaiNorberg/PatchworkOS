@@ -8,13 +8,13 @@
 #include <kernel/sync/lock.h>
 
 #include <boot/boot_info.h>
-#include <libstd/bitmap.h>
+#include <libc/bitmap.h>
 #include <stddef.h>
 #include <stdint.h>
 
-#include <libstd/io.h>
-#include <libstd/math.h>
-#include <libstd/proc.h>
+#include <libc/io.h>
+#include <libc/math.h>
+#include <libc/proc.h>
 #include <string.h>
 
 static const char* efiMemTypeToString[] = {

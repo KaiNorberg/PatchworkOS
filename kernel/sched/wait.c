@@ -14,7 +14,7 @@
 #include <kernel/sync/lock.h>
 
 #include <assert.h>
-#include <libstd/list.h>
+#include <libc/list.h>
 #include <stdatomic.h>
 
 PERCPU_DEFINE_CTOR(static wait_t, pcpu_wait)

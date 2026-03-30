@@ -1,9 +1,9 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <libstd/io.h>
-#include <libstd/proc.h>
-#include <libstd/status.h>
+#include <libc/io.h>
+#include <libc/proc.h>
+#include <libc/status.h>
 #include <threads.h>
 #include <time.h>
 
@@ -66,7 +66,7 @@ int main()
 
         printf("iocqe data: %p\n", iocqe->data);
         printf("iocqe op: %d\n", iocqe->op);
-        printf("iocqe status: %Y\n", status);
+        printf("iocqe status%Y\n", status);
         printf("iocqe result: %llu\n", iocqe->result);
 
         iocqe_put(&ring);

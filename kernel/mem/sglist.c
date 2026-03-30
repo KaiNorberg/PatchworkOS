@@ -3,7 +3,7 @@
 #include <kernel/mem/space.h>
 #include <kernel/proc/process.h>
 
-#include <libstd/proc.h>
+#include <libc/proc.h>
 #include <stdlib.h>
 #include <string.h>
 

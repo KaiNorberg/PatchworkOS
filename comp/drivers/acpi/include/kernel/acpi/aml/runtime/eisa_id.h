@@ -1,6 +1,6 @@
 #pragma once
 
-#include <libstd/status.h>
+#include <libc/status.h>
 #include <stddef.h>
 #include <stdint.h>
 

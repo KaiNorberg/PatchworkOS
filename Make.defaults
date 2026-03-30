@@ -1,14 +1,16 @@
-CC := gcc
-AS := gcc
-LD := gcc
-AR := ar
-OBJCOPY := objcopy
+CC := clang --config $(ROOT_DIR)/tools/patchworkos.cfg
+AS := clang --config $(ROOT_DIR)/tools/patchworkos.cfg
+LD := ld.lld
+AR := llvm-ar
+RANLIB := llvm-ranlib
+OBJCOPY := llvm-objcopy
 MKCWD = @mkdir -p $(@D)
+
+CC_INC := $(shell clang -print-file-name=include)
 
 CFLAGS += \
 	-std=gnu11 \
 	-ffreestanding \
-	-fno-builtin \
 	-march=x86-64 \
 	-fno-pie \
 	-fno-stack-protector \
@@ -28,7 +30,9 @@ CFLAGS += \
 	-Wno-unused-parameter \
 	-Wno-missing-braces \
 	-Wno-override-init \
-	-isystem $(STAGING_DIR)/include
+	-Wno-unused-command-line-argument \
+	-isystem $(STAGING_DIR)/include \
+	-isystem $(CC_INC)
 
 CFLAGS_DISABLE_SIMD += \
 	-mno-mmx -mno-3dnow \
@@ -38,13 +42,13 @@ CFLAGS_DISABLE_SIMD += \
 	-mno-avx -mno-avx2
 
 ASFLAGS += \
-	-nostdinc \
+  	-nostdinc \
 	-ffreestanding \
-	-fno-builtin \
-	-isystem $(STAGING_DIR)/include
+	-Wno-unused-command-line-argument \
+	-isystem $(STAGING_DIR)/include \
+	-isystem $(CC_INC)
 
-LDFLAGS += \
-	-nostdlib \
+LDFLAGS +=
 
 ifeq ($(TESTING),1)
 	CFLAGS += -D_TESTING_

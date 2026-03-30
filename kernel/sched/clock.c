@@ -11,7 +11,7 @@
 #include <kernel/sched/timer.h>
 
 #include <kernel/sync/rwlock.h>
-#include <libstd/math.h>
+#include <libc/math.h>
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>

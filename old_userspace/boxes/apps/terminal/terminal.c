@@ -4,11 +4,11 @@
 #include <patchwork/display.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <libstd/defs.h>
-#include <libstd/fs.h>
-#include <libstd/io.h>
-#include <libstd/kbd.h>
-#include <libstd/proc.h>
+#include <libc/defs.h>
+#include <libc/fs.h>
+#include <libc/io.h>
+#include <libc/kbd.h>
+#include <libc/proc.h>
 #include <time.h>
 
 static terminal_char_t terminal_char_create(char chr, pixel_t foreground, pixel_t background, uint16_t row,

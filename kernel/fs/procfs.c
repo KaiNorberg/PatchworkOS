@@ -18,11 +18,11 @@
 #include <kernel/sync/rcu.h>
 
 #include <assert.h>
-#include <libstd/fs.h>
-#include <libstd/io.h>
-#include <libstd/list.h>
-#include <libstd/math.h>
-#include <libstd/status.h>
+#include <libc/fs.h>
+#include <libc/io.h>
+#include <libc/list.h>
+#include <libc/math.h>
+#include <libc/status.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>

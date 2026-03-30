@@ -4,10 +4,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libstd/argsplit.h>
-#include <libstd/defs.h>
-#include <libstd/fs.h>
-#include <libstd/proc.h>
+#include <libc/argsplit.h>
+#include <libc/defs.h>
+#include <libc/fs.h>
+#include <libc/proc.h>
 
 /**
  * @brief Box Daemon.

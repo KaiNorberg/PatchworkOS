@@ -12,8 +12,8 @@
 #include <kernel/sync/sync_ctl.h>
 #include <kernel/utils/ref.h>
 
-#include <libstd/map.h>
-#include <libstd/sync.h>
+#include <libc/map.h>
+#include <libc/sync.h>
 #include <stdlib.h>
 
 typedef struct

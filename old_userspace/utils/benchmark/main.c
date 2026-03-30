@@ -8,8 +8,8 @@
 
 #ifdef _PATCHWORK_OS_
 #include <patchwork/patchwork.h>
-#include <libstd/fs.h>
-#include <libstd/proc.h>
+#include <libc/fs.h>
+#include <libc/proc.h>
 
 static fd_t zeroDev;
 
@@ -67,7 +67,7 @@ static void benchmark_getpid(void)
 #else
 
 #include <fcntl.h>
-#include <libstd/mman.h>
+#include <libc/mman.h>
 #include <unistd.h>
 #define PFAIL ((uint64_t)-1)
 

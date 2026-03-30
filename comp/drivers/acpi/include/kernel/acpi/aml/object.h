@@ -7,7 +7,7 @@
 #include <kernel/acpi/aml/runtime/mutex.h>
 #include <kernel/fs/devfs.h>
 #include <kernel/utils/ref.h>
-#include <libstd/status.h>
+#include <libc/status.h>
 
 #include <stdint.h>
 

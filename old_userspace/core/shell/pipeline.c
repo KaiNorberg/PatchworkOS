@@ -1,14 +1,14 @@
 #include "pipeline.h"
 #include "builtin.h"
 
-#include <_libstd/MAX_PATH.h>
+#include <_libc/MAX_PATH.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libstd/argsplit.h>
-#include <libstd/fs.h>
-#include <libstd/proc.h>
+#include <libc/argsplit.h>
+#include <libc/fs.h>
+#include <libc/proc.h>
 
 status_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd_t stdout, fd_t stderr)
 {

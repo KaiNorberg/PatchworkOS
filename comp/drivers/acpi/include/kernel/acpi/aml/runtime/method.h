@@ -2,7 +2,7 @@
 
 #include <kernel/acpi/aml/object.h>
 
-#include <libstd/status.h>
+#include <libc/status.h>
 #include <stdint.h>
 
 /**

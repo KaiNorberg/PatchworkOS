@@ -2,7 +2,7 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <libstd/fs.h>
+#include <libc/fs.h>
 
 font_t* font_default(display_t* disp)
 {

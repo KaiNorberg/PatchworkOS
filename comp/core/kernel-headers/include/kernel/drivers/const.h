@@ -8,8 +8,8 @@
 #include <kernel/proc/process.h>
 #include <kernel/sched/sched.h>
 
-#include <libstd/io.h>
-#include <libstd/status.h>
+#include <libc/io.h>
+#include <libc/status.h>
 #include <stdint.h>
 #include <string.h>
 

@@ -6,7 +6,7 @@
 #include <kernel/cpu/tss.h>
 
 #include <assert.h>
-#include <libstd/proc.h>
+#include <libc/proc.h>
 #include <stdint.h>
 
 typedef struct cpu cpu_t;

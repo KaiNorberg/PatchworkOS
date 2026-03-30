@@ -6,8 +6,8 @@
 
 #include <kernel/mem/vmm.h>
 #include <kernel/sync/lock.h>
-#include <libstd/list.h>
-#include <libstd/math.h>
+#include <libc/list.h>
+#include <libc/math.h>
 #include <stdlib.h>
 
 static cache_slab_t* cache_slab_new(cache_t* cache)

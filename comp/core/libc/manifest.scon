@@ -1,0 +1,14 @@
+(component
+    (description "Standard C Library.")
+    (author "Kai Norberg")
+    (license MIT)
+    (capabilities
+        /comp:rx
+        /proc:rwx
+        /sys/fs/tmpfs:rwx
+        /dev/const:rwx
+    )
+    (dependencies
+        (dynlink 1.0.0)
+    )
+)

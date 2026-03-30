@@ -4,10 +4,10 @@
 #include <kernel/cpu/interrupt.h>
 #include <kernel/sync/lock.h>
 
-#include <libstd/fs.h>
-#include <libstd/map.h>
-#include <libstd/note.h>
-#include <libstd/proc.h>
+#include <libc/fs.h>
+#include <libc/map.h>
+#include <libc/note.h>
+#include <libc/proc.h>
 
 typedef struct cpu cpu_t;
 

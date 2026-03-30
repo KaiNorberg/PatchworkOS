@@ -14,7 +14,7 @@
 #include <kernel/sched/timer.h>
 #include <kernel/utils/test.h>
 
-#include <libstd/list.h>
+#include <libc/list.h>
 #include <stdlib.h>
 #include <string.h>
 

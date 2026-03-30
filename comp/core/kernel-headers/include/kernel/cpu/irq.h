@@ -3,8 +3,8 @@
 #include <kernel/cpu/interrupt.h>
 #include <kernel/sync/rwlock.h>
 
-#include <libstd/list.h>
-#include <libstd/status.h>
+#include <libc/list.h>
+#include <libc/status.h>
 #include <stdbool.h>
 #include <stdint.h>
 

@@ -2,7 +2,7 @@
 
 #include <patchwork/patchwork.h>
 #include <stdint.h>
-#include <libstd/kbd.h>
+#include <libc/kbd.h>
 
 #define ANSI_MAX_LENGTH 32
 

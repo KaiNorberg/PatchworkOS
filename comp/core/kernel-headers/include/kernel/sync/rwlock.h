@@ -3,7 +3,7 @@
 #include <kernel/cpu/cli.h>
 #include <kernel/cpu/interrupt.h>
 
-#include <libstd/defs.h>
+#include <libc/defs.h>
 #include <stdatomic.h>
 
 #ifndef NDEBUG

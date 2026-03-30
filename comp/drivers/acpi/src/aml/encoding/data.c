@@ -10,7 +10,7 @@
 #include <kernel/acpi/aml/token.h>
 #include <kernel/log/log.h>
 
-#include <libstd/status.h>
+#include <libc/status.h>
 
 #include <errno.h>
 #include <stdint.h>

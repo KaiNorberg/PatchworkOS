@@ -3,9 +3,9 @@
 #include "surface.h"
 
 #include <patchwork/event.h>
-#include <libstd/fs.h>
-#include <libstd/io.h>
-#include <libstd/list.h>
+#include <libc/fs.h>
+#include <libc/io.h>
+#include <libc/list.h>
 
 /**
  * @brief Desktop Window Manager.

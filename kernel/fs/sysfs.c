@@ -13,8 +13,8 @@
 #include <kernel/sync/lock.h>
 
 #include <assert.h>
-#include <libstd/fs.h>
-#include <libstd/list.h>
+#include <libc/fs.h>
+#include <libc/list.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>

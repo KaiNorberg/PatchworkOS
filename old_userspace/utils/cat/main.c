@@ -4,8 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libstd/fs.h>
-#include <libstd/io.h>
+#include <libc/fs.h>
+#include <libc/io.h>
 
 #define BUFFER_SIZE 1024
 

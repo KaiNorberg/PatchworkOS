@@ -12,9 +12,9 @@
 #include <kernel/utils/fifo.h>
 
 #include <assert.h>
-#include <libstd/fs.h>
-#include <libstd/io.h>
-#include <libstd/math.h>
+#include <libc/fs.h>
+#include <libc/io.h>
+#include <libc/math.h>
 #include <stdlib.h>
 
 /**

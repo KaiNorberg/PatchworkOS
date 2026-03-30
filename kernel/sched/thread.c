@@ -14,9 +14,9 @@
 #include <kernel/start/start.h>
 #include <kernel/sync/lock.h>
 
-#include <libstd/arch.h>
-#include <libstd/list.h>
-#include <libstd/math.h>
+#include <libc/arch.h>
+#include <libc/list.h>
+#include <libc/math.h>
 #include <stdlib.h>
 #include <string.h>
 

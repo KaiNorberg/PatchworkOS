@@ -1,0 +1,8 @@
+(component
+    (description "Standard C Math Library.")
+    (author "Kai Norberg")
+    (license MIT)
+    (dependencies
+        (dynlink 1.0.0)
+    )
+)

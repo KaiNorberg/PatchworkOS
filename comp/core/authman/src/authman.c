@@ -1,8 +1,11 @@
+#include <ft2build.h>
+#include <libc/io.h>
+#include <libc/math.h>
 #include <libdraw/draw.h>
-#include <libstd/io.h>
-#include <libstd/math.h>
+#include <libwidget/widget.h>
 #include <stdio.h>
 #include <time.h>
+#include FT_FREETYPE_H
 
 int main(int argc, char** argv)
 {
@@ -43,7 +46,7 @@ int main(int argc, char** argv)
     }
 
     drawable_t screen;
-    drawable_init(&screen, address, width, height, pitch);
+    draw_init(&screen, address, width, height, pitch);
 
     pixel_t* backbuffer = malloc(height * pitch);
     if (backbuffer == NULL)
@@ -53,7 +56,7 @@ int main(int argc, char** argv)
     }
 
     drawable_t back;
-    drawable_init(&back, backbuffer, width, height, pitch);
+    draw_init(&back, backbuffer, width, height, pitch);
 
     pixel_t* frontbuffer = malloc(height * pitch);
     if (frontbuffer == NULL)
@@ -63,13 +66,24 @@ int main(int argc, char** argv)
     }
 
     drawable_t front;
-    drawable_init(&front, frontbuffer, width, height, pitch);
+    draw_init(&front, frontbuffer, width, height, pitch);
 
     const size_t vertexAmount = 360;
     float vertices[vertexAmount * 2];
     const size_t x = sizeof(vertices);
     printf("authman: vertices size %zu\n", x);
-    
+
+    FT_Library ft;
+    if (FT_Init_FreeType(&ft))
+    {
+        printf("authman: failed to initialize freetype\n");
+    }
+    else
+    {
+        printf("authman: freetype initialized successfully\n");
+        FT_Done_FreeType(ft);
+    }
+
     vertices_circle(vertices, vertexAmount, width / 2, height / 2, MIN(width, height) / 2, 0, 2.0 * M_PI);
 
     polygon_t* circle = polygon_new(vertices, vertexAmount);

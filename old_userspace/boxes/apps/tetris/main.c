@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libstd/proc.h>
+#include <libc/proc.h>
 #include <time.h>
 
 #define BLOCK_SIZE 32

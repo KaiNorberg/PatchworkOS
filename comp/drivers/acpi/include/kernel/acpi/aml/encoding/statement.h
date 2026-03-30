@@ -2,7 +2,7 @@
 
 #include <kernel/acpi/aml/integer.h>
 
-#include <libstd/status.h>
+#include <libc/status.h>
 #include <stdint.h>
 
 typedef struct aml_state aml_state_t;

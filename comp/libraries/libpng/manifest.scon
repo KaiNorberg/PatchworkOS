@@ -1,0 +1,10 @@
+(component
+    (description "Libpng port.")
+    (author "Kai Norberg")
+    (license MIT)
+    (dependencies
+        (libc 1.0.0)
+        (libm 1.0.0)
+        (zlib 1.0.0)
+    )
+)

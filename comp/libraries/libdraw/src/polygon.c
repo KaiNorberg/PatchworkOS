@@ -1,11 +1,13 @@
+#include <float.h>
+#include <libc/math.h>
 #include <libdraw/polygon.h>
 #include <libdraw/vertices.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <float.h>
-#include <libstd/math.h>
 #include <stdlib.h>
+
+#include "polygon_internal.h"
 
 static inline int polygon_edge_compare(const void* a, const void* b)
 {
@@ -70,7 +72,8 @@ polygon_t* polygon_new(const float* vertices, size_t count)
 
     qsort(polygon->edges, polygon->edgeCount, sizeof(polygon_edge_t), polygon_edge_compare);
 
-    polygon->activeEdges = (polygon_edge_t**)((uintptr_t)polygon->edges + (polygon->edgeCount * sizeof(polygon_edge_t)));
+    polygon->activeEdges =
+        (polygon_edge_t**)((uintptr_t)polygon->edges + (polygon->edgeCount * sizeof(polygon_edge_t)));
 
     return polygon;
 }

@@ -12,8 +12,8 @@
 #include <kernel/proc/process.h>
 #include <kernel/sched/clock.h>
 
-#include <libstd/io.h>
-#include <libstd/list.h>
+#include <libc/io.h>
+#include <libc/list.h>
 #include <time.h>
 
 static inline bool ioring_acquire(ioring_ctx_t* ctx)
@@ -168,7 +168,7 @@ void ioring_ctx_deinit(ioring_ctx_t* ctx)
     wait_queue_deinit(&ctx->waitQueue);
 }
 
-static void ioring_commit_sqe(ioring_ctx_t* ctx, iosqe_t* sqe, status_t status, uintptr_t result)
+static void ioring_commit_cqe(ioring_ctx_t* ctx, iosqe_t* sqe, status_t status, uintptr_t result)
 {
     ioring_t* ring = &ctx->ring;
 
@@ -187,6 +187,11 @@ static void ioring_commit_sqe(ioring_ctx_t* ctx, iosqe_t* sqe, status_t status, 
         return;
     }
 
+    if (sqe->op == 6 && result == 22 && status == 150995214)
+    {
+        LOG_DEBUG("ioring_commit_cqe: op=%d, data=%p, status=%d, result=%llu\n", sqe->op, sqe->data, status, result);
+    }
+
     iocqe_t* cqe = &ring->cqueue[tail & ring->cmask];
     cqe->op = sqe->op;
     cqe->data = sqe->data;
@@ -197,23 +202,26 @@ static void ioring_commit_sqe(ioring_ctx_t* ctx, iosqe_t* sqe, status_t status, 
     wait_unblock(&ctx->waitQueue, WAIT_ALL, EOK);
 }
 
+static status_t ioring_sqe_dummy(irp_t* irp)
+{
+    UNUSED(irp);
+    return ERR(IO, CANCELLED);
+}
+
 static status_t ioring_complete(irp_t* irp, void* _ptr)
 {
     UNUSED(_ptr);
 
     ioring_ctx_t* ctx = irp->ctx;
-    ioring_commit_sqe(ctx, &irp->sqe, irp->status, irp->result);
+    ioring_commit_cqe(ctx, &irp->sqe, irp->status, irp->result);
 
     if (IS_ERR(irp->status) && !(irp->sqe.flags & IOSQE_HARDLINK))
     {
         irp_t* next = irp_chain_next(irp);
-        while (next != NULL)
+        if (next != NULL)
         {
-            irp_t* current = next;
-            next = irp_chain_next(current);
-
-            ioring_commit_sqe(ctx, &current->sqe, ERR(IO, CANCELLED), 0);
-            irp_complete(current, ERR(IO, CANCELLED));
+            irp_set_complete(next, ioring_complete, NULL);
+            irp_call(next, ioring_sqe_dummy);
         }
     }
     else
@@ -221,6 +229,7 @@ static status_t ioring_complete(irp_t* irp, void* _ptr)
         irp_t* next = irp_chain_next(irp);
         if (next != NULL)
         {
+            irp_set_complete(next, ioring_complete, NULL);
             irp_call(next, io_op_dispatch);
         }
     }
@@ -285,7 +294,6 @@ static status_t ioring_sqe_pop(ioring_ctx_t* ctx, ioring_notify_ctx_t* notify)
         notify->link = irp;
     }
 
-    irp_set_complete(irp, ioring_complete, NULL);
     lock_acquire(&ctx->lock);
     list_push_back(&ctx->active, &irp->activeEntry);
     lock_release(&ctx->lock);
@@ -331,6 +339,7 @@ static status_t ioring_notify(ioring_ctx_t* ctx, size_t amount, size_t wait, siz
     while (!list_is_empty(&notify.irps))
     {
         irp_t* irp = CONTAINER_OF(list_pop_front(&notify.irps), irp_t, entry);
+        irp_set_complete(irp, ioring_complete, NULL);
         irp_call(irp, io_op_dispatch);
     }
 

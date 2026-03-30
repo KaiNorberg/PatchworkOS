@@ -1,6 +1,6 @@
 #pragma once
 
-#include <libstd/status.h>
+#include <libc/status.h>
 #include <stdint.h>
 
 typedef struct aml_object aml_object_t;

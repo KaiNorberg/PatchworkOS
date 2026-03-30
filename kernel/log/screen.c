@@ -6,7 +6,7 @@
 #include <kernel/start/boot_info.h>
 #include <kernel/sync/lock.h>
 
-#include <libstd/math.h>
+#include <libc/math.h>
 #include <string.h>
 
 static bool hidden = false;

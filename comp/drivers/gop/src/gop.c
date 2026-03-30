@@ -12,7 +12,7 @@
 #include <kernel/start/boot_info.h>
 #include <kernel/start/start.h>
 
-#include <libstd/math.h>
+#include <libc/math.h>
 #include <string.h>
 
 /**

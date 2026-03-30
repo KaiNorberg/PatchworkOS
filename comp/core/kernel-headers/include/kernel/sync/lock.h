@@ -7,7 +7,7 @@
 #endif
 
 #include <kernel/drivers/com.h>
-#include <libstd/defs.h>
+#include <libc/defs.h>
 #include <stdatomic.h>
 #include <stdbool.h>
 

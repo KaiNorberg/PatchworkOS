@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libstd/fs.h>
+#include <libc/fs.h>
 
 int main(int argc, char** argv)
 {

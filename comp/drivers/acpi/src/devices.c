@@ -19,7 +19,7 @@
 #include <kernel/utils/ref.h>
 
 #include <errno.h>
-#include <libstd/status.h>
+#include <libc/status.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

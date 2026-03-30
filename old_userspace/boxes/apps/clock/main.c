@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libstd/defs.h>
+#include <libc/defs.h>
 #include <time.h>
 
 #define WINDOW_WIDTH 500

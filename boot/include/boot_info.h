@@ -4,10 +4,10 @@
 
 #include <gnu-efi/efi.h>
 
-#include <_libstd/MAX_NAME.h>
-#include <libstd/defs.h>
-#include <libstd/elf.h>
-#include <libstd/list.h>
+#include <_libc/MAX_NAME.h>
+#include <libc/defs.h>
+#include <libc/elf.h>
+#include <libc/list.h>
 #include <stdint.h>
 
 /**

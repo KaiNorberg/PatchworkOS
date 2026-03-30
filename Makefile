@@ -7,8 +7,9 @@ export COMP_DIR := $(ROOT_DIR)/comp
 export VENDOR_DIR := $(ROOT_DIR)/vendor
 export STAGING_DIR := $(BUILD_DIR)/staging
 export INITRD_DIR := $(BUILD_DIR)/initrd
-export LIBSTD_DIR := $(COMP_DIR)/core/libstd
+export LIBSTD_DIR := $(COMP_DIR)/core/libc
 export KERNEL_HEADERS_DIR := $(COMP_DIR)/core/kernel-headers
+export CMAKE_TOOLCHAIN_FILE := $(ROOT_DIR)/tools/patchworkos-toolchain.cmake
 
 VERSION_STRING := $(shell git describe --tags --always --dirty --long 2>/dev/null || echo "unknown")
 VERSION_HEADER = $(KERNEL_HEADERS_DIR)/include/kernel/version.h
@@ -42,7 +43,7 @@ $(VENDOR_DIR)/gnu-efi/.built:
 		git clone https://github.com/ncroxon/gnu-efi.git $(VENDOR_DIR)/gnu-efi >/dev/null 2>&1; \
 	fi
 	@echo "BUILD   gnu-efi"
-	@$(MAKE) -C $(VENDOR_DIR)/gnu-efi >/dev/null 2>&1
+	@$(MAKE) -C $(VENDOR_DIR)/gnu-efi CC="clang --config $(ROOT_DIR)/tools/patchworkos.cfg" AR="llvm-ar" LD="ld.lld" OBJCOPY="llvm-objcopy" >/dev/null 2>&1
 	@touch $@
 
 staging: $(VENDOR_DIR)/gnu-efi/.built $(VERSION_HEADER)
@@ -63,7 +64,7 @@ $(BIN_DIR)/.boot.built: staging
 	@$(MAKE) -s --no-print-directory -f boot/boot.mk
 	@touch $@
 
-$(BIN_DIR)/.init.built: staging $(BIN_DIR)/.libstd.built
+$(BIN_DIR)/.init.built: staging $(BIN_DIR)/.libc.built
 	@echo "BUILD   init"
 	@$(MAKE) -s --no-print-directory -f init/init.mk
 	@touch $@

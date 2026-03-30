@@ -6,12 +6,12 @@
 #include <kernel/mem/paging.h>
 #include <kernel/mem/paging_types.h>
 #include <kernel/version.h>
-#include <libstd/defs.h>
-#include <libstd/elf.h>
-#include <libstd/io.h>
-#include <libstd/list.h>
-#include <libstd/math.h>
-#include <libstd/proc.h>
+#include <libc/defs.h>
+#include <libc/elf.h>
+#include <libc/io.h>
+#include <libc/list.h>
+#include <libc/math.h>
+#include <libc/proc.h>
 #include <stddef.h>
 
 /**

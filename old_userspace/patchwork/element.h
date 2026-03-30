@@ -11,7 +11,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <libstd/proc.h>
+#include <libc/proc.h>
 
 #if defined(__cplusplus)
 extern "C"

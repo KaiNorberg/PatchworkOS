@@ -3,6 +3,6 @@
     (author "Kai Norberg")
     (license MIT)
     (dependencies
-        (libstd 1.0.0)
+        (libc 1.0.0)
     )
 )

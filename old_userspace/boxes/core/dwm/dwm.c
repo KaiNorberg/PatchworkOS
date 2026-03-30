@@ -11,11 +11,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libstd/fs.h>
-#include <libstd/io.h>
-#include <libstd/list.h>
-#include <libstd/math.h>
-#include <libstd/proc.h>
+#include <libc/fs.h>
+#include <libc/io.h>
+#include <libc/list.h>
+#include <libc/math.h>
+#include <libc/proc.h>
 #include <threads.h>
 #include <time.h>
 

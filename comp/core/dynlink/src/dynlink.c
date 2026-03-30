@@ -1,4 +1,4 @@
-#include "_libstd/MAX_PATH.h"
+#include "_libc/MAX_PATH.h"
 #define ELF_HEADER_INLINE
 
 typedef struct ioring ioring_t;
@@ -13,11 +13,11 @@ static ioring_t* _ioring;
         _len; \
     })
 
-#include <libstd/auxv.h>
-#include <libstd/elf.h>
-#include <libstd/fs.h>
-#include <libstd/io.h>
-#include <libstd/math.h>
+#include <libc/auxv.h>
+#include <libc/elf.h>
+#include <libc/fs.h>
+#include <libc/io.h>
+#include <libc/math.h>
 
 /**
  * @brief Dynamic Linker
@@ -26,7 +26,7 @@ static ioring_t* _ioring;
  *
  * @todo Write dynamic linker documentation.
  *
- * @see libstd_elf for information on the ELF file format.
+ * @see libc_elf for information on the ELF file format.
  * @see https://flapenguin.me/elf-dt-gnu-hash for information regarding GNU hashing.
  *
  */
@@ -372,9 +372,11 @@ static bool _dyn_do_relocations(dso_t* dso, Elf64_Rela* rela, size_t size, size_
         }
         else if (ELF64_ST_BIND(sym->st_info) != STB_WEAK)
         {
-            _dyn_print("dynlink: undefined symbol ");
+            _dyn_print("dynlink: undefined symbol '");
             _dyn_print(symName);
-            _dyn_print("\n");
+            _dyn_print("' in '");
+            _dyn_print(dso->name);
+            _dyn_print("'\n");
             return false;
         }
 
@@ -442,6 +444,7 @@ static dso_t* _dyn_load_elf(fd_t fd, const char* name, bool isMain)
     status_t status = iosync();
     if (IS_ERR(status))
     {
+        _dyn_print("dynlink: failed to map ELF file\n");
         return NULL;
     }
 
@@ -451,6 +454,7 @@ static dso_t* _dyn_load_elf(fd_t fd, const char* name, bool isMain)
     Elf64_File elf;
     if (elf64_validate(&elf, fileMap, size) != 0)
     {
+        _dyn_print("dynlink: failed to validate ELF header\n");
         iounmap(fileMap, size);
         return NULL;
     }
@@ -461,6 +465,7 @@ static dso_t* _dyn_load_elf(fd_t fd, const char* name, bool isMain)
 
     if (minAddr > maxAddr)
     {
+        _dyn_print("dynlink: invalid loadable bounds\n");
         iounmap(fileMap, size);
         return NULL;
     }
@@ -479,6 +484,7 @@ static dso_t* _dyn_load_elf(fd_t fd, const char* name, bool isMain)
     status = iosync();
     if (IS_ERR(status))
     {
+        _dyn_print("dynlink: failed to map memory for ELF\n");
         iounmap(fileMap, size);
         return NULL;
     }
@@ -528,6 +534,7 @@ static dso_t* _dyn_load_elf(fd_t fd, const char* name, bool isMain)
             status = iomap(fd, &mapAddr, mapLen, offsetAligned, initialFlags);
             if (IS_ERR(status))
             {
+                _dyn_print("dynlink: failed to map segment from file\n");
                 iounmap(fileMap, size);
                 return NULL;
             }
@@ -561,6 +568,7 @@ static dso_t* _dyn_load_elf(fd_t fd, const char* name, bool isMain)
     dso_t* dso = _dyn_alloc_dso();
     if (!dso)
     {
+        _dyn_print("dynlink: failed to allocate DSO structure\n");
         iounmap(memMap, loadSize);
         iounmap(fileMap, size);
         return NULL;
@@ -685,8 +693,9 @@ static void _dyn_load_dependencies(dso_t* mainDso)
             }
             path[len] = '\0';
 
-            fd_t depFd;
-            if (!IS_ERR(iowalk(FDCWD, FDROOT, path, &depFd)))
+            fd_t depFd = 0;
+            status_t status = iowalk(FDCWD, FDROOT, path, &depFd);
+            if (!IS_ERR(status))
             {
                 dso_t* depDso = _dyn_load_elf(depFd, depName, false);
                 iodrop(depFd);
@@ -695,6 +704,18 @@ static void _dyn_load_dependencies(dso_t* mainDso)
                     dsoTail->next = depDso;
                     dsoTail = depDso;
                 }
+                else
+                {
+                    _dyn_print("dynlink: failed to load dependency '");
+                    _dyn_print(depName);
+                    _dyn_print("'\n");
+                }
+            }
+            else
+            {
+                _dyn_print("dynlink: skipping dependency '");
+                _dyn_print(depName);
+                _dyn_print("'\n");
             }
         }
         curr = curr->next;

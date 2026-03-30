@@ -25,8 +25,8 @@
 
 ```bash
 # Install dependencies
-sudo dnf install gcc make mtools qemu-system-x86 # For Fedora
-sudo apt install build-essential mtools qemu-system-x86 # For Debian/Ubuntu
+sudo dnf install clang lld make mtools qemu-system-x86 # For Fedora
+sudo apt install clang lld build-essential mtools qemu-system-x86 # For Debian/Ubuntu
 
 # Clone this repository, you can also use the green Code button at the top of the Github.
 git clone https://github.com/KaiNorberg/PatchworkOS
@@ -149,9 +149,9 @@ In this system one can consider binding a file to be nothing more than a conveni
 
 ### Standard Library
 
-The standard library (libstd) is a superset of the ANSI C standard library, meaning that headers such as `<stdio.h>` and `<stdlib.h>` are included while POSIX headers such as `<unistd.h>` are not. Instead, the `sys` directory provides a set of PatchworkOS-specific headers such as `<libstd/io.h>` and `<libstd/proc.h>`.
+The standard library (libc) is a superset of the ANSI C standard library, meaning that headers such as `<stdio.h>` and `<stdlib.h>` are included while POSIX headers such as `<unistd.h>` are not. Instead, the `sys` directory provides a set of PatchworkOS-specific headers such as `<libc/io.h>` and `<libc/proc.h>`.
 
-Overall, an attempt is made to reuse and integrate our extensions cleanly without duplicating the ANSI sections of the standard library, for example the C11 `<threads.h>` header provides threading with `<libstd/proc.h>` intentionally mirroring its API.
+Overall, an attempt is made to reuse and integrate our extensions cleanly without duplicating the ANSI sections of the standard library, for example the C11 `<threads.h>` header provides threading with `<libc/proc.h>` intentionally mirroring its API.
 
 ## Practical Examples
 
@@ -307,7 +307,7 @@ Each component is stored in a `/comp/<name>` directory. Within each components d
 
 The actual component files are stored within the version directories, usually within subdirectories like `bin/`, `lib/`, `include/`, etc. In addition, there is a manifest file which describes the component, its dependencies, and what capabilities it requires.
 
-These manifests are written in a simple markup language made for PatchworkOS called S-expression CONfig (SCON), a parser is provided in libstd with the purpose of standardizing any configuration files used throughout the OS.
+These manifests are written in a simple markup language made for PatchworkOS called S-expression CONfig (SCON), a parser is provided in libc with the purpose of standardizing any configuration files used throughout the OS.
 
 Included below is an example manifest file:
 
@@ -318,7 +318,7 @@ Included below is an example manifest file:
     (license MIT)
     (launch bin/example)
     (dependencies
-        (libstd 1.0.0)
+        (libc 1.0.0)
     )
     (capabilities
         /dev/fb
@@ -329,9 +329,9 @@ Included below is an example manifest file:
 
 ### Launching Components
 
-Any process can launch a component using the `comp_launch()` function from libstd. This function will construct a new root file descriptor for the component, with all the directories and files within the components directory and any dependencies directories, being concatenated via concatfs into a set of standard directories such as `/bin`, `/lib`, etc. and with any additional files specified via the capabilities being bound to the expected locations.
+Any process can launch a component using the `comp_launch()` function from libc. This function will construct a new root file descriptor for the component, with all the directories and files within the components directory and any dependencies directories, being concatenated via concatfs into a set of standard directories such as `/bin`, `/lib`, etc. and with any additional files specified via the capabilities being bound to the expected locations.
 
-Let's take the component described above as an example. The libstd component provides a `lib/libstd.so` file and let's also say that libother provides a `lib/libother.so` file. In this case, the launched process would then find both `libstd.so` and `libother.so` in `/lib`. It would also be able to access see the `/dev/fb/`, `/dev/kbd`, as those were specified directly.
+Let's take the component described above as an example. The libc component provides a `lib/libc.so` file and let's also say that libother provides a `lib/libother.so` file. In this case, the launched process would then find both `libc.so` and `libother.so` in `/lib`. It would also be able to access see the `/dev/fb/`, `/dev/kbd`, as those were specified directly.
 
 The `comp_launch()` function will automatically handle versioning via Minimum Version Selection inspired by GO, this means that the system will always choose the lowest possible version of components that satisfies all dependencies. Meaning that the version specified in a manifest might not be the version that's loaded, instead the version specified is the minimum version.
 
@@ -521,13 +521,14 @@ Of course, it gets way, way worse than this, but hopefully this clarifies why th
 ### File System
 
 - Vnode and dentry based VFS with RCU traversal, hardlinks, symlinks, Plan9 inspired union mounts via concatfs, etc.
-- Custom [Framebuffer BitMaP](https://github.com/KaiNorberg/fbmp) (.fbmp) image format, allows for faster loading by removing the need for parsing.
-- Custom [Grayscale Raster Font](https://github.com/KaiNorberg/grf) (.grf) font format, allows for antialiasing and kerning without complex vector graphics.
+- Custom [Framebuffer BitMaP](https://github.com/KaiNorberg/fbmp) (.fbmp) image format, allows for faster loading by removing the need for parsing. (Superseded by libpng port.)
+- Custom [Grayscale Raster Font](https://github.com/KaiNorberg/grf) (.grf) font format, allows for antialiasing and kerning without complex vector graphics. (Superseded by freetype port.)
 
 ### User Space
 
 - Capability security model. See [Security](#security) for more info.
 - Dynamic Linker with GNU hashing.
+- Ports such as zlib, libpng, freetype, etc.
 - Note that currently a heavy focus has been placed on the kernel and low-level stuff, so userspace is quite small... for now.
 
 ---
@@ -578,7 +579,7 @@ make compile_commands
 └── kernel        // The sourc code for the kernel and its core subsystems.
 ```
 
-Note that the kernels headers are found within `comp/core/kernel-headers/include` and standard library headers are found within `comp/core/libstd/include`.
+Note that the kernels headers are found within `comp/core/kernel-headers/include` and standard library headers are found within `comp/core/libc/include`.
 
 ### Grub Loopback
 

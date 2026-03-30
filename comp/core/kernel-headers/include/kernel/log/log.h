@@ -1,11 +1,11 @@
 #pragma once
 
 #include <boot/boot_info.h>
-#include <libstd/defs.h>
-#include <libstd/fs.h>
-#include <libstd/list.h>
-#include <libstd/math.h>
-#include <libstd/proc.h>
+#include <libc/defs.h>
+#include <libc/fs.h>
+#include <libc/list.h>
+#include <libc/math.h>
+#include <libc/proc.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>

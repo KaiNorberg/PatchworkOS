@@ -7,9 +7,9 @@
 #include <kernel/sync/rcu.h>
 #include <kernel/utils/ref.h>
 
-#include <libstd/fs.h>
-#include <libstd/map.h>
-#include <libstd/proc.h>
+#include <libc/fs.h>
+#include <libc/map.h>
+#include <libc/proc.h>
 #include <stdatomic.h>
 #include <stdint.h>
 #include <time.h>

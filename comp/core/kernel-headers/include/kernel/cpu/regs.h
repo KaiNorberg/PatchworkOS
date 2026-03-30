@@ -1,6 +1,6 @@
 #pragma once
 
-#include <libstd/defs.h>
+#include <libc/defs.h>
 #include <stdint.h>
 
 #define XCR0_XSAVE_SAVE_X87 (1 << 0)

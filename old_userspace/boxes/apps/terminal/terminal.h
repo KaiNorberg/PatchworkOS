@@ -4,8 +4,8 @@
 
 #include <patchwork/patchwork.h>
 #include <stdint.h>
-#include <libstd/fs.h>
-#include <libstd/kbd.h>
+#include <libc/fs.h>
+#include <libc/kbd.h>
 #include <threads.h>
 
 /**

@@ -8,7 +8,7 @@
 #include <kernel/sched/timer.h>
 #include <kernel/utils/utils.h>
 
-#include <libstd/defs.h>
+#include <libc/defs.h>
 #include <stdint.h>
 
 static uint64_t apic_timer_ticks_per_ms(void)

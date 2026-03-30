@@ -1,6 +1,6 @@
 #pragma once
 
-#include <libstd/kbd.h>
+#include <libc/kbd.h>
 #include <stdbool.h>
 #include <stdint.h>
 

@@ -1,7 +1,7 @@
 #include <kernel/acpi/tables.h>
 #include <kernel/io/irp.h>
 #include <kernel/mem/paging_types.h>
-#include <libstd/status.h>
+#include <libc/status.h>
 
 #include <kernel/acpi/acpi.h>
 #include <kernel/fs/file.h>

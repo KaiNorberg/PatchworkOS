@@ -5,9 +5,9 @@
 #include <kernel/mem/pmm.h>
 
 #include <errno.h>
-#include <libstd/io.h>
-#include <libstd/list.h>
-#include <libstd/status.h>
+#include <libc/io.h>
+#include <libc/list.h>
+#include <libc/status.h>
 #include <stdlib.h>
 
 typedef struct process process_t;

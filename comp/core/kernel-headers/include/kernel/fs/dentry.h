@@ -7,10 +7,10 @@
 #include <kernel/sync/seqlock.h>
 #include <kernel/utils/ref.h>
 
-#include <libstd/dstr.h>
-#include <libstd/fs.h>
-#include <libstd/list.h>
-#include <libstd/map.h>
+#include <libc/dstr.h>
+#include <libc/fs.h>
+#include <libc/list.h>
+#include <libc/map.h>
 #include <stdatomic.h>
 #include <stdint.h>
 

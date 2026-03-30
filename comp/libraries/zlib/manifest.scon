@@ -1,0 +1,8 @@
+(component
+    (description "Libz port.")
+    (author "Kai Norberg")
+    (license MIT)
+    (dependencies
+        (libc 1.0.0)
+    )
+)

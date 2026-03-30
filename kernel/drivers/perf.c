@@ -14,10 +14,10 @@
 #include <kernel/sync/lock.h>
 #include <kernel/utils/utils.h>
 
-#include <libstd/fs.h>
-#include <libstd/list.h>
-#include <libstd/math.h>
-#include <libstd/status.h>
+#include <libc/fs.h>
+#include <libc/list.h>
+#include <libc/math.h>
+#include <libc/status.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

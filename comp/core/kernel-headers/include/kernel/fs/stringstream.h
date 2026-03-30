@@ -4,7 +4,7 @@
 #include <kernel/io/irp.h>
 #include <kernel/sync/lock.h>
 #include <kernel/utils/fifo.h>
-#include <libstd/list.h>
+#include <libc/list.h>
 
 /**
  * @brief Helper for creating files providing a stream of strings.

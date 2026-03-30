@@ -4,7 +4,7 @@
 #include <kernel/sched/sched.h>
 #include <kernel/sched/thread.h>
 
-#include <libstd/list.h>
+#include <libc/list.h>
 #include <stdlib.h>
 
 typedef struct

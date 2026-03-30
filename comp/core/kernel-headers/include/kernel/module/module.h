@@ -2,9 +2,9 @@
 
 #include <kernel/fs/dentry.h>
 #include <kernel/module/symbol.h>
-#include <libstd/fs.h>
-#include <libstd/list.h>
-#include <libstd/status.h>
+#include <libc/fs.h>
+#include <libc/list.h>
+#include <libc/status.h>
 
 /**
  * @brief Kernel module management.

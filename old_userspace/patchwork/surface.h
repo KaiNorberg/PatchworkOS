@@ -6,7 +6,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <libstd/fs.h>
+#include <libc/fs.h>
 
 #if defined(__cplusplus)
 extern "C"

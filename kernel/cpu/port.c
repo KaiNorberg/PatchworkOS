@@ -3,8 +3,8 @@
 
 #include <kernel/log/log.h>
 
-#include <libstd/bitmap.h>
-#include <libstd/list.h>
+#include <libc/bitmap.h>
+#include <libc/list.h>
 #include <stdbool.h>
 #include <stddef.h>
 

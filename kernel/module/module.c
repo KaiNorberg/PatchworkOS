@@ -11,7 +11,7 @@
 #include <kernel/start/boot_info.h>
 #include <kernel/sync/lock.h>
 
-#include <libstd/elf.h>
+#include <libc/elf.h>
 #include <stdlib.h>
 #include <string.h>
 

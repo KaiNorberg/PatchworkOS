@@ -22,9 +22,9 @@
 
 #include <kernel/cpu/regs.h>
 
-#include <libstd/fs.h>
-#include <libstd/list.h>
-#include <libstd/map.h>
+#include <libc/fs.h>
+#include <libc/list.h>
+#include <libc/map.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>

@@ -4,8 +4,8 @@
 #include <kernel/fs/stringstream.h>
 #include <kernel/sched/wait.h>
 
-#include <libstd/kbd.h>
-#include <libstd/proc.h>
+#include <libc/kbd.h>
+#include <libc/proc.h>
 #include <stdint.h>
 
 typedef struct kbd kbd_t;
@@ -38,7 +38,7 @@ typedef struct kbd kbd_t;
  * 030_030^005_
  * ```
  *
- * @see libstd_kbd for keycode definitions.
+ * @see libc_kbd for keycode definitions.
  *
  * @{
  */

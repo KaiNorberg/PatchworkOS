@@ -18,12 +18,11 @@ ASFLAGS += \
 # Since the init process cant have its stack setup by any parent, the init process must do it on its own.
 # Therefore, we override the entry point to a special early initialization function.
 LDFLAGS += \
-	-lstd \
+	-static \
+	-lc \
 	-e _start_early \
 	-z noexecstack \
-	-Wno-unused-command-line-argument \
-	-L$(BIN_DIR)/comp \
-	-static
+	-L$(BIN_DIR)/comp
 
 CFLAGS += \
 	-I$(LIBSTD_DIR)/src \
@@ -39,7 +38,7 @@ $(INIT_BUILD)/%.c.o: $(INIT_SRC)/%.c
 $(INIT_BUILD)/%.S.o: $(INIT_SRC)/%.S
 	$(MKCWD)
 	@echo "  AS    $<"
-	@$(AS) $(ASFLAGS) -c $< -o $@
+	@$(AS) $(ASFLAGS) -MMD -MP -MF $(@:.o=.d) -c $< -o $@
 
 $(TARGET): $(OBJ)
 	$(MKCWD)

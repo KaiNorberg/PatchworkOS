@@ -1,4 +1,4 @@
-#include <_libstd/MAX_PATH.h>
+#include <_libc/MAX_PATH.h>
 #include <ctype.h>
 #include <kernel/fs/binding_table.h>
 #include <kernel/fs/path.h>
@@ -13,7 +13,7 @@
 #include <kernel/sync/mutex.h>
 
 #include <kernel/sync/rcu.h>
-#include <libstd/fs.h>
+#include <libc/fs.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -188,6 +188,11 @@ static status_t path_dotdot(path_state_t* state)
         return OK;
     }
 
+    if (state->root == NULL)
+    {
+        return OK;
+    }
+
     dentry_t* check = parent;
     binding_t* checkBinding = binding;
     while (true)
@@ -271,6 +276,7 @@ static status_t path_symlink_complete(irp_t* irp, void* ctx)
         state->ptr = state->token;
     }
 
+    irp->status = OK;
     return path_walk_loop(irp, state);
 }
 
@@ -283,9 +289,17 @@ static status_t path_symlink(irp_t* irp, path_state_t* state, dentry_t* symlink)
         return ERR(VFS, LOOP);
     }
 
+    if (REF_TRY(symlink) == NULL)
+    {
+        rcu_read_unlock();
+        path_state_free(state);
+        return ERR(VFS, NOENT);
+    }
+
     status_t status = path_state_acquire(state);
     if (IS_ERR(status))
     {
+        UNREF(symlink);
         path_state_free(state);
         return status;
     }
@@ -294,6 +308,7 @@ static status_t path_symlink(irp_t* irp, path_state_t* state, dentry_t* symlink)
     status = irp_get_sglist(irp, &list);
     if (IS_ERR(status))
     {
+        UNREF(symlink);
         path_state_free_acquired(state);
         return status;
     }
@@ -301,13 +316,16 @@ static status_t path_symlink(irp_t* irp, path_state_t* state, dentry_t* symlink)
     status = sglist_add(list, &process_get_kernel()->space, state->linkBuffer, MAX_PATH);
     if (IS_ERR(status))
     {
+        UNREF(symlink);
         path_state_free_acquired(state);
         return status;
     }
 
     irp_prep_read(irp, list, 0);
     irp_set_complete(irp, path_symlink_complete, state);
-    return vnode_call(symlink->vnode, irp);
+    status_t call_status = vnode_call(symlink->vnode, irp);
+    UNREF(symlink);
+    return call_status;
 }
 
 static status_t path_create_complete(irp_t* irp, void* ctx)
@@ -369,13 +387,12 @@ static status_t path_lookup_complete(irp_t* irp, void* ctx)
 
     path_state_release(state);
 
-    state->dentry = state->lookup;
-
-    if (DENTRY_IS_TYPE(state->dentry, FILE_TYPE_SYMLINK) && !(state->mode & MODE_NOFOLLOW))
+    if (DENTRY_IS_TYPE(state->lookup, FILE_TYPE_SYMLINK) && !(state->mode & MODE_NOFOLLOW))
     {
-        return path_symlink(irp, state, state->dentry);
+        return path_symlink(irp, state, state->lookup);
     }
 
+    state->dentry = state->lookup;
     return path_walk_loop(irp, state);
 }
 
@@ -394,17 +411,15 @@ static status_t path_walk_lookup(irp_t* irp, path_state_t* state, const char* na
         return ERR(VFS, NOTDIR);
     }
 
-    /// @todo Optimize by removing the copy, perhaps add a length string system?
-    char buffer[MAX_NAME];
-    if (len >= MAX_NAME)
+    dentry_t* newDentry = dentry_get(state->dentry, name, len);
+    if (newDentry == NULL)
     {
-        path_state_free_acquired(state);
-        return ERR(VFS, NAMETOOLONG);
+        newDentry = dentry_new(state->dentry, name, len);
+        if (newDentry == NULL)
+        {
+            newDentry = dentry_get(state->dentry, name, len);
+        }
     }
-    memcpy(buffer, name, len);
-    buffer[len] = '\0';
-
-    dentry_t* newDentry = dentry_new(state->dentry, buffer, len);
     if (newDentry == NULL)
     {
         path_state_free_acquired(state);
@@ -416,6 +431,20 @@ static status_t path_walk_lookup(irp_t* irp, path_state_t* state, const char* na
         UNREF(state->lookup);
     }
     state->lookup = newDentry;
+
+    if (DENTRY_IS_POSITIVE(state->lookup))
+    {
+        if (DENTRY_IS_TYPE(state->lookup, FILE_TYPE_SYMLINK) && !(state->mode & MODE_NOFOLLOW))
+        {
+            path_state_release(state);
+            return path_symlink(irp, state, state->lookup);
+        }
+
+        path_state_release(state);
+        state->dentry = state->lookup;
+
+        return path_walk_loop(irp, state);
+    }
 
     irp_prep_lookup(irp, state->lookup);
     irp_set_complete(irp, path_lookup_complete, state);
@@ -547,17 +576,21 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state)
             return path_walk_lookup(irp, state, state->token, state->tokenLength);
         }
 
-        state->dentry = next;
+        dentry_t* symlinkDentry = next;
+        binding_t* symlinkBinding = state->binding;
 
-        if (state->root != NULL && atomic_load(&state->dentry->bindings) > 0)
+        if (state->root != NULL && atomic_load(&symlinkDentry->bindings) > 0)
         {
-            binding_table_rcu_traverse(&state->root->bindings, &state->binding, &state->dentry);
+            binding_table_rcu_traverse(&state->root->bindings, &symlinkBinding, &symlinkDentry);
         }
 
-        if (DENTRY_IS_TYPE(next, FILE_TYPE_SYMLINK) && !(state->mode & MODE_NOFOLLOW))
+        if (DENTRY_IS_TYPE(symlinkDentry, FILE_TYPE_SYMLINK) && !(state->mode & MODE_NOFOLLOW))
         {
-            return path_symlink(irp, state, state->dentry);
+            return path_symlink(irp, state, symlinkDentry);
         }
+
+        state->dentry = symlinkDentry;
+        state->binding = symlinkBinding;
     }
 }
 

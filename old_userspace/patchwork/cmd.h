@@ -8,8 +8,8 @@
 #include "surface.h"
 
 #include <stdint.h>
-#include <libstd/fs.h>
-#include <libstd/proc.h>
+#include <libc/fs.h>
+#include <libc/proc.h>
 
 #if defined(__cplusplus)
 extern "C"

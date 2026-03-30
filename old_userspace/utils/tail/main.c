@@ -1,11 +1,11 @@
-#include <_libstd/clock_t.h>
+#include <_libc/clock_t.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libstd/fs.h>
-#include <libstd/io.h>
+#include <libc/fs.h>
+#include <libc/io.h>
 
 int main(int argc, char* argv[])
 {

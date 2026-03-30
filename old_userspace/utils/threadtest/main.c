@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <libstd/defs.h>
+#include <libc/defs.h>
 #include <threads.h>
 #include <time.h>
 

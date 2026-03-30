@@ -1,8 +1,8 @@
 #include <kernel/acpi/aml/runtime/buffer_field.h>
 
-#include <libstd/math.h>
+#include <libc/math.h>
 
-#include <libstd/status.h>
+#include <libc/status.h>
 
 #define AML_BUFFER_FIELD_TEMP_SIZE 256
 

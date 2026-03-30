@@ -2,7 +2,7 @@
 
 #include <kernel/fs/dentry.h>
 #include <kernel/fs/vnode.h>
-#include <libstd/fs.h>
+#include <libc/fs.h>
 
 typedef struct file file_t;
 

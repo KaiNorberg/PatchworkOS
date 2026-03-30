@@ -3,7 +3,7 @@
 #include <kernel/fs/devfs.h>
 
 #include <boot/boot_info.h>
-#include <libstd/defs.h>
+#include <libc/defs.h>
 
 #include <stdint.h>
 

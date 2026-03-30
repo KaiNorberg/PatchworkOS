@@ -1,11 +1,13 @@
 #include <float.h>
+#include <libc/cpuid.h>
+#include <libc/math.h>
+#include <libc/proc.h>
 #include <libdraw/draw.h>
 #include <libdraw/polygon.h>
-#include <libstd/cpuid.h>
-#include <libstd/math.h>
-#include <libstd/proc.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "polygon_internal.h"
 
 void draw_rect(drawable_t* draw, rect_t rect, pixel_t color)
 {
@@ -155,7 +157,8 @@ static inline uint64_t edge_get_right_mask(const polygon_edge_t* e, int px)
     return mask;
 }
 
-static inline void draw_polygon_pixel(drawable_t* draw, int32_t x, int32_t y, pixel_t color, uint8_t alpha, draw_blend_t blend)
+static inline void draw_polygon_pixel(drawable_t* draw, int32_t x, int32_t y, pixel_t color, uint8_t alpha,
+    draw_blend_t blend)
 {
     pixel_t* pixel = DRAW_GET_PIXEL(draw, x, y);
 
@@ -305,15 +308,15 @@ void draw_polygon(drawable_t* draw, polygon_t* polygon, pixel_t color, draw_blen
             int32_t rightEnd = (int32_t)ceilf(MAX(rightEdge->x, rightEdge->x + rightEdge->invSlope)) + 1;
 
             int32_t edge1Start = MAX(start, leftStart);
-            int32_t edge1End   = MIN(end, leftEnd);
+            int32_t edge1End = MIN(end, leftEnd);
 
             int32_t innerStart = MAX(start, leftEnd + 1);
-            int32_t innerEnd   = MIN(end, rightStart - 1);
+            int32_t innerEnd = MIN(end, rightStart - 1);
 
             int32_t edge2Start = MAX(start, rightStart);
-            int32_t edge2End   = MIN(end, rightEnd);
+            int32_t edge2End = MIN(end, rightEnd);
 
-            for (int32_t x = edge1Start; x <= edge1End; x++) 
+            for (int32_t x = edge1Start; x <= edge1End; x++)
             {
                 uint64_t mask = ~0ULL;
 
@@ -338,23 +341,24 @@ void draw_polygon(drawable_t* draw, polygon_t* polygon, pixel_t color, draw_blen
                 draw_polygon_pixel(draw, x, scanline, color, alpha, blend);
             }
 
-            if (innerStart <= innerEnd) 
-            {                
-                if (blend == DRAW_BLEND_NONE || blend == DRAW_BLEND_SET || (blend == DRAW_BLEND_ALPHA && baseAlpha == 255)) 
+            if (innerStart <= innerEnd)
+            {
+                if (blend == DRAW_BLEND_NONE || blend == DRAW_BLEND_SET ||
+                    (blend == DRAW_BLEND_ALPHA && baseAlpha == 255))
                 {
                     int32_t width = innerEnd - innerStart + 1;
                     memset32(DRAW_GET_PIXEL(draw, innerStart, scanline), color.argb, width);
-                } 
-                else 
+                }
+                else
                 {
-                    for (int32_t x = innerStart; x <= innerEnd; x++) 
+                    for (int32_t x = innerStart; x <= innerEnd; x++)
                     {
                         draw_polygon_pixel(draw, x, scanline, color, baseAlpha, blend);
                     }
                 }
             }
 
-            for (int32_t x = edge2Start; x <= edge2End; x++) 
+            for (int32_t x = edge2Start; x <= edge2End; x++)
             {
                 uint64_t mask = ~0ULL;
 

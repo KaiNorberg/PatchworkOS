@@ -2,7 +2,7 @@
 
 #include <kernel/cpu/stack_pointer.h>
 
-#include <libstd/defs.h>
+#include <libc/defs.h>
 #include <stdint.h>
 
 /**

@@ -18,8 +18,8 @@ void vertices_circle(float* vertices, size_t count, float centerX, float centerY
     {
         end = start + 2.0F * M_PI;
     }
- 
-    if (start == 0.0f && fabsf(end - 2.0F * M_PI) < 0.0001f)
+
+    if (start == 0.0f && fabsf(end - 2.0F * (float)M_PI) < 0.0001f)
     {
         float step = (end - start) / (float)count;
         for (size_t i = 0; i < count; i++)

@@ -1,9 +1,0 @@
-(component
-    (description "Test component.")
-    (author "Kai Norberg")
-    (license MIT)
-    (launch /bin/test)
-    (dependencies
-        (libstd 1.0.0)
-    )
-)

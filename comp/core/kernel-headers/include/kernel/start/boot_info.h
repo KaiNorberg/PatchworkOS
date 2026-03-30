@@ -1,7 +1,7 @@
 #pragma once
 
 #include <boot/boot_info.h>
-#include <libstd/defs.h>
+#include <libc/defs.h>
 
 /**
  * @brief Kernel-side boot information handling.

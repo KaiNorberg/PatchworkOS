@@ -4,8 +4,12 @@
     (license MIT)
     (launch /bin/authman)
     (dependencies
-        (libstd 1.0.0)
+        (libc 1.0.0)
+        (libm 1.0.0)
+        (zlib 1.0.0)
         (libdraw 1.0.0)
+        (freetype 1.0.0)
+        (libpng 1.0.0)
     )
     (capabilities
         /dev/fb

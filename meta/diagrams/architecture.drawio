@@ -7,7 +7,7 @@
         <mxCell id="C4c_-o9_3CCo2d4q-xu--3" value="PatchworkOS Architecture Diagram&lt;br&gt;&lt;font style=&quot;font-size: 12px;&quot;&gt;(updated 2026-02-18 for version f7920488)&lt;/font&gt;" style="text;strokeColor=none;fillColor=none;html=1;fontSize=24;fontStyle=1;verticalAlign=middle;align=center;fontFamily=Helvetica;" parent="1" vertex="1">
           <mxGeometry x="300" y="20" width="560" height="50" as="geometry" />
         </mxCell>
-        <mxCell id="C4c_-o9_3CCo2d4q-xu--4" value="Standard Library (libstd)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#2D363B;fontColor=#ffffff;strokeColor=#314354;" parent="1" vertex="1">
+        <mxCell id="C4c_-o9_3CCo2d4q-xu--4" value="Standard Library (libc)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#2D363B;fontColor=#ffffff;strokeColor=#314354;" parent="1" vertex="1">
           <mxGeometry x="300" y="140" width="420" height="20" as="geometry" />
         </mxCell>
         <mxCell id="YYxY79XeWg3GB31Cr9ft-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" parent="1" edge="1">

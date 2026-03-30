@@ -5,9 +5,9 @@
 #include <kernel/log/log.h>
 #include <kernel/mem/pmm.h>
 
-#include <libstd/defs.h>
+#include <libc/defs.h>
 
-#include <libstd/cpuid.h>
+#include <libc/cpuid.h>
 #include <stdint.h>
 #include <string.h>
 

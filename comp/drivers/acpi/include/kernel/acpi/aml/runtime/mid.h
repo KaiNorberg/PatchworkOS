@@ -1,7 +1,7 @@
 #pragma once
 
 #include <kernel/acpi/aml/aml.h>
-#include <libstd/status.h>
+#include <libc/status.h>
 
 /**
  * @brief Extract Portion of Buffer or String

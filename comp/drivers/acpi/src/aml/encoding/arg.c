@@ -4,7 +4,7 @@
 #include <kernel/acpi/aml/state.h>
 #include <kernel/acpi/aml/token.h>
 
-#include <libstd/status.h>
+#include <libc/status.h>
 
 status_t aml_arg_obj_read(aml_term_list_ctx_t* ctx, aml_object_t** out)
 {

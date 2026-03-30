@@ -6,9 +6,9 @@
 #include <kernel/acpi/aml/token.h>
 #include <kernel/log/log.h>
 #include <kernel/log/panic.h>
-#include <libstd/status.h>
+#include <libc/status.h>
 
-#include <libstd/math.h>
+#include <libc/math.h>
 #include <stddef.h>
 #include <stdlib.h>
 

@@ -9,10 +9,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <libstd/defs.h>
-#include <libstd/fs.h>
-#include <libstd/kbd.h>
-#include <libstd/proc.h>
+#include <libc/defs.h>
+#include <libc/fs.h>
+#include <libc/kbd.h>
+#include <libc/proc.h>
 #include <threads.h>
 
 static ansi_t ansi;

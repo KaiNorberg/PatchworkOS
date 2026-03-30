@@ -1,7 +1,7 @@
 #pragma once
 
-#include <libstd/list.h>
-#include <libstd/status.h>
+#include <libc/list.h>
+#include <libc/status.h>
 #include <stdint.h>
 
 typedef struct aml_term_list_ctx aml_term_list_ctx_t;

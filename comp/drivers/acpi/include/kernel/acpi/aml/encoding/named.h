@@ -3,7 +3,7 @@
 #include <kernel/acpi/aml/encoding/data_integers.h>
 #include <kernel/acpi/aml/integer.h>
 
-#include <libstd/status.h>
+#include <libc/status.h>
 #include <stdbool.h>
 #include <stdint.h>
 

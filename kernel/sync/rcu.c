@@ -5,7 +5,7 @@
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rcu.h>
 
-#include <libstd/bitmap.h>
+#include <libc/bitmap.h>
 #include <stdlib.h>
 
 static BITMAP_CREATE_ZERO(ack, CPU_MAX);

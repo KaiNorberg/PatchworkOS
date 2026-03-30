@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libstd/fs.h>
+#include <libc/fs.h>
 
 static bool showAll = false;
 static bool showFlags = false;

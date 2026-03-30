@@ -1,8 +1,8 @@
 #pragma once
 
 #include <kernel/acpi/aml/encoding/arg.h>
-#include <libstd/defs.h>
-#include <libstd/status.h>
+#include <libc/defs.h>
+#include <libc/status.h>
 #include <stdint.h>
 
 /**

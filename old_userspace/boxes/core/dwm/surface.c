@@ -6,9 +6,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libstd/fs.h>
-#include <libstd/io.h>
-#include <libstd/list.h>
+#include <libc/fs.h>
+#include <libc/io.h>
+#include <libc/list.h>
 
 static surface_id_t newId = 0;
 

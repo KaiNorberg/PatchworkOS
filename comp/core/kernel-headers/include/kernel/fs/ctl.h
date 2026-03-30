@@ -3,7 +3,7 @@
 #include <kernel/fs/file.h>
 #include <kernel/fs/vnode.h>
 
-#include <libstd/status.h>
+#include <libc/status.h>
 #include <stdbool.h>
 #include <stdint.h>
 

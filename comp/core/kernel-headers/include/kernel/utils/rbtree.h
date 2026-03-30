@@ -1,8 +1,8 @@
 #pragma once
 
-#include <libstd/defs.h>
+#include <libc/defs.h>
 
-#include <libstd/list.h>
+#include <libc/list.h>
 #include <stdint.h>
 
 typedef struct rbnode rbnode_t;

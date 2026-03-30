@@ -6,9 +6,9 @@
 
 #include <boot/boot_info.h>
 
-#include <libstd/io.h>
-#include <libstd/list.h>
-#include <libstd/proc.h>
+#include <libc/io.h>
+#include <libc/list.h>
+#include <libc/proc.h>
 
 /**
  * @brief Virtual Memory Manager (VMM).
@@ -60,7 +60,7 @@
  *
  * ### User Space
  *
- * Finally, we have user space, which starts at `0x400000` (4MiB) and goes up to the top of the lower half. The first
+ * Finally, we have user space, which starts at `0x100000` (1MiB) and goes up to the top of the lower half. The first
  * 4MiB is left unmapped to catch null pointer dereferences. This section is different for each process.
  *
  * @{
@@ -77,7 +77,7 @@
 #define VMM_IDENTITY_MAPPED_MIN PML_HIGHER_HALF_START ///< The minimum address for the identity mapped physical memory.
 
 #define VMM_USER_SPACE_MAX PML_LOWER_HALF_END ///< The maximum address for user space.
-#define VMM_USER_SPACE_MIN (0x400000)         ///< The minimum address for user space.
+#define VMM_USER_SPACE_MIN (0x100000)         ///< The minimum address for user space.
 
 /**
  * @brief Check if an address is page aligned.

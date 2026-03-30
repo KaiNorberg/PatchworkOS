@@ -3,8 +3,8 @@
 #include <kernel/cpu/interrupt.h>
 #include <kernel/sync/lock.h>
 
-#include <libstd/proc.h>
-#include <libstd/status.h>
+#include <libc/proc.h>
+#include <libc/status.h>
 #include <time.h>
 
 typedef struct cpu cpu_t;

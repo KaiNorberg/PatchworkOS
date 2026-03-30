@@ -1,8 +1,6 @@
 include $(ROOT_DIR)/Make.defaults
 
-LDSTDLIB := -lstd -Wl,--dynamic-linker=/lib/dynlink.so
-
-LDFLAGS += -L$(BIN_DIR)/comp
+LDFLAGS += -L$(STAGING_DIR)/lib
 
 ifeq ($(COMP_TYPE),shared)
 CFLAGS += -fPIC
@@ -29,9 +27,17 @@ ASFLAGS += \
 
 LDFLAGS += \
 	-shared \
-	-fPIC \
 	-Lcomp/core/kernel-headers/include \
 	-Tkernel/module.lds
+endif
+
+ifeq ($(COMP_TYPE),port)
+PORT_CC = clang --config $(ROOT_DIR)/tools/patchworkos.cfg
+PORT_LD = ld.lld
+PORT_AR = llvm-ar
+PORT_RANLIB = llvm-ranlib
+PORT_HOST = x86_64-unknown-elf
+MAKEOVERRIDES =
 endif
 
 SRC := $(shell find $(MY_DIR) -name '*.c' -o -name '*.S')

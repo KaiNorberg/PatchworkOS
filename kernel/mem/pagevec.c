@@ -2,7 +2,7 @@
 
 #include <kernel/mem/pmm.h>
 
-#include <libstd/math.h>
+#include <libc/math.h>
 #include <stdlib.h>
 #include <string.h>
 

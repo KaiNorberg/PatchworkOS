@@ -4,8 +4,8 @@
 
 #include <alloca.h>
 #include <ctype.h>
-#include <libstd/fs.h>
-#include <libstd/status.h>
+#include <libc/fs.h>
+#include <libc/status.h>
 #include <stdbool.h>
 #include <stdint.h>
 

@@ -24,12 +24,12 @@
 #include <kernel/utils/ref.h>
 
 #include <assert.h>
-#include <libstd/fs.h>
-#include <libstd/list.h>
-#include <libstd/map.h>
-#include <libstd/math.h>
-#include <libstd/proc.h>
-#include <libstd/status.h>
+#include <libc/fs.h>
+#include <libc/list.h>
+#include <libc/map.h>
+#include <libc/math.h>
+#include <libc/proc.h>
+#include <libc/status.h>
 #include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>

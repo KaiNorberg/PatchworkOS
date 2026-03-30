@@ -22,7 +22,7 @@ For example:
 
 - `fix(readme): fix typo in setup instructions`
 - `feat(kernel:sched): add constant-time scheduler`
-- `refactor(libstd): reorganize memory functions`
+- `refactor(libc): reorganize memory functions`
 
 Note the use of lowercase and present tense ("add" not "added").
 
@@ -35,7 +35,7 @@ If you submit code, please follow these conventions.
 - For variables use `camelCase`.
 - For functions use `snake_case`.
 - For macros and constants use `SCREAMING_SNAKE_CASE`.
-- All internal functions, variables, macros or constants in libstd must be prefixed with `_` like `_my_function()`, `_myVariable` or `_MY_CONSTANT` to avoid conflicts.
+- All internal functions, variables, macros or constants in libc must be prefixed with `_` like `_my_function()`, `_myVariable` or `_MY_CONSTANT` to avoid conflicts.
 
 ### Formatting
 

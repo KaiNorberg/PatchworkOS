@@ -1,9 +1,9 @@
-#include <libstd/comp.h>
-#include <libstd/defs.h>
-#include <libstd/fs.h>
-#include <libstd/io.h>
-#include <libstd/list.h>
-#include <libstd/map.h>
+#include <libc/comp.h>
+#include <libc/defs.h>
+#include <libc/fs.h>
+#include <libc/io.h>
+#include <libc/list.h>
+#include <libc/map.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -187,9 +187,12 @@ static status_t module_load(const char* name, const char* version, const char* d
         return ERR(USER, NOMEM);
     }
 
-    status_t status = comp_dependencies_get(name, version, &loader->deps, &loader->count);
+    char errorBuf[256];
+    status_t status = comp_dependencies_get(name, version, &loader->deps, &loader->count, errorBuf, sizeof(errorBuf));
     if (IS_ERR(status))
     {
+        printf("modman: failed to get dependencies for %s %s: %s %Y\n", name, version, errorBuf, status);
+        free(loader);
         return status;
     }
     loader->current = 0;

@@ -6,9 +6,9 @@
 #include <kernel/mem/paging_types.h>
 #include <kernel/utils/ref.h>
 
-#include <libstd/fs.h>
-#include <libstd/proc.h>
-#include <libstd/status.h>
+#include <libc/fs.h>
+#include <libc/proc.h>
+#include <libc/status.h>
 #include <stdatomic.h>
 #include <stdint.h>
 

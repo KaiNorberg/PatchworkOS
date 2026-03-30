@@ -4,9 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libstd/fs.h>
-#include <libstd/math.h>
-#include <libstd/proc.h>
+#include <libc/fs.h>
+#include <libc/math.h>
+#include <libc/proc.h>
 
 static char* trim_whitespace(char* str)
 {

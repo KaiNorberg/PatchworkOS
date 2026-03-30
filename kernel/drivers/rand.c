@@ -4,7 +4,7 @@
 #include <kernel/log/log.h>
 #include <kernel/sched/clock.h>
 
-#include <libstd/cpuid.h>
+#include <libc/cpuid.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>

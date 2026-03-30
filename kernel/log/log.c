@@ -16,9 +16,9 @@
 #include <boot/boot_info.h>
 #include <kernel/version.h>
 
-#include <libstd/fs.h>
-#include <libstd/math.h>
-#include <libstd/proc.h>
+#include <libc/fs.h>
+#include <libc/math.h>
+#include <libc/proc.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>

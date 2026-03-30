@@ -6,9 +6,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libstd/defs.h>
-#include <libstd/fs.h>
-#include <libstd/proc.h>
+#include <libc/defs.h>
+#include <libc/fs.h>
+#include <libc/proc.h>
 #include <time.h>
 
 #define START_ENTRY_MAX 16

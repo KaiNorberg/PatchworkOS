@@ -7,11 +7,11 @@
 #include <kernel/utils/ref.h>
 
 #include <assert.h>
-#include <libstd/fs.h>
-#include <libstd/io.h>
-#include <libstd/list.h>
-#include <libstd/math.h>
-#include <libstd/status.h>
+#include <libc/fs.h>
+#include <libc/io.h>
+#include <libc/list.h>
+#include <libc/math.h>
+#include <libc/status.h>
 #include <stdatomic.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -327,7 +327,7 @@ typedef status_t (*irp_cancel_t)(irp_t* irp);
  */
 #define IRP_CANCELLED ((irp_cancel_t)1)
 
-#define IRP_ARGS_MAX 3 ///< The maximum number of 64-bit arguments in an `irp_frame_t`.
+#define IRP_ARGS_MAX 4 ///< The maximum number of 64-bit arguments in an `irp_frame_t`.
 
 /**
  * @brief IRP stack frame structure.
@@ -371,8 +371,8 @@ typedef struct irp_frame
         struct
         {
             void* address;     ///< The virtual address to map the file into, or `NULL` for any address.
+            size_t length;     ///< The number of bytes to map.
             size_t offset;     ///< The offset within the file to start mapping from.
-            uint32_t length;   ///< The number of bytes to map.
             pml_flags_t flags; ///< The paging flags to apply to the mapping.
         } mmap;
         struct

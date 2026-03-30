@@ -1,9 +1,9 @@
 #pragma once
 
 #include <libdraw/pixel.h>
-#include <libdraw/vertices.h>
 #include <libdraw/polygon.h>
 #include <libdraw/rect.h>
+#include <libdraw/vertices.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -60,7 +60,7 @@ typedef struct drawable
  * @param height The height of the buffer in pixels.
  * @param pitch The amount of bytes to advance to the next row.
  */
-static inline void drawable_init(drawable_t* draw, pixel_t* buffer, size_t width, size_t height, size_t pitch)
+static inline void draw_init(drawable_t* draw, pixel_t* buffer, size_t width, size_t height, size_t pitch)
 {
     draw->buffer = buffer;
     draw->width = width;

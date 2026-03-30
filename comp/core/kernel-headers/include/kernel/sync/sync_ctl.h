@@ -1,6 +1,6 @@
 #pragma once
 
-#include <libstd/sync.h>
+#include <libc/sync.h>
 
 /**
  * @brief Kernel-backed user-space synchronization control.

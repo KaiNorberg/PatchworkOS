@@ -8,7 +8,7 @@
 #include <kernel/sched/wait.h>
 #include <kernel/sync/lock.h>
 
-#include <libstd/io.h>
+#include <libc/io.h>
 #include <string.h>
 
 /**
@@ -26,7 +26,7 @@
  *
  * Synchronous operations are implemented on top of this API in userspace.
  *
- * @see libstd_io for the list of operations and their arguments.
+ * @see libc_io for the list of operations and their arguments.
  * @see [Wikipedia](https://en.wikipedia.org/wiki/Io_uring) for information about `io_uring`, the inspiration for this
  * system.
  * @see [Manpages](https://man7.org/linux/man-pages/man7/io_uring.7.html) for more information about `io_uring`.

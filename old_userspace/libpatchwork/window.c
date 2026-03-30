@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libstd/defs.h>
+#include <libc/defs.h>
 
 #define WINDOW_CLIENT_ELEM_ID (UINT64_MAX)
 #define WINDOW_DECO_ELEM_ID (UINT64_MAX - 1)

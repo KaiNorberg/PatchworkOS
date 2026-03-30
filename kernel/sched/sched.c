@@ -18,10 +18,10 @@
 #include <kernel/utils/rbtree.h>
 
 #include <assert.h>
-#include <libstd/bitmap.h>
-#include <libstd/list.h>
-#include <libstd/math.h>
-#include <libstd/proc.h>
+#include <libc/bitmap.h>
+#include <libc/list.h>
+#include <libc/math.h>
+#include <libc/proc.h>
 #include <stdatomic.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -687,7 +687,7 @@ SYSCALL_DEFINE(SYS_THRD_EXIT)
     panic(NULL, "Return to syscall_thread_exit");
 }
 
-SYSCALL_DEFINE(SYS_THRD_YIELD, uint64_t)
+SYSCALL_DEFINE(SYS_THRD_YIELD)
 {
     sched_yield();
     return 0;

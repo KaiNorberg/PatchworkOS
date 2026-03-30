@@ -3,7 +3,7 @@
 #include <boot/boot_info.h>
 #include <kernel/mem/paging_types.h>
 
-#include <libstd/proc.h>
+#include <libc/proc.h>
 
 /**
  * @brief Physical Memory Manager (PMM).

@@ -4,7 +4,7 @@
 #include <kernel/cpu/irq.h>
 #include <kernel/sync/lock.h>
 
-#include <libstd/proc.h>
+#include <libc/proc.h>
 #include <time.h>
 
 typedef struct cpu cpu_t;

@@ -2,7 +2,7 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <libstd/defs.h>
+#include <libc/defs.h>
 
 static uint64_t label_procedure(window_t* win, element_t* elem, const event_t* event)
 {

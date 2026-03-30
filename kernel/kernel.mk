@@ -4,14 +4,14 @@ KERNEL_SRC = $(ROOT_DIR)/kernel
 KERNEL_BUILD = $(BUILD_DIR)/kernel
 KERNEL_BIN = $(BIN_DIR)/kernel/kernel
 
-# Only add the non user libstd files
+# Only add the non user libc files
 SRC := \
 	$(shell find $(KERNEL_SRC) -name '*.c' -o -name '*.S') \
 	$(shell find $(LIBSTD_DIR)/src/common -name '*.c' -o -name '*.S') \
 	$(shell find $(LIBSTD_DIR)/src/functions -name '*.c' -o -name '*.S')
 
 OBJ_KERNEL := $(patsubst $(KERNEL_SRC)/%, $(KERNEL_BUILD)/%.o, $(filter $(KERNEL_SRC)/%, $(SRC)))
-OBJ_LIBSTD := $(patsubst $(LIBSTD_DIR)/%, $(BUILD_DIR)/libstd/%.o, $(filter $(LIBSTD_DIR)/%, $(SRC)))
+OBJ_LIBSTD := $(patsubst $(LIBSTD_DIR)/%, $(BUILD_DIR)/libc/%.o, $(filter $(LIBSTD_DIR)/%, $(SRC)))
 OBJ := $(OBJ_KERNEL) $(OBJ_LIBSTD)
 
 CFLAGS += \
@@ -36,7 +36,6 @@ ASFLAGS += \
 	-D__STDC_WANT_LIB_EXT1__=1
 
 LDFLAGS += \
-	-no-pie \
 	-z noexecstack \
 	-z max-page-size=0x1000 \
 	-z norelro \
@@ -52,17 +51,17 @@ $(KERNEL_BUILD)/%.c.o: $(KERNEL_SRC)/%.c
 $(KERNEL_BUILD)/%.S.o: $(KERNEL_SRC)/%.S
 	$(MKCWD)
 	@echo "  AS    $<"
-	@$(CC) $(ASFLAGS) -c $< -o $@
+	@$(AS) $(ASFLAGS) -MMD -MP -MF $(@:.o=.d) -c $< -o $@
 
-$(BUILD_DIR)/libstd/%.c.o: $(LIBSTD_DIR)/%.c
+$(BUILD_DIR)/libc/%.c.o: $(LIBSTD_DIR)/%.c
 	$(MKCWD)
 	@echo "  CC    $<"
 	@$(CC) $(CFLAGS) -MMD -MP -MF $(@:.o=.d) -c $< -o $@
 
-$(BUILD_DIR)/libstd/%.S.o: $(LIBSTD_DIR)/%.S
+$(BUILD_DIR)/libc/%.S.o: $(LIBSTD_DIR)/%.S
 	$(MKCWD)
 	@echo "  AS    $<"
-	@$(CC) $(ASFLAGS) -c $< -o $@
+	@$(AS) $(ASFLAGS) -MMD -MP -MF $(@:.o=.d) -c $< -o $@
 
 $(KERNEL_BIN): $(OBJ)
 	$(MKCWD)

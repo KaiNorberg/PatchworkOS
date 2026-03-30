@@ -5,9 +5,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libstd/defs.h>
-#include <libstd/fs.h>
-#include <libstd/proc.h>
+#include <libc/defs.h>
+#include <libc/fs.h>
+#include <libc/proc.h>
 
 static uint64_t builtin_cd(uint64_t argc, const char** argv);
 static uint64_t builtin_help(uint64_t argc, const char** argv);

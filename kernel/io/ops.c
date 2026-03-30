@@ -8,7 +8,7 @@
 #include <kernel/mem/paging_types.h>
 #include <kernel/proc/process.h>
 
-#include <libstd/io.h>
+#include <libc/io.h>
 
 static status_t io_op_cancel(irp_t* irp)
 {

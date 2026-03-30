@@ -5,7 +5,7 @@
 #include <kernel/cpu/irq.h>
 #include <kernel/cpu/tss.h>
 
-#include <libstd/proc.h>
+#include <libc/proc.h>
 
 static idt_t idt ALIGNED(PAGE_SIZE);
 

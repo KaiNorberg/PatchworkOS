@@ -6,7 +6,7 @@
 
 #include <kernel/cpu/cpu.h>
 #include <kernel/sync/lock.h>
-#include <libstd/list.h>
+#include <libc/list.h>
 
 typedef struct cache cache_t;
 

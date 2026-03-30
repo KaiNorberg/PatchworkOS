@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libstd/defs.h>
+#include <libc/defs.h>
 
 static image_t* image;
 

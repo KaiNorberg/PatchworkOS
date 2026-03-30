@@ -1,7 +1,7 @@
 #pragma once
 
-#include <libstd/list.h>
-#include <libstd/status.h>
+#include <libc/list.h>
+#include <libc/status.h>
 #include <stdbool.h>
 #include <stdint.h>
 

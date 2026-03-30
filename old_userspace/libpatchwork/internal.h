@@ -1,7 +1,7 @@
 #include <patchwork/patchwork.h>
 
-#include <libstd/fs.h>
-#include <libstd/list.h>
+#include <libc/fs.h>
+#include <libc/list.h>
 #include <threads.h>
 
 #include "grf.h"

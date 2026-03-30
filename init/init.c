@@ -1,9 +1,10 @@
-#include <libstd/comp.h>
-#include <libstd/io.h>
-#include <libstd/scon.h>
+#include <libc/comp.h>
+#include <libc/io.h>
+#include <libc/scon.h>
 #include <libtar/tar.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <threads.h>
 
 /**
  * @brief User space init process.
@@ -131,7 +132,7 @@ static status_t initrd_load(void)
             status = iowalk(FDCWD, FDROOT, IOFMT("/%s:pd", entry.name), &dir);
             if (IS_ERR(status))
             {
-                printf("init: failed to create dir %s: %Y\n", entry.name, status);
+                printf("init: failed to create dir %s%Y\n", entry.name, status);
                 continue;
             }
             iodrop(dir);
@@ -153,7 +154,7 @@ static status_t initrd_load(void)
             status = iowalk(FDCWD, FDROOT, IOFMT("/%s:ps?%s", entry.name, entry.linkname), &symlink);
             if (IS_ERR(status))
             {
-                printf("init: failed to create symlink %s: %Y\n", entry.name, status);
+                printf("init: failed to create symlink %s%Y\n", entry.name, status);
                 continue;
             }
             iodrop(symlink);
@@ -289,17 +290,22 @@ int main(void)
     opts.stdin = FDIN;
     opts.stdout = FDOUT;
     opts.stderr = FDERR;
-    status = comp_launch("modman", "1.0.0", &opts);
+
+    char errorBuf[256];
+    status = comp_launch("modman", "1.0.0", &opts, errorBuf, sizeof(errorBuf));
     if (IS_ERR(status))
     {
-        printf("init: failed to launch modman %Y\n", status);
+        printf("init: failed to launch modman: %s %Y\n", errorBuf, status);
         return EXIT_FAILURE;
     }
 
-    status = comp_launch("authman", "1.0.0", &opts);
+    // struct timespec sleep = {.tv_sec = 1};
+    // thrd_sleep(&sleep, NULL);
+
+    status = comp_launch("authman", "1.0.0", &opts, errorBuf, sizeof(errorBuf));
     if (IS_ERR(status))
     {
-        printf("init: failed to launch authman %Y\n", status);
+        printf("init: failed to launch authman: %s %Y\n", errorBuf, status);
         return EXIT_FAILURE;
     }
 

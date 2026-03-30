@@ -15,8 +15,8 @@
 #include <kernel/sync/lock.h>
 #include <kernel/sync/rwlock.h>
 
-#include <libstd/list.h>
-#include <libstd/map.h>
+#include <libc/list.h>
+#include <libc/map.h>
 #include <stdatomic.h>
 #include <stdint.h>
 

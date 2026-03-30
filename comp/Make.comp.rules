@@ -28,7 +28,7 @@ TARGET = $(COMP_BIN_DIR)/$(COMP_NAME)
 $(TARGET): $(OBJ) $(COMP_DEP_BUILT)
 	$(MKCWD)
 	@echo "  LD    $@"
-	@$(LD) -o $@ $(CRT_START) $(OBJ) $(LDFLAGS) $(LDSTDLIB) $(CRT_END)
+	@$(CC) -nostdlib $(USER_CFLAGS) -o $@ $(CRT_START) $(OBJ) $(LDFLAGS) -lc -Wl,-dynamic-linker=/lib/dynlink.so $(CRT_END)
 STAGE_DEST = $(STAGE_DIR)/bin/
 endif
 
@@ -55,7 +55,7 @@ TARGET = $(COMP_BIN_DIR)/$(COMP_NAME).so
 $(TARGET): $(OBJ) $(COMP_DEP_BUILT)
 	$(MKCWD)
 	@echo "  LD-SO $@"
-	@$(LD) -shared -o $@ $(OBJ) $(LDFLAGS) $(LDSTDLIB)
+	@$(LD) -shared -soname $(COMP_NAME).so -o $@ $(OBJ) $(LDFLAGS) $(LDSTDLIB)
 STAGE_DEST = $(STAGE_DIR)/lib/
 endif
 
@@ -68,17 +68,35 @@ $(COMP_BIN_DIR)/$(COMP_NAME).a: $(OBJ) $(COMP_DEP_BUILT)
 $(COMP_BIN_DIR)/$(COMP_NAME).so: $(OBJ) $(COMP_DEP_BUILT)
 	$(MKCWD)
 	@echo "  LD-SO $@"
-	@$(LD) -shared -o $@ $(OBJ) $(LDFLAGS) $(LDSTDLIB)
+	@$(LD) -shared -soname $(COMP_NAME).so -o $@ $(OBJ) $(LDFLAGS) $(LDSTDLIB)
 STAGE_DEST = $(STAGE_DIR)/lib/
 endif
 
-all: $(TARGET) before-stage stage after-stage
+ifeq ($(COMP_TYPE),port)
+PORT_TARGET = $(COMP_BUILD_DIR)/.port.built
+TARGET :=
+SRC :=
+STAGE_DEST := $(STAGE_DIR)/
+
+$(PORT_TARGET): | $(COMP_DEP_BUILT)
+	$(MKCWD)
+	@mkdir -p $(STAGE_DIR)
+	@echo "  PORT  $(COMP_NAME)"
+	$(PORT_BUILD_CMD)
+	@touch $@
+before-target: $(PORT_TARGET)
+endif
+
+all: before-target $(TARGET) before-stage stage after-stage
 
 stage:
 	@echo "  STAGE $(COMP_NAME) $(COMP_VERSION)"
 	@mkdir -p $(STAGE_DEST)
 ifneq ($(TARGET),)
 	@cp $(TARGET) $(STAGE_DEST)
+endif
+ifeq ($(COMP_TYPE),port)
+	$(PORT_STAGE_CMD)
 endif
 ifneq ($(COMP_DEVICES),)
 	@for dev in $(COMP_DEVICES); do \
@@ -89,13 +107,24 @@ endif
 
 	@cat $(MY_DIR)/manifest.scon > $(STAGE_DIR)/manifest.scon
 
-	@if [ -d "$(MY_DIR)/data" ]; then \
-		cp -r $(MY_DIR)/data $(STAGE_DIR)/data; \
+	@if [ -d "$(MY_DIR)/share" ]; then \
+		cp -r $(MY_DIR)/share $(STAGE_DIR)/share; \
 	fi
 	@if [ -d "$(MY_DIR)/include" ]; then \
 		cp -r $(MY_DIR)/include $(STAGE_DIR)/include; \
 	fi
+	
+	@if [ -d "$(STAGE_DIR)/include" ]; then \
+		cp -r $(STAGE_DIR)/include/* $(STAGING_DIR)/include/ 2>/dev/null || true; \
+	fi
+	@if [ -d "$(STAGE_DIR)/lib" ]; then \
+		mkdir -p $(STAGING_DIR)/lib; \
+		cp -r $(STAGE_DIR)/lib/* $(STAGING_DIR)/lib/ 2>/dev/null || true; \
+		cp -P $(STAGE_DIR)/lib/*.so* $(COMP_BIN_DIR)/ 2>/dev/null || true; \
+		cp -P $(STAGE_DIR)/lib/*.a $(COMP_BIN_DIR)/ 2>/dev/null || true; \
+	fi
 
-.PHONY: before-stage after-stage
+.PHONY: before-target before-stage after-stage
+before-target:
 before-stage:
 after-stage:

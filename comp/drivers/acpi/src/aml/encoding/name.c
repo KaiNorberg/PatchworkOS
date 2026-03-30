@@ -9,7 +9,7 @@
 #include <kernel/acpi/aml/token.h>
 #include <kernel/log/log.h>
 
-#include <libstd/list.h>
+#include <libc/list.h>
 #include <stdlib.h>
 #include <string.h>
 

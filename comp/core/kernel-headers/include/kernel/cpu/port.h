@@ -1,7 +1,7 @@
 #pragma once
 
-#include <libstd/defs.h>
-#include <libstd/status.h>
+#include <libc/defs.h>
+#include <libc/status.h>
 #include <stdint.h>
 
 /**

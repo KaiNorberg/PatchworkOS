@@ -4,8 +4,8 @@
 #include <kernel/acpi/aml/state.h>
 
 #include <errno.h>
-#include <libstd/math.h>
-#include <libstd/status.h>
+#include <libc/math.h>
+#include <libc/status.h>
 #include <stdbool.h>
 #include <stdint.h>
 

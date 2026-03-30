@@ -1,0 +1,9 @@
+(component
+    (description "Generic UI widget library.")
+    (author "Kai Norberg")
+    (license MIT)
+    (dependencies
+        (libc 1.0.0)
+        (libdraw 1.0.0)
+    )
+)

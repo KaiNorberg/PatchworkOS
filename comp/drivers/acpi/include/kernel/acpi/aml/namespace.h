@@ -2,10 +2,10 @@
 
 #include <kernel/acpi/aml/encoding/name.h>
 
-#include <libstd/defs.h>
-#include <libstd/list.h>
-#include <libstd/map.h>
-#include <libstd/status.h>
+#include <libc/defs.h>
+#include <libc/list.h>
+#include <libc/map.h>
+#include <libc/status.h>
 #include <stdint.h>
 
 /**

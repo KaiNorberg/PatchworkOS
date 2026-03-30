@@ -49,7 +49,7 @@
 
 /**
  * @brief Generate an array of vertices for a circle.
- * 
+ *
  * @param vertices An array of x, y coordinate pairs to fill.
  * @param count The number of vertices to generate.
  * @param centerX The center x coordinate of the circle.

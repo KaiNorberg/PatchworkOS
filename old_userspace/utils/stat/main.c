@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libstd/fs.h>
+#include <libc/fs.h>
 #include <time.h>
 
 static const char* type_to_string(vnode_type_t type)

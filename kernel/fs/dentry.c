@@ -14,7 +14,7 @@
 #include <kernel/sync/mutex.h>
 #include <kernel/sync/seqlock.h>
 
-#include <libstd/list.h>
+#include <libc/list.h>
 #include <stdlib.h>
 
 typedef struct

@@ -7,7 +7,7 @@
 #include <kernel/module/module.h>
 
 #include <kernel/cpu/regs.h>
-#include <libstd/defs.h>
+#include <libc/defs.h>
 
 #include <stdint.h>
 
