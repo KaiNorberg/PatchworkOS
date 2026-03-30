@@ -203,6 +203,7 @@ static void* vmm_find_free_region(space_t* space, size_t pageAmount, size_t alig
     if (page_table_find_unmapped_region(&space->pageTable, space->startAddress, space->freeAddress, pageAmount,
             alignment, &addr))
     {
+        space->freeAddress = (uintptr_t)addr + (pageAmount * PAGE_SIZE);
         assert(page_table_is_unmapped(&space->pageTable, addr, pageAmount));
         return addr;
     }

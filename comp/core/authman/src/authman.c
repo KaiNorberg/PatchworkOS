@@ -1,11 +1,9 @@
-#include <ft2build.h>
 #include <libc/io.h>
 #include <libc/math.h>
-#include <libdraw/draw.h>
-#include <libwidget/widget.h>
+#include <libgfx/gfx.h>
+#include <libgui/gui.h>
 #include <stdio.h>
 #include <time.h>
-#include FT_FREETYPE_H
 
 int main(int argc, char** argv)
 {
@@ -45,28 +43,44 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    drawable_t screen;
-    draw_init(&screen, address, width, height, pitch);
+    gui_widget_t* desktop;
+    status = gui_desktop_new(GFX_RECT(0, 0, width, height), address, &desktop);
+    if (IS_ERR(status))
+    {
+        printf("authman: failed to create desktop %Y\n", status);
+        return EXIT_FAILURE;
+    }
 
-    pixel_t* backbuffer = malloc(height * pitch);
+    gui_widget_t* testButton;
+    status = gui_button_new(desktop, 0, GFX_RECT_FROM_CENTER(width / 2, height / 2, 100, 100), &testButton);
+    if (IS_ERR(status))
+    {
+        printf("authman: failed to create button %Y\n", status);
+        return EXIT_FAILURE;
+    }
+
+    gui_widget_show(testButton);
+    gui_widget_show(desktop);
+
+    /*gfx_t screen = GFX(address, width, height, pitch);
+
+    gfx_pixel_t* backbuffer = malloc(height * pitch);
     if (backbuffer == NULL)
     {
         printf("authman: failed to allocate backbuffer\n");
         return EXIT_FAILURE;
     }
 
-    drawable_t back;
-    draw_init(&back, backbuffer, width, height, pitch);
+    gfx_t back = GFX(backbuffer, width, height, pitch);
 
-    pixel_t* frontbuffer = malloc(height * pitch);
+    gfx_pixel_t* frontbuffer = malloc(height * pitch);
     if (frontbuffer == NULL)
     {
         printf("authman: failed to allocate frontbuffer\n");
         return EXIT_FAILURE;
     }
 
-    drawable_t front;
-    draw_init(&front, frontbuffer, width, height, pitch);
+    gfx_t front = GFX(frontbuffer, width, height, pitch);
 
     const size_t vertexAmount = 360;
     float vertices[vertexAmount * 2];
@@ -84,9 +98,9 @@ int main(int argc, char** argv)
         FT_Done_FreeType(ft);
     }
 
-    vertices_circle(vertices, vertexAmount, width / 2, height / 2, MIN(width, height) / 2, 0, 2.0 * M_PI);
+    gfx_verts_circle(vertices, vertexAmount, width / 2, height / 2, MIN(width, height) / 2, 0, 2.0 * M_PI);
 
-    polygon_t* circle = polygon_new(vertices, vertexAmount);
+    gfx_poly_t* circle = gfx_poly_new(vertices, vertexAmount);
     if (circle == NULL)
     {
         printf("authman: failed to create circle\n");
@@ -97,14 +111,14 @@ int main(int argc, char** argv)
     size_t iterations = 0;
     while (true)
     {
-        draw_fill(&front, PIXEL_ARGB(255, 255, 0, 0));
-        draw_fill(&back, PIXEL_ARGB(0, 0, 0, 0));
+        gfx_draw_fill(&front, GFX_PIXEL(255, 255, 0, 0));
+        gfx_draw_fill(&back, GFX_PIXEL(0, 0, 0, 0));
 
-        draw_polygon(&back, circle, PIXEL_ARGB(255, 255, 255, 255), DRAW_BLEND_SET);
+        gfx_draw_polygon(&back, circle, GFX_PIXEL(255, 255, 255, 255), GFX_BLEND_SET);
 
-        draw_blit(&front, &back, RECT(0, 0, width, height), RECT(0, 0, width, height));
+        gfx_draw_blit(&front, &back, GFX_RECT(0, 0, width, height), GFX_RECT(0, 0, width, height));
 
-        draw_transfer(&screen, &front);
+        gfx_draw_transfer(&screen, &front);
 
         iterations++;
         if (clock() - check > CLOCKS_PER_SEC)
@@ -113,7 +127,7 @@ int main(int argc, char** argv)
             iterations = 0;
             check = clock();
         }
-    }
+    }*/
 
     return 0;
 }

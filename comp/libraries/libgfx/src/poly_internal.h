@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef struct polygon_edge
+typedef struct gfx_poly_edge
 {
     float top;
     float bottom;
@@ -11,13 +11,13 @@ typedef struct polygon_edge
     float invSlope;
     int8_t dir;
     float x;
-} polygon_edge_t;
+} gfx_poly_edge_t;
 
-typedef struct polygon
+typedef struct gfx_poly
 {
     float top;
     float bottom;
     size_t edgeCount;
-    polygon_edge_t** activeEdges;
-    polygon_edge_t edges[];
-} polygon_t;
+    gfx_poly_edge_t** activeEdges;
+    gfx_poly_edge_t edges[];
+} gfx_poly_t;

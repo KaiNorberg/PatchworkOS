@@ -17,7 +17,7 @@ BOOT_LDFLAGS := -shared -nostdlib -Bsymbolic -z norelro -L$(VENDOR_DIR)/gnu-efi/
 $(BOOT_BUILD)/boot.o: $(BOOT_SRC)/boot.c
 	$(MKCWD)
 	@echo "  CC    $<"
-	@$(CC) $(BOOT_CFLAGS) -c $< -o $@
+	@$(CC) $(BOOT_CFLAGS) -MMD -MP -MF $(@:.o=.d) -c $< -o $@
 
 $(TARGET): $(BOOT_BUILD)/boot.o
 	$(MKCWD)
@@ -26,3 +26,5 @@ $(TARGET): $(BOOT_BUILD)/boot.o
 	@echo "  OBJCOPY $@"
 	@objcopy -j .text -j .sdata -j .data -j .rodata -j .dynamic -j .dynsym  -j .rel -j .rela -j .rel.* -j .rela.* -j .reloc --target efi-app-x86_64 --subsystem=10 $(BOOT_BUILD)/boot.so $@
 	@rm -f $(BOOT_BUILD)/boot.so
+
+-include $(BOOT_BUILD)/boot.d

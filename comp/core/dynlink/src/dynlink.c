@@ -104,16 +104,17 @@ static void _dyn_strcpy(char* dest, const char* src)
     *dest = '\0';
 }
 
-static void _dyn_memset(void* s, int c, size_t n)
+void* memset(void* s, int c, size_t n)
 {
     unsigned char* p = (unsigned char*)s;
     while (n--)
     {
         *p++ = (unsigned char)c;
     }
+    return s;
 }
 
-static void _dyn_memcpy(void* dest, const void* src, size_t n)
+void* memcpy(void* dest, const void* src, size_t n)
 {
     unsigned char* d = (unsigned char*)dest;
     const unsigned char* s = (const unsigned char*)src;
@@ -121,6 +122,7 @@ static void _dyn_memcpy(void* dest, const void* src, size_t n)
     {
         *d++ = *s++;
     }
+    return dest;
 }
 
 extern Elf64_Dyn _DYNAMIC[] HIDDEN;
@@ -174,16 +176,10 @@ static void _dyn_relocate_self(dyn_info_t* info)
         for (size_t i = 0; i < count; i++)
         {
             Elf64_Rela* r = (Elf64_Rela*)((uint8_t*)rela + (i * relaEnt));
-            switch (ELF64_R_TYPE(r->r_info))
-            {
-            case R_X86_64_RELATIVE:
+            if (ELF64_R_TYPE(r->r_info) == R_X86_64_RELATIVE)
             {
                 Elf64_Addr* target = (Elf64_Addr*)(info->base + r->r_offset);
                 *target = (Elf64_Addr)info->base + r->r_addend;
-            }
-            break;
-            default:
-                break;
             }
         }
     }
@@ -393,7 +389,7 @@ static bool _dyn_do_relocations(dso_t* dso, Elf64_Rela* rela, size_t size, size_
         case R_X86_64_COPY:
             if (foundSym != NULL && foundDso != NULL)
             {
-                _dyn_memcpy((void*)target, (const void*)symVal, sym->st_size);
+                memcpy((void*)target, (const void*)symVal, sym->st_size);
             }
             else
             {
@@ -545,7 +541,7 @@ static dso_t* _dyn_load_elf(fd_t fd, const char* name, bool isMain)
                 size_t zeroEnd = vaddrAligned + mapLen;
                 if (zeroStart < zeroEnd)
                 {
-                    _dyn_memset((void*)zeroStart, 0, zeroEnd - zeroStart);
+                    memset((void*)zeroStart, 0, zeroEnd - zeroStart);
                 }
             }
 
@@ -558,7 +554,7 @@ static dso_t* _dyn_load_elf(fd_t fd, const char* name, bool isMain)
 
         if (phdr->p_filesz > 0)
         {
-            _dyn_memcpy((void*)vaddr, (const void*)((uintptr_t)fileMap + phdr->p_offset), phdr->p_filesz);
+            memcpy((void*)vaddr, (const void*)((uintptr_t)fileMap + phdr->p_offset), phdr->p_filesz);
         }
 
         size_t memszLen = ROUND_UP(phdr->p_memsz + diff, PAGE_SIZE);
@@ -707,14 +703,14 @@ static void _dyn_load_dependencies(dso_t* mainDso)
                 else
                 {
                     _dyn_print("dynlink: failed to load dependency '");
-                    _dyn_print(depName);
+                    _dyn_print(path);
                     _dyn_print("'\n");
                 }
             }
             else
             {
                 _dyn_print("dynlink: skipping dependency '");
-                _dyn_print(depName);
+                _dyn_print(path);
                 _dyn_print("'\n");
             }
         }
@@ -774,7 +770,7 @@ HIDDEN void* _dyn_main(void* stack)
         }
     }
 
-    _dyn_run_all_inits();
+    _dyn_run_all_inits();    
 
     ioring_teardown(&ioring);
     return mainDso->entry;

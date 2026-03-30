@@ -22,7 +22,7 @@ set(CMAKE_C_FLAGS_INIT "--config ${CMAKE_CURRENT_LIST_DIR}/patchworkos.cfg")
 set(CMAKE_CXX_FLAGS_INIT "--config ${CMAKE_CURRENT_LIST_DIR}/patchworkos.cfg")
 set(CMAKE_ASM_FLAGS_INIT "--config ${CMAKE_CURRENT_LIST_DIR}/patchworkos.cfg")
 
-set(PATCHWORKOS_LINK_FLAGS "-nostdlib -L${CMAKE_CURRENT_LIST_DIR}/../build/staging/lib -Wl,-dynamic-linker=/lib/dynlink.so ${CMAKE_CURRENT_LIST_DIR}/../bin/comp/crt0.o ${CMAKE_CURRENT_LIST_DIR}/../bin/comp/crti.o")
+set(PATCHWORKOS_LINK_FLAGS "-nostdlib -L${CMAKE_CURRENT_LIST_DIR}/../build/staging/lib -Wl,-dynamic-linker=/lib/dynlink.so -Wl,--image-base=0x400000 ${CMAKE_CURRENT_LIST_DIR}/../bin/comp/crt0.o ${CMAKE_CURRENT_LIST_DIR}/../bin/comp/crti.o")
 set(CMAKE_EXE_LINKER_FLAGS_INIT "${PATCHWORKOS_LINK_FLAGS}")
 set(CMAKE_SHARED_LINKER_FLAGS_INIT "-nostdlib -L${CMAKE_CURRENT_LIST_DIR}/../build/staging/lib ${CMAKE_CURRENT_LIST_DIR}/../bin/comp/crti.o")
 

@@ -1,5 +1,5 @@
-#ifndef PATCHWORK_DRAW_H
-#define PATCHWORK_DRAW_H 1
+#ifndef PATCHWORK_GFX_H
+#define PATCHWORK_GFX_H 1
 
 #include "cmd.h"
 #include "font.h"

@@ -21,7 +21,7 @@ COMP_MKS := $(shell find comp/ -name "*.mk" 2>/dev/null)
 COMP_NAMES := $(basename $(notdir $(COMP_MKS)))
 COMP_TARGETS := $(patsubst %,$(BIN_DIR)/.%.built,$(COMP_NAMES))
 
-.PHONY: all clean staging image deploy
+.PHONY: all clean image deploy staging
 
 all: $(IMAGE)
 
@@ -46,7 +46,7 @@ $(VENDOR_DIR)/gnu-efi/.built:
 	@$(MAKE) -C $(VENDOR_DIR)/gnu-efi CC="clang --config $(ROOT_DIR)/tools/patchworkos.cfg" AR="llvm-ar" LD="ld.lld" OBJCOPY="llvm-objcopy" >/dev/null 2>&1
 	@touch $@
 
-staging: $(VENDOR_DIR)/gnu-efi/.built $(VERSION_HEADER)
+$(BUILD_DIR)/.staging.built: $(VENDOR_DIR)/gnu-efi/.built $(VERSION_HEADER) $(shell find $(COMP_DIR) $(ROOT_DIR)/boot -type f -name '*.h' 2>/dev/null)
 	@echo "STAGING headers"
 	@rm -rf $(STAGING_DIR)/
 	@mkdir -p $(STAGING_DIR)/include
@@ -58,26 +58,30 @@ staging: $(VENDOR_DIR)/gnu-efi/.built $(VERSION_HEADER)
 			cp -r $$COMP_DIR/include/* $(STAGING_DIR)/include/ 2>/dev/null || true; \
 		fi; \
 	done
+	@touch $@
 
-$(BIN_DIR)/.boot.built: staging
+staging: $(BUILD_DIR)/.staging.built
+
+$(BIN_DIR)/.boot.built: $(BUILD_DIR)/.staging.built $(shell find $(ROOT_DIR)/boot/src $(ROOT_DIR)/boot/include -type f 2>/dev/null)
 	@echo "BUILD   boot"
 	@$(MAKE) -s --no-print-directory -f boot/boot.mk
 	@touch $@
 
-$(BIN_DIR)/.init.built: staging $(BIN_DIR)/.libc.built
+$(BIN_DIR)/.init.built: $(BUILD_DIR)/.staging.built $(BIN_DIR)/.libc.built $(shell find $(ROOT_DIR)/init -type f 2>/dev/null)
 	@echo "BUILD   init"
 	@$(MAKE) -s --no-print-directory -f init/init.mk
 	@touch $@
 
-$(BIN_DIR)/.kernel.built: staging
+$(BIN_DIR)/.kernel.built: $(BUILD_DIR)/.staging.built $(shell find $(ROOT_DIR)/kernel -type f 2>/dev/null)
 	@echo "BUILD   kernel"
 	@$(MAKE) -s --no-print-directory -f kernel/kernel.mk
 	@touch $@
 
 define COMP_RULE
 COMP_DEPS_$(1) := $$(strip $$(shell grep -E '^[[:space:]]*COMP_DEPENDS[[:space:]]*(\+|:)?=' $$(filter %/$(1).mk,$$(COMP_MKS)) | cut -d '=' -f 2))
+COMP_DIR_$(1) := $$(patsubst %/,%,$$(dir $$(filter %/$(1).mk,$$(COMP_MKS))))
 
-$(BIN_DIR)/.$(1).built: staging $$(patsubst %,$(BIN_DIR)/.%.built,$$(COMP_DEPS_$(1)))
+$(BIN_DIR)/.$(1).built: $(BUILD_DIR)/.staging.built $$(patsubst %,$(BIN_DIR)/.%.built,$$(COMP_DEPS_$(1))) $$(shell find $$(COMP_DIR_$(1)) -type f 2>/dev/null)
 	@echo "BUILD   component $(1)"
 	@$$(MAKE) -s --no-print-directory -f $$(filter %/$(1).mk,$$(COMP_MKS)) \
 		SRC_DIR=$$(patsubst %/,%/src,$$(dir $$(filter %/$(1).mk,$$(COMP_MKS)))) \

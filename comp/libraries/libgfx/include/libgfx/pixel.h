@@ -4,17 +4,17 @@
 
 /**
  * @brief Pixel definitions
- * @defgroup comp_libdraw_pixel Pixel
- * @ingroup comp_libdraw
+ * @defgroup comp_libgfx_pixel Pixel
+ * @ingroup comp_libgfx
  *
  * @{
  */
 
 /**
  * @brief Pixel structure.
- * @union pixel_t
+ * @union gfx_pixel_t
  */
-typedef union {
+typedef union gfx_pixel {
     struct
     {
         uint8_t b;
@@ -23,7 +23,7 @@ typedef union {
         uint8_t a;
     };
     uint32_t argb;
-} pixel_t;
+} gfx_pixel_t;
 
 /**
  * @brief Create a pixel from ARGB components.
@@ -33,8 +33,8 @@ typedef union {
  * @param _g Green component.
  * @param _b Blue component.
  */
-#define PIXEL_ARGB(_a, _r, _g, _b) \
-    (pixel_t) \
+#define GFX_PIXEL(_a, _r, _g, _b) \
+    (gfx_pixel_t) \
     { \
         .b = (_b), .g = (_g), .r = (_r), .a = (_a) \
     }

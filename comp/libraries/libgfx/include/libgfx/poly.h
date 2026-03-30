@@ -1,38 +1,38 @@
 #pragma once
 
-#include <libdraw/rect.h>
+#include <libgfx/rect.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
 /**
  * @brief Polygon helpers
- * @defgroup comp_libdraw_polygon Polygons
- * @ingroup comp_libdraw
+ * @defgroup comp_libgfx_poly Polygons
+ * @ingroup comp_libgfx
  *
  * @{
  */
 
 /**
  * @brief Parsed polygon structure for drawing.
- * @struct polygon_t
+ * @struct gfx_poly_t
  */
-typedef struct polygon polygon_t;
+typedef struct gfx_poly gfx_poly_t;
 
 /**
  * @brief Create a new polygon structure from a set of vertices.
  *
  * @param vertices An array of x, y coordinates.
  * @param count The number of vertices.
- * @return polygon_t*
+ * @return A pointer to the newly created polygon structure.
  */
-polygon_t* polygon_new(const float* vertices, size_t count);
+gfx_poly_t* gfx_poly_new(const float* vertices, size_t count);
 
 /**
  * @brief Free a polygon structure.
  *
  * @param polygon The polygon to free.
  */
-void polygon_free(polygon_t* polygon);
+void gfx_poly_free(gfx_poly_t* polygon);
 
 /** @} */

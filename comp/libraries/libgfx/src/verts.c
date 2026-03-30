@@ -1,8 +1,7 @@
-#include <libdraw/draw.h>
-#include <libdraw/vertices.h>
+#include <libgfx/gfx.h>
 #include <math.h>
 
-void vertices_circle(float* vertices, size_t count, float centerX, float centerY, float radius, float start, float end)
+void gfx_verts_circle(float* vertices, size_t count, float centerX, float centerY, float radius, float start, float end)
 {
     if (vertices == NULL || count < 3)
     {
@@ -25,28 +24,28 @@ void vertices_circle(float* vertices, size_t count, float centerX, float centerY
         for (size_t i = 0; i < count; i++)
         {
             float angle = start + (float)i * step;
-            VERTICES_SET_X(vertices, i, centerX + roundf(cosf(angle) * radius));
-            VERTICES_SET_Y(vertices, i, centerY + roundf(sinf(angle) * radius));
+            GFX_VERTS_SET_X(vertices, i, centerX + roundf(cosf(angle) * radius));
+            GFX_VERTS_SET_Y(vertices, i, centerY + roundf(sinf(angle) * radius));
         }
         return;
     }
 
-    VERTICES_SET_X(vertices, 0, centerX);
-    VERTICES_SET_Y(vertices, 0, centerY);
+    GFX_VERTS_SET_X(vertices, 0, centerX);
+    GFX_VERTS_SET_Y(vertices, 0, centerY);
 
     float step = (end - start) / (float)(count - 2);
     for (size_t i = 1; i < count - 1; i++)
     {
         float angle = start + (float)(i - 1) * step;
-        VERTICES_SET_X(vertices, i, centerX + roundf(cosf(angle) * radius));
-        VERTICES_SET_Y(vertices, i, centerY + roundf(sinf(angle) * radius));
+        GFX_VERTS_SET_X(vertices, i, centerX + roundf(cosf(angle) * radius));
+        GFX_VERTS_SET_Y(vertices, i, centerY + roundf(sinf(angle) * radius));
     }
 
-    VERTICES_SET_X(vertices, count - 1, centerX + roundf(cosf(end) * radius));
-    VERTICES_SET_Y(vertices, count - 1, centerY + roundf(sinf(end) * radius));
+    GFX_VERTS_SET_X(vertices, count - 1, centerX + roundf(cosf(end) * radius));
+    GFX_VERTS_SET_Y(vertices, count - 1, centerY + roundf(sinf(end) * radius));
 }
 
-void vertices_rotate(float* vertices, size_t count, float angle, float centerX, float centerY)
+void gfx_verts_rotate(float* vertices, size_t count, float angle, float centerX, float centerY)
 {
     if (vertices == NULL || count == 0)
     {
@@ -58,18 +57,18 @@ void vertices_rotate(float* vertices, size_t count, float angle, float centerX, 
 
     for (uint64_t i = 0; i < count; i++)
     {
-        float translatedX = VERTICES_GET_X(vertices, i) - centerX;
-        float translatedY = VERTICES_GET_Y(vertices, i) - centerY;
+        float translatedX = GFX_VERTS_GET_X(vertices, i) - centerX;
+        float translatedY = GFX_VERTS_GET_Y(vertices, i) - centerY;
 
         int64_t rotatedX = (int64_t)round((translatedX * cosAngle) - (translatedY * sinAngle));
         int64_t rotatedY = (int64_t)round((translatedX * sinAngle) + (translatedY * cosAngle));
 
-        VERTICES_SET_X(vertices, i, rotatedX + centerX);
-        VERTICES_SET_Y(vertices, i, rotatedY + centerY);
+        GFX_VERTS_SET_X(vertices, i, rotatedX + centerX);
+        GFX_VERTS_SET_Y(vertices, i, rotatedY + centerY);
     }
 }
 
-void vertices_scale(float* vertices, size_t count, float scaleX, float scaleY, float centerX, float centerY)
+void gfx_verts_scale(float* vertices, size_t count, float scaleX, float scaleY, float centerX, float centerY)
 {
     if (vertices == NULL || count == 0)
     {
@@ -78,18 +77,18 @@ void vertices_scale(float* vertices, size_t count, float scaleX, float scaleY, f
 
     for (uint64_t i = 0; i < count; i++)
     {
-        float translatedX = VERTICES_GET_X(vertices, i) - centerX;
-        float translatedY = VERTICES_GET_Y(vertices, i) - centerY;
+        float translatedX = GFX_VERTS_GET_X(vertices, i) - centerX;
+        float translatedY = GFX_VERTS_GET_Y(vertices, i) - centerY;
 
         int64_t scaledX = (int64_t)round(translatedX * scaleX);
         int64_t scaledY = (int64_t)round(translatedY * scaleY);
 
-        VERTICES_SET_X(vertices, i, scaledX + centerX);
-        VERTICES_SET_Y(vertices, i, scaledY + centerY);
+        GFX_VERTS_SET_X(vertices, i, scaledX + centerX);
+        GFX_VERTS_SET_Y(vertices, i, scaledY + centerY);
     }
 }
 
-void vertices_translate(float* vertices, size_t count, float offsetX, float offsetY)
+void gfx_verts_translate(float* vertices, size_t count, float offsetX, float offsetY)
 {
     if (vertices == NULL || count == 0)
     {
@@ -98,12 +97,12 @@ void vertices_translate(float* vertices, size_t count, float offsetX, float offs
 
     for (uint64_t i = 0; i < count; i++)
     {
-        VERTICES_SET_X(vertices, i, VERTICES_GET_X(vertices, i) + offsetX);
-        VERTICES_SET_Y(vertices, i, VERTICES_GET_Y(vertices, i) + offsetY);
+        GFX_VERTS_SET_X(vertices, i, GFX_VERTS_GET_X(vertices, i) + offsetX);
+        GFX_VERTS_SET_Y(vertices, i, GFX_VERTS_GET_Y(vertices, i) + offsetY);
     }
 }
 
-bool vertices_contains(const float* vertices, size_t count, float x, float y)
+bool gfx_verts_contains(const float* vertices, size_t count, float x, float y)
 {
     if (vertices == NULL || count == 0)
     {
@@ -113,10 +112,10 @@ bool vertices_contains(const float* vertices, size_t count, float x, float y)
     int32_t winding = 0;
     for (uint64_t i = 0; i < count; i++)
     {
-        float x1 = VERTICES_GET_X(vertices, i);
-        float y1 = VERTICES_GET_Y(vertices, i);
-        float x2 = VERTICES_GET_X(vertices, (i + 1) % count);
-        float y2 = VERTICES_GET_Y(vertices, (i + 1) % count);
+        float x1 = GFX_VERTS_GET_X(vertices, i);
+        float y1 = GFX_VERTS_GET_Y(vertices, i);
+        float x2 = GFX_VERTS_GET_X(vertices, (i + 1) % count);
+        float y2 = GFX_VERTS_GET_Y(vertices, (i + 1) % count);
 
         if (y1 <= y)
         {
@@ -137,22 +136,22 @@ bool vertices_contains(const float* vertices, size_t count, float x, float y)
     return winding != 0;
 }
 
-void vertices_bounds(const float* vertices, size_t count, rect_t* bounds)
+void gfx_verts_bounds(const float* vertices, size_t count, gfx_rect_t* bounds)
 {
     if (vertices == NULL || count == 0 || bounds == NULL)
     {
         return;
     }
 
-    int32_t minX = VERTICES_GET_X(vertices, 0);
-    int32_t maxX = VERTICES_GET_X(vertices, 0);
-    int32_t minY = VERTICES_GET_Y(vertices, 0);
-    int32_t maxY = VERTICES_GET_Y(vertices, 0);
+    int32_t minX = GFX_VERTS_GET_X(vertices, 0);
+    int32_t maxX = GFX_VERTS_GET_X(vertices, 0);
+    int32_t minY = GFX_VERTS_GET_Y(vertices, 0);
+    int32_t maxY = GFX_VERTS_GET_Y(vertices, 0);
 
     for (size_t i = 1; i < count; i++)
     {
-        int32_t x = VERTICES_GET_X(vertices, i);
-        int32_t y = VERTICES_GET_Y(vertices, i);
+        int32_t x = GFX_VERTS_GET_X(vertices, i);
+        int32_t y = GFX_VERTS_GET_Y(vertices, i);
 
         if (x < minX)
         {
