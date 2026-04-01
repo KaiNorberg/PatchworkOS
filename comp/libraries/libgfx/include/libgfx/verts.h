@@ -58,7 +58,8 @@
  * @param start The start angle in radians.
  * @param end The end angle in radians.
  */
-void gfx_verts_circle(float* vertices, size_t count, float centerX, float centerY, float radius, float start, float end);
+void gfx_verts_circle(float* vertices, size_t count, float centerX, float centerY, float radius, float start,
+    float end);
 
 /**
  * @brief Rotate a polygon around a center point.

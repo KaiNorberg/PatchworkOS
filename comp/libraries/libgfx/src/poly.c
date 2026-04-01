@@ -23,7 +23,8 @@ gfx_poly_t* gfx_poly_new(const float* vertices, size_t count)
         return NULL;
     }
 
-    gfx_poly_t* polygon = malloc(sizeof(gfx_poly_t) + count * sizeof(gfx_poly_edge_t) + count * sizeof(gfx_poly_edge_t*));
+    gfx_poly_t* polygon =
+        malloc(sizeof(gfx_poly_t) + count * sizeof(gfx_poly_edge_t) + count * sizeof(gfx_poly_edge_t*));
     if (polygon == NULL)
     {
         return NULL;

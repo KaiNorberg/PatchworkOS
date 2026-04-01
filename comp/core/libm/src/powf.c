@@ -4,7 +4,8 @@ float powf(float x, float y)
 {
     if (x == 1.0F || y == 0.0F)
     {
-        return 1.0F;}
+        return 1.0F;
+    }
     if (isnan(x) || isnan(y))
     {
         return NAN;

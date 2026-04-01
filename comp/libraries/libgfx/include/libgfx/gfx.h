@@ -3,6 +3,7 @@
 #include <libgfx/pixel.h>
 #include <libgfx/poly.h>
 #include <libgfx/rect.h>
+#include <libgfx/region.h>
 #include <libgfx/verts.h>
 #include <math.h>
 #include <stdbool.h>
@@ -17,6 +18,19 @@
  *
  * @{
  */
+
+/**
+ * @brief Blending modes for drawing.
+ * @enum gfx_blend_t
+ */
+typedef enum
+{
+    GFX_BLEND_NONE,
+    GFX_BLEND_ALPHA,
+    GFX_BLEND_ADDITIVE,
+    GFX_BLEND_MULTIPLY,
+    GFX_BLEND_SET,
+} gfx_blend_t;
 
 /**
  * @brief Graphics context structure.
@@ -64,6 +78,31 @@ typedef struct gfx
 void gfx_draw_rect(gfx_t* draw, gfx_rect_t rect, gfx_pixel_t color);
 
 /**
+ * @brief Draw a filled rounded rectangle.
+ *
+ * @param draw The drawing context to draw on.
+ * @param rect The rectangle to draw.
+ * @param radius The radius of the corners.
+ * @param color The color to draw the rectangle with.
+ * @param blend The blending mode to use.
+ */
+void gfx_draw_smooth_rect(gfx_t* draw, gfx_rect_t rect, int32_t radius, gfx_pixel_t color, gfx_blend_t blend);
+
+/**
+ * @brief Draw a filled rounded rectangle with a border.
+ *
+ * @param draw The drawing context to draw on.
+ * @param rect The rectangle to draw.
+ * @param radius The radius of the corners.
+ * @param thickness The thickness of the border.
+ * @param fillColor The color to draw the filled area with.
+ * @param borderColor The color to draw the border with.
+ * @param blend The blending mode to use.
+ */
+void gfx_draw_smooth_rect_border(gfx_t* draw, gfx_rect_t rect, int32_t radius, int32_t thickness,
+    gfx_pixel_t fillColor, gfx_pixel_t borderColor, gfx_blend_t blend);
+
+/**
  * @brief Fill the entire context with a color.
  *
  * @param draw The drawing context to fill.
@@ -93,8 +132,7 @@ void gfx_draw_copy(gfx_t* dst, gfx_t* src, gfx_rect_t dstRect, gfx_rect_t srcRec
  */
 static inline void gfx_draw_transfer(gfx_t* dst, gfx_t* src)
 {
-    gfx_draw_copy(dst, src, GFX_RECT(0, 0, dst->width, dst->height),
-                  GFX_RECT(0, 0, src->width, src->height));
+    gfx_draw_copy(dst, src, GFX_RECT(0, 0, dst->width, dst->height), GFX_RECT(0, 0, src->width, src->height));
 }
 
 /**
@@ -108,19 +146,6 @@ static inline void gfx_draw_transfer(gfx_t* dst, gfx_t* src)
 void gfx_draw_blit(gfx_t* dst, gfx_t* src, gfx_rect_t dstRect, gfx_rect_t srcRect);
 
 /**
- * @brief Blending modes for polygon drawing.
- * @enum gfx_draw_blend_t
- */
-typedef enum
-{
-    GFX_BLEND_NONE,
-    GFX_BLEND_ALPHA,
-    GFX_BLEND_ADDITIVE,
-    GFX_BLEND_MULTIPLY,
-    GFX_BLEND_SET,
-} gfx_draw_blend_t;
-
-/**
  * @brief Draw a polygon with anti-aliasing.
  *
  * @param draw The drawing context to draw on.
@@ -128,6 +153,6 @@ typedef enum
  * @param color The color to draw the polygon with.
  * @param blend The blending mode to use.
  */
-void gfx_draw_polygon(gfx_t* draw, gfx_poly_t* polygon, gfx_pixel_t color, gfx_draw_blend_t blend);
+void gfx_draw_polygon(gfx_t* draw, gfx_poly_t* polygon, gfx_pixel_t color, gfx_blend_t blend);
 
 /** @} */

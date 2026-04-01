@@ -108,20 +108,22 @@ endif
 	@cat $(MY_DIR)/manifest.scon > $(STAGE_DIR)/manifest.scon
 
 	@if [ -d "$(MY_DIR)/share" ]; then \
-		cp -r $(MY_DIR)/share $(STAGE_DIR)/share; \
+		mkdir -p $(STAGE_DIR)/share; \
+		cp -f -r $(MY_DIR)/share/* $(STAGE_DIR)/share/ 2>/dev/null || true; \
 	fi
 	@if [ -d "$(MY_DIR)/include" ]; then \
-		cp -r $(MY_DIR)/include $(STAGE_DIR)/include; \
+		mkdir -p $(STAGE_DIR)/include; \
+		cp -f -r $(MY_DIR)/include/* $(STAGE_DIR)/include/ 2>/dev/null || true; \
 	fi
 	
 	@if [ -d "$(STAGE_DIR)/include" ]; then \
-		cp -r $(STAGE_DIR)/include/* $(STAGING_DIR)/include/ 2>/dev/null || true; \
+		cp -f -r $(STAGE_DIR)/include/* $(STAGING_DIR)/include/ 2>/dev/null || true; \
 	fi
 	@if [ -d "$(STAGE_DIR)/lib" ]; then \
 		mkdir -p $(STAGING_DIR)/lib; \
-		cp -r $(STAGE_DIR)/lib/* $(STAGING_DIR)/lib/ 2>/dev/null || true; \
-		cp -P $(STAGE_DIR)/lib/*.so* $(COMP_BIN_DIR)/ 2>/dev/null || true; \
-		cp -P $(STAGE_DIR)/lib/*.a $(COMP_BIN_DIR)/ 2>/dev/null || true; \
+		cp -f -r $(STAGE_DIR)/lib/* $(STAGING_DIR)/lib/ 2>/dev/null || true; \
+		cp -f -P $(STAGE_DIR)/lib/*.so* $(COMP_BIN_DIR)/ 2>/dev/null || true; \
+		cp -f -P $(STAGE_DIR)/lib/*.a $(COMP_BIN_DIR)/ 2>/dev/null || true; \
 	fi
 
 .PHONY: before-target before-stage after-stage

@@ -33,8 +33,8 @@ define PORT_STAGE_CMD
 	fi
 
 	@if [ -d "$(STAGE_DIR)/include/libpng16" ]; then \
-		mv $(STAGE_DIR)/include/libpng16/* $(STAGE_DIR)/include/; \
-		rmdir $(STAGE_DIR)/include/libpng16; \
+		mv -f $(STAGE_DIR)/include/libpng16/* $(STAGE_DIR)/include/; \
+		rm -rf $(STAGE_DIR)/include/libpng16; \
 	fi
 endef
 

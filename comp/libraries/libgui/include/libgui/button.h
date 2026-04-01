@@ -1,7 +1,7 @@
 #pragma once
 
-#include <libgfx/gfx.h>
 #include <libc/status.h>
+#include <libgfx/gfx.h>
 
 typedef struct gui_widget gui_widget_t;
 typedef uint32_t gui_widget_id_t;

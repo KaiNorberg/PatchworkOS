@@ -1,233 +1,184 @@
+#include <_libc/clock_t.h>
 #include <libc/list.h>
 #include <libgfx/pixel.h>
 #include <libgfx/rect.h>
 #include <libgui/gui.h>
+#include <libgui/mouse.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "gui_internal.h"
 
-status_t gui_widget_new(gui_class_t* cls, gui_widget_t* parent, gui_widget_id_t id, gfx_rect_t bounds, void* userdata, gui_widget_t** out)
+status_t gui_new(gfx_t* screen, gui_t** out)
 {
-    if (out == NULL)
+    if (screen == NULL || out == NULL)
     {
         return ERR(USER, INVAL);
     }
 
-    gui_widget_t* widget = malloc(cls->size);
-    if (widget == NULL)
+    gui_t* gui = malloc(sizeof(gui_t));
+    if (gui == NULL)
     {
         return ERR(USER, NOMEM);
     }
-    widget->x = bounds.left;
-    widget->y = bounds.top;
-    gfx_pixel_t* buffer = malloc(GFX_RECT_AREA(bounds) * sizeof(gfx_pixel_t));
-    if (buffer == NULL)
-    {
-        free(widget);
-        return ERR(USER, NOMEM);
-    }
-    widget->gfx = GFX(buffer, GFX_RECT_WIDTH(bounds), GFX_RECT_HEIGHT(bounds), GFX_RECT_WIDTH(bounds) * sizeof(gfx_pixel_t));
-    widget->cls = cls;
-    widget->layout = NULL;
-    widget->flags = GUI_FLAG_NONE;
-    widget->cursor = GUI_CURSOR_NONE;
-    widget->id = id;
-    list_init(&widget->children);
-    list_entry_init(&widget->entry);
-    widget->parent = parent;
-    if (parent == NULL)
-    {
-        widget->ctx = malloc(sizeof(gui_context_t));
-        if (widget->ctx == NULL)
-        {
-            free(buffer);
-            free(widget);
-            return ERR(USER, NOMEM);
-        }
-        widget->ctx->root = widget;
-        widget->ctx->focused = NULL;
-        widget->ctx->hovered = NULL;
-        widget->ctx->currentCursor = GUI_CURSOR_DEFAULT;
-    }
-    else
-    {
-        widget->ctx = parent->ctx;
-        list_push_back(&parent->children, &widget->entry);
-    }
-    widget->userdata = userdata;
 
-    *out = widget;
+    gui->screen = screen;
+    gui->dirty = GFX_REGION();
+    gui->root.bounds = GFX_RECT(0, 0, screen->width, screen->height);
+    gui->root.cls = NULL;
+    gui->root.layout = NULL;
+    gui->root.flags = GUI_FLAG_VISIBLE;
+    gui->root.cursor = GUI_MOUSE_CURSOR_NONE;
+    gui->root.id = 0;
+    list_init(&gui->root.children);
+    list_entry_init(&gui->root.entry);
+    gui->root.parent = NULL;
+    gui->root.gui = gui;
+    gui->root.userdata = NULL;
+    gui->focused = NULL;
+    gui->hovered = NULL;
+    gui->mouseX = screen->width / 2;
+    gui->mouseY = screen->height / 2;
+    gui->mouseButtons = GUI_MOUSE_BUTTON_NONE;
+    gui->events = NULL;
+    gui->eventCount = 0;
+    gui->eventCapacity = 0;
+
+    *out = gui;
     return OK;
 }
 
-void gui_widget_free(gui_widget_t* widget)
+void gui_free(gui_t* gui)
 {
-    if (widget == NULL)
+    if (gui == NULL)
     {
         return;
-    }
-
-    if (widget->ctx->focused == widget)
-    {
-        widget->ctx->focused = NULL;
-    }
-    if (widget->ctx->hovered == widget)
-    {
-        widget->ctx->hovered = NULL;
     }
 
     gui_widget_t* child;
     gui_widget_t* next;
-    LIST_FOR_EACH_SAFE(child, next, &widget->children, entry)
+    LIST_FOR_EACH_SAFE(child, next, &gui->root.children, entry)
     {
         gui_widget_free(child);
     }
 
-    if (widget->parent != NULL)
-    {
-        list_remove(&widget->entry);
-    }
-    else
-    {
-        free(widget->ctx);
-    }
-
-    free(widget->gfx.buffer);
-    free(widget);
+    free(gui);
 }
 
-void gui_widget_show(gui_widget_t* widget)
+gui_widget_t* gui_get_root(gui_t* gui)
 {
-    if (widget == NULL)
+    if (gui == NULL)
+    {
+        return NULL;
+    }
+
+    return &gui->root;
+}
+
+void gui_invalidate(gui_t* gui, gfx_rect_t area)
+{
+    if (gui == NULL)
     {
         return;
     }
 
-    widget->flags |= GUI_FLAG_VISIBLE;
+    gfx_region_add(&gui->dirty, area);
 }
 
-void gui_widget_hide(gui_widget_t* widget)
+clock_t gui_next_timeout(gui_t* gui)
 {
-    if (widget == NULL)
+    UNUSED(gui);
+
+    /// @todo gui_next_timeout()
+    return CLOCKS_NEVER;
+}
+
+static status_t gui_push_event(gui_t* gui, gui_event_t* event)
+{
+    if (gui == NULL || event == NULL)
     {
-        return;
+        return ERR(USER, INVAL);
     }
 
-    widget->flags &= ~GUI_FLAG_VISIBLE;
-}
-
-void gui_widget_invalidate(gui_widget_t* widget, gfx_rect_t area)
-{
-    if (widget == NULL)
+    if (gui->eventCount >= gui->eventCapacity)
     {
-        return;
-    }
-
-}
-
-void gui_widget_invalidate_layout(gui_widget_t* widget)
-{
-    if (widget == NULL)
-    {
-        return;
-    }
-
-}
-
-gfx_t* gui_widget_get_gfx(gui_widget_t* widget)
-{
-    return &widget->gfx;
-}
-
-gfx_rect_t gui_widget_get_bounds(gui_widget_t* widget)
-{
-    return GFX_RECT(widget->x, widget->y, widget->gfx.width, widget->gfx.height);
-}
-
-status_t gui_widget_set_bounds(gui_widget_t* widget, gfx_rect_t bounds)
-{
-    widget->x = bounds.left;
-    widget->y = bounds.top;
-
-    size_t newWidth = GFX_RECT_WIDTH(bounds);
-    size_t newHeight = GFX_RECT_HEIGHT(bounds);
-
-    if (newWidth != widget->gfx.width || newHeight != widget->gfx.height)
-    {
-        if (!(widget->flags & GUI_FLAG_RESIZABLE))
-        {
-            return ERR(USER, INVAL);
-        }
-
-        gfx_pixel_t* newBuffer = realloc(widget->gfx.buffer, newWidth * newHeight * sizeof(gfx_pixel_t));
-        if (newBuffer == NULL)
+        size_t newCapacity = gui->eventCapacity == 0 ? 8 : gui->eventCapacity * 2;
+        gui_event_t* newEvents = realloc(gui->events, newCapacity * sizeof(gui_event_t));
+        if (newEvents == NULL)
         {
             return ERR(USER, NOMEM);
         }
-        widget->gfx = GFX(newBuffer, newWidth, newHeight, newWidth * sizeof(gfx_pixel_t));
+        gui->events = newEvents;
+        gui->eventCapacity = newCapacity;
     }
-    widget->gfx.width = newWidth;
-    widget->gfx.height = newHeight;
 
-    gui_widget_invalidate_layout(widget);
+    gui->events[gui->eventCount++] = *event;
     return OK;
 }
 
-gui_widget_t* gui_widget_get_parent(gui_widget_t* widget)
+static status_t gui_draw_widget(gui_t* gui, gui_widget_t* widget, gfx_rect_t clip)
 {
-    return widget->parent;
-}
-
-void gui_widget_set_parent(gui_widget_t* widget, gui_widget_t* parent)
-{
-    if (widget->parent == parent)
+    if (gui == NULL || widget == NULL)
     {
-        return;
+        return ERR(USER, INVAL);
     }
 
-    if (widget->parent != NULL && list_contains(&widget->entry))
+    if (!(widget->flags & GUI_FLAG_VISIBLE))
     {
-        gui_widget_t* oldParent = widget->parent;
-        list_remove(&widget->entry);
-        gui_widget_invalidate_layout(oldParent);
+        return OK;
     }
 
-    widget->parent = parent;
-
-    if (parent != NULL)
+    gfx_rect_t widgetBounds = gui_widget_get_ancestor_bounds(widget);
+    if (!GFX_RECT_OVERLAP(widgetBounds, clip))
     {
-        list_push_back(&parent->children, &widget->entry);
-        gui_widget_invalidate_layout(parent);
+        return OK;
     }
+
+    gfx_rect_t drawArea = GFX_RECT_INTERSECTION(widgetBounds, clip);
+    if (widget->cls != NULL && widget->cls->draw != NULL)
+    {
+        gfx_t gfx = GFX((void*)((uintptr_t)gui->screen->buffer + (widgetBounds.top * gui->screen->pitch) +
+                            (widgetBounds.left * sizeof(gfx_pixel_t))),
+            GFX_RECT_WIDTH(widgetBounds), GFX_RECT_HEIGHT(widgetBounds), gui->screen->pitch);
+
+        status_t status = widget->cls->draw(widget, &gfx, drawArea);
+        if (IS_ERR(status))
+        {
+            return status;
+        }
+    }
+
+    gui_widget_t* child;
+    LIST_FOR_EACH(child, &widget->children, entry)
+    {
+        status_t status = gui_draw_widget(gui, child, drawArea);
+        if (IS_ERR(status))
+        {
+            return status;
+        }
+    }
+
+    return OK;
 }
 
-gui_widget_id_t gui_widget_get_id(gui_widget_t* widget)
+status_t gui_tick(gui_t* gui, clock_t delta)
 {
-    return widget->id;
-}
+    if (gui == NULL)
+    {
+        return ERR(USER, INVAL);
+    }
 
-void gui_widget_set_id(gui_widget_t* widget, gui_widget_id_t id)
-{
-    widget->id = id;
-}
+    /// @todo Events, timers
 
-gui_cursor_t gui_widget_get_cursor(gui_widget_t* widget)
-{
-    return widget->cursor;
-}
+    for (size_t i = 0; i < gui->dirty.count; i++)
+    {
+        status_t status = gui_draw_widget(gui, &gui->root, gui->dirty.rects[i]);
+        if (IS_ERR(status))
+        {
+            return status;
+        }
+    }
 
-void gui_widget_set_cursor(gui_widget_t* widget, gui_cursor_t cursor)
-{
-    widget->cursor = cursor;
-}
-
-void* gui_widget_get_userdata(gui_widget_t* widget)
-{
-    return widget->userdata;
-}
-
-void gui_widget_set_userdata(gui_widget_t* widget, void* userdata)
-{
-    widget->userdata = userdata;
+    gui->dirty.count = 0;
+    return OK;
 }

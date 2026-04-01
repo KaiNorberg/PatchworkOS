@@ -109,22 +109,22 @@ typedef struct gfx_rect
 #define GFX_RECT_VALID(_rect) ((_rect).right > (_rect).left && (_rect).bottom > (_rect).top)
 
 /**
- * @brief Check if two rectangles intersect.
+ * @brief Check if two rectangles intersect (including edges)
  *
  * @param _a The first rectangle.
  * @param _b The second rectangle.
  */
 #define GFX_RECT_OVERLAP(_a, _b) \
-    ((_a).left < (_b).right && (_a).right > (_b).left && (_a).top < (_b).bottom && (_a).bottom > (_b).top)
+    ((_a).left <= (_b).right && (_a).right >= (_b).left && (_a).top <= (_b).bottom && (_a).bottom >= (_b).top)
 
 /**
- * @brief Check if two rectangles intersect (including edges).
+ * @brief Check if two rectangles intersect (excluding edges).
  *
  * @param _a The first rectangle.
  * @param _b The second rectangle.
  */
 #define GFX_RECT_OVERLAP_STRICT(_a, _b) \
-    ((_a).left <= (_b).right && (_a).right >= (_b).left && (_a).top <= (_b).bottom && (_a).bottom >= (_b).top)
+    ((_a).left < (_b).right && (_a).right > (_b).left && (_a).top < (_b).bottom && (_a).bottom > (_b).top)
 
 /**
  * @brief Get the intersection of two rectangles.
@@ -226,5 +226,58 @@ typedef struct gfx_rect
     { \
         (_x), (_y), (_x) + GFX_RECT_WIDTH(_rect), (_y) + GFX_RECT_HEIGHT(_rect) \
     }
+
+/**
+ * @brief Structure to hold the difference between two rectangles.
+ * @struct gfx_rect_difference_t
+ */
+typedef struct gfx_rect_difference
+{
+    gfx_rect_t rects[4];
+    uint32_t count;
+} gfx_rect_difference_t;
+
+/**
+ * @brief Calculate the difference between two rectangles.
+ *
+ * This function calculates the parts of rectangle A that are not covered by rectangle B.
+ * The result is stored as up to 4 smaller rectangles in the output structure.
+ *
+ * @param out Pointer to the structure to store the resulting rectangles.
+ * @param a The source rectangle.
+ * @param b The rectangle to subtract from A.
+ */
+static inline void gfx_rect_difference(gfx_rect_difference_t* out, gfx_rect_t a, gfx_rect_t b)
+{
+    out->count = 0;
+
+    if (!GFX_RECT_OVERLAP(a, b))
+    {
+        out->rects[out->count++] = a;
+        return;
+    }
+
+    gfx_rect_t intersect = GFX_RECT_INTERSECTION(a, b);
+
+    if (intersect.top > a.top)
+    {
+        out->rects[out->count++] = GFX_RECT_FROM_CORNERS(a.left, a.top, a.right, intersect.top);
+    }
+
+    if (intersect.bottom < a.bottom)
+    {
+        out->rects[out->count++] = GFX_RECT_FROM_CORNERS(a.left, intersect.bottom, a.right, a.bottom);
+    }
+
+    if (intersect.left > a.left)
+    {
+        out->rects[out->count++] = GFX_RECT_FROM_CORNERS(a.left, intersect.top, intersect.left, intersect.bottom);
+    }
+
+    if (intersect.right < a.right)
+    {
+        out->rects[out->count++] = GFX_RECT_FROM_CORNERS(intersect.right, intersect.top, a.right, intersect.bottom);
+    }
+}
 
 /** @} */

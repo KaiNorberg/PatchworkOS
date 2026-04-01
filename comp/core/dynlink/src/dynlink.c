@@ -770,7 +770,7 @@ HIDDEN void* _dyn_main(void* stack)
         }
     }
 
-    _dyn_run_all_inits();    
+    _dyn_run_all_inits();
 
     ioring_teardown(&ioring);
     return mainDso->entry;

@@ -28,7 +28,7 @@ define PORT_STAGE_CMD
 	@$(MAKE) -C $(COMP_BUILD_DIR)/build DESTDIR=$(STAGE_DIR) install
 
 	@if [ -d "$(STAGE_DIR)/usr" ]; then \
-		cp -r $(STAGE_DIR)/usr/* $(STAGE_DIR)/ 2>/dev/null || true; \
+		cp -f -r $(STAGE_DIR)/usr/* $(STAGE_DIR)/ 2>/dev/null || true; \
 		rm -rf $(STAGE_DIR)/usr; \
 	fi
 

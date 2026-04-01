@@ -43,16 +43,21 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    gui_widget_t* desktop;
-    status = gui_desktop_new(GFX_RECT(0, 0, width, height), address, &desktop);
+    gfx_pixel_t background = GFX_PIXEL(255, 56, 56, 56);
+    memset32(address, background.argb, height * pitch / sizeof(gfx_pixel_t));
+
+    gfx_t screen = GFX(address, width, height, pitch);
+
+    gui_t* gui;
+    status = gui_new(&screen, &gui);
     if (IS_ERR(status))
     {
-        printf("authman: failed to create desktop %Y\n", status);
+        printf("authman: failed to create gui %Y\n", status);
         return EXIT_FAILURE;
     }
 
     gui_widget_t* testButton;
-    status = gui_button_new(desktop, 0, GFX_RECT_FROM_CENTER(width / 2, height / 2, 100, 100), &testButton);
+    status = gui_button_new(gui_get_root(gui), 0, GFX_RECT_FROM_CENTER(width / 2, height / 2, 100, 100), &testButton);
     if (IS_ERR(status))
     {
         printf("authman: failed to create button %Y\n", status);
@@ -60,7 +65,31 @@ int main(int argc, char** argv)
     }
 
     gui_widget_show(testButton);
-    gui_widget_show(desktop);
+
+    clock_t now = clock();
+    clock_t last = now;
+    while (1)
+    {
+        clock_t next = gui_next_timeout(gui);
+
+        clock_t timeToSleep = MIN(next, CLOCKS_PER_SEC / 60);
+        if (timeToSleep > 0)
+        {
+            struct timespec ts = {
+                .tv_sec = timeToSleep / CLOCKS_PER_SEC,
+                .tv_nsec = timeToSleep % CLOCKS_PER_SEC,
+            };
+
+            thrd_sleep(&ts, NULL);
+        }
+
+        now = clock();
+        clock_t delta = now - last;
+        last = now;
+
+        printf("authman: tick\n");
+        gui_tick(gui, delta);
+    }
 
     /*gfx_t screen = GFX(address, width, height, pitch);
 

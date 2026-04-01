@@ -143,6 +143,11 @@ void timer_set(clock_t now, clock_t deadline)
 
     RWLOCK_READ_SCOPE(&sourcesLock);
 
+    if (bestSource == NULL)
+    {
+        return;
+    }
+
     deadline = MAX(deadline, now + CONFIG_MIN_TIMER_TIMEOUT);
 
     if (pcpu_timer->deadline <= deadline)
@@ -151,8 +156,5 @@ void timer_set(clock_t now, clock_t deadline)
     }
     pcpu_timer->deadline = deadline;
 
-    if (bestSource != NULL)
-    {
-        bestSource->set(VECTOR_TIMER, now, deadline - now);
-    }
+    bestSource->set(VECTOR_TIMER, now, deadline - now);
 }
