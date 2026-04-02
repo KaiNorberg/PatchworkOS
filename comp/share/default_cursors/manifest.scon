@@ -1,5 +1,5 @@
 (component
     (description "System Cursors.")
     (author "Kai Norberg")
-    (license "CC BY 4.0" https://www.figma.com/community/file/1587299628688776002)
+    (license GPLv3 https://github.com/rose-pine/cursor)
 )

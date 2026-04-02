@@ -90,14 +90,14 @@ int main(int argc, char** argv)
     }
 
     gui_cursor_state_t* state;
-    status = gui_cursor_state_new(theme, 24, 24, &state);
+    status = gui_cursor_state_new(theme, 32, 32, &state);
     if (IS_ERR(status))
     {
         printf("authman: failed to create cursor state %Y\n", status);
         return EXIT_FAILURE;
     }
 
-    gfx_pixel_t background = GUI_THEME_BACK_0;
+    gfx_pixel_t background = GUI_THEME_WINDOW_BACKGROUND;
     memset32(address, background.argb, height * pitch / sizeof(gfx_pixel_t));
     memset32(backbuffer, background.argb, height * pitch / sizeof(gfx_pixel_t));
 

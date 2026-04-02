@@ -8,11 +8,6 @@
 
 #include "gui_internal.h"
 
-#define GUI_BUTTON_BORDER GFX_PIXEL(0xFF, 0x0D, 0x0E, 0x11)
-#define GUI_BUTTON_NORMAL GUI_THEME_BACK_1
-#define GUI_BUTTON_HOVERED GUI_THEME_BACK_2
-#define GUI_BUTTON_PRESSED GUI_THEME_BACK_3
-
 typedef struct
 {
     gui_widget_t widget;
@@ -29,7 +24,7 @@ static status_t gui_button_init(gui_widget_t* widget)
     gui_button_t* button = CONTAINER_OF(widget, gui_button_t, widget);
     button->pressed = false;
 
-    gui_widget_set_cursor(widget, GUI_CURSOR_POINTER);
+    gui_widget_set_cursor(widget, GUI_CURSOR_WAIT);
 
     return OK;
 }
@@ -43,18 +38,18 @@ static status_t gui_button_draw(gui_widget_t* widget, gfx_t* gfx, gfx_rect_t cli
 
     gui_button_t* button = CONTAINER_OF(widget, gui_button_t, widget);
 
-    gfx_pixel_t foreground = GUI_BUTTON_NORMAL;
+    gfx_pixel_t color = GUI_THEME_BUTTON_BACKGROUND;
     if (gui_widget_is_hovered(widget))
     {
-        foreground = GUI_BUTTON_HOVERED;
+        color = GUI_THEME_BUTTON_HOVER;
     }
     if (button->pressed)
     {
-        foreground = GUI_BUTTON_PRESSED;
+        color = GUI_THEME_BUTTON_ACTIVE;
     }
 
     gfx_rect_t rect = gui_widget_get_local_bounds(widget);
-    gfx_draw_smooth_rect_border(gfx, rect, GUI_THEME_LARGE_RADIUS, GUI_THEME_BORDER_WIDTH, foreground, GUI_BUTTON_BORDER, GFX_BLEND_ALPHA);
+    gfx_draw_smooth_rect_border(gfx, rect, GUI_THEME_BUTTON_RADIUS, GUI_THEME_BUTTON_BORDER_WIDTH, color, GUI_THEME_BUTTON_BORDER, GFX_BLEND_ALPHA);
 
     return OK;
 }
