@@ -1,7 +1,7 @@
 (component
     (description "A driver for the CMOS Real Time Clock.")
     (author "Kai Norberg")
-    (license MIT)
+    (license GPLv3)
     (module mod/rtc.ko)
     (dependencies
         (acpi 1.0.0)

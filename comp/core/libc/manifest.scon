@@ -1,7 +1,7 @@
 (component
     (description "Standard C Library.")
     (author "Kai Norberg")
-    (license MIT)
+    (license GPLv3)
     (capabilities
         /comp:rx
         /proc:rwx

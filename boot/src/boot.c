@@ -790,7 +790,6 @@ static void splash_screen_display(void)
 #else
     Print(L"Start %a-bootloader DEBUG %a (Built %a %a)\n", OS_NAME, OS_VERSION, __DATE__, __TIME__);
 #endif
-    Print(L"Copyright (C) 2026 Kai Norberg. MIT Licensed.\n");
 }
 
 /**

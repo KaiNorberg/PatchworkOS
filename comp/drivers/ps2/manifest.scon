@@ -1,6 +1,6 @@
 (component
     (description "A PS/2 keyboard and mouse driver.")
     (author "Kai Norberg")
-    (license MIT)
+    (license GPLv3)
     (module mod/ps2.ko)
 )

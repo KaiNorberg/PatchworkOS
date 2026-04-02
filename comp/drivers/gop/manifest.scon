@@ -1,6 +1,6 @@
 (component
     (description "A Graphics Output Protocol driver.")
     (author "Kai Norberg")
-    (license MIT)
+    (license GPLv3)
     (module mod/gop.ko)
 )

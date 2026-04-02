@@ -2,7 +2,7 @@
 description = Desktop Window Manager
 version = 1.0
 author = PatchworkOS
-license = MIT
+license = GPLv3
 
 [exec]
 bin = /app/bin/dwm

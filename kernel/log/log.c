@@ -94,7 +94,6 @@ static void log_splash(void)
 #else
     LOG_INFO("Booting %s-kernel DEBUG %s (Built %s %s)\n", OS_NAME, OS_VERSION, __DATE__, __TIME__);
 #endif
-    LOG_INFO("Copyright (C) 2025 Kai Norberg. MIT Licensed.\n");
 }
 
 void log_init(void)

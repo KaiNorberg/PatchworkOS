@@ -1,7 +1,7 @@
 (component
     (description "A High Precision Event Timer driver.")
     (author "Kai Norberg")
-    (license MIT)
+    (license GPLv3)
     (module mod/hpet.ko)
     (dependencies
         (acpi 1.0.0)

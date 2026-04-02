@@ -1,5 +1,5 @@
 (component
     (description "System Icons.")
     (author "Kai Norberg")
-    (license MIT)
+    (license GPLv3)
 )

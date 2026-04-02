@@ -1,6 +1,6 @@
 (component
     (description "Pipe Inter Process Comuncation primitive.")
     (author "Kai Norberg")
-    (license MIT)
+    (license GPLv3)
     (module mod/pipe.ko)
 )

@@ -1,7 +1,7 @@
 (component
     (description "Authentication Manager.")
     (author "Kai Norberg")
-    (license MIT)
+    (license GPLv3)
     (launch /bin/authman)
     (dependencies
         (libc 1.0.0)

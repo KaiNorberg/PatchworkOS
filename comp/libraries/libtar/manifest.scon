@@ -1,7 +1,7 @@
 (component
     (description "Low-level drawing library.")
     (author "Kai Norberg")
-    (license MIT)
+    (license GPLv3)
     (dependencies
         (libc 1.0.0)
     )

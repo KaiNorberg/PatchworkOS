@@ -11,9 +11,6 @@
     <a href="https://kainorberg.github.io/PatchworkOS/html/index.html">
       <img src="https://img.shields.io/badge/docs-Doxygen-blue">
     </a>
-    <a href="https://github.com/KaiNorberg/PatchworkOS/blob/main/license">
-      <img src="https://img.shields.io/github/license/KaiNorberg/PatchworkOS">
-    </a>
     <a href="https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml">
         <img src="https://github.com/KaiNorberg/PatchworkOS/actions/workflows/test.yml/badge.svg" alt="Build and Test"/>
     </a>
@@ -315,7 +312,7 @@ Included below is an example manifest file:
 (component
     (description "An example component.")
     (author "Kai Norberg")
-    (license MIT)
+    (license GPLv3)
     (launch bin/example)
     (dependencies
         (libc 1.0.0)
@@ -379,7 +376,7 @@ Since kernel modules are just components, we must first create a new component. 
 (component
     (description "Example Hello World module.")
     (author "Your name here")
-    (license MIT)
+    (license GPLv3)
     (module mod/hello.ko)
 )
 ```
@@ -651,7 +648,7 @@ Check out the [contribution guidelines](CONTRIBUTING.md) to get started.
 
 ## License
 
-Distributed under the MIT License. See [LICENSE](https://github.com/KaiNorberg/PatchworkOS/blob/main/LICENSE) for more information.
+Distributed under the GPLv3 License. See [LICENSE](https://github.com/KaiNorberg/PatchworkOS/blob/main/LICENSE) for more information.
 
 ## Nostalgia
 

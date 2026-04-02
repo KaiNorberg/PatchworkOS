@@ -27,7 +27,7 @@ typedef struct scon scon_t;
  * (component
  *     (description "An example component.")
  *     (author "Kai Norberg")
- *     (license MIT)
+ *     (license GPLv3)
  *     (launch bin/example)
  *     (dependencies
  *         (libc >= 1.0.0)

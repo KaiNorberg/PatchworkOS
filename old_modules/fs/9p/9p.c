@@ -177,4 +177,4 @@ static filesystem_t ninep = {
     return 0;
 }*/
 
-MODULE_INFO("9P Filesystem", "Kai Norberg", "A implementation of the 9P filesystem", OS_VERSION, "MIT", "BOOT_ALWAYS");
+MODULE_INFO("9P Filesystem", "Kai Norberg", "A implementation of the 9P filesystem", OS_VERSION, "GPLv3", "BOOT_ALWAYS");
