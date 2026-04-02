@@ -24,7 +24,7 @@ status_t gui_widget_new(gui_class_t* cls, gui_widget_t* parent, gui_widget_id_t 
     widget->cls = cls;
     widget->layout = NULL;
     widget->flags = GUI_FLAG_NONE;
-    widget->cursor = GUI_MOUSE_CURSOR_NONE;
+    widget->cursor = GUI_CURSOR_NONE;
     widget->id = id;
     list_init(&widget->children);
     list_entry_init(&widget->entry);
@@ -92,7 +92,7 @@ void gui_widget_show(gui_widget_t* widget)
     }
 
     widget->flags |= GUI_FLAG_VISIBLE;
-    gui_widget_invalidate(widget, widget->bounds);
+    gui_widget_invalidate(widget, gui_widget_get_local_bounds(widget));
 
     gui_widget_t* child;
     gui_widget_t* temp;
@@ -109,6 +109,7 @@ void gui_widget_hide(gui_widget_t* widget)
         return;
     }
 
+    gui_widget_invalidate(widget, gui_widget_get_local_bounds(widget));
     widget->flags &= ~GUI_FLAG_VISIBLE;
 
     gui_widget_t* child;
@@ -127,9 +128,10 @@ void gui_widget_invalidate(gui_widget_t* widget, gfx_rect_t area)
     }
 
     gfx_rect_t widgetBounds = gui_widget_get_ancestor_bounds(widget);
-    gfx_rect_t invalidArea = GFX_RECT_INTERSECTION(widgetBounds, area);
+    gfx_rect_t absoluteArea = GFX_RECT_OFFSET(area, widgetBounds.left, widgetBounds.top);
+    gfx_rect_t invalidArea = GFX_RECT_INTERSECTION(widgetBounds, absoluteArea);
 
-    gui_invalidate(widget->gui, invalidArea);
+    gui_invalidate(widget->gui, invalidArea);        
 }
 
 void gui_widget_invalidate_layout(gui_widget_t* widget)
@@ -142,6 +144,11 @@ void gui_widget_invalidate_layout(gui_widget_t* widget)
 
 gfx_rect_t gui_widget_get_bounds(gui_widget_t* widget)
 {
+    if (widget == NULL)
+    {
+        return GFX_RECT(0, 0, 0, 0);
+    }
+
     return widget->bounds;
 }
 
@@ -190,6 +197,11 @@ status_t gui_widget_set_bounds(gui_widget_t* widget, gfx_rect_t bounds)
 
 gui_widget_t* gui_widget_get_parent(gui_widget_t* widget)
 {
+    if (widget == NULL)
+    {
+        return NULL;
+    }
+
     return widget->parent;
 }
 
@@ -218,30 +230,112 @@ void gui_widget_set_parent(gui_widget_t* widget, gui_widget_t* parent)
 
 gui_widget_id_t gui_widget_get_id(gui_widget_t* widget)
 {
+    if (widget == NULL)
+    {
+        return 0;
+    }
+
     return widget->id;
 }
 
 void gui_widget_set_id(gui_widget_t* widget, gui_widget_id_t id)
 {
+    if (widget == NULL)
+    {
+        return;
+    }
+
     widget->id = id;
 }
 
-gui_mouse_cursor_t gui_widget_get_cursor(gui_widget_t* widget)
+gui_cursor_t gui_widget_get_cursor(gui_widget_t* widget)
 {
-    return widget->cursor;
+    if (widget == NULL)
+    {
+        return GUI_CURSOR_NONE;
+    }
+
+    gui_cursor_t cursor = GUI_CURSOR_NONE;
+    while (widget != NULL && cursor == GUI_CURSOR_NONE)
+    {
+        cursor = widget->cursor;
+        widget = widget->parent;
+    }
+
+    return cursor;
 }
 
-void gui_widget_set_cursor(gui_widget_t* widget, gui_mouse_cursor_t cursor)
+void gui_widget_set_cursor(gui_widget_t* widget, gui_cursor_t cursor)
 {
+    if (widget == NULL)
+    {
+        return;
+    }
+
     widget->cursor = cursor;
 }
 
 void* gui_widget_get_userdata(gui_widget_t* widget)
 {
+    if (widget == NULL)
+    {
+        return NULL;
+    }
+
     return widget->userdata;
 }
 
 void gui_widget_set_userdata(gui_widget_t* widget, void* userdata)
 {
+    if (widget == NULL)
+    {
+        return;
+    }
+
     widget->userdata = userdata;
+}
+
+bool gui_widget_is_visible(gui_widget_t* widget)
+{
+    if (widget == NULL)
+    {
+        return false;
+    }
+
+    return (widget->flags & GUI_FLAG_VISIBLE) != 0;
+}
+
+bool gui_widget_is_hovered(gui_widget_t* widget)
+{
+    if (widget == NULL)
+    {
+        return false;
+    }
+
+    return widget->gui->hovered == widget;
+}
+
+bool gui_widget_is_focused(gui_widget_t* widget)
+{
+    if (widget == NULL)
+    {
+        return false;
+    }
+
+    return widget->gui->focused == widget;
+}
+
+status_t gui_widget_emit_event(gui_widget_t* widget, gui_event_t* event)
+{
+    if (widget == NULL || event == NULL)
+    {
+        return ERR(USER, INVAL);
+    }
+
+    if (widget->cls != NULL && widget->cls->procedure != NULL)
+    {
+        return widget->cls->procedure(widget, event);
+    }
+
+    return OK;
 }

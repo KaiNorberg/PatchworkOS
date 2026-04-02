@@ -160,7 +160,7 @@ void kbd_press(kbd_t* kbd, keycode_t code)
     }
 
     char event[MAX_NAME];
-    int length = snprintf(event, sizeof(event), "%03u_", code);
+    int length = snprintf(event, sizeof(event), "%03u_", code % 1000);
     if (length < 0)
     {
         LOG_ERR("failed to format keyboard press event\n");
@@ -178,7 +178,7 @@ void kbd_release(kbd_t* kbd, keycode_t code)
     }
 
     char event[MAX_NAME];
-    int length = snprintf(event, sizeof(event), "%03u^", code);
+    int length = snprintf(event, sizeof(event), "%03u^", code % 1000);
     if (length < 0)
     {
         LOG_ERR("failed to format keyboard release event\n");

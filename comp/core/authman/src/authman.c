@@ -1,37 +1,48 @@
 #include <libc/io.h>
 #include <libc/math.h>
 #include <libgfx/gfx.h>
+#include <libgui/cursor.h>
 #include <libgui/gui.h>
 #include <stdio.h>
 #include <time.h>
 
 int main(int argc, char** argv)
 {
+    // This is just testing code for now.
+
     uint32_t width;
     uint32_t height;
     uint32_t pitch;
     char format[MAX_NAME];
-    while (true)
+    status_t status = RETRY(
+        ioscanp(FDCWD, FDROOT, "/dev/fb/0/info", MAX_PATH, 0, NULL, "%u %u %u %s", &width, &height, &pitch, format));
+    if (IS_ERR(status))
     {
-        status_t status =
-            ioscanp(FDCWD, FDROOT, "/dev/fb/0/info", MAX_PATH, 0, NULL, "%u %u %u %s", &width, &height, &pitch, format);
-        if (!IS_ERR(status))
-        {
-            break;
-        }
-
-        if (!IS_CODE(status, NOENT))
-        {
-            printf("authman: failed to get framebuffer info %Y\n", status);
-            return EXIT_FAILURE;
-        }
+        printf("authman: failed to get framebuffer info %Y\n", status);
+        return EXIT_FAILURE;
     }
 
-    void* address;
-    status_t status = iomapp(FDCWD, FDROOT, "/dev/fb/0/data", &address, height * pitch, 0, IOMAP_READ | IOMAP_WRITE);
+    void* address = NULL;
+    status = iomapp(FDCWD, FDROOT, "/dev/fb/0/data", &address, height * pitch, 0, IOMAP_READ | IOMAP_WRITE);
     if (IS_ERR(status))
     {
         printf("authman: failed to map framebuffer %Y\n", status);
+        return EXIT_FAILURE;
+    }
+
+    fd_t kbd;
+    status = RETRY(iowalk(FDCWD, FDROOT, "/dev/kbd/0/events", &kbd));
+    if (IS_ERR(status))
+    {
+        printf("authman: failed to open keyboard %Y\n", status);
+        return EXIT_FAILURE;
+    }
+
+    fd_t mouse;
+    status = RETRY(iowalk(FDCWD, FDROOT, "/dev/mouse/0/events", &mouse));
+    if (IS_ERR(status))
+    {
+        printf("authman: failed to open mouse %Y\n", status);
         return EXIT_FAILURE;
     }
 
@@ -43,13 +54,19 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    gfx_pixel_t background = GFX_PIXEL(255, 56, 56, 56);
-    memset32(address, background.argb, height * pitch / sizeof(gfx_pixel_t));
-
     gfx_t screen = GFX(address, width, height, pitch);
 
+    gfx_pixel_t* backbuffer = malloc(height * pitch);
+    if (backbuffer == NULL)
+    {
+        printf("authman: failed to allocate backbuffer\n");
+        return EXIT_FAILURE;
+    }
+
+    gfx_t back = GFX(backbuffer, width, height, pitch);
+
     gui_t* gui;
-    status = gui_new(&screen, &gui);
+    status = gui_new(&back, &gui);
     if (IS_ERR(status))
     {
         printf("authman: failed to create gui %Y\n", status);
@@ -64,31 +81,109 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
+    gui_cursor_theme_t* theme;
+    status = gui_cursor_theme_load(&theme);
+    if (IS_ERR(status))
+    {
+        printf("authman: failed to load cursor theme %Y\n", status);
+        return EXIT_FAILURE;
+    }
+
+    gui_cursor_state_t* state;
+    status = gui_cursor_state_new(theme, 24, 24, &state);
+    if (IS_ERR(status))
+    {
+        printf("authman: failed to create cursor state %Y\n", status);
+        return EXIT_FAILURE;
+    }
+
+    gfx_pixel_t background = GUI_THEME_BACK_0;
+    memset32(address, background.argb, height * pitch / sizeof(gfx_pixel_t));
+    memset32(backbuffer, background.argb, height * pitch / sizeof(gfx_pixel_t));
+
     gui_widget_show(testButton);
+
+    int32_t mouseX = 100;
+    int32_t mouseY = 100;
 
     clock_t now = clock();
     clock_t last = now;
+    gui_cursor_state_update(state, GUI_CURSOR_LEFT_PTR_WATCH, now);
+
     while (1)
     {
-        clock_t next = gui_next_timeout(gui);
+        clock_t timeout = MIN(gui_next_timeout(gui, now), gui_cursor_state_next_frame(state, now));
 
-        clock_t timeToSleep = MIN(next, CLOCKS_PER_SEC / 60);
-        if (timeToSleep > 0)
+        char buffer[256];
+        size_t bytesRead;
+        status = ioreadt(mouse, IOBUF(buffer, sizeof(buffer)), 0, timeout, &bytesRead);
+        if (IS_ERR(status) && !IS_CODE(status, TIMEOUT))
         {
-            struct timespec ts = {
-                .tv_sec = timeToSleep / CLOCKS_PER_SEC,
-                .tv_nsec = timeToSleep % CLOCKS_PER_SEC,
-            };
+            printf("authman: failed to read mouse %Y\n", status);
+            return EXIT_FAILURE;
+        }
 
-            thrd_sleep(&ts, NULL);
+        if (bytesRead > 0 && !IS_CODE(status, TIMEOUT))
+        {
+            const char* p = buffer;
+            while (p + 4 < buffer + bytesRead)
+            {
+                char sign = p[0];
+                uint8_t value = (p[1] - '0') * 100 + (p[2] - '0') * 10 + (p[3] - '0');
+                char type = p[4];
+                p += 5;
+
+                switch (type)
+                {
+                case 'x':
+                    mouseX += value * (sign == '-' ? -1 : 1);
+                    mouseX = CLAMP(mouseX, 0, (int32_t)width);
+                    gui_input_mouse(gui, mouseX, mouseY, 0, GUI_MOUSE_BUTTON_NONE, GUI_MOUSE_BUTTON_NONE);
+                    break;
+                case 'y':
+                    mouseY += value * (sign == '-' ? -1 : 1);
+                    mouseY = CLAMP(mouseY, 0, (int32_t)height);
+                    gui_input_mouse(gui, mouseX, mouseY, 0, GUI_MOUSE_BUTTON_NONE, GUI_MOUSE_BUTTON_NONE);
+                    break;
+                case 'z':
+                    gui_input_mouse(gui, mouseX, mouseY, value, GUI_MOUSE_BUTTON_NONE, GUI_MOUSE_BUTTON_NONE);
+                    break;
+                case '^':
+                    gui_input_mouse(gui, mouseX, mouseY, 0, GUI_MOUSE_BUTTON_NONE, (1 << value));
+                    break;
+                case '_':                    
+                    gui_input_mouse(gui, mouseX, mouseY, 0, (1 << value), GUI_MOUSE_BUTTON_NONE);
+                    break;
+                default:
+                    break;
+                }
+            }
         }
 
         now = clock();
         clock_t delta = now - last;
         last = now;
 
-        printf("authman: tick\n");
+        gui_cursor_state_update(state, gui_widget_get_cursor(gui_get_hovered(gui)), now);
+
+        gfx_region_t dirty;
+        gui_get_dirty(gui, &dirty);
+
+        gfx_rect_t oldCursorBounds = gui_cursor_state_get_bounds(state);
+        gui_cursor_state_clear(state, &back);
+
         gui_tick(gui, delta);
+
+        gui_cursor_state_draw(state, &back, mouseX, mouseY);
+
+        gfx_draw_copy(&screen, &back, oldCursorBounds, oldCursorBounds);
+        for (size_t i = 0; i < dirty.count; i++)
+        {
+            gfx_draw_copy(&screen, &back, dirty.rects[i], dirty.rects[i]);
+        }
+
+        gfx_rect_t cursorBounds = gui_cursor_state_get_bounds(state);
+        gfx_draw_copy(&screen, &back, cursorBounds, cursorBounds);
     }
 
     /*gfx_t screen = GFX(address, width, height, pitch);

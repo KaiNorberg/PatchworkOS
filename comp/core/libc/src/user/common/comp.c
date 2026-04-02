@@ -24,8 +24,7 @@ typedef enum
     COMP_DIR_BIN,
     COMP_DIR_LIB,
     COMP_DIR_INCLUDE,
-    COMP_DIR_DATA,
-    COMP_DIR_CFG,
+    COMP_DIR_ETC,
     COMP_DIR_MAX,
 } _comp_dirs_t;
 
@@ -728,6 +727,13 @@ status_t _comp_load_capabilities(_comp_loader_t* loader, fd_t root)
     return status;
 }
 
+typedef struct
+{
+    list_entry_t entry;
+    char name[MAX_NAME];
+    _comp_union_t un;
+} _comp_share_union_t;
+
 status_t _comp_load_union(_comp_loader_t* loader, fd_t root)
 {
     if (loader == NULL)
@@ -741,7 +747,10 @@ status_t _comp_load_union(_comp_loader_t* loader, fd_t root)
         unions[i].count = 0;
     }
 
-    const char* dirNames[COMP_DIR_MAX] = {"bin", "lib", "include", "share", "cfg"};
+    const char* dirNames[COMP_DIR_MAX] = {"bin", "lib", "include", "etc"};
+
+    list_t shareUnions;
+    list_init(&shareUnions);
 
     _comp_req_t* req;
     LIST_FOR_EACH(req, &loader->reqs, entry)
@@ -759,18 +768,99 @@ status_t _comp_load_union(_comp_loader_t* loader, fd_t root)
 
             fd_t dir;
             status_t status = iowalk(FDCWD, FDROOT, path, &dir);
-            if (!IS_ERR(status))
+            if (IS_ERR(status))
             {
-                if (unions[i].count < COMP_CAP_MAX)
-                {
-                    unions[i].sources[unions[i].count++] = dir;
-                }
-                else
-                {
-                    iodrop(dir);
-                }
+                continue;
+            }
+
+            if (unions[i].count < COMP_CAP_MAX)
+            {
+                unions[i].sources[unions[i].count++] = dir;
+            }
+            else
+            {
+                iodrop(dir);
             }
         }
+
+        char sharePath[MAX_PATH];
+        snprintf(sharePath, sizeof(sharePath), "/comp/%s/%u.%u.%u/share", req->name, req->version.major,
+            req->version.minor, req->version.patch);
+
+        fd_t shareDir;
+        status_t status = iowalk(FDCWD, FDROOT, sharePath, &shareDir);
+        if (IS_ERR(status))
+        {
+            continue;
+        }
+
+        char* buffer = NULL;
+        size_t bufferLen = 0;
+        status = ioload(shareDir, &buffer, &bufferLen);
+        if (IS_ERR(status))
+        {
+            iodrop(shareDir);
+            continue;
+        }
+
+        char* p = buffer;
+        while (p < buffer + bufferLen)
+        {
+            size_t len = strlen(p);
+            if (len == 0 || strcmp(p, ".") == 0 || strcmp(p, "..") == 0)
+            {
+                p += len + 1;
+                continue;
+            }
+
+            _comp_share_union_t* shareUnion = NULL;
+            _comp_share_union_t* iter;
+            LIST_FOR_EACH(iter, &shareUnions, entry)
+            {
+                if (strcmp(iter->name, p) == 0)
+                {
+                    shareUnion = iter;
+                    break;
+                }
+            }
+
+            if (shareUnion == NULL)
+            {
+                shareUnion = malloc(sizeof(_comp_share_union_t));
+                if (shareUnion == NULL)
+                {
+                    p += len + 1;
+                    continue;
+                }
+
+                list_entry_init(&shareUnion->entry);
+                strncpy(shareUnion->name, p, MAX_NAME - 1);
+                shareUnion->name[MAX_NAME - 1] = '\0';
+                shareUnion->un.count = 0;
+                list_push_back(&shareUnions, &shareUnion->entry);
+            }
+
+            fd_t subDir;
+            status_t subStatus = iowalk(shareDir, FDROOT, p, &subDir);
+            if (IS_ERR(subStatus))
+            {
+                p += len + 1;
+                continue;
+            }
+
+            if (shareUnion->un.count < COMP_CAP_MAX)
+            {
+                shareUnion->un.sources[shareUnion->un.count++] = subDir;
+            }
+            else
+            {
+                iodrop(subDir);
+            }
+
+            p += len + 1;
+        }
+        free(buffer);
+        iodrop(shareDir);
     }
 
     status_t status = OK;
@@ -816,12 +906,70 @@ status_t _comp_load_union(_comp_loader_t* loader, fd_t root)
         }
     }
 
+    if (!IS_ERR(status))
+    {
+        _comp_share_union_t* shareUnion;
+        LIST_FOR_EACH(shareUnion, &shareUnions, entry)
+        {
+            if (shareUnion->un.count == 0)
+            {
+                continue;
+            }
+
+            fd_t target;
+            status = iowalk(root, root, IOFMT("share/%s:dp", shareUnion->name), &target);
+            if (IS_ERR(status))
+            {
+                _comp_error(loader, "failed to create directory 'share/%s' in tmpfs", shareUnion->name);
+                break;
+            }
+
+            char concatPath[MAX_PATH] = "/sys/fs/concatfs/clone?targets=\0";
+            for (uint32_t j = 0; j < shareUnion->un.count; j++)
+            {
+                snprintf(concatPath + strlen(concatPath), sizeof(concatPath) - strlen(concatPath), "%llu,",
+                    shareUnion->un.sources[j]);
+            }
+            concatPath[strlen(concatPath) - 1] = '\0';
+
+            fd_t concatfs;
+            status = iowalk(FDCWD, FDROOT, concatPath, &concatfs);
+            if (IS_ERR(status))
+            {
+                _comp_error(loader, "failed to create concatfs for directory 'share/%s'", shareUnion->name);
+                iodrop(target);
+                break;
+            }
+
+            status = fdbind(root, target, concatfs);
+            iodrop(concatfs);
+            iodrop(target);
+            if (IS_ERR(status))
+            {
+                _comp_error(loader, "failed to bind concatfs to directory 'share/%s'", shareUnion->name);
+                break;
+            }
+        }
+    }
+
     for (uint32_t i = 0; i < COMP_DIR_MAX; i++)
     {
         for (uint32_t j = 0; j < unions[i].count; j++)
         {
             iodrop(unions[i].sources[j]);
         }
+    }
+
+    _comp_share_union_t* shareUnion;
+    _comp_share_union_t* temp;
+    LIST_FOR_EACH_SAFE(shareUnion, temp, &shareUnions, entry)
+    {
+        for (uint32_t j = 0; j < shareUnion->un.count; j++)
+        {
+            iodrop(shareUnion->un.sources[j]);
+        }
+        list_remove(&shareUnion->entry);
+        free(shareUnion);
     }
 
     return status;

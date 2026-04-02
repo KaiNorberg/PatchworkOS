@@ -1,4 +1,4 @@
-COMP_NAME = icons
+COMP_NAME = default_icons
 COMP_VERSION = 1.0.0
 COMP_TYPE = data
 

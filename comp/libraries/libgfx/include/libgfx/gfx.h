@@ -99,8 +99,8 @@ void gfx_draw_smooth_rect(gfx_t* draw, gfx_rect_t rect, int32_t radius, gfx_pixe
  * @param borderColor The color to draw the border with.
  * @param blend The blending mode to use.
  */
-void gfx_draw_smooth_rect_border(gfx_t* draw, gfx_rect_t rect, int32_t radius, int32_t thickness,
-    gfx_pixel_t fillColor, gfx_pixel_t borderColor, gfx_blend_t blend);
+void gfx_draw_smooth_rect_border(gfx_t* draw, gfx_rect_t rect, int32_t radius, int32_t thickness, gfx_pixel_t fillColor,
+    gfx_pixel_t borderColor, gfx_blend_t blend);
 
 /**
  * @brief Fill the entire context with a color.

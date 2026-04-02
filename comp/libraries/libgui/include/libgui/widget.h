@@ -5,6 +5,7 @@
 #include <libc/status.h>
 #include <libgfx/gfx.h>
 #include <libgui/class.h>
+#include <libgui/cursor.h>
 #include <libgui/event.h>
 #include <libgui/mouse.h>
 #include <stdbool.h>
@@ -155,7 +156,7 @@ void gui_widget_set_id(gui_widget_t* widget, gui_widget_id_t id);
  * @param widget The widget.
  * @return The cursor type.
  */
-gui_mouse_cursor_t gui_widget_get_cursor(gui_widget_t* widget);
+gui_cursor_t gui_widget_get_cursor(gui_widget_t* widget);
 
 /**
  * @brief Set the cursor state to be used while the mouse is over the widget.
@@ -163,7 +164,7 @@ gui_mouse_cursor_t gui_widget_get_cursor(gui_widget_t* widget);
  * @param widget The widget.
  * @param cursor The new cursor type.
  */
-void gui_widget_set_cursor(gui_widget_t* widget, gui_mouse_cursor_t cursor);
+void gui_widget_set_cursor(gui_widget_t* widget, gui_cursor_t cursor);
 
 /**
  * @brief Get the custom user data associated with a widget.
@@ -180,5 +181,38 @@ void* gui_widget_get_userdata(gui_widget_t* widget);
  * @param userdata The user data pointer.
  */
 void gui_widget_set_userdata(gui_widget_t* widget, void* userdata);
+
+/**
+ * @brief Check if a widget is visible.
+ *
+ * @param widget The widget.
+ * @return `true` if the widget is visible, `false` otherwise.
+ */
+bool gui_widget_is_visible(gui_widget_t* widget);
+
+/**
+ * @brief Check if a widget is currently hovered by the mouse.
+ *
+ * @param widget The widget.
+ * @return `true` if the widget is hovered, `false` otherwise.
+ */
+bool gui_widget_is_hovered(gui_widget_t* widget);
+
+/**
+ * @brief Check if a widget currently has keyboard focus.
+ *
+ * @param widget The widget.
+ * @return `true` if the widget is focused, `false` otherwise.
+ */
+bool gui_widget_is_focused(gui_widget_t* widget);
+
+/**
+ * @brief Emit an event to a widget.
+ *
+ * @param widget The widget to emit the event to.
+ * @param event The event to emit.
+ * @return An appropriate status value.
+ */
+status_t gui_widget_emit_event(gui_widget_t* widget, gui_event_t* event);
 
 /** @} */

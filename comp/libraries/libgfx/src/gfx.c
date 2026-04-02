@@ -11,24 +11,40 @@
 
 void gfx_draw_rect(gfx_t* draw, gfx_rect_t rect, gfx_pixel_t color)
 {
-    uint64_t width = GFX_RECT_WIDTH(rect);
-    if (width * sizeof(gfx_pixel_t) == draw->pitch)
+    gfx_rect_t clip = GFX_RECT_INTERSECTION(rect, GFX_RECT(0, 0, draw->width, draw->height));
+    if (!GFX_RECT_VALID(clip))
     {
-        memset32(GFX_GET_PIXEL(draw, rect.left, rect.top), color.argb, width * GFX_RECT_HEIGHT(rect));
         return;
     }
 
-    for (int32_t y = rect.top; y < rect.bottom; y++)
+    int32_t width = GFX_RECT_WIDTH(clip);
+    int32_t height = GFX_RECT_HEIGHT(clip);
+
+    if ((uint32_t)width * sizeof(gfx_pixel_t) == draw->pitch)
     {
-        gfx_pixel_t* row = GFX_GET_PIXEL(draw, rect.left, y);
+        memset32(GFX_GET_PIXEL(draw, clip.left, clip.top), color.argb, (size_t)width * height);
+        return;
+    }
+
+    for (int32_t y = clip.top; y < clip.bottom; y++)
+    {
+        gfx_pixel_t* row = GFX_GET_PIXEL(draw, clip.left, y);
         memset32(row, color.argb, width);
     }
 }
 
 void gfx_draw_copy(gfx_t* dst, gfx_t* src, gfx_rect_t dstRect, gfx_rect_t srcRect)
 {
-    int32_t width = MIN(GFX_RECT_WIDTH(dstRect), GFX_RECT_WIDTH(srcRect));
-    int32_t height = MIN(GFX_RECT_HEIGHT(dstRect), GFX_RECT_HEIGHT(srcRect));
+    gfx_rect_t dstBounds = GFX_RECT(0, 0, dst->width, dst->height);
+    gfx_rect_t srcBounds = GFX_RECT(0, 0, src->width, src->height);
+
+    if (!gfx_rect_clip_dual(dstBounds, srcBounds, &dstRect, &srcRect))
+    {
+        return;
+    }
+
+    int32_t width = GFX_RECT_WIDTH(dstRect);
+    int32_t height = GFX_RECT_HEIGHT(dstRect);
 
     if (dst->pitch == src->pitch && (uint32_t)width * sizeof(gfx_pixel_t) == dst->pitch)
     {
@@ -109,9 +125,16 @@ static void gfx_draw_blit_select(gfx_pixel_t* dst, gfx_pixel_t* src, int32_t wid
 
 void gfx_draw_blit(gfx_t* dst, gfx_t* src, gfx_rect_t dstRect, gfx_rect_t srcRect)
 {
+    gfx_rect_t dstBounds = GFX_RECT(0, 0, dst->width, dst->height);
+    gfx_rect_t srcBounds = GFX_RECT(0, 0, src->width, src->height);
+
+    if (!gfx_rect_clip_dual(dstBounds, srcBounds, &dstRect, &srcRect))
+    {
+        return;
+    }
+
     gfx_draw_blit_impl(GFX_GET_PIXEL(dst, dstRect.left, dstRect.top), GFX_GET_PIXEL(src, srcRect.left, srcRect.top),
-        MIN(GFX_RECT_WIDTH(dstRect), GFX_RECT_WIDTH(srcRect)), MIN(GFX_RECT_HEIGHT(dstRect), GFX_RECT_HEIGHT(srcRect)),
-        dst->pitch, src->pitch);
+        GFX_RECT_WIDTH(dstRect), GFX_RECT_HEIGHT(dstRect), dst->pitch, src->pitch);
 }
 
 static inline uint64_t edge_get_left_mask(const gfx_poly_edge_t* e, int px)
@@ -410,12 +433,8 @@ void gfx_draw_smooth_rect(gfx_t* draw, gfx_rect_t rect, int32_t radius, gfx_pixe
         return;
     }
 
-    int32_t clipTop = MAX(0, rect.top);
-    int32_t clipBottom = MIN((int32_t)draw->height, rect.bottom);
-    int32_t clipLeft = MAX(0, rect.left);
-    int32_t clipRight = MIN((int32_t)draw->width, rect.right);
-
-    if (clipLeft >= clipRight || clipTop >= clipBottom)
+    gfx_rect_t clip = GFX_RECT_INTERSECTION(rect, GFX_RECT(0, 0, draw->width, draw->height));
+    if (!GFX_RECT_VALID(clip))
     {
         return;
     }
@@ -427,9 +446,9 @@ void gfx_draw_smooth_rect(gfx_t* draw, gfx_rect_t rect, int32_t radius, gfx_pixe
 
     if (radius <= 0)
     {
-        for (int32_t y = clipTop; y < clipBottom; y++)
+        for (int32_t y = clip.top; y < clip.bottom; y++)
         {
-            gfx_fill_span(draw, clipLeft, clipRight, y, color, blend);
+            gfx_fill_span(draw, clip.left, clip.right, y, color, blend);
         }
         return;
     }
@@ -445,22 +464,22 @@ void gfx_draw_smooth_rect(gfx_t* draw, gfx_rect_t rect, int32_t radius, gfx_pixe
     int32_t leftBandEnd = rect.left + radius;
     int32_t rightBandStart = rect.right - radius;
 
-    for (int32_t y = clipTop; y < clipBottom; y++)
+    for (int32_t y = clip.top; y < clip.bottom; y++)
     {
         if (y >= topBandEnd && y < botBandStart)
         {
-            gfx_fill_span(draw, clipLeft, clipRight, y, color, blend);
+            gfx_fill_span(draw, clip.left, clip.right, y, color, blend);
             continue;
         }
 
         float py = fabsf((float)y + 0.5f - cy);
         float dy = py - hh + r;
 
-        for (int32_t x = clipLeft; x < clipRight; x++)
+        for (int32_t x = clip.left; x < clip.right; x++)
         {
             if (x >= leftBandEnd && x < rightBandStart)
             {
-                int32_t fillEnd = MIN(clipRight, rightBandStart);
+                int32_t fillEnd = MIN(clip.right, rightBandStart);
                 if (x < fillEnd)
                 {
                     gfx_fill_span(draw, x, fillEnd, y, color, blend);
@@ -493,8 +512,8 @@ void gfx_draw_smooth_rect(gfx_t* draw, gfx_rect_t rect, int32_t radius, gfx_pixe
     }
 }
 
-void gfx_draw_smooth_rect_border(gfx_t* draw, gfx_rect_t rect, int32_t radius, int32_t thickness,
-    gfx_pixel_t fillColor, gfx_pixel_t borderColor, gfx_blend_t blend)
+void gfx_draw_smooth_rect_border(gfx_t* draw, gfx_rect_t rect, int32_t radius, int32_t thickness, gfx_pixel_t fillColor,
+    gfx_pixel_t borderColor, gfx_blend_t blend)
 {
     if (draw == NULL || !GFX_RECT_VALID(rect) || thickness <= 0)
     {
@@ -510,12 +529,8 @@ void gfx_draw_smooth_rect_border(gfx_t* draw, gfx_rect_t rect, int32_t radius, i
         return;
     }
 
-    int32_t clipTop = MAX(0, rect.top);
-    int32_t clipBottom = MIN((int32_t)draw->height, rect.bottom);
-    int32_t clipLeft = MAX(0, rect.left);
-    int32_t clipRight = MIN((int32_t)draw->width, rect.right);
-
-    if (clipLeft >= clipRight || clipTop >= clipBottom)
+    gfx_rect_t clip = GFX_RECT_INTERSECTION(rect, GFX_RECT(0, 0, draw->width, draw->height));
+    if (!GFX_RECT_VALID(clip))
     {
         return;
     }
@@ -535,29 +550,29 @@ void gfx_draw_smooth_rect_border(gfx_t* draw, gfx_rect_t rect, int32_t radius, i
     int32_t leftBandEnd = rect.left + safeRadius;
     int32_t rightBandStart = rect.right - safeRadius;
 
-    for (int32_t y = clipTop; y < clipBottom; y++)
+    for (int32_t y = clip.top; y < clip.bottom; y++)
     {
         float py = fabsf((float)y + 0.5f - cy);
         float dy = py - hh + r;
 
         if (y >= topBandEnd && y < botBandStart)
         {
-            int32_t lStart = MAX(clipLeft, rect.left);
-            int32_t lEnd = MIN(clipRight, rect.left + thickness);
+            int32_t lStart = MAX(clip.left, rect.left);
+            int32_t lEnd = MIN(clip.right, rect.left + thickness);
             if (lStart < lEnd)
             {
                 gfx_fill_span(draw, lStart, lEnd, y, borderColor, blend);
             }
 
-            int32_t mStart = MAX(clipLeft, rect.left + thickness);
-            int32_t mEnd = MIN(clipRight, rect.right - thickness);
+            int32_t mStart = MAX(clip.left, rect.left + thickness);
+            int32_t mEnd = MIN(clip.right, rect.right - thickness);
             if (mStart < mEnd && fillColor.a > 0)
             {
                 gfx_fill_span(draw, mStart, mEnd, y, fillColor, blend);
             }
 
-            int32_t rStart = MAX(clipLeft, rect.right - thickness);
-            int32_t rEnd = MIN(clipRight, rect.right);
+            int32_t rStart = MAX(clip.left, rect.right - thickness);
+            int32_t rEnd = MIN(clip.right, rect.right);
             if (rStart < rEnd)
             {
                 gfx_fill_span(draw, rStart, rEnd, y, borderColor, blend);
@@ -566,13 +581,13 @@ void gfx_draw_smooth_rect_border(gfx_t* draw, gfx_rect_t rect, int32_t radius, i
             continue;
         }
 
-        for (int32_t x = clipLeft; x < clipRight; x++)
+        for (int32_t x = clip.left; x < clip.right; x++)
         {
             if (x >= leftBandEnd && x < rightBandStart)
             {
                 if (y < rect.top + thickness || y >= rect.bottom - thickness)
                 {
-                    int32_t fillEnd = MIN(clipRight, rightBandStart);
+                    int32_t fillEnd = MIN(clip.right, rightBandStart);
                     if (x < fillEnd)
                     {
                         gfx_fill_span(draw, x, fillEnd, y, borderColor, blend);
@@ -581,7 +596,7 @@ void gfx_draw_smooth_rect_border(gfx_t* draw, gfx_rect_t rect, int32_t radius, i
                     continue;
                 }
 
-                int32_t skipDnd = MIN(clipRight, rightBandStart);
+                int32_t skipDnd = MIN(clip.right, rightBandStart);
                 if (x < skipDnd)
                 {
                     if (fillColor.a > 0)

@@ -19,7 +19,7 @@ typedef struct gui_widget
     gui_class_t* cls;
     gui_layout_t* layout;
     gui_flags_t flags;
-    gui_mouse_cursor_t cursor;
+    gui_cursor_t cursor;
     gui_widget_id_t id;
     list_t children;
     list_entry_t entry;
@@ -35,10 +35,5 @@ typedef struct gui
     gui_widget_t root;
     gui_widget_t* focused;
     gui_widget_t* hovered;
-    int32_t mouseX;
-    int32_t mouseY;
     gui_mouse_buttons_t mouseButtons;
-    gui_event_t* events;
-    size_t eventCount;
-    size_t eventCapacity;
 } gui_t;

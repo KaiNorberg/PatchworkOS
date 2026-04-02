@@ -1,5 +1,6 @@
 #pragma once
 
+#include <libc/math.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -135,8 +136,7 @@ typedef struct gfx_rect
 #define GFX_RECT_INTERSECTION(_a, _b) \
     (gfx_rect_t) \
     { \
-        (_a).left > (_b).left ? (_a).left : (_b).left, (_a).top > (_b).top ? (_a).top : (_b).top, \
-            (_a).right < (_b).right ? (_a).right : (_b).right, (_a).bottom < (_b).bottom ? (_a).bottom : (_b).bottom \
+        MAX((_a).left, (_b).left), MAX((_a).top, (_b).top), MIN((_a).right, (_b).right), MIN((_a).bottom, (_b).bottom) \
     }
 
 /**
@@ -148,12 +148,7 @@ typedef struct gfx_rect
 #define GFX_RECT_UNION(_a, _b) \
     (gfx_rect_t) \
     { \
-        (_a).left<(_b).left ? (_a).left : (_b).left, \
-                (_a).top<(_b).top ? (_a).top : (_b).top, (_a).right>(_b).right ? (_a).right : (_b).right, \
-                (_a).bottom>(_b) \
-                .bottom \
-            ? (_a).bottom \
-            : (_b).bottom \
+        MIN((_a).left, (_b).left), MIN((_a).top, (_b).top), MAX((_a).right, (_b).right), MAX((_a).bottom, (_b).bottom) \
     }
 
 /**
@@ -278,6 +273,79 @@ static inline void gfx_rect_difference(gfx_rect_difference_t* out, gfx_rect_t a,
     {
         out->rects[out->count++] = GFX_RECT_FROM_CORNERS(intersect.right, intersect.top, a.right, intersect.bottom);
     }
+}
+
+/**
+ * @brief Clip two rectangles simultaneously against their respective bounding boxes.
+ *
+ * @param dstBounds The bounding box for the destination rectangle.
+ * @param srcBounds The bounding box for the source rectangle.
+ * @param dst The destination rectangle to clip.
+ * @param src The source rectangle to clip.
+ * @return `true` if the resulting rectangles have a positive area, `false` otherwise.
+ */
+static inline bool gfx_rect_clip_dual(gfx_rect_t dstBounds, gfx_rect_t srcBounds, gfx_rect_t* dst, gfx_rect_t* src)
+{
+    int32_t width = MIN(GFX_RECT_WIDTH(*dst), GFX_RECT_WIDTH(*src));
+    int32_t height = MIN(GFX_RECT_HEIGHT(*dst), GFX_RECT_HEIGHT(*src));
+
+    if (dst->left < dstBounds.left)
+    {
+        int32_t diff = dstBounds.left - dst->left;
+        width -= diff;
+        src->left += diff;
+        dst->left = dstBounds.left;
+    }
+    if (dst->top < dstBounds.top)
+    {
+        int32_t diff = dstBounds.top - dst->top;
+        height -= diff;
+        src->top += diff;
+        dst->top = dstBounds.top;
+    }
+    if (dst->left + width > dstBounds.right)
+    {
+        width = dstBounds.right - dst->left;
+    }
+    if (dst->top + height > dstBounds.bottom)
+    {
+        height = dstBounds.bottom - dst->top;
+    }
+
+    if (src->left < srcBounds.left)
+    {
+        int32_t diff = srcBounds.left - src->left;
+        width -= diff;
+        dst->left += diff;
+        src->left = srcBounds.left;
+    }
+    if (src->top < srcBounds.top)
+    {
+        int32_t diff = srcBounds.top - src->top;
+        height -= diff;
+        dst->top += diff;
+        src->top = srcBounds.top;
+    }
+    if (src->left + width > srcBounds.right)
+    {
+        width = srcBounds.right - src->left;
+    }
+    if (src->top + height > srcBounds.bottom)
+    {
+        height = srcBounds.bottom - src->top;
+    }
+
+    if (width <= 0 || height <= 0)
+    {
+        return false;
+    }
+
+    dst->right = dst->left + width;
+    dst->bottom = dst->top + height;
+    src->right = src->left + width;
+    src->bottom = src->top + height;
+
+    return true;
 }
 
 /** @} */

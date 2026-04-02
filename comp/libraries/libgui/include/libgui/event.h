@@ -25,13 +25,13 @@ typedef struct gui_layout gui_layout_t;
 typedef enum
 {
     GUI_EVENT_TYPE_MOUSE,
+    GUI_EVENT_TYPE_MOUSE_ENTER,
+    GUI_EVENT_TYPE_MOUSE_LEAVE,
     GUI_EVENT_TYPE_KEY,
     GUI_EVENT_TYPE_MOVE,
     GUI_EVENT_TYPE_COMMAND,
     GUI_EVENT_TYPE_FOCUS_IN,
     GUI_EVENT_TYPE_FOCUS_OUT,
-    GUI_EVENT_TYPE_MOUSE_ENTER,
-    GUI_EVENT_TYPE_MOUSE_LEAVE,
 } gui_event_type_t;
 
 /**
@@ -66,6 +66,7 @@ typedef struct
         {
             int32_t x;
             int32_t y;
+            int32_t z;
             gui_mouse_buttons_t pressed;
             gui_mouse_buttons_t released;
             gui_mouse_buttons_t held;

@@ -161,7 +161,7 @@ void mouse_press(mouse_t* mouse, uint8_t button)
     }
 
     char event[MAX_NAME];
-    int length = snprintf(event, sizeof(event), "%+03u_", button);
+    int length = snprintf(event, sizeof(event), "+%03u_", button);
     if (length < 0)
     {
         LOG_ERR("failed to format mouse press event\n");
@@ -179,7 +179,7 @@ void mouse_release(mouse_t* mouse, uint8_t button)
     }
 
     char event[MAX_NAME];
-    int length = snprintf(event, sizeof(event), "%+03u^", button);
+    int length = snprintf(event, sizeof(event), "+%03u^", button);
     if (length < 0)
     {
         LOG_ERR("failed to format mouse release event\n");
@@ -197,7 +197,7 @@ void mouse_move_x(mouse_t* mouse, int8_t delta)
     }
 
     char event[MAX_NAME];
-    int length = snprintf(event, sizeof(event), "%+03hhdx", delta);
+    int length = snprintf(event, sizeof(event), "%c%03hhux", delta < 0 ? '-' : '+', delta > 0 ? delta : -delta);
     if (length < 0)
     {
         LOG_ERR("failed to format mouse move X event\n");
@@ -215,7 +215,7 @@ void mouse_move_y(mouse_t* mouse, int8_t delta)
     }
 
     char event[MAX_NAME];
-    int length = snprintf(event, sizeof(event), "%+03hhdy", delta);
+    int length = snprintf(event, sizeof(event), "%c%03hhuy", delta < 0 ? '-' : '+', delta > 0 ? delta : -delta);
     if (length < 0)
     {
         LOG_ERR("failed to format mouse move Y event\n");
@@ -233,7 +233,7 @@ void mouse_scroll(mouse_t* mouse, int8_t delta)
     }
 
     char event[MAX_NAME];
-    int length = snprintf(event, sizeof(event), "%+03hhdz", delta);
+    int length = snprintf(event, sizeof(event), "%c%03hhuz", delta < 0 ? '-' : '+', delta > 0 ? delta : -delta);
     if (length < 0)
     {
         LOG_ERR("failed to format mouse scroll event\n");
