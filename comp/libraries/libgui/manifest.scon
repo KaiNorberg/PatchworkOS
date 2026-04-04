@@ -6,5 +6,6 @@
         (libc 1.0.0)
         (libm 1.0.0)
         (libgfx 1.0.0)
+        (libpng 1.0.0)
     )
 )

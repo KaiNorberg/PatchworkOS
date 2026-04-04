@@ -9,6 +9,76 @@
 
 #include "gui_internal.h"
 
+static status_t gui_root_draw(gui_widget_t* widget, gfx_t* gfx)
+{
+    if (widget == NULL || gfx == NULL)
+    {
+        return ERR(USER, INVAL);
+    }
+
+    gfx_draw_fill(gfx, widget->gui->background);
+
+    if (widget->gui->wallpaper == NULL)
+    {
+        return OK;
+    }
+
+    gfx_rect_t rect = gui_widget_get_local_bounds(widget);
+    gui_image_t* img = widget->gui->wallpaper;
+
+    if (widget->gui->wallpaperScale == GUI_IMAGE_SCALE_STRETCH)
+    {
+        gfx_draw_scale_blit(gfx, &img->gfx, rect, img->gfx.clip, GFX_BLEND_ALPHA);
+    }
+    else if (widget->gui->wallpaperScale == GUI_IMAGE_SCALE_CENTER)
+    {
+        gfx_rect_t centered = GFX_RECT_FROM_CENTER(
+            rect.left + GFX_RECT_WIDTH(rect) / 2,
+            rect.top + GFX_RECT_HEIGHT(rect) / 2,
+            img->width, img->height
+        );
+        gfx_draw_blit(gfx, &img->gfx, centered, img->gfx.clip);
+    }
+    else if (widget->gui->wallpaperScale == GUI_IMAGE_SCALE_FIT)
+    {
+        float scaleX = (float)GFX_RECT_WIDTH(rect) / img->width;
+        float scaleY = (float)GFX_RECT_HEIGHT(rect) / img->height;
+        float scale = MIN(scaleX, scaleY);
+
+        int32_t newW = (int32_t)(img->width * scale);
+        int32_t newH = (int32_t)(img->height * scale);
+
+        gfx_rect_t fitRect = GFX_RECT_FROM_CENTER(
+            rect.left + GFX_RECT_WIDTH(rect) / 2,
+            rect.top + GFX_RECT_HEIGHT(rect) / 2,
+            newW, newH
+        );
+        gfx_draw_scale_blit(gfx, &img->gfx, fitRect, img->gfx.clip, GFX_BLEND_ALPHA);
+    }
+    else if (widget->gui->wallpaperScale == GUI_IMAGE_SCALE_TILE)
+    {
+        for (int32_t ty = rect.top; ty < rect.bottom; ty += img->height)
+        {
+            for (int32_t tx = rect.left; tx < rect.right; tx += img->width)
+            {
+                gfx_rect_t tileRect = GFX_RECT(tx, ty, img->width, img->height);
+                gfx_draw_blit(gfx, &img->gfx, tileRect, img->gfx.clip);
+            }
+        }
+    }
+    else
+    {
+        return ERR(USER, INVAL);
+    }
+
+    return OK;
+}
+
+static gui_class_t rootClass = {
+    .size = sizeof(gui_widget_t),
+    .draw = gui_root_draw,
+};
+
 status_t gui_new(gfx_t* screen, gui_t** out)
 {
     if (screen == NULL || out == NULL)
@@ -24,8 +94,9 @@ status_t gui_new(gfx_t* screen, gui_t** out)
 
     gui->screen = screen;
     gui->dirty = GFX_REGION();
-    gui->root.bounds = GFX_RECT(0, 0, screen->width, screen->height);
-    gui->root.cls = NULL;
+    gui->background = GFX_PIXEL(0, 0, 0, 0);
+    gui->root.bounds = screen->clip;
+    gui->root.cls = &rootClass;
     gui->root.layout = NULL;
     gui->root.flags = GUI_FLAG_VISIBLE;
     gui->root.cursor = GUI_CURSOR_NONE;
@@ -38,6 +109,10 @@ status_t gui_new(gfx_t* screen, gui_t** out)
     gui->focused = NULL;
     gui->hovered = NULL;
     gui->mouseButtons = 0;
+    gui->wallpaper = NULL;
+    gui->wallpaperScale = GUI_IMAGE_SCALE_STRETCH;
+
+    gui_invalidate(gui, gui->root.bounds);
 
     *out = gui;
     return OK;
@@ -100,6 +175,28 @@ void gui_get_dirty(gui_t* gui, gfx_region_t* out)
     *out = gui->dirty;
 }
 
+void gui_set_background(gui_t* gui, gfx_pixel_t color)
+{
+    if (gui == NULL)
+    {
+        return;
+    }
+
+    gui->background = color;
+    gui_invalidate(gui, gui->root.bounds);
+}
+
+void gui_set_wallpaper(gui_t* gui, gui_image_t* image, gui_image_scale_t scale)
+{
+    if (gui == NULL)
+    {
+        return;
+    }
+    gui->wallpaper = image;
+    gui->wallpaperScale = scale;
+    gui_invalidate(gui, gui->root.bounds);
+}
+
 void gui_invalidate(gui_t* gui, gfx_rect_t area)
 {
     if (gui == NULL)
@@ -144,7 +241,14 @@ static status_t gui_draw_widget(gui_t* gui, gui_widget_t* widget, gfx_rect_t cli
                             (widgetBounds.left * sizeof(gfx_pixel_t))),
             GFX_RECT_WIDTH(widgetBounds), GFX_RECT_HEIGHT(widgetBounds), gui->screen->pitch);
 
-        status_t status = widget->cls->draw(widget, &gfx, drawArea);
+        gfx.clip = GFX_RECT(
+            drawArea.left - widgetBounds.left,
+            drawArea.top - widgetBounds.top,
+            GFX_RECT_WIDTH(drawArea),
+            GFX_RECT_HEIGHT(drawArea)
+        );
+
+        status_t status = widget->cls->draw(widget, &gfx);
         if (IS_ERR(status))
         {
             return status;

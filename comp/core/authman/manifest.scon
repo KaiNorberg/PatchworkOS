@@ -13,6 +13,7 @@
         (libpng 1.0.0)
         (default_cursors 1.0.0)
         (default_icons 1.0.0)
+        (default_wallpaper 1.0.0)
     )
     (capabilities
         /dev/fb

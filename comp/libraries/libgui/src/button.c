@@ -24,12 +24,12 @@ static status_t gui_button_init(gui_widget_t* widget)
     gui_button_t* button = CONTAINER_OF(widget, gui_button_t, widget);
     button->pressed = false;
 
-    gui_widget_set_cursor(widget, GUI_CURSOR_WAIT);
+    gui_widget_set_cursor(widget, GUI_CURSOR_POINTER);
 
     return OK;
 }
 
-static status_t gui_button_draw(gui_widget_t* widget, gfx_t* gfx, gfx_rect_t clip)
+static status_t gui_button_draw(gui_widget_t* widget, gfx_t* gfx)
 {
     if (widget == NULL || gfx == NULL)
     {

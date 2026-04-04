@@ -11,7 +11,7 @@
 
 void gfx_draw_rect(gfx_t* draw, gfx_rect_t rect, gfx_pixel_t color)
 {
-    gfx_rect_t clip = GFX_RECT_INTERSECTION(rect, GFX_RECT(0, 0, draw->width, draw->height));
+    gfx_rect_t clip = GFX_RECT_INTERSECTION(rect, draw->clip);
     if (!GFX_RECT_VALID(clip))
     {
         return;
@@ -35,8 +35,8 @@ void gfx_draw_rect(gfx_t* draw, gfx_rect_t rect, gfx_pixel_t color)
 
 void gfx_draw_copy(gfx_t* dst, gfx_t* src, gfx_rect_t dstRect, gfx_rect_t srcRect)
 {
-    gfx_rect_t dstBounds = GFX_RECT(0, 0, dst->width, dst->height);
-    gfx_rect_t srcBounds = GFX_RECT(0, 0, src->width, src->height);
+    gfx_rect_t dstBounds = dst->clip;
+    gfx_rect_t srcBounds = src->clip;
 
     if (!gfx_rect_clip_dual(dstBounds, srcBounds, &dstRect, &srcRect))
     {
@@ -125,8 +125,8 @@ static void gfx_draw_blit_select(gfx_pixel_t* dst, gfx_pixel_t* src, int32_t wid
 
 void gfx_draw_blit(gfx_t* dst, gfx_t* src, gfx_rect_t dstRect, gfx_rect_t srcRect)
 {
-    gfx_rect_t dstBounds = GFX_RECT(0, 0, dst->width, dst->height);
-    gfx_rect_t srcBounds = GFX_RECT(0, 0, src->width, src->height);
+    gfx_rect_t dstBounds = dst->clip;
+    gfx_rect_t srcBounds = src->clip;
 
     if (!gfx_rect_clip_dual(dstBounds, srcBounds, &dstRect, &srcRect))
     {
@@ -135,50 +135,6 @@ void gfx_draw_blit(gfx_t* dst, gfx_t* src, gfx_rect_t dstRect, gfx_rect_t srcRec
 
     gfx_draw_blit_impl(GFX_GET_PIXEL(dst, dstRect.left, dstRect.top), GFX_GET_PIXEL(src, srcRect.left, srcRect.top),
         GFX_RECT_WIDTH(dstRect), GFX_RECT_HEIGHT(dstRect), dst->pitch, src->pitch);
-}
-
-static inline uint64_t edge_get_left_mask(const gfx_poly_edge_t* e, int px)
-{
-    uint64_t mask = 0;
-    float base = 8.0F * (e->x - (float)px) - 0.5f;
-    for (int32_t sy = 0; sy < 8; sy++)
-    {
-        float val = base + (sy + 0.5f) * e->invSlope;
-        int32_t k = (int32_t)ceilf(val);
-        if (k < 0)
-        {
-            k = 0;
-        }
-
-        if (k < 8)
-        {
-            uint64_t rowMask = (0xFFU << k) & 0xFFU;
-            mask |= (rowMask << (sy * 8));
-        }
-    }
-    return mask;
-}
-
-static inline uint64_t edge_get_right_mask(const gfx_poly_edge_t* e, int px)
-{
-    uint64_t mask = 0;
-    float base = 8.0F * (e->x - (float)px) - 0.5f;
-    for (int32_t sy = 0; sy < 8; sy++)
-    {
-        float val = base + (sy + 0.5f) * e->invSlope;
-        int32_t k = (int32_t)floorf(val);
-        if (k > 7)
-        {
-            k = 7;
-        }
-
-        if (k >= 0)
-        {
-            uint64_t rowMask = (1U << (k + 1)) - 1;
-            mask |= (rowMask << (sy * 8));
-        }
-    }
-    return mask;
 }
 
 static inline void gfx_blend_pixel(gfx_t* draw, int32_t x, int32_t y, gfx_pixel_t color, uint8_t alpha,
@@ -224,6 +180,101 @@ static inline void gfx_blend_pixel(gfx_t* draw, int32_t x, int32_t y, gfx_pixel_
         pixel->b = color.b;
         pixel->a = alpha;
     }
+}
+
+void gfx_draw_scale_blit(gfx_t* dst, gfx_t* src, gfx_rect_t dstRect, gfx_rect_t srcRect, gfx_blend_t blend)
+{
+    gfx_rect_t dstBounds = dst->clip;
+    gfx_rect_t drawArea = GFX_RECT_INTERSECTION(dstRect, dstBounds);
+
+    if (!GFX_RECT_VALID(drawArea))
+    {
+        return;
+    }
+
+    int32_t dstW = GFX_RECT_WIDTH(dstRect);
+    int32_t dstH = GFX_RECT_HEIGHT(dstRect);
+    int32_t srcW = GFX_RECT_WIDTH(srcRect);
+    int32_t srcH = GFX_RECT_HEIGHT(srcRect);
+
+    if (dstW == 0 || dstH == 0 || srcW == 0 || srcH == 0)
+    {
+        return;
+    }
+
+    if (dstW == srcW && dstH == srcH)
+    {
+        gfx_draw_blit(dst, src, dstRect, srcRect);
+        return;
+    }
+
+    for (int32_t y = drawArea.top; y < drawArea.bottom; y++)
+    {
+        int32_t srcY = srcRect.top + ((y - dstRect.top) * srcH) / dstH;
+        if (srcY >= src->clip.bottom)
+        {
+            srcY = src->clip.bottom - 1;
+        }
+
+        for (int32_t x = drawArea.left; x < drawArea.right; x++)
+        {
+            int32_t srcX = srcRect.left + ((x - dstRect.left) * srcW) / dstW;
+            if (srcX >= src->clip.right)
+            {
+                srcX = src->clip.right - 1;
+            }
+
+            gfx_pixel_t color = *GFX_GET_PIXEL(src, srcX, srcY);
+            if (color.a > 0)
+            {
+                gfx_blend_pixel(dst, x, y, color, color.a, blend);
+            }
+        }
+    }
+}
+
+static inline uint64_t edge_get_left_mask(const gfx_poly_edge_t* e, int px)
+{
+    uint64_t mask = 0;
+    float base = 8.0F * (e->x - (float)px) - 0.5f;
+    for (int32_t sy = 0; sy < 8; sy++)
+    {
+        float val = base + (sy + 0.5f) * e->invSlope;
+        int32_t k = (int32_t)ceilf(val);
+        if (k < 0)
+        {
+            k = 0;
+        }
+
+        if (k < 8)
+        {
+            uint64_t rowMask = (0xFFU << k) & 0xFFU;
+            mask |= (rowMask << (sy * 8));
+        }
+    }
+    return mask;
+}
+
+static inline uint64_t edge_get_right_mask(const gfx_poly_edge_t* e, int px)
+{
+    uint64_t mask = 0;
+    float base = 8.0F * (e->x - (float)px) - 0.5f;
+    for (int32_t sy = 0; sy < 8; sy++)
+    {
+        float val = base + (sy + 0.5f) * e->invSlope;
+        int32_t k = (int32_t)floorf(val);
+        if (k > 7)
+        {
+            k = 7;
+        }
+
+        if (k >= 0)
+        {
+            uint64_t rowMask = (1U << (k + 1)) - 1;
+            mask |= (rowMask << (sy * 8));
+        }
+    }
+    return mask;
 }
 
 static inline void gfx_fill_span(gfx_t* draw, int32_t start_x, int32_t end_x, int32_t y, gfx_pixel_t color,
@@ -302,14 +353,14 @@ void gfx_draw_polygon(gfx_t* draw, gfx_poly_t* polygon, gfx_pixel_t color, gfx_b
             continue;
         }
 
-        if (scanline >= (int32_t)draw->height)
+        if (scanline >= draw->clip.bottom)
         {
             break;
         }
 
         gfx_draw_gfx_poly_sort_active_edges(polygon->activeEdges, activeEdgeCount);
 
-        if (scanline < 0)
+        if (scanline < draw->clip.top)
         {
             goto update_edges;
         }
@@ -344,8 +395,8 @@ void gfx_draw_polygon(gfx_t* draw, gfx_poly_t* polygon, gfx_pixel_t color, gfx_b
             int32_t start = (int32_t)floorf(MIN(leftEdge->x, leftEdge->x + leftEdge->invSlope));
             int32_t end = (int32_t)ceilf(MAX(rightEdge->x, rightEdge->x + rightEdge->invSlope));
 
-            start = MAX(start, 0);
-            end = MIN(end, (int32_t)draw->width - 1);
+            start = MAX(start, draw->clip.left);
+            end = MIN(end, draw->clip.right - 1);
 
             int32_t leftStart = (int32_t)floorf(MIN(leftEdge->x, leftEdge->x + leftEdge->invSlope)) - 1;
             int32_t leftEnd = (int32_t)ceilf(MAX(leftEdge->x, leftEdge->x + leftEdge->invSlope)) + 1;
@@ -433,7 +484,7 @@ void gfx_draw_smooth_rect(gfx_t* draw, gfx_rect_t rect, int32_t radius, gfx_pixe
         return;
     }
 
-    gfx_rect_t clip = GFX_RECT_INTERSECTION(rect, GFX_RECT(0, 0, draw->width, draw->height));
+    gfx_rect_t clip = GFX_RECT_INTERSECTION(rect, draw->clip);
     if (!GFX_RECT_VALID(clip))
     {
         return;
@@ -529,7 +580,7 @@ void gfx_draw_smooth_rect_border(gfx_t* draw, gfx_rect_t rect, int32_t radius, i
         return;
     }
 
-    gfx_rect_t clip = GFX_RECT_INTERSECTION(rect, GFX_RECT(0, 0, draw->width, draw->height));
+    gfx_rect_t clip = GFX_RECT_INTERSECTION(rect, draw->clip);
     if (!GFX_RECT_VALID(clip))
     {
         return;

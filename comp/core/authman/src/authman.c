@@ -97,10 +97,17 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    gfx_pixel_t background = GUI_THEME_WINDOW_BACKGROUND;
-    memset32(address, background.argb, height * pitch / sizeof(gfx_pixel_t));
-    memset32(backbuffer, background.argb, height * pitch / sizeof(gfx_pixel_t));
+    gui_set_background(gui, GUI_THEME_WINDOW_BACKGROUND);
 
+    gui_image_t* image;
+    status = gui_image_load("/share/wallpaper/default.png", &image);
+    if (IS_ERR(status))
+    {
+        printf("authman: failed to load image %Y\n", status);
+        return EXIT_FAILURE;
+    }
+
+    gui_set_wallpaper(gui, image, GUI_IMAGE_SCALE_TILE);
     gui_widget_show(testButton);
 
     int32_t mouseX = 100;

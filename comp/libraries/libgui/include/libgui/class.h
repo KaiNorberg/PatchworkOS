@@ -53,10 +53,9 @@ typedef struct gui_class
      *
      * @param widget The widget to draw.
      * @param gfx The graphics context to draw to, in widget-local coordinates.
-     * @param clip The clipping rectangle in widget-local coordinates.
      * @return An appropriate status value.
      */
-    status_t (*draw)(gui_widget_t* widget, gfx_t* gfx, gfx_rect_t clip);
+    status_t (*draw)(gui_widget_t* widget, gfx_t* gfx);
     /**
      * @brief Handle an event for the widget.
      *

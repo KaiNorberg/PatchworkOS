@@ -11,6 +11,7 @@
 #include <libgui/layout.h>
 #include <libgui/mouse.h>
 #include <libgui/widget.h>
+#include <libgui/image.h>
 #include <libgui/theme.h>
 #include <stdbool.h>
 
@@ -108,6 +109,31 @@ gui_widget_t* gui_get_focused(gui_t* gui);
  * @param out Output pointer for the dirty region.
  */
 void gui_get_dirty(gui_t* gui, gfx_region_t* out);
+
+/**
+ * @brief Set the background color of the GUI.
+ *
+ * @param gui The GUI instance.
+ * @param color The background color.
+ */
+void gui_set_background(gui_t* gui, gfx_pixel_t color);
+
+/**
+ * @brief Get the background color of the GUI.
+ *
+ * @param gui The GUI instance.
+ * @return The background color.
+ */
+gfx_pixel_t gui_get_background(gui_t* gui);
+
+/**
+ * @brief Set the background wallpaper of the GUI.
+ *
+ * @param gui The GUI instance.
+ * @param image The image to use as wallpaper, the caller remains owner of the image memory.
+ * @param scale The scaling mode to use.
+ */
+void gui_set_wallpaper(gui_t* gui, gui_image_t* image, gui_image_scale_t scale);
 
 /**
  * @brief Invalidate a specific area of the GUI, forcing it to be redrawn on the next tick.

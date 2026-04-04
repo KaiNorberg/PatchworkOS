@@ -39,9 +39,8 @@ typedef enum
 typedef struct gfx
 {
     gfx_pixel_t* buffer;
-    uint32_t width;
-    uint32_t height;
     uint32_t pitch;
+    gfx_rect_t clip;
 } gfx_t;
 
 /**
@@ -55,7 +54,7 @@ typedef struct gfx
 #define GFX(_buffer, _width, _height, _pitch) \
     (gfx_t) \
     { \
-        .buffer = (_buffer), .width = (_width), .height = (_height), .pitch = (_pitch) \
+        .buffer = (_buffer), .pitch = (_pitch), .clip = {0, 0, (_width), (_height)} \
     }
 
 /**
@@ -110,8 +109,7 @@ void gfx_draw_smooth_rect_border(gfx_t* draw, gfx_rect_t rect, int32_t radius, i
  */
 static inline void gfx_draw_fill(gfx_t* draw, gfx_pixel_t color)
 {
-    gfx_rect_t rect = {0, 0, draw->width, draw->height};
-    gfx_draw_rect(draw, rect, color);
+    gfx_draw_rect(draw, draw->clip, color);
 }
 
 /**
@@ -132,7 +130,7 @@ void gfx_draw_copy(gfx_t* dst, gfx_t* src, gfx_rect_t dstRect, gfx_rect_t srcRec
  */
 static inline void gfx_draw_transfer(gfx_t* dst, gfx_t* src)
 {
-    gfx_draw_copy(dst, src, GFX_RECT(0, 0, dst->width, dst->height), GFX_RECT(0, 0, src->width, src->height));
+    gfx_draw_copy(dst, src, dst->clip, src->clip);
 }
 
 /**
@@ -144,6 +142,17 @@ static inline void gfx_draw_transfer(gfx_t* dst, gfx_t* src)
  * @param srcRect The source rectangle.
  */
 void gfx_draw_blit(gfx_t* dst, gfx_t* src, gfx_rect_t dstRect, gfx_rect_t srcRect);
+
+/**
+ * @brief Scale and copy a region from one context to another with alpha blending.
+ *
+ * @param dst The destination drawing context.
+ * @param src The source drawing context.
+ * @param dstRect The destination rectangle.
+ * @param srcRect The source rectangle.
+ * @param blend The blending mode.
+ */
+void gfx_draw_scale_blit(gfx_t* dst, gfx_t* src, gfx_rect_t dstRect, gfx_rect_t srcRect, gfx_blend_t blend);
 
 /**
  * @brief Draw a polygon with anti-aliasing.
