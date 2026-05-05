@@ -1,14 +1,15 @@
+#include <elf.h>
 #include <errno.h>
-#include <libc/auxv.h>
-#include <libc/elf.h>
 #include <libc/fs.h>
 #include <libc/io.h>
 #include <libc/proc.h>
+#include <stdint.h>
 #include <stdlib.h>
+#include <sys/auxv.h>
 
 #define INTERPRETER_BASE 0x700000000000
 
-static uint64_t setup_stack(void* stack, uint64_t stackSize, uint64_t stackVaddr, proc_args_t args, const auxv_t* auxv)
+static uint64_t setup_stack(void* stack, uint64_t stackSize, uint64_t stackVaddr, proc_args_t args, proc_envp_t envp, const auxv_t* auxv)
 {
     size_t argc = 0;
     for (size_t i = 0; i < args.len; i++)
@@ -19,17 +20,29 @@ static uint64_t setup_stack(void* stack, uint64_t stackSize, uint64_t stackVaddr
         }
     }
 
+    size_t envc = 0;
+    for (size_t i = 0; i < envp.len; i++)
+    {
+        if (envp.buf[i] == '\0')
+        {
+            envc++;
+        }
+    }
+
     uintptr_t spOffset = stackSize;
+
+    spOffset -= envp.len;
+    void* envStrData = (uint8_t*)stack + spOffset;
+    memcpy(envStrData, envp.buf, envp.len);
 
     spOffset -= args.len;
     void* strData = (uint8_t*)stack + spOffset;
     memcpy(strData, args.buf, args.len);
 
-    uintptr_t* argv = malloc(argc * sizeof(uintptr_t));
-    if (argv == NULL)
-    {
-        return 0;
-    }
+    uintptr_t* argv = malloc((argc + envc) * sizeof(uintptr_t));
+    if (argv == NULL) return 0;
+
+    uintptr_t* envv = argv + argc;
 
     uintptr_t currentStr = stackVaddr + spOffset;
     size_t argIdx = 0;
@@ -42,18 +55,29 @@ static uint64_t setup_stack(void* stack, uint64_t stackSize, uint64_t stackVaddr
         currentStr++;
     }
 
+    uintptr_t currentEnvStr = stackVaddr + spOffset + args.len;
+    size_t envIdx = 0;
+    for (size_t i = 0; i < envp.len; i++)
+    {
+        if (i == 0 || envp.buf[i - 1] == '\0')
+        {
+            envv[envIdx++] = currentEnvStr;
+        }
+        currentEnvStr++;
+    }
+
     size_t auxvSize = sizeof(auxv_t);
     if (auxv != NULL)
     {
         size_t i = 0;
-        while (auxv[i].type != AUXV_NULL)
+        while (auxv[i].a_type != AT_NULL)
         {
             i++;
         }
         auxvSize = (i + 1) * sizeof(auxv_t);
     }
 
-    size_t ptrsSize = (argc + 1) * sizeof(uintptr_t) + sizeof(uintptr_t) + auxvSize;
+    size_t ptrsSize = sizeof(uintptr_t) + (argc + 1) * sizeof(uintptr_t) + (envc + 1) * sizeof(uintptr_t) + auxvSize;
     spOffset -= ptrsSize;
     spOffset &= ~15ULL;
 
@@ -66,18 +90,24 @@ static uint64_t setup_stack(void* stack, uint64_t stackSize, uint64_t stackVaddr
     }
     stackPtrs[pIdx++] = 0;
 
+    for (size_t i = 0; i < envc; i++)
+    {
+        stackPtrs[pIdx++] = envv[i];
+    }
+    stackPtrs[pIdx++] = 0;
+
     if (auxv != NULL)
     {
         size_t i = 0;
-        while (auxv[i].type != AUXV_NULL)
+        while (auxv[i].a_type != AT_NULL)
         {
-            stackPtrs[pIdx++] = auxv[i].type;
-            stackPtrs[pIdx++] = auxv[i].value;
+            stackPtrs[pIdx++] = auxv[i].a_type;
+            stackPtrs[pIdx++] = auxv[i].a_un.a_val;
             i++;
         }
     }
 
-    stackPtrs[pIdx++] = AUXV_NULL;
+    stackPtrs[pIdx++] = AT_NULL;
     stackPtrs[pIdx++] = 0;
 
     free(argv);
@@ -146,22 +176,12 @@ static status_t load_elf(fd_t cwd, fd_t root, const char* path, fd_t* fdOut, voi
 
     if (IS_ERR(status))
     {
-        if (*sourceOut != NULL)
-        {
-            iounmap(*sourceOut, *sizeOut);
-        }
-        if (*fdOut != FDNONE)
-        {
-            iodrop(*fdOut);
-        }
         return status;
     }
 
     uint64_t result = elf64_validate(elfOut, *sourceOut, *sizeOut);
     if (result != 0)
     {
-        iounmap(*sourceOut, *sizeOut);
-        iodrop(*fdOut);
         return ERR(LIBSTD, INVALELF);
     }
 
@@ -188,63 +208,99 @@ static status_t allocate_process_memory(fd_t cwd, fd_t root, size_t destSize, El
     *destOut = (void*)IOREG_LOAD(destReg);
     *stackOut = (void*)IOREG_LOAD(stackReg);
 
-    if (IS_ERR(status))
-    {
-        if (*procFdOut != FDNONE)
-        {
-            iodrop(*procFdOut);
-        }
-        if (*destOut != NULL)
-        {
-            iounmap(*destOut, destSize);
-        }
-        if (*stackOut != NULL)
-        {
-            iounmap(*stackOut, stackSize);
-        }
-        return status;
-    }
-
     return OK;
 }
 
-status_t proc_create(fd_t cwd, fd_t root, proc_args_t args, const proc_fd_t* fds, size_t count, prio_t priority,
+status_t proc_create(fd_t cwd, fd_t root, proc_args_t args, proc_envp_t envp, const proc_fd_t* fds, size_t count, prio_t priority,
     proc_flags_t flags, fd_t* proc)
 {
     UNUSED(flags); ///< @todo Handle flags within proc_create().
+
+    status_t status = OK;
+    char* envInherit = NULL;
+    fd_t exeFd = FDNONE;
+    void* source = NULL;
+    size_t sourceSize = 0;
+    Elf64_File elf;
+    Elf64_File interpElf;
+    void* interpSource = NULL;
+    size_t interpSize = 0;
+    fd_t procFd = FDNONE;
+    fd_t interpFd = FDNONE;
+    void* dest = NULL;
+    void* stack = NULL;
+    size_t destSize = 0;
+    size_t stackSize = 0;
+
+    Elf64_Addr minAddr = UINT64_MAX;
+    Elf64_Addr maxAddr = 0;
+    Elf64_Addr targetVaddr;
+    uintptr_t stackVaddr;
+    uint64_t initialSp;
+    uint64_t entry;
+    fd_t exeChildFd = FDNONE;
+    auxv_t auxv[8];
+    auxv_t* pAuxv = NULL;
+    char prioStr[MAX_NAME];
+    char ctlStr[PAGE_SIZE];
 
     if (args.buf == NULL || args.len == 0 || args.buf[args.len - 1] != '\0' || (fds == NULL && count != 0))
     {
         return ERR(LIBSTD, INVAL);
     }
 
-    if (args.len > PAGE_SIZE * 8 || count > (PAGE_SIZE - 128) / 64)
+    if (envp.buf != NULL && (envp.len == 0 || envp.buf[envp.len - 1] != '\0'))
     {
-        return ERR(LIBSTD, TOOBIG);
+        return ERR(LIBSTD, INVAL);
     }
 
-    fd_t exeFd = FDNONE;
-    void* source = NULL;
-    size_t sourceSize = 0;
-    Elf64_File elf;
-    status_t status = load_elf(cwd, root, args.buf, &exeFd, &source, &sourceSize, &elf);
+    if (envp.buf == NULL)
+    {
+        size_t len = 0;
+        if (environ != NULL)
+        {
+            for (char** env = environ; *env != NULL; env++)
+            {
+                len += strlen(*env) + 1;
+            }
+        }
+
+        if (len > 0)
+        {
+            envInherit = malloc(len);
+            if (envInherit == NULL)
+            {
+                status = ERR(LIBSTD, NOMEM);
+                goto cleanup;
+            }
+
+            char* ptr = envInherit;
+            for (char** env = environ; *env != NULL; env++)
+            {
+                size_t l = strlen(*env);
+                memcpy(ptr, *env, l);
+                ptr[l] = '\0';
+                ptr += l + 1;
+            }
+            envp.buf = envInherit;
+            envp.len = len;
+        }
+    }
+
+    if (args.len > PAGE_SIZE * 8 || envp.len > PAGE_SIZE * 8 || count > (PAGE_SIZE - 128) / 64)
+    {
+        status = ERR(LIBSTD, TOOBIG);
+        goto cleanup;
+    }
+
+    status = load_elf(cwd, root, args.buf, &exeFd, &source, &sourceSize, &elf);
     if (IS_ERR(status))
     {
-        return status;
+        goto cleanup;
     }
-
-    Elf64_File interpElf;
-    void* interpSource = NULL;
-    size_t interpSize = 0;
-
-    fd_t exeChildFd = FDNONE;
-
-    auxv_t auxv[8];
-    auxv_t* pAuxv = NULL;
 
     if (elf.interp != NULL)
     {
-        fd_t interpFd = FDNONE;
         status = load_elf(cwd, root, elf.interp, &interpFd, &interpSource, &interpSize, &interpElf);
         if (IS_ERR(status))
         {
@@ -253,10 +309,8 @@ status_t proc_create(fd_t cwd, fd_t root, proc_args_t args, const proc_fd_t* fds
                 status = ERR(LIBSTD, NOINTERP);
             }
 
-            goto cleanup_source;
+            goto cleanup;
         }
-
-        iodrop(interpFd);
 
         exeChildFd = 3;
         if (fds != NULL)
@@ -271,63 +325,44 @@ status_t proc_create(fd_t cwd, fd_t root, proc_args_t args, const proc_fd_t* fds
         }
 
         size_t auxvCount = 0;
-        auxv[auxvCount++] = (auxv_t){.type = AUXV_EXECFD, .value = exeChildFd};
-        auxv[auxvCount++] = (auxv_t){.type = AUXV_BASE, .value = INTERPRETER_BASE};
-        auxv[auxvCount++] = (auxv_t){.type = AUXV_NULL, .value = 0};
+        auxv[auxvCount++] = (auxv_t){.a_type = AT_EXECFD, .a_un.a_val = exeChildFd};
+        auxv[auxvCount++] = (auxv_t){.a_type = AT_BASE, .a_un.a_val = INTERPRETER_BASE};
+        auxv[auxvCount++] = (auxv_t){.a_type = AT_NULL, .a_un.a_val = 0};
         pAuxv = auxv;
 
         elf = interpElf;
     }
 
-    Elf64_Addr minAddr = UINT64_MAX;
-    Elf64_Addr maxAddr = 0;
     elf64_get_loadable_bounds(&elf, &minAddr, &maxAddr);
     if (minAddr > maxAddr)
     {
         status = ERR(LIBSTD, INVALELF);
-        goto cleanup_interp;
+        goto cleanup;
     }
-    size_t destSize = maxAddr - minAddr;
+    destSize = maxAddr - minAddr;
 
-    Elf64_Addr targetVaddr = minAddr;
-    if (interpSource != NULL)
-    {
-        targetVaddr = INTERPRETER_BASE;
-    }
+    targetVaddr = (interpSource != NULL) ? INTERPRETER_BASE : minAddr;
 
-    size_t stackSize = PAGE_SIZE * 16;
-    uintptr_t stackVaddr = 0x7FFFFFFF0000 - stackSize;
-
-    fd_t procFd = FDNONE;
-    void* dest = NULL;
-    void* stack = NULL;
+    stackSize = PAGE_SIZE * 16;
+    stackVaddr = 0x7FFFFFFF0000 - stackSize;
 
     status = allocate_process_memory(cwd, root, destSize, targetVaddr, stackSize, stackVaddr, &procFd, &dest, &stack);
     if (IS_ERR(status))
     {
-        goto cleanup_interp;
+        goto cleanup;
     }
 
     elf64_load_segments(&elf, (Elf64_Addr)dest, (Elf64_Addr)minAddr);
 
-    uint64_t initialSp = setup_stack(stack, stackSize, stackVaddr, args, pAuxv);
+    initialSp = setup_stack(stack, stackSize, stackVaddr, args, envp, pAuxv);
     if (initialSp == 0)
     {
         status = ERR(LIBSTD, NOMEM);
-        goto cleanup_proc;
+        goto cleanup;
     }
 
-    uint64_t entry = elf.header->e_entry - minAddr + targetVaddr;
+    entry = elf.header->e_entry - minAddr + targetVaddr;
 
-    if (interpSource != NULL)
-    {
-        iounmap(interpSource, interpSize);
-    }
-    iounmap(source, sourceSize);
-    iounmap(dest, destSize);
-    iounmap(stack, stackSize);
-
-    char prioStr[MAX_NAME];
     iovar_t prioReg = IOREG(IOREG4, FDNONE);
     if (priority != PRIO_DEFAULT)
     {
@@ -338,7 +373,6 @@ status_t proc_create(fd_t cwd, fd_t root, proc_args_t args, const proc_fd_t* fds
         IODROPQ(prioReg, IONOLINK, NULL, 0);
     }
 
-    char ctlStr[PAGE_SIZE];
     build_ctl_string(ctlStr, fds, count, entry, initialSp, exeChildFd != FDNONE ? exeFd : FDNONE, exeChildFd);
 
     iovar_t ctlReg = IOREG(IOREG6, FDNONE);
@@ -347,53 +381,58 @@ status_t proc_create(fd_t cwd, fd_t root, proc_args_t args, const proc_fd_t* fds
     IOWRITEQ(ctlReg, IOBUF(ctlStr, strlen(ctlStr)), 0, IOHARD, NULL, 0);
     IODROPQ(ctlReg, IOHARD, NULL, 0);
 
-    IODROPQ(exeFd, IONOLINK, NULL, 0);
-
     status = iosync();
-
     if (IS_ERR(status))
     {
-        iodrop(procFd);
-        return status;
+        goto cleanup;
     }
 
     if (proc != NULL)
     {
         *proc = procFd;
-    }
-    else
-    {
-        iodrop(procFd);
+        procFd = FDNONE;
     }
 
-    return OK;
-
-cleanup_proc:
-    if (procFd != FDNONE)
+cleanup:
+    if (envInherit != NULL)
     {
-        iodrop(procFd);
-    }
-    if (dest != NULL)
-    {
-        iounmap(dest, destSize);
-    }
-    if (stack != NULL)
-    {
-        iounmap(stack, stackSize);
-    }
-cleanup_interp:
-    if (interpSource != NULL)
-    {
-        iounmap(interpSource, interpSize);
-    }
-cleanup_source:
-    if (source != NULL)
-    {
-        iounmap(source, sourceSize);
+        free(envInherit);
+        envInherit = NULL;
     }
     if (exeFd != FDNONE)
     {
         iodrop(exeFd);
+        exeFd = FDNONE;
+    }
+    if (source != NULL)
+    {
+        iounmap(source, sourceSize);
+        source = NULL;
+    }
+    if (interpSource != NULL)
+    {
+        iounmap(interpSource, interpSize);
+        interpSource = NULL;
+    }
+    if (dest != NULL)
+    {
+        iounmap(dest, destSize);
+        dest = NULL;
+    }
+    if (stack != NULL)
+    {
+        iounmap(stack, stackSize);
+        stack = NULL;
+    }
+    if (procFd != FDNONE)
+    {
+        iodrop(procFd);
+        procFd = FDNONE;
+    }
+    if (interpFd != FDNONE)
+    {
+        iodrop(interpFd);
+        interpFd = FDNONE;
     }
 
     return status;

@@ -393,13 +393,13 @@ static status_t acpi_device_configure(const char* name)
     status_t status = acpi_resources_current(device, &resources);
     if (IS_ERR(status))
     {
-        if (ST_CODE(status) == ST_CODE_NOENT) // No resources exist, assign empty config
+        if (STATUS_CODE(status) == STATUS_CODE_NOENT) // No resources exist, assign empty config
         {
             device->device.cfg = cfg;
             return OK;
         }
         LOG_ERR("failed to get current resources for ACPI device '%s' due to '%s'\n", name,
-            st_code_str(ST_CODE(status)));
+            status_code_str(STATUS_CODE(status)));
         free(cfg);
         return status;
     }
@@ -431,7 +431,7 @@ static status_t acpi_device_configure(const char* name)
                 if (IS_ERR(status))
                 {
                     LOG_ERR("failed to allocate virtual IRQ for ACPI device '%s' due to '%s'\n", name,
-                        st_code_str(ST_CODE(status)));
+                        status_code_str(STATUS_CODE(status)));
                     goto error;
                 }
 
@@ -467,7 +467,7 @@ static status_t acpi_device_configure(const char* name)
             if (IS_ERR(status))
             {
                 LOG_ERR("failed to reserve IO ports for ACPI device '%s' due to '%s'\n", name,
-                    st_code_str(ST_CODE(status)));
+                    status_code_str(STATUS_CODE(status)));
                 goto error;
             }
 
@@ -558,7 +558,7 @@ status_t acpi_devices_init(void)
             ids.array[i].path, ANNOUNCE_ATTACH);
         if (IS_ERR(status))
         {
-            LOG_ERR("failed to announce '%s' due to '%s'\n", ids.array[i].hid, st_code_str(status));
+            LOG_ERR("failed to announce '%s' due to '%s'\n", ids.array[i].hid, status_code_str(status));
             continue;
         }
     }

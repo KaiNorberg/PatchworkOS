@@ -1,4 +1,10 @@
-#pragma once
+#ifndef _SYS_MAP_H
+#define _SYS_MAP_H 1
+
+#if defined(__cplusplus)
+extern "C"
+{
+#endif
 
 #include <assert.h>
 #include <libc/fs.h>
@@ -261,5 +267,11 @@ static inline map_entry_t* map_find_and_remove(map_t* map, const void* key, uint
             _entry != NULL && ((_elem) = CONTAINER_OF(_entry, typeof(*(_elem)), _member), true) && \
             ((_temp) = _next ? CONTAINER_OF(_next, typeof(*(_elem)), _member) : NULL, true); \
             _entry = _next, _next = _entry ? _entry->next : NULL)
+
+#if defined(__cplusplus)
+}
+#endif
+
+#endif
 
 /** @} */

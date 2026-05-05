@@ -72,7 +72,7 @@ void rwmutex_read_release(rwmutex_t* mtx)
 
     if (mtx->activeReaders == 0 && mtx->waitingWriters > 0)
     {
-        wait_unblock(&mtx->writerQueue, 1, EOK);
+        wait_unblock(&mtx->writerQueue, 1, OK);
     }
 }
 
@@ -123,10 +123,10 @@ void rwmutex_write_release(rwmutex_t* mtx)
 
     if (mtx->waitingWriters > 0)
     {
-        wait_unblock(&mtx->writerQueue, 1, EOK);
+        wait_unblock(&mtx->writerQueue, 1, OK);
     }
     else
     {
-        wait_unblock(&mtx->readerQueue, WAIT_ALL, EOK);
+        wait_unblock(&mtx->readerQueue, WAIT_ALL, OK);
     }
 }

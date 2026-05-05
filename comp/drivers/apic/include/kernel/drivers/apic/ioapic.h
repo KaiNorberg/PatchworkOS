@@ -62,7 +62,7 @@ typedef enum
 
 /**
  * @brief IO APIC Delivery Modes.
- * @enum ioapic_delivery_mode_t
+ * @enum ioapic_delivery_path_mode_t
  */
 typedef enum
 {
@@ -72,27 +72,27 @@ typedef enum
     IOAPIC_DELIVERY_NMI = 4,
     IOAPIC_DELIVERY_INIT = 5,
     IOAPIC_DELIVERY_EXTERNAL = 7
-} ioapic_delivery_mode_t;
+} ioapic_delivery_path_mode_t;
 
 /**
  * @brief IO APIC Destination Modes.
- * @enum ioapic_destination_mode_t
+ * @enum ioapic_destination_path_mode_t
  */
 typedef enum
 {
     IOAPIC_DESTINATION_PHYSICAL = 0,
     IOAPIC_DESTINATION_LOGICAL = 1
-} ioapic_destination_mode_t;
+} ioapic_destination_path_mode_t;
 
 /**
  * @brief IO APIC Trigger Modes.
- * @enum ioapic_trigger_mode_t
+ * @enum ioapic_trigger_path_mode_t
  */
 typedef enum
 {
     IOAPIC_TRIGGER_EDGE = 0,
     IOAPIC_TRIGGER_LEVEL = 1
-} ioapic_trigger_mode_t;
+} ioapic_trigger_path_mode_t;
 
 /**
  * @brief IO APIC Polarity Modes.
@@ -134,12 +134,12 @@ typedef union {
     struct PACKED
     {
         uint8_t vector;
-        uint8_t deliveryMode : 3;    ///< ioapic_delivery_mode_t
-        uint8_t destinationMode : 1; ///< ioapic_destination_mode_t
+        uint8_t deliveryMode : 3;    ///< ioapic_delivery_path_mode_t
+        uint8_t destinationMode : 1; ///< ioapic_destination_path_mode_t
         uint8_t deliveryStatus : 1;
         uint8_t polarity : 1; ///< ioapic_polarity_t
         uint8_t remoteIRR : 1;
-        uint8_t triggerMode : 1; ///< ioapic_trigger_mode_t
+        uint8_t triggerMode : 1; ///< ioapic_trigger_path_mode_t
         uint8_t mask : 1;        ///< If set, the interrupt is masked (disabled)
         uint64_t reserved : 39;
         uint8_t destination : 8;

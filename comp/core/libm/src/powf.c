@@ -13,13 +13,13 @@ float powf(float x, float y)
 
     if (x < 0.0F)
     {
-        float int_part;
-        if (modff(y, &int_part) != 0.0F)
+        float intPart;
+        if (modff(y, &intPart) != 0.0F)
         {
             return NAN;
         }
         float res = exp2f(y * log2f(-x));
-        if (fmodf(int_part, 2.0F) != 0.0F)
+        if (fmodf(intPart, 2.0F) != 0.0F)
         {
             res = -res;
         }

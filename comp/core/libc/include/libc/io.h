@@ -7,11 +7,10 @@
 #include <libc/proc.h>
 #include <libc/status.h>
 #include <libc/syscall.h>
-#include <stdatomic.h>
-#include <stddef.h>
-#include <stdint.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <threads.h>
 
 #if defined(__cplusplus)
 extern "C"
@@ -23,6 +22,7 @@ extern "C"
 #include "_libc/clock_t.h"
 #include "_libc/errno_t.h"
 #include "_libc/ssize_t.h"
+#include "_libc/va_list.h"
 
 char* _thread_get_iofmt(void);
 

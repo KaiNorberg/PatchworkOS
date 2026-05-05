@@ -59,7 +59,7 @@ int main(int argc, char** argv)
     status = sharefile(group, sizeof(group), "/proc/self/group", CLOCKS_PER_SEC);
     if (IS_ERR(status))
     {
-        if (ST_CODE(status) != ST_CODE_NOENT)
+        if (STATUS_CODE(status) != STATUS_CODE_NOENT)
         {
             proc_exit(IOFMT("boxspawn: failed to share group %Y", status));
         }

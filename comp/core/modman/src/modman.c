@@ -67,19 +67,19 @@ static status_t module_load_loop(module_loader_t* loader)
         comp_dependency_t* dep = &loader->deps[loader->current];
 
         printf("  %s %u.%u.%u\n", dep->name, dep->version.major, dep->version.minor, dep->version.patch);
-        scon_ref_t componentList = scon_find(scon_root(&dep->scon), "component");
+        scon_item_t* componentList = scon_find(scon_root(dep->scon), "component");
         if (!scon_is_list(componentList))
         {
             continue;
         }
 
-        scon_ref_t moduleList = scon_find(componentList, "module");
+        scon_item_t* moduleList = scon_find(componentList, "module");
         if (!scon_is_list(moduleList))
         {
             continue;
         }
 
-        scon_ref_t module = scon_get(moduleList, 1);
+        scon_item_t* module = scon_get(moduleList, 1);
         if (!scon_is_atom(module))
         {
             printf("  %s: module list entry is not an atom\n", dep->name);

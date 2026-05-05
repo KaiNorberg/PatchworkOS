@@ -26,6 +26,7 @@
 #include <libc/list.h>
 #include <libc/math.h>
 #include <libc/status.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -39,7 +40,7 @@ static status_t tmpfs_regular_open(irp_t* irp)
         return ERR(FS, EXPECT_FILE);
     }
 
-    if (frame->file->mode & MODE_TRUNCATE)
+    if (frame->file->mode & PATH_MODE_TRUNCATE)
     {
         tmpfs_vnode_t* vnode = CONTAINER_OF(frame->vnode, tmpfs_vnode_t, vnode);
         MUTEX_SCOPE(&vnode->vnode.mutex);
@@ -94,7 +95,7 @@ static status_t tmpfs_regular_write(irp_t* irp)
 
     MUTEX_SCOPE(&vnode->vnode.mutex);
 
-    if (frame->file->mode & MODE_APPEND)
+    if (frame->file->mode & PATH_MODE_APPEND)
     {
         *frame->write.offset = vnode->size;
     }
@@ -419,15 +420,15 @@ static status_t tmpfs_dir_create(irp_t* irp)
     }
 
     const vnode_class_t* cls;
-    if (frame->create.mode & MODE_DIRECTORY)
+    if (frame->create.mode & PATH_MODE_DIRECTORY)
     {
         cls = &dirClass;
     }
-    else if (frame->create.mode & MODE_SYMLINK)
+    else if (frame->create.mode & PATH_MODE_SYMLINK)
     {
         cls = &symlinkClass;
     }
-    else if (frame->create.mode & MODE_HARDLINK)
+    else if (frame->create.mode & PATH_MODE_HARDLINK)
     {
         fd_t link;
         if (sscanf(frame->create.payload, "%lld", &link) != 1)
@@ -471,7 +472,7 @@ static status_t tmpfs_dir_create(irp_t* irp)
     }
     UNREF_DEFER(vnode);
 
-    if (frame->create.mode & MODE_SYMLINK)
+    if (frame->create.mode & PATH_MODE_SYMLINK)
     {
         size_t payloadLen = strlen(frame->create.payload);
         size_t reqPages = BYTES_TO_PAGES(payloadLen);

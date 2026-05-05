@@ -1,0 +1,7 @@
+(widget
+    (visible false)
+    (widget
+        (name button)
+        (background 0xFF00FF00)
+    )
+)

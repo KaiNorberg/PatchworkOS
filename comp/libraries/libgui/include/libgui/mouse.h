@@ -4,7 +4,6 @@
 #include <libc/kbd.h>
 #include <libc/status.h>
 #include <libgfx/gfx.h>
-#include <libgui/button.h>
 #include <stdbool.h>
 
 typedef struct gui_layout gui_layout_t;

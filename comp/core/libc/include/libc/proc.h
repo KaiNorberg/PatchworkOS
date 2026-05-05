@@ -1,18 +1,13 @@
 #ifndef _SYS_PROC_H
 #define _SYS_PROC_H 1
 
-#include <alloca.h>
-#include <libc/fs.h>
-#include <libc/syscall.h>
-#include <stdatomic.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-
 #if defined(__cplusplus)
 extern "C"
 {
 #endif
+
+#include <libc/fs.h>
+#include <libc/syscall.h>
 
 #include "_libc/NULL.h"
 #include "_libc/PAGE_SIZE.h"
@@ -26,6 +21,8 @@ extern "C"
  *
  * @{
  */
+
+extern char** environ; ///< Pointer to the environment variables.
 
 /**
  * @brief Process Identifier.
@@ -93,6 +90,12 @@ typedef struct proc_args
 } proc_args_t;
 
 /**
+ * @brief Process environment variables structure.
+ * @struct proc_envp_t
+ */
+typedef proc_args_t proc_envp_t;
+ 
+/**
  * @brief Helper macro for creating a process arguments buffer.
  *
  * @param ... A list of strings to be used as arguments.
@@ -119,11 +122,24 @@ typedef struct proc_args
     })
 
 /**
+ * @brief Helper macro for creating a process environment buffer.
+ *
+ * @param ... A list of strings to be used as environment variables.
+ */
+#define PROC_ENVP(...) PROC_ARGS(...)
+
+/**
+ * @brief Sentinel value to indicate that the child process should inherit the parent's environment.
+ */
+#define PROC_ENVP_INHERIT (proc_envp_t){.buf = NULL, .len = 0}
+
+/**
  * @brief System call for creating new processes.
  *
  * @param cwd The current working directory to for resolving paths.
  * @param root The root directory to use for resolving paths.
  * @param args The arguments for the new process.
+ * @param envp The environment variables for the new process.
  * @param fds An array of file descriptor mappings.
  * @param count The number of mappings in the array.
  * @param priority The priority of the new process.
@@ -131,7 +147,7 @@ typedef struct proc_args
  * @param proc Optional output pointer for the proc directory of the child.
  * @return An appropriate status value.
  */
-status_t proc_create(fd_t cwd, fd_t root, proc_args_t args, const proc_fd_t* fds, size_t count, prio_t priority,
+status_t proc_create(fd_t cwd, fd_t root, proc_args_t args, proc_envp_t envp, const proc_fd_t* fds, size_t count, prio_t priority,
     proc_flags_t flags, fd_t* proc);
 
 /**

@@ -2,7 +2,7 @@
 
 #include <boot/boot_info.h>
 
-#include <libc/elf.h>
+#include <elf.h>
 #include <libc/list.h>
 #include <libc/map.h>
 #include <libc/status.h>

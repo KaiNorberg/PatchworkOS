@@ -52,7 +52,7 @@ static void file_close(file_t* file)
 
 static cache_t cache = CACHE_CREATE(cache, "file", sizeof(file_t), CACHE_LINE, NULL, NULL);
 
-file_t* file_new(dentry_t* dentry, binding_t* binding, mode_t mode)
+file_t* file_new(dentry_t* dentry, binding_t* binding, path_mode_t mode)
 {
     file_t* file = cache_alloc(&cache);
     if (file == NULL)

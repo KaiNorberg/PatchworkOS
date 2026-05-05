@@ -13,11 +13,12 @@ static ioring_t* _ioring;
         _len; \
     })
 
-#include <libc/auxv.h>
-#include <libc/elf.h>
+#include <elf.h>
 #include <libc/fs.h>
 #include <libc/io.h>
 #include <libc/math.h>
+#include <stdarg.h>
+#include <sys/auxv.h>
 
 /**
  * @brief Dynamic Linker
@@ -42,13 +43,29 @@ typedef struct
     fd_t execFd;
 } dyn_info_t;
 
+typedef enum
+{
+    DSO_NONE = 0,
+    DSO_MAIN = (1 << 0),
+    DSO_NODELETE = (1 << 1),
+    DSO_INITIALIZED = (1 << 2),
+    DSO_FINALIZED = (1 << 3),
+    DSO_RELOCATED = (1 << 4),
+} dso_flags_t;
+
+#define DSO_MAX_DEPS 32
+
 typedef struct dso
 {
     struct dso* next;
-    const char* name;
+    struct dso* prev;
+    struct dso* free;
     void* base;
     void* entry;
+    dso_flags_t flags;
+    int refcount;
     Elf64_Addr loadOffset;
+    Elf64_Xword loadSize;
     Elf64_Dyn* dynamic;
     Elf64_Sym* symtab;
     const char* strtab;
@@ -62,27 +79,126 @@ typedef struct dso
     void (*init)(void);
     void (**initArray)(void);
     size_t initArraySize;
+    void (*fini)(void);
+    void (**finiArray)(void);
+    size_t finiArraySize;
+    char name[MAX_PATH];
+    struct dso* deps[DSO_MAX_DEPS];
+    uint8_t depsAmount;
 } dso_t;
 
 #define MAX_DSOS 64
 static dso_t dsos[MAX_DSOS];
-static size_t dsoAmount = 0;
 static dso_t* dsoList = NULL;
 static dso_t* dsoTail = NULL;
+static dso_t* dsoFree = NULL;
+
+#define MAX_ERROR 256
+static char dsoError[MAX_ERROR];
+
+static void _dyn_set_error(const char* string)
+{
+    size_t i = 0;
+    while (string[i] != '\0' && i < MAX_ERROR - 1)
+    {
+        dsoError[i] = string[i];
+        i++;
+    }
+    dsoError[i] = '\0';
+}
 
 static dso_t* _dyn_alloc_dso(void)
 {
-    if (dsoAmount >= MAX_DSOS)
+    if (dsoFree == NULL)
     {
         return NULL;
     }
-    dso_t* dso = &dsos[dsoAmount++];
+
+    dso_t* dso = dsoFree;
+    dsoFree = dso->free;
+
     unsigned char* p = (unsigned char*)dso;
     for (size_t i = 0; i < sizeof(dso_t); i++)
     {
         p[i] = 0;
     }
+
     return dso;
+}
+
+static void _dyn_free_dso(dso_t* dso)
+{
+    dso->free = dsoFree;
+    dsoFree = dso;
+}
+
+static void _dyn_init_dso(dso_t* dso)
+{
+    if (dso->flags & DSO_INITIALIZED)
+    {
+        return;
+    }
+
+    for (uint8_t i = 0; i < dso->depsAmount; i++)
+    {
+        if (dso->deps[i])
+        {
+            _dyn_init_dso(dso->deps[i]);
+        }
+    }
+
+    dso->flags |= DSO_INITIALIZED;
+
+    if (dso->init != NULL)
+    {
+        dso->init();
+    }
+    if (dso->initArray != NULL)
+    {
+        size_t count = dso->initArraySize / sizeof(void*);
+        for (size_t i = 0; i < count; i++)
+        {
+            if (dso->initArray[i])
+            {
+                dso->initArray[i]();
+            }
+        }
+    }
+}
+
+static void _dyn_fini_dso(dso_t* dso)
+{
+    if (!(dso->flags & DSO_INITIALIZED) || (dso->flags & DSO_FINALIZED))
+    {
+        return;
+    }
+
+    dso->flags |= DSO_FINALIZED;
+
+    if (dso->finiArray != NULL)
+    {
+        size_t count = dso->finiArraySize / sizeof(void*);
+        for (size_t i = count; i > 0; i--)
+        {
+            if (dso->finiArray[i - 1])
+            {
+                dso->finiArray[i - 1]();
+            }
+        }
+    }
+
+    if (dso->fini != NULL)
+    {
+        dso->fini();
+    }
+
+    for (uint8_t i = 0; i < dso->depsAmount; i++)
+    {
+        if (dso->deps[i])
+        {
+            _dyn_fini_dso(dso->deps[i]);
+        }
+    }   
 }
 
 static int _dyn_strcmp(const char* s1, const char* s2)
@@ -133,17 +249,19 @@ static void _dyn_parse_auxv(void* stack, dyn_info_t* info)
     uintptr_t argc = *p++;
     p += argc; // Skip argv pointers
     p++;       // Skip NULL terminator
+    
+    while (*p++); // Skip envp pointers and the NULL terminator
 
     auxv_t* auxv = (auxv_t*)p;
-    for (size_t i = 0; auxv[i].type != AUXV_NULL; i++)
+    for (size_t i = 0; auxv[i].a_type != AT_NULL; i++)
     {
-        if (auxv[i].type == AUXV_BASE)
+        if (auxv[i].a_type == AT_BASE)
         {
-            info->base = (void*)auxv[i].value;
+            info->base = auxv[i].a_un.a_ptr;
         }
-        else if (auxv[i].type == AUXV_EXECFD)
+        else if (auxv[i].a_type == AT_EXECFD)
         {
-            info->execFd = (fd_t)auxv[i].value;
+            info->execFd = auxv[i].a_un.a_val;
         }
     }
 }
@@ -185,21 +303,178 @@ static void _dyn_relocate_self(dyn_info_t* info)
     }
 }
 
-static void _dyn_print(const char* str)
+static void _dyn_itoa(char* buf, unsigned long val, unsigned int base)
 {
-    size_t len = 0;
-    while (str[len] != '\0')
+    if (val == 0)
     {
-        len++;
+        buf[0] = '0';
+        buf[1] = '\0';
+        return;
     }
 
-    iowrite(FDOUT, IOBUF(str, len), IOCUR, NULL);
+    char tmp[32];
+    int pos = 0;
+    while (val > 0 && pos < 31)
+    {
+        unsigned long d = val % base;
+        tmp[pos++] = (char)((d < 10) ? ('0' + d) : ('a' + d - 10));
+        val /= base;
+    }
+
+    int i = 0;
+    while (pos > 0)
+    {
+        buf[i++] = tmp[--pos];
+    }
+    buf[i] = '\0';
 }
+
+static int _dyn_vsnprintf(char* buf, size_t size, const char* fmt, va_list args)
+{
+    if (size == 0)
+    {
+        return 0;
+    }
+
+    char* out = buf;
+    char* end = buf + size - 1;
+    int written = 0;
+
+    while (*fmt && out < end)
+    {
+        if (*fmt != '%')
+        {
+            *out++ = *fmt++;
+            written++;
+            continue;
+        }
+
+        fmt++;
+
+        int isLong = 0;
+        if (*fmt == 'l')
+        {
+            isLong = 1;
+            fmt++;
+        }
+
+        switch (*fmt)
+        {
+        case 's':
+        {
+            const char* s = va_arg(args, const char*);
+            if (s == NULL)
+            {
+                s = "(null)";
+            }
+            while (*s && out < end)
+            {
+                *out++ = *s++;
+                written++;
+            }
+            break;
+        }
+        case 'Y':
+        {
+            unsigned long val = (unsigned long)va_arg(args, unsigned int);
+            char hex[24];
+            _dyn_itoa(hex, val, 16);
+            if (out < end)
+            {
+                *out++ = '0';
+                written++;
+            }
+            if (out < end)
+            {
+                *out++ = 'x';
+                written++;
+            }
+            for (int i = 0; hex[i] && out < end; i++)
+            {
+                *out++ = hex[i];
+                written++;
+            }
+            break;
+        }
+        case 'u':
+        {
+            unsigned long val = isLong ? va_arg(args, unsigned long) : (unsigned long)va_arg(args, unsigned int);
+            char num[32];
+            _dyn_itoa(num, val, 10);
+            for (int i = 0; num[i] && out < end; i++)
+            {
+                *out++ = num[i];
+                written++;
+            }
+            break;
+        }
+        case '%':
+            if (out < end)
+            {
+                *out++ = '%';
+                written++;
+            }
+            break;
+        default:
+            if (out < end)
+            {
+                *out++ = '%';
+                written++;
+            }
+            if (out < end && *fmt)
+            {
+                *out++ = *fmt;
+                written++;
+            }
+            break;
+        }
+        fmt++;
+    }
+
+    *out = '\0';
+    return written;
+}
+
+static void _dyn_set_errorf(const char* fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    _dyn_vsnprintf(dsoError, MAX_ERROR, fmt, args);
+    va_end(args);
+}
+
+static int _dyn_printf(const char* fmt, ...)
+{
+    char buf[512];
+    va_list args;
+    va_start(args, fmt);
+    int len = _dyn_vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    iowrite(FDOUT, IOBUF(buf, len), IOCUR, NULL);
+    return len;
+}
+
+#define _DYN_ERRORF(fmt, ...) \
+    do \
+    { \
+        _dyn_set_errorf(fmt, ##__VA_ARGS__); \
+        _dyn_printf(fmt "\n", ##__VA_ARGS__); \
+    } while (0)
 
 static status_t _dyn_setup_ioring(void)
 {
     _ioring = &ioring;
     return ioring_setup(&ioring, IORING_BASE, 16, 16);
+}
+
+static void _dyn_init_freelist(void)
+{
+    for (size_t i = 0; i < MAX_DSOS - 1; i++)
+    {
+        dsos[i].free = &dsos[i + 1];
+    }
+    dsos[MAX_DSOS - 1].free = NULL;
+    dsoFree = &dsos[0];
 }
 
 static uint32_t _dyn_elf_hash(const char* name)
@@ -368,11 +643,7 @@ static bool _dyn_do_relocations(dso_t* dso, Elf64_Rela* rela, size_t size, size_
         }
         else if (ELF64_ST_BIND(sym->st_info) != STB_WEAK)
         {
-            _dyn_print("dynlink: undefined symbol '");
-            _dyn_print(symName);
-            _dyn_print("' in '");
-            _dyn_print(dso->name);
-            _dyn_print("'\n");
+            _DYN_ERRORF("dynlink: undefined symbol '%s' in '%s'", symName, dso->name);
             return false;
         }
 
@@ -393,16 +664,12 @@ static bool _dyn_do_relocations(dso_t* dso, Elf64_Rela* rela, size_t size, size_
             }
             else
             {
-                _dyn_print("dynlink: failed to resolve COPY relocation for ");
-                _dyn_print(symName);
-                _dyn_print("\n");
+                _DYN_ERRORF("dynlink: failed to resolve COPY relocation for '%s'", symName);
                 return false;
             }
             break;
         default:
-            _dyn_print("dynlink: unknown relocation type ");
-            _dyn_print(symName);
-            _dyn_print("\n");
+            _DYN_ERRORF("dynlink: unknown relocation type %lu for '%s'", type, symName);
             return false;
         }
     }
@@ -412,6 +679,13 @@ static bool _dyn_do_relocations(dso_t* dso, Elf64_Rela* rela, size_t size, size_
 
 static bool _dyn_relocate_dso(dso_t* dso)
 {
+    if (dso->flags & DSO_RELOCATED)
+    {
+        return true;
+    }
+
+    dso->flags |= DSO_RELOCATED;
+
     if (dso->rela != NULL)
     {
         if (!_dyn_do_relocations(dso, dso->rela, dso->relaSize, dso->relaEnt != 0 ? dso->relaEnt : sizeof(Elf64_Rela)))
@@ -429,6 +703,70 @@ static bool _dyn_relocate_dso(dso_t* dso)
     return true;
 }
 
+static void _dyn_parse_dynamic(dso_t* dso)
+{
+    if (dso->dynamic == NULL)
+    {
+        return;
+    }
+
+    for (size_t i = 0; dso->dynamic[i].d_tag != DT_NULL; i++)
+    {
+        Elf64_Dyn* d = &dso->dynamic[i];
+        Elf64_Addr addr = d->d_un.d_ptr + dso->loadOffset;
+        switch (d->d_tag)
+        {
+        case DT_SYMTAB:
+            dso->symtab = (Elf64_Sym*)addr;
+            break;
+        case DT_STRTAB:
+            dso->strtab = (const char*)addr;
+            break;
+        case DT_HASH:
+            dso->hash = (uint32_t*)addr;
+            break;
+        case DT_GNU_HASH:
+            dso->gnuHash = (uint32_t*)addr;
+            break;
+        case DT_RELA:
+            dso->rela = (Elf64_Rela*)addr;
+            break;
+        case DT_RELASZ:
+            dso->relaSize = d->d_un.d_val;
+            break;
+        case DT_RELAENT:
+            dso->relaEnt = d->d_un.d_val;
+            break;
+        case DT_JMPREL:
+            dso->jmprel = (Elf64_Rela*)addr;
+            break;
+        case DT_PLTRELSZ:
+            dso->jmprelSize = d->d_un.d_val;
+            break;
+        case DT_INIT:
+            dso->init = (void (*)(void))addr;
+            break;
+        case DT_INIT_ARRAY:
+            dso->initArray = (void (**)(void))addr;
+            break;
+        case DT_INIT_ARRAYSZ:
+            dso->initArraySize = d->d_un.d_val;
+            break;
+        case DT_FINI:
+            dso->fini = (void (*)(void))addr;
+            break;
+        case DT_FINI_ARRAY:
+            dso->finiArray = (void (**)(void))addr;
+            break;
+        case DT_FINI_ARRAYSZ:
+            dso->finiArraySize = d->d_un.d_val;
+            break;
+        default:
+            break;
+        }
+    }
+}
+
 static dso_t* _dyn_load_elf(fd_t fd, const char* name, bool isMain)
 {
     iovar_t sizeReg = IOREG(IOREG0, SIZE_MAX);
@@ -440,7 +778,7 @@ static dso_t* _dyn_load_elf(fd_t fd, const char* name, bool isMain)
     status_t status = iosync();
     if (IS_ERR(status))
     {
-        _dyn_print("dynlink: failed to map ELF file\n");
+        _DYN_ERRORF("dynlink: failed to map ELF file '%s' %Y", name, status);
         return NULL;
     }
 
@@ -450,7 +788,7 @@ static dso_t* _dyn_load_elf(fd_t fd, const char* name, bool isMain)
     Elf64_File elf;
     if (elf64_validate(&elf, fileMap, size) != 0)
     {
-        _dyn_print("dynlink: failed to validate ELF header\n");
+        _DYN_ERRORF("dynlink: failed to validate ELF header for '%s'", name);
         iounmap(fileMap, size);
         return NULL;
     }
@@ -461,7 +799,7 @@ static dso_t* _dyn_load_elf(fd_t fd, const char* name, bool isMain)
 
     if (minAddr > maxAddr)
     {
-        _dyn_print("dynlink: invalid loadable bounds\n");
+        _DYN_ERRORF("dynlink: invalid loadable bounds in '%s'", name);
         iounmap(fileMap, size);
         return NULL;
     }
@@ -480,7 +818,7 @@ static dso_t* _dyn_load_elf(fd_t fd, const char* name, bool isMain)
     status = iosync();
     if (IS_ERR(status))
     {
-        _dyn_print("dynlink: failed to map memory for ELF\n");
+        _DYN_ERRORF("dynlink: failed to map memory for '%s' %Y", name, status);
         iounmap(fileMap, size);
         return NULL;
     }
@@ -530,7 +868,7 @@ static dso_t* _dyn_load_elf(fd_t fd, const char* name, bool isMain)
             status = iomap(fd, &mapAddr, mapLen, offsetAligned, initialFlags);
             if (IS_ERR(status))
             {
-                _dyn_print("dynlink: failed to map segment from file\n");
+                _DYN_ERRORF("dynlink: failed to map segment from file '%s' %Y", name, status);
                 iounmap(fileMap, size);
                 return NULL;
             }
@@ -564,15 +902,18 @@ static dso_t* _dyn_load_elf(fd_t fd, const char* name, bool isMain)
     dso_t* dso = _dyn_alloc_dso();
     if (!dso)
     {
-        _dyn_print("dynlink: failed to allocate DSO structure\n");
+        _DYN_ERRORF("dynlink: failed to allocate DSO structure for '%s'", name);
         iounmap(memMap, loadSize);
         iounmap(fileMap, size);
         return NULL;
     }
 
-    dso->name = name;
+    _dyn_strcpy(dso->name, name);
     dso->base = memMap;
     dso->loadOffset = loadOffset;
+    dso->loadSize = loadSize;
+    dso->refcount = 1;
+    dso->flags = isMain ? DSO_MAIN : 0;
     dso->entry = (void*)(elf.header->e_entry + loadOffset);
 
     for (size_t i = 0; i < elf.header->e_phnum; i++)
@@ -585,155 +926,79 @@ static dso_t* _dyn_load_elf(fd_t fd, const char* name, bool isMain)
         }
     }
 
-    if (dso->dynamic != NULL)
-    {
-        for (size_t i = 0; dso->dynamic[i].d_tag != DT_NULL; i++)
-        {
-            Elf64_Dyn* d = &dso->dynamic[i];
-            Elf64_Addr addr = d->d_un.d_ptr + loadOffset;
-            switch (d->d_tag)
-            {
-            case DT_SYMTAB:
-                dso->symtab = (Elf64_Sym*)addr;
-                break;
-            case DT_STRTAB:
-                dso->strtab = (const char*)addr;
-                break;
-            case DT_HASH:
-                dso->hash = (uint32_t*)addr;
-                break;
-            case DT_GNU_HASH:
-                dso->gnuHash = (uint32_t*)addr;
-                break;
-            case DT_RELA:
-                dso->rela = (Elf64_Rela*)addr;
-                break;
-            case DT_RELASZ:
-                dso->relaSize = d->d_un.d_val;
-                break;
-            case DT_RELAENT:
-                dso->relaEnt = d->d_un.d_val;
-                break;
-            case DT_JMPREL:
-                dso->jmprel = (Elf64_Rela*)addr;
-                break;
-            case DT_PLTRELSZ:
-                dso->jmprelSize = d->d_un.d_val;
-                break;
-            case DT_INIT:
-                dso->init = (void (*)(void))addr;
-                break;
-            case DT_INIT_ARRAY:
-                dso->initArray = (void (**)(void))addr;
-                break;
-            case DT_INIT_ARRAYSZ:
-                dso->initArraySize = d->d_un.d_val;
-                break;
-            default:
-                break;
-            }
-        }
-    }
-
+    _dyn_parse_dynamic(dso);
     iounmap(fileMap, size);
     return dso;
 }
 
-static void _dyn_load_dependencies(dso_t* mainDso)
+static void _dyn_load_dependencies(dso_t* dso)
 {
-    dsoList = mainDso;
-    dsoTail = mainDso;
-
-    dso_t* curr = dsoList;
-    while (curr != NULL)
+    if (dso->dynamic == NULL)
     {
-        if (curr->dynamic == NULL)
+        return;
+    }
+
+    for (size_t i = 0; dso->dynamic[i].d_tag != DT_NULL; i++)
+    {
+        Elf64_Dyn* d = &dso->dynamic[i];
+        if (d->d_tag != DT_NEEDED)
         {
-            curr = curr->next;
             continue;
         }
 
-        for (size_t i = 0; curr->dynamic[i].d_tag != DT_NULL; i++)
+        const char* depName = dso->strtab + d->d_un.d_val;
+
+        bool loaded = false;
+        for (dso_t* check = dsoList; check != NULL; check = check->next)
         {
-            Elf64_Dyn* d = &curr->dynamic[i];
-            if (d->d_tag != DT_NEEDED)
+            if (_dyn_strcmp(check->name, depName) == 0)
             {
-                continue;
+                loaded = true;
+                break;
             }
+        }
 
-            const char* depName = curr->strtab + d->d_un.d_val;
+        if (loaded)
+        {
+            continue;
+        }
 
-            bool loaded = false;
-            for (dso_t* check = dsoList; check != NULL; check = check->next)
+        static char path[MAX_PATH];
+        _dyn_strcpy(path, "/lib/");
+
+        size_t len = 5;
+        const char* s = depName;
+        while (*s && len < sizeof(path) - 1)
+        {
+            path[len++] = *s++;
+        }
+        path[len] = '\0';
+
+        fd_t depFd = 0;
+        status_t status = iowalk(FDCWD, FDROOT, path, &depFd);
+        if (!IS_ERR(status))
+        {
+            dso_t* depDso = _dyn_load_elf(depFd, depName, false);
+            iodrop(depFd);
+            if (depDso != NULL)
             {
-                if (_dyn_strcmp(check->name, depName) == 0)
+                depDso->prev = dsoTail;
+                dsoTail->next = depDso;
+                dsoTail = depDso;
+                if (dso->depsAmount < DSO_MAX_DEPS)
                 {
-                    loaded = true;
-                    break;
+                    dso->deps[dso->depsAmount++] = depDso;
                 }
-            }
-
-            if (loaded)
-            {
-                continue;
-            }
-
-            static char path[MAX_PATH];
-            _dyn_strcpy(path, "/lib/");
-
-            size_t len = 5;
-            const char* s = depName;
-            while (*s && len < sizeof(path) - 1)
-            {
-                path[len++] = *s++;
-            }
-            path[len] = '\0';
-
-            fd_t depFd = 0;
-            status_t status = iowalk(FDCWD, FDROOT, path, &depFd);
-            if (!IS_ERR(status))
-            {
-                dso_t* depDso = _dyn_load_elf(depFd, depName, false);
-                iodrop(depFd);
-                if (depDso != NULL)
-                {
-                    dsoTail->next = depDso;
-                    dsoTail = depDso;
-                }
-                else
-                {
-                    _dyn_print("dynlink: failed to load dependency '");
-                    _dyn_print(path);
-                    _dyn_print("'\n");
-                }
+                depDso->refcount++;
             }
             else
             {
-                _dyn_print("dynlink: skipping dependency '");
-                _dyn_print(path);
-                _dyn_print("'\n");
+                _dyn_printf("dynlink: failed to load dependency '%s'\n", path);
             }
         }
-        curr = curr->next;
-    }
-}
-
-static void _dyn_run_all_inits(void)
-{
-    for (int i = dsoAmount - 1; i >= 0; i--)
-    {
-        dso_t* dso = &dsos[i];
-        if (dso->init != NULL)
+        else
         {
-            dso->init();
-        }
-        if (dso->initArray != NULL)
-        {
-            size_t count = dso->initArraySize / sizeof(void*);
-            for (size_t j = 0; j < count; j++)
-            {
-                dso->initArray[j]();
-            }
+            _dyn_printf("dynlink: skipping dependency '%s'\n", path);
         }
     }
 }
@@ -748,18 +1013,42 @@ HIDDEN void* _dyn_main(void* stack)
     status_t status = _dyn_setup_ioring();
     if (IS_ERR(status))
     {
+        _DYN_ERRORF("dynlink: failed to setup ioring %Y", status);
         return NULL;
     }
+
+    _dyn_init_freelist();    
 
     dso_t* mainDso = _dyn_load_elf(info.execFd, "main", true);
     if (mainDso == NULL)
     {
-        _dyn_print("dynlink: failed to load executable\n");
         ioring_teardown(&ioring);
         return NULL;
     }
 
-    _dyn_load_dependencies(mainDso);
+    dsoList = mainDso;
+    dsoTail = mainDso;
+
+    dso_t* linkerDso = _dyn_alloc_dso();
+    if (linkerDso != NULL)
+    {
+        _dyn_strcpy(linkerDso->name, "dynlink.so");
+        linkerDso->base = info.base;
+        linkerDso->loadOffset = (Elf64_Addr)info.base;
+        linkerDso->dynamic = _DYNAMIC;
+        linkerDso->flags = DSO_INITIALIZED | DSO_RELOCATED | DSO_NODELETE;
+        linkerDso->refcount = 1;
+        _dyn_parse_dynamic(linkerDso);
+
+        linkerDso->prev = dsoTail;
+        dsoTail->next = linkerDso;
+        dsoTail = linkerDso;
+    }
+
+    for (dso_t* dso = dsoList; dso != NULL; dso = dso->next)
+    {
+        _dyn_load_dependencies(dso);
+    }
 
     for (dso_t* dso = dsoList; dso != NULL; dso = dso->next)
     {
@@ -770,8 +1059,124 @@ HIDDEN void* _dyn_main(void* stack)
         }
     }
 
-    _dyn_run_all_inits();
+    for (dso_t* dso = dsoTail; dso != NULL; dso = dso->prev)
+    {
+        _dyn_init_dso(dso);
+    }
 
-    ioring_teardown(&ioring);
     return mainDso->entry;
+}
+
+__attribute__((visibility("default"))) int dlclose(void* handle)
+{
+    dso_t* dso = (dso_t*)handle;
+    if (dso == NULL || dso->refcount <= 0)
+    {
+        return -1;
+    }
+
+    dso->refcount--;
+    if (dso->refcount == 0 && !(dso->flags & (DSO_MAIN | DSO_NODELETE)))
+    {
+        _dyn_fini_dso(dso);
+
+        for (uint8_t i = 0; i < dso->depsAmount; i++)
+        {
+            dlclose(dso->deps[i]);
+        }
+
+        if (dso->prev != NULL)
+        {
+            dso->prev->next = dso->next;
+        }
+        if (dso->next != NULL)
+        {
+            dso->next->prev = dso->prev;
+        }
+        if (dsoList == dso)
+        {
+            dsoList = dso->next;
+        }
+        if (dsoTail == dso)
+        {
+            dsoTail = dso->prev;
+        }
+
+        iounmap(dso->base, dso->loadSize);
+        _dyn_free_dso(dso);
+    }
+
+    return 0;
+}
+
+__attribute__((visibility("default"))) char* dlerror(void)
+{
+    return dsoError;
+}
+
+__attribute__((visibility("default"))) void* dlopen(const char* filename, int flag)
+{
+    if (filename == NULL)
+    {
+        return dsoList;
+    }
+
+    for (dso_t* dso = dsoList; dso != NULL; dso = dso->next)
+    {
+        if (_dyn_strcmp(dso->name, filename) == 0)
+        {
+            dso->refcount++;
+            return dso;
+        }
+    }
+    
+    fd_t fd;
+    status_t status = iowalk(FDCWD, FDROOT, filename, &fd);
+    if (IS_ERR(status))
+    {
+        _dyn_set_errorf("dlopen: failed to open file '%s' %Y", filename, status);
+        return NULL;
+    }
+
+    dso_t* dso = _dyn_load_elf(fd, filename, false);
+    iodrop(fd);
+
+    if (dso == NULL)
+    {
+        return NULL;
+    }
+
+    dso->prev = dsoTail;
+    if (dsoTail != NULL)
+    {
+        dsoTail->next = dso;
+    }
+    dsoTail = dso;
+
+    _dyn_load_dependencies(dso);
+
+    for (dso_t* curr = dso; curr != NULL; curr = curr->next)
+    {
+        if (!_dyn_relocate_dso(curr))
+        {
+            return NULL;
+        }
+    }
+
+    return dso;
+}
+
+__attribute__((visibility("default"))) void* dlsym(void* handle, const char* symbol)
+{
+    dso_t* start = (handle == NULL) ? dsoList : (dso_t*)handle;
+    dso_t* foundDso = NULL;
+    Elf64_Sym* sym = _dyn_lookup_symbol(symbol, start, &foundDso);
+
+    if (sym != NULL && foundDso != NULL)
+    {
+        return (void*)(foundDso->loadOffset + sym->st_value);
+    }
+
+    _dyn_set_errorf("dlsym: symbol '%s' not found", symbol);
+    return NULL;
 }

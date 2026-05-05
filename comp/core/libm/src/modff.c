@@ -1,4 +1,5 @@
 #include <math.h>
+#include <stdint.h>
 
 float modff(float value, float* iptr)
 {

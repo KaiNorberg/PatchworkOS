@@ -16,7 +16,7 @@ static status_t gui_root_draw(gui_widget_t* widget, gfx_t* gfx)
         return ERR(USER, INVAL);
     }
 
-    gfx_draw_fill(gfx, widget->gui->background);
+    /*gfx_draw_fill(gfx, widget->gui->background);
 
     if (widget->gui->wallpaper == NULL)
     {
@@ -32,11 +32,8 @@ static status_t gui_root_draw(gui_widget_t* widget, gfx_t* gfx)
     }
     else if (widget->gui->wallpaperScale == GUI_IMAGE_SCALE_CENTER)
     {
-        gfx_rect_t centered = GFX_RECT_FROM_CENTER(
-            rect.left + GFX_RECT_WIDTH(rect) / 2,
-            rect.top + GFX_RECT_HEIGHT(rect) / 2,
-            img->width, img->height
-        );
+        gfx_rect_t centered = GFX_RECT_FROM_CENTER(rect.left + GFX_RECT_WIDTH(rect) / 2,
+            rect.top + GFX_RECT_HEIGHT(rect) / 2, img->width, img->height);
         gfx_draw_blit(gfx, &img->gfx, centered, img->gfx.clip);
     }
     else if (widget->gui->wallpaperScale == GUI_IMAGE_SCALE_FIT)
@@ -48,11 +45,8 @@ static status_t gui_root_draw(gui_widget_t* widget, gfx_t* gfx)
         int32_t newW = (int32_t)(img->width * scale);
         int32_t newH = (int32_t)(img->height * scale);
 
-        gfx_rect_t fitRect = GFX_RECT_FROM_CENTER(
-            rect.left + GFX_RECT_WIDTH(rect) / 2,
-            rect.top + GFX_RECT_HEIGHT(rect) / 2,
-            newW, newH
-        );
+        gfx_rect_t fitRect = GFX_RECT_FROM_CENTER(rect.left + GFX_RECT_WIDTH(rect) / 2,
+            rect.top + GFX_RECT_HEIGHT(rect) / 2, newW, newH);
         gfx_draw_scale_blit(gfx, &img->gfx, fitRect, img->gfx.clip, GFX_BLEND_ALPHA);
     }
     else if (widget->gui->wallpaperScale == GUI_IMAGE_SCALE_TILE)
@@ -69,15 +63,10 @@ static status_t gui_root_draw(gui_widget_t* widget, gfx_t* gfx)
     else
     {
         return ERR(USER, INVAL);
-    }
+    }*/
 
     return OK;
 }
-
-static gui_class_t rootClass = {
-    .size = sizeof(gui_widget_t),
-    .draw = gui_root_draw,
-};
 
 status_t gui_new(gfx_t* screen, gui_t** out)
 {
@@ -95,24 +84,11 @@ status_t gui_new(gfx_t* screen, gui_t** out)
     gui->screen = screen;
     gui->dirty = GFX_REGION();
     gui->background = GFX_PIXEL(0, 0, 0, 0);
-    gui->root.bounds = screen->clip;
-    gui->root.cls = &rootClass;
-    gui->root.layout = NULL;
-    gui->root.flags = GUI_FLAG_VISIBLE;
-    gui->root.cursor = GUI_CURSOR_NONE;
-    gui->root.id = 0;
-    list_init(&gui->root.children);
-    list_entry_init(&gui->root.entry);
-    gui->root.parent = NULL;
-    gui->root.gui = gui;
-    gui->root.userdata = NULL;
     gui->focused = NULL;
     gui->hovered = NULL;
     gui->mouseButtons = 0;
-    gui->wallpaper = NULL;
-    gui->wallpaperScale = GUI_IMAGE_SCALE_STRETCH;
 
-    gui_invalidate(gui, gui->root.bounds);
+    // gui_invalidate(gui, gui->root.bounds);
 
     *out = gui;
     return OK;
@@ -125,12 +101,12 @@ void gui_free(gui_t* gui)
         return;
     }
 
-    gui_widget_t* child;
+    /*gui_widget_t* child;
     gui_widget_t* next;
     LIST_FOR_EACH_SAFE(child, next, &gui->root.children, entry)
     {
         gui_widget_free(child);
-    }
+    }*/
 
     free(gui);
 }
@@ -142,7 +118,8 @@ gui_widget_t* gui_get_root(gui_t* gui)
         return NULL;
     }
 
-    return &gui->root;
+    // return &gui->root;
+    return NULL;
 }
 
 gui_widget_t* gui_get_hovered(gui_t* gui)
@@ -183,18 +160,7 @@ void gui_set_background(gui_t* gui, gfx_pixel_t color)
     }
 
     gui->background = color;
-    gui_invalidate(gui, gui->root.bounds);
-}
-
-void gui_set_wallpaper(gui_t* gui, gui_image_t* image, gui_image_scale_t scale)
-{
-    if (gui == NULL)
-    {
-        return;
-    }
-    gui->wallpaper = image;
-    gui->wallpaperScale = scale;
-    gui_invalidate(gui, gui->root.bounds);
+    // gui_invalidate(gui, gui->root.bounds);
 }
 
 void gui_invalidate(gui_t* gui, gfx_rect_t area)
@@ -223,7 +189,7 @@ static status_t gui_draw_widget(gui_t* gui, gui_widget_t* widget, gfx_rect_t cli
         return ERR(USER, INVAL);
     }
 
-    if (!(widget->flags & GUI_FLAG_VISIBLE))
+    /*if (!(widget->flags & GUI_FLAG_VISIBLE))
     {
         return OK;
     }
@@ -241,12 +207,8 @@ static status_t gui_draw_widget(gui_t* gui, gui_widget_t* widget, gfx_rect_t cli
                             (widgetBounds.left * sizeof(gfx_pixel_t))),
             GFX_RECT_WIDTH(widgetBounds), GFX_RECT_HEIGHT(widgetBounds), gui->screen->pitch);
 
-        gfx.clip = GFX_RECT(
-            drawArea.left - widgetBounds.left,
-            drawArea.top - widgetBounds.top,
-            GFX_RECT_WIDTH(drawArea),
-            GFX_RECT_HEIGHT(drawArea)
-        );
+        gfx.clip = GFX_RECT(drawArea.left - widgetBounds.left, drawArea.top - widgetBounds.top,
+            GFX_RECT_WIDTH(drawArea), GFX_RECT_HEIGHT(drawArea));
 
         status_t status = widget->cls->draw(widget, &gfx);
         if (IS_ERR(status))
@@ -263,7 +225,7 @@ static status_t gui_draw_widget(gui_t* gui, gui_widget_t* widget, gfx_rect_t cli
         {
             return status;
         }
-    }
+    }*/
 
     return OK;
 }
@@ -277,7 +239,7 @@ status_t gui_tick(gui_t* gui, clock_t delta)
 
     /// @todo timers
 
-    for (size_t i = 0; i < gui->dirty.count; i++)
+    /*for (size_t i = 0; i < gui->dirty.count; i++)
     {
         status_t status = gui_draw_widget(gui, &gui->root, gui->dirty.rects[i]);
         if (IS_ERR(status))
@@ -286,18 +248,19 @@ status_t gui_tick(gui_t* gui, clock_t delta)
         }
     }
 
-    gui->dirty.count = 0;
+    gui->dirty.count = 0;*/
     return OK;
 }
 
-status_t gui_input_mouse(gui_t* gui, int32_t x, int32_t y, int32_t z, gui_mouse_buttons_t pressed, gui_mouse_buttons_t released)
+status_t gui_input_mouse(gui_t* gui, int32_t x, int32_t y, int32_t z, gui_mouse_buttons_t pressed,
+    gui_mouse_buttons_t released)
 {
     if (gui == NULL)
     {
         return ERR(USER, INVAL);
     }
 
-    gui_mouse_buttons_t held = (gui->mouseButtons | pressed) & ~released;
+    /*gui_mouse_buttons_t held = (gui->mouseButtons | pressed) & ~released;
     gui->mouseButtons = held;
 
     gui_widget_t* hovered = NULL;
@@ -350,7 +313,7 @@ status_t gui_input_mouse(gui_t* gui, int32_t x, int32_t y, int32_t z, gui_mouse_
                 return status;
             }
         }
-        
+
         gui->hovered = hovered;
     }
 
@@ -387,21 +350,22 @@ status_t gui_input_mouse(gui_t* gui, int32_t x, int32_t y, int32_t z, gui_mouse_
     {
         gui_event_t move = {
             .type = GUI_EVENT_TYPE_MOUSE,
-            .mouse = {
-                .x = x,
-                .y = y,
-                .z = z,
-                .pressed = pressed,
-                .released = released,
-                .held = held,
-            },
+            .mouse =
+                {
+                    .x = x,
+                    .y = y,
+                    .z = z,
+                    .pressed = pressed,
+                    .released = released,
+                    .held = held,
+                },
         };
         status_t status = gui_widget_emit_event(hovered, &move);
         if (IS_ERR(status))
         {
             return status;
         }
-    }
+    }*/
 
     return OK;
 }

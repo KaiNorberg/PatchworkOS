@@ -50,14 +50,14 @@ void sysfs_init(void)
 
 status_t sysfs_root_file(file_t** out)
 {
-    binding_t* binding = binding_new(root, NULL, NULL, MODE_ALL_PERMS);
+    binding_t* binding = binding_new(root, NULL, NULL, PATH_MODE_ALL_PERMS);
     if (binding == NULL)
     {
         return ERR(MEM, NOMEM);
     }
     UNREF_DEFER(binding);
 
-    file_t* file = file_new(root, binding, MODE_ALL_PERMS);
+    file_t* file = file_new(root, binding, PATH_MODE_ALL_PERMS);
     if (file == NULL)
     {
         return ERR(MEM, NOMEM);

@@ -6,8 +6,6 @@ extern "C"
 {
 #endif
 
-#include <stdatomic.h>
-
 #include "_libc/config.h"
 
 /**

@@ -2,6 +2,7 @@
 
 #include <libc/note.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 #define _NOTE_MAX_HANDLERS 32

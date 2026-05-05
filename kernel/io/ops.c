@@ -69,7 +69,7 @@ static status_t io_op_read(irp_t* irp)
     }
     UNREF_DEFER(file);
 
-    if (!(file->mode & MODE_READ))
+    if (!(file->mode & PATH_MODE_READ))
     {
         return ERR(IO, ACCESS);
     }
@@ -100,7 +100,7 @@ static status_t io_op_write(irp_t* irp)
     }
     UNREF_DEFER(file);
 
-    if (!(file->mode & MODE_WRITE))
+    if (!(file->mode & PATH_MODE_WRITE))
     {
         return ERR(IO, ACCESS);
     }

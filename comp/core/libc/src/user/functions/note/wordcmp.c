@@ -1,5 +1,6 @@
 #include <libc/proc.h>
 
+#include <stdint.h>
 #include <string.h>
 
 int64_t wordcmp(const char* string, const char* word)

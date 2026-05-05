@@ -71,7 +71,7 @@ void _comp_loader_deinit(_comp_loader_t* loader)
     {
         if (req->manifest != NULL)
         {
-            scon_deinit(&req->scon);
+            scon_free(req->scon);
             free(req->manifest);
         }
         list_remove(&req->entry);
@@ -173,6 +173,7 @@ status_t _comp_add(_comp_loader_t* loader, const char* name, size_t nameLen, con
     map_insert(&loader->map, &req->mapEntry, hash_string(req->name));
     req->manifest = NULL;
     req->manifestLength = 0;
+    req->scon = NULL;
     req->processed = false;
 
     *out = req;
@@ -284,11 +285,12 @@ static status_t _comp_check(_comp_loader_t* loader, _comp_req_t* req)
 
     if (req->manifest != NULL)
     {
-        scon_deinit(&req->scon);
+        scon_free(req->scon);
         free(req->manifest);
     }
     req->manifest = NULL;
     req->manifestLength = 0;
+    req->scon = NULL;
 
     status = ioloadp(FDCWD, FDROOT, manifestPath, &req->manifest, &req->manifestLength);
     if (IS_ERR(status))
@@ -297,28 +299,28 @@ static status_t _comp_check(_comp_loader_t* loader, _comp_req_t* req)
         return status;
     }
 
-    status = scon_init(&req->scon, req->manifest, req->manifestLength);
+    status = scon_parse(req->manifest, req->manifestLength, &req->scon);
     if (IS_ERR(status))
     {
-        _comp_error(loader, "failed to parse manifest for component %s: %s", req->name, req->scon.error);
+        _comp_error(loader, "failed to parse manifest for component %s:\n%s", req->name, scon_error_msg(req->scon));
         return status;
     }
 
-    scon_ref_t compList = scon_find(scon_root(&req->scon), "component");
+    scon_item_t* compList = scon_find(scon_root(req->scon), "component");
     if (!scon_is_list(compList))
     {
         _comp_error(loader, "manifest for component %s does not contain a component expression", req->name);
         return ERR(LIBSTD, INVALSCON);
     }
 
-    scon_ref_t dependencies = scon_find(compList, "dependencies");
+    scon_item_t* dependencies = scon_find(compList, "dependencies");
     if (!scon_is_list(dependencies))
     {
         req->processed = true;
         return OK;
     }
 
-    scon_ref_t dep;
+    scon_item_t* dep;
     SCON_FOR_EACH(dep, dependencies, 1)
     {
         if (!scon_is_list(dep))
@@ -326,13 +328,13 @@ static status_t _comp_check(_comp_loader_t* loader, _comp_req_t* req)
             continue;
         }
 
-        scon_ref_t nameAtom = scon_first(dep);
+        scon_item_t* nameAtom = scon_first(dep);
         if (!scon_is_atom(nameAtom))
         {
             continue;
         }
 
-        scon_ref_t versionAtom = scon_next(nameAtom);
+        scon_item_t* versionAtom = scon_next(nameAtom);
         if (!scon_is_atom(versionAtom))
         {
             continue;
@@ -439,7 +441,7 @@ static void _comp_mark_reachable(_comp_loader_t* loader, _comp_req_t* req, list_
         return;
     }
 
-    scon_ref_t compList = scon_find(scon_root(&req->scon), "component");
+    scon_item_t* compList = scon_find(scon_root(req->scon), "component");
     if (!scon_is_list(compList))
     {
         list_remove(&req->entry);
@@ -447,7 +449,7 @@ static void _comp_mark_reachable(_comp_loader_t* loader, _comp_req_t* req, list_
         return;
     }
 
-    scon_ref_t dependencies = scon_find(compList, "dependencies");
+    scon_item_t* dependencies = scon_find(compList, "dependencies");
     if (!scon_is_list(dependencies))
     {
         list_remove(&req->entry);
@@ -455,7 +457,7 @@ static void _comp_mark_reachable(_comp_loader_t* loader, _comp_req_t* req, list_
         return;
     }
 
-    scon_ref_t dep;
+    scon_item_t* dep;
     SCON_FOR_EACH(dep, dependencies, 1)
     {
         if (!scon_is_list(dep))
@@ -463,7 +465,7 @@ static void _comp_mark_reachable(_comp_loader_t* loader, _comp_req_t* req, list_
             continue;
         }
 
-        scon_ref_t nameAtom = scon_first(dep);
+        scon_item_t* nameAtom = scon_first(dep);
         if (!scon_is_atom(nameAtom))
         {
             continue;
@@ -520,7 +522,7 @@ status_t _comp_cull_orphans(_comp_loader_t* loader, _comp_req_t* main)
         map_remove(&loader->map, &req->mapEntry, hash_string(req->name));
         if (req->manifest != NULL)
         {
-            scon_deinit(&req->scon);
+            scon_free(req->scon);
             free(req->manifest);
         }
         list_remove(&req->entry);
@@ -612,7 +614,7 @@ static status_t _comp_cap_set_add(_comp_cap_set_t* set, const char* path, size_t
     return OK;
 }
 
-static status_t _comp_load_capability(_comp_cap_set_t* caps, scon_ref_t cap)
+static status_t _comp_load_capability(_comp_cap_set_t* caps, scon_item_t* cap)
 {
     if (!scon_is_atom(cap))
     {
@@ -658,19 +660,19 @@ status_t _comp_load_capabilities(_comp_loader_t* loader, fd_t root)
             continue;
         }
 
-        scon_ref_t compList = scon_find(scon_root(&req->scon), "component");
+        scon_item_t* compList = scon_find(scon_root(req->scon), "component");
         if (!scon_is_list(compList))
         {
             continue;
         }
 
-        scon_ref_t capabilities = scon_find(compList, "capabilities");
+        scon_item_t* capabilities = scon_find(compList, "capabilities");
         if (!scon_is_list(capabilities))
         {
             continue;
         }
 
-        scon_ref_t cap;
+        scon_item_t* cap;
         SCON_FOR_EACH(cap, capabilities, 1)
         {
             status_t status = _comp_load_capability(&caps, cap);

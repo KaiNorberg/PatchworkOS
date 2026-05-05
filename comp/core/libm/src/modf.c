@@ -1,4 +1,5 @@
 #include <math.h>
+#include <stdint.h>
 
 double modf(double value, double* iptr)
 {

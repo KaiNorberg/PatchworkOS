@@ -31,7 +31,7 @@ static void binding_free(binding_t* binding)
     rcu_call(&binding->rcu, rcu_call_free, binding);
 }
 
-binding_t* binding_new(dentry_t* source, dentry_t* target, binding_t* parent, mode_t mode)
+binding_t* binding_new(dentry_t* source, dentry_t* target, binding_t* parent, path_mode_t mode)
 {
     if (source == NULL || (target != NULL && parent == NULL))
     {

@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <stdio.h>
 
 int printf(const char* _RESTRICT format, ...)

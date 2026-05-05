@@ -315,7 +315,7 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
     status_t status = cpu_halt_others();
     if (IS_ERR(status))
     {
-        LOG_PANIC("failed to halt other CPUs due to '%s'\n", st_code_str(status));
+        LOG_PANIC("failed to halt other CPUs due to '%s'\n", status_code_str(status));
     }
 
     screen_panic();
@@ -351,7 +351,7 @@ void panic(const interrupt_frame_t* frame, const char* format, ...)
 
     LOG_PANIC("cr0=0x%016llx cr2=0x%016llx cr3=0x%016llx cr4=0x%016llx\n", cr0, cr2, cr3, cr4);
     LOG_PANIC("cr0 flags:");
-    if (cr0 & CR0_PROTECTED_MODE_ENABLE)
+    if (cr0 & CR0_PROTECTED_PATH_MODE_ENABLE)
     {
         LOG_PANIC(" pe");
     }

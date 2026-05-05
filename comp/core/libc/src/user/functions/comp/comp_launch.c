@@ -42,7 +42,7 @@ status_t comp_launch(const char* name, const char* version, const comp_options_t
         return status;
     }
 
-    scon_ref_t compList = scon_find(scon_root(&main->scon), "component");
+    scon_item_t* compList = scon_find(scon_root(main->scon), "component");
     if (!scon_is_list(compList))
     {
         _comp_error(&loader, "manifest for component %s does not contain a component expression", name);
@@ -50,7 +50,7 @@ status_t comp_launch(const char* name, const char* version, const comp_options_t
         return ERR(LIBSTD, INVALSCON);
     }
 
-    scon_ref_t launchList = scon_find(compList, "launch");
+    scon_item_t* launchList = scon_find(compList, "launch");
     if (!scon_is_list(launchList))
     {
         _comp_error(&loader, "manifest for component %s does not specify a launch executable", name);
@@ -58,7 +58,7 @@ status_t comp_launch(const char* name, const char* version, const comp_options_t
         return ERR(LIBSTD, INVALSCON);
     }
 
-    scon_ref_t launch = scon_get(launchList, 1);
+    scon_item_t* launch = scon_get(launchList, 1);
     if (!scon_is_atom(launch))
     {
         _comp_error(&loader, "manifest for component %s specifies an invalid launch executable", name);
@@ -98,14 +98,14 @@ status_t comp_launch(const char* name, const char* version, const comp_options_t
     _comp_req_t* req;
     LIST_FOR_EACH(req, &loader.reqs, entry)
     {
-        scon_ref_t ref = scon_find(scon_root(&req->scon), "component");
+        scon_item_t* ref = scon_find(scon_root(req->scon), "component");
         if (!scon_is_list(ref))
         {
             continue;
         }
 
-        scon_ref_t moduleRef = scon_find(ref, "module");
-        if (scon_is_valid(moduleRef))
+        scon_item_t* moduleRef = scon_find(ref, "module");
+        if (moduleRef != NULL)
         {
             _comp_error(&loader, "dependency %s specifies a kernel module, which cannot be launched", req->name);
             _comp_loader_deinit(&loader);
@@ -151,7 +151,7 @@ status_t comp_launch(const char* name, const char* version, const comp_options_t
         fds[4].parent = opts->stderr;
         fds[4].child = FDERR;
     }
-    status = proc_create(root, root, (proc_args_t){.buf = launchPath, .len = launchPathLen}, fds, opts != NULL ? 5 : 2,
+    status = proc_create(root, root, (proc_args_t){.buf = launchPath, .len = launchPathLen}, PROC_ENVP_INHERIT, fds, opts != NULL ? 5 : 2,
         PRIO_DEFAULT, PROC_DEFAULT, NULL);
     if (IS_ERR(status))
     {

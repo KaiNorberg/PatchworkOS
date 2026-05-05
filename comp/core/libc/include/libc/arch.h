@@ -2,9 +2,6 @@
 #define _SYS_ARCH_H 1
 
 #include <libc/syscall.h>
-#include <stdatomic.h>
-#include <stdint.h>
-#include <stdio.h>
 
 #if defined(__cplusplus)
 extern "C"

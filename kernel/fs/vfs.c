@@ -134,7 +134,7 @@ status_t vfs_read(file_t* file, void* buffer, size_t count, size_t* out)
         return ERR(VFS, INVAL);
     }
 
-    if (!(file->mode & MODE_READ))
+    if (!(file->mode & PATH_MODE_READ))
     {
         return ERR(VFS, BADFD);
     }
@@ -177,7 +177,7 @@ status_t vfs_write(file_t* file, const void* buffer, size_t count, size_t* out)
         return ERR(VFS, INVAL);
     }
 
-    if (!(file->mode & MODE_WRITE))
+    if (!(file->mode & PATH_MODE_WRITE))
     {
         return ERR(VFS, BADFD);
     }

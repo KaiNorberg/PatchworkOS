@@ -54,7 +54,7 @@ typedef struct gfx
 #define GFX(_buffer, _width, _height, _pitch) \
     (gfx_t) \
     { \
-        .buffer = (_buffer), .pitch = (_pitch), .clip = {0, 0, (_width), (_height)} \
+        .buffer = (_buffer), .pitch = (_pitch), .clip = { 0, 0, (_width), (_height) } \
     }
 
 /**

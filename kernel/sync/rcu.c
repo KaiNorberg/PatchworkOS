@@ -49,7 +49,7 @@ static void rcu_synchronize_callback(void* arg)
     rcu_synchronize_t* sync = (rcu_synchronize_t*)arg;
     lock_acquire(&sync->lock);
     sync->done = true;
-    wait_unblock(&sync->wait, WAIT_ALL, EOK);
+    wait_unblock(&sync->wait, WAIT_ALL, OK);
     lock_release(&sync->lock);
 }
 

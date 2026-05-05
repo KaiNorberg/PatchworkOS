@@ -5,8 +5,8 @@
 #include <gnu-efi/efi.h>
 
 #include <_libc/MAX_NAME.h>
+#include <elf.h>
 #include <libc/defs.h>
-#include <libc/elf.h>
 #include <libc/list.h>
 #include <stdint.h>
 

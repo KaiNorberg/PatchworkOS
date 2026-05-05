@@ -1,11 +1,13 @@
 #ifndef _SYS_COMP_H
 #define _SYS_COMP_H 1
 
+#if defined(__cplusplus)
+extern "C"
+{
+#endif
+
 #include <libc/io.h>
 #include <libc/scon.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
 
 /**
  * @brief Component Management
@@ -99,7 +101,7 @@ typedef struct
 {
     char name[MAX_NAME];
     comp_version_t version;
-    scon_t scon;
+    scon_t* scon;
     char* manifest;
     size_t manifestLength;
 } comp_dependency_t;
@@ -163,5 +165,9 @@ status_t comp_dependencies_get(const char* name, const char* version, comp_depen
 void comp_dependencies_free(comp_dependency_t* deps, size_t count);
 
 /** @} */
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif

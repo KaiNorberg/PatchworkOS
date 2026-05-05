@@ -6,6 +6,11 @@
 status_t dstr_append(dstr_t* dstr, const char* data, size_t length)
 {
     size_t newLength = dstr->length + length;
+    if (newLength > DSTR_LENGTH_MAX)
+    {
+        return ERR(LIBSTD, INVAL);
+    }
+
     if (newLength > dstr->capacity)
     {
         size_t newCapacity = dstr->capacity;

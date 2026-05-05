@@ -1,41 +1,23 @@
 #ifndef _THREADS_H
 #define _THREADS_H 1
 
-#include <libc/syscall.h>
-#include <stdatomic.h>
-
 #if defined(__cplusplus)
 extern "C"
 {
 #endif
 
-/**
- * @brief Thread management.
- * @ingroup libc
- * @defgroup libc_threads Threads
- *
- * @todo Implement user space `cnd_t` and `tss_t`.
- *
- * @{
- */
-
 #include "_libc/config.h"
+#include "_libc/thrd_t.h"
 #include "_libc/timespec.h"
+#include "_libc/uint64_t.h"
+#include <stdatomic.h>
 
 #if __STDC_NO_THREADS__ == 1
 #error __STDC_NO_THREADS__ defined but <threads.h> included. Something is wrong about your setup.
 #endif
 
-/**
- * @brief Thread identifier type.
- * @typedef thrd_t
- *
- * The `thrd_t` type is used to identify a thread within a process, not system wide, both from user-space and
- * kernel-space.
- */
-typedef __UINT64_TYPE__ thrd_t;
-
 #ifndef _KERNEL_
+#include <libc/syscall.h>
 
 typedef struct
 {

@@ -49,7 +49,7 @@ typedef struct binding
     dentry_t* source;  ///< The dentry to appear at the target, usually the root of the bound filesystem.
     dentry_t* target;  ///< The dentry which the source is bound to, can be `NULL` for the root filesystem.
     binding_t* parent; ///< The parent binding, can be `NULL` for the root filesystem.
-    mode_t mode;       ///< Specifies the maximum permissions for this binding.
+    path_mode_t mode;  ///< Specifies the maximum permissions for this binding.
     rcu_entry_t rcu;   ///< RCU entry for deferred cleanup.
 } binding_t;
 
@@ -64,6 +64,6 @@ typedef struct binding
  * @param mode Specifies the maximum permissions for files within this binding.
  * @return On success, the new binding. On failure, returns `NULL`.
  */
-binding_t* binding_new(dentry_t* source, dentry_t* target, binding_t* parent, mode_t mode);
+binding_t* binding_new(dentry_t* source, dentry_t* target, binding_t* parent, path_mode_t mode);
 
 /** @} */

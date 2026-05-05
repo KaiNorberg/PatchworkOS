@@ -1,7 +1,15 @@
-#pragma once
+#ifndef _SYS_DSTR_H
+#define _SYS_DSTR_H 1
 
+#if defined(__cplusplus)
+extern "C"
+{
+#endif
+
+#include "_libc/bool.h"
+#include "_libc/size_t.h"
 #include <libc/status.h>
-#include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -15,7 +23,9 @@
  * @{
  */
 
-#define DSTR_SMALL_MAX 40 ///< The size used for small buffer optimization in the `dstr_t` structure.
+#define DSTR_SMALL_MAX 20 ///< The size used for small buffer optimization in the `dstr_t` structure.
+
+#define DSTR_LENGTH_MAX UINT16_MAX ///< The maximum length of a dynamic string.
 
 /**
  * @brief Dynamic string structure.
@@ -24,9 +34,9 @@
 typedef struct
 {
     char* data;
-    size_t length;
-    size_t capacity;
     char small[DSTR_SMALL_MAX];
+    uint16_t length;
+    uint16_t capacity;
 } dstr_t;
 
 /**
@@ -39,6 +49,11 @@ typedef struct
  */
 static status_t dstr_init(dstr_t* dstr, const char* data, size_t length)
 {
+    if (length > DSTR_LENGTH_MAX)
+    {
+        return ERR(LIBSTD, INVAL);
+    }
+
     if (length + 1 <= DSTR_SMALL_MAX)
     {
         dstr->data = dstr->small;
@@ -133,3 +148,9 @@ static inline bool dstr_eq(const dstr_t* dstr, const char* str, size_t length)
 }
 
 /** @} */
+
+#if defined(__cplusplus)
+}
+#endif
+
+#endif

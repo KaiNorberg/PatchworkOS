@@ -46,7 +46,7 @@ $(VENDOR_DIR)/gnu-efi/.built:
 	@$(MAKE) -C $(VENDOR_DIR)/gnu-efi CC="clang --config $(ROOT_DIR)/tools/patchworkos.cfg" AR="llvm-ar" LD="ld.lld" OBJCOPY="llvm-objcopy" >/dev/null 2>&1
 	@touch $@
 
-staging: 
+staging: $(VENDOR_DIR)/gnu-efi/.built $(VERSION_HEADER)
 	@echo "STAGING headers"
 	@rm -rf $(STAGING_DIR)/include
 	@mkdir -p $(STAGING_DIR)/include
@@ -58,7 +58,7 @@ staging:
 			cp -r $$COMP_DIR/include/* $(STAGING_DIR)/include/ 2>/dev/null || true; \
 		fi; \
 	done
-
+	
 $(BIN_DIR)/.boot.built: $(shell find $(ROOT_DIR)/boot/src $(ROOT_DIR)/boot/include -type f 2>/dev/null)
 	@echo "BUILD   boot"
 	@$(MAKE) -s --no-print-directory -f boot/boot.mk

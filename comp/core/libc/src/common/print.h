@@ -5,6 +5,7 @@
 #include <libc/defs.h>
 #include <libc/status.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -446,13 +447,13 @@ static inline int _print_format_status(_print_ctx_t* ctx, _print_format_ctx_t* f
         return _print_padding_right(ctx, format, padding);
     }
 
-    st_sev_t sev = ST_SEV(status);
-    st_src_t src = ST_SRC(status);
-    st_code_t code = ST_CODE(status);
+    status_sev_t sev = ST_SEV(status);
+    status_src_t src = STATUS_SRC(status);
+    status_code_t code = STATUS_CODE(status);
 
-    const char* sevStr = st_sev_str(sev);
-    const char* srcStr = st_src_str(src);
-    const char* codeStr = st_code_str(code);
+    const char* sevStr = status_sev_str(sev);
+    const char* srcStr = status_src_str(src);
+    const char* codeStr = status_code_str(code);
 
     if (sevStr == NULL)
     {

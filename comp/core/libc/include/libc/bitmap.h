@@ -1,10 +1,14 @@
 #ifndef _SYS_BITMAP_H
 #define _SYS_BITMAP_H 1
 
-#include <errno.h>
+#if defined(__cplusplus)
+extern "C"
+{
+#endif
+
 #include <libc/math.h>
-#include <stdbool.h>
-#include <stdint.h>
+
+#include "../_libc/bool.h"
 
 /**
  * @brief A bitmap optimized using 64-bit words.
@@ -420,5 +424,9 @@ static inline uint64_t bitmap_find_clear_region_and_set(bitmap_t* map, uint64_t 
 }
 
 /** @} */
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif // _SYS_BITMAP_H

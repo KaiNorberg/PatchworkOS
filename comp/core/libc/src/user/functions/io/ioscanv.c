@@ -1,6 +1,7 @@
 #include <libc/io.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 status_t ioscanv(fd_t fd, size_t count, size_t offset, uint32_t* matches, const char* format, va_list args)

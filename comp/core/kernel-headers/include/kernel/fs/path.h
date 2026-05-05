@@ -98,36 +98,6 @@ typedef struct file file_t;
 // clang-format on
 
 /**
- * @brief Path flags and permissions.
- * @enum mode_t
- *
- * We store both flags and permissions in the same enum but permissions are sometimes treated differently to flags.
- */
-typedef enum mode
-{
-    MODE_NONE = 0,
-    MODE_READ = 1 << 0,    ///< Handled by the VFS.
-    MODE_WRITE = 1 << 1,   ///< Handled by the VFS.
-    MODE_EXECUTE = 1 << 2, ///< Handled by the VFS.
-    MODE_APPEND = 1 << 3,  ///< Should be implemented by the filesystem.
-    /**
-     * Handled by the VFS, if `MODE_DIRECTORY`, `MODE_SYMLINK` and `MODE_HARDLINK` are not specified, then a
-     * `IRP_MJ_CREATE` handler should create a regular file.
-     */
-    MODE_CREATE = 1 << 4,
-    MODE_DIRECTORY = 1 << 5, ///< Specifies what to create in a `IRP_MJ_CREATE` handler.
-    MODE_SYMLINK = 1 << 6,   ///< Specifies what to create in a `IRP_MJ_CREATE` handler.
-    MODE_HARDLINK = 1 << 7,  ///< Specifies what to create in a `IRP_MJ_CREATE` handler.
-    MODE_EXCLUSIVE = 1 << 8, ///< Handled by the VFS.
-    MODE_EXISTING = 1 << 9,  ///< Handled by the VFS.
-    MODE_TRUNCATE = 1 << 10, ///< Should be implemented by the filesystem.
-    MODE_NOFOLLOW = 1 << 11, ///< Handled by the VFS.
-    MODE_PARENTS = 1 << 12,  ///< Handled by the VFS.
-    MODE_LOCKED = 1 << 13,   ///< Handled by the VFS.
-    MODE_ALL_PERMS = MODE_READ | MODE_WRITE | MODE_EXECUTE,
-} mode_t;
-
-/**
  * @brief Defer path put.
  *
  * This macro will call `path_put()` on the given path when it goes out of scope.
@@ -289,7 +259,7 @@ typedef struct path_state
     char* end;             ///< Pointer to the end of the path.
     char* token;           ///< Pointer to the current token in the path.
     size_t tokenLength;    ///< Length of the current component being processed.
-    mode_t mode;           ///< Parsed mode from the path.
+    path_mode_t mode;      ///< Parsed mode from the path.
     uint32_t symlinkDepth; ///< Current symlink recursion depth.
     dentry_t* lookup;      ///< A reference to the last "looked up" dentry to keep it and its parents alive.
     status_t (*done)(irp_t* irp, struct path_state* state, file_t* file);
@@ -316,7 +286,7 @@ static inline void path_state_init(path_state_t* state, dentry_t* dentry, bindin
     state->end = NULL;
     state->token = NULL;
     state->tokenLength = 0;
-    state->mode = MODE_NONE;
+    state->mode = PATH_MODE_NONE;
     state->symlinkDepth = 0;
     state->lookup = NULL;
     state->done = done;
@@ -358,7 +328,7 @@ status_t path_to_name(const path_t* path, char* pathname, size_t length);
  * @param outLength Output pointer to store the length of the resulting string, excluding the null terminator.
  * @return An appropriate status value.
  */
-status_t mode_to_string(mode_t mode, char* out, uint64_t length, uint64_t* outLength);
+status_t path_mode_to_string(path_mode_t mode, char* out, uint64_t length, uint64_t* outLength);
 
 /**
  * @brief Check and adjust mode permissions.
@@ -369,7 +339,7 @@ status_t mode_to_string(mode_t mode, char* out, uint64_t length, uint64_t* outLe
  * @param maxPerms The maximum allowed permissions.
  * @return An appropriate status value.
  */
-status_t mode_check(mode_t* mode, mode_t maxPerms);
+status_t mode_check(path_mode_t* mode, path_mode_t maxPerms);
 
 static inline void path_defer_cleanup(path_t** path)
 {

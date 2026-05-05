@@ -19,6 +19,7 @@
 #include <kernel/sched/wait.h>
 
 #include <assert.h>
+#include <stdio.h>
 
 static void exception_handle_user(interrupt_frame_t* frame, const char* note)
 {
@@ -79,7 +80,7 @@ static void exception_kernel_page_fault_handler(interrupt_frame_t* frame)
         panic(frame, "failed to grow kernel stack for page fault at address 0x%llx %Y", faultAddr, status);
     }
 
-    if (ST_CODE(status) == ST_CODE_IN_STACK)
+    if (STATUS_CODE(status) == STATUS_CODE_IN_STACK)
     {
         return;
     }

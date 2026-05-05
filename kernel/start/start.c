@@ -166,7 +166,7 @@ static inline void start_init_process(void)
     }
     UNREF_DEFER(klogDentry);
 
-    file_t* klog = file_new(klogDentry, sysfs->path.binding, MODE_ALL_PERMS);
+    file_t* klog = file_new(klogDentry, sysfs->path.binding, PATH_MODE_ALL_PERMS);
     if (klog == NULL)
     {
         panic(NULL, "Failed to create klog file");

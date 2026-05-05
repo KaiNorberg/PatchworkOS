@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <stdio.h>
 
 int fprintf(FILE* _RESTRICT stream, const char* _RESTRICT format, ...)

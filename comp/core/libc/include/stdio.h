@@ -1,8 +1,6 @@
 #ifndef _STDIO_H
 #define _STDIO_H 1
 
-#include <stdarg.h>
-
 #if defined(__cplusplus)
 extern "C"
 {
@@ -11,7 +9,9 @@ extern "C"
 #include "_libc/MAX_PATH.h"
 #include "_libc/NULL.h"
 #include "_libc/config.h"
+#include "_libc/fpos_t.h"
 #include "_libc/size_t.h"
+#include "_libc/va_list.h"
 
 #define SEEK_SET 0
 #define SEEK_CUR 1
@@ -20,12 +20,6 @@ extern "C"
 #define _IOFBF (1u << 0)
 #define _IOLBF (1u << 1)
 #define _IONBF (1u << 2)
-
-typedef struct fpos
-{
-    long long unsigned int offset;
-    int status;
-} fpos_t;
 
 typedef struct FILE FILE;
 

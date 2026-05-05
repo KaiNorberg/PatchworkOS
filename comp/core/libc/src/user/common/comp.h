@@ -17,7 +17,7 @@ typedef struct
     comp_version_t version;
     char* manifest;
     size_t manifestLength;
-    scon_t scon;
+    scon_t* scon;
     bool processed;
 } _comp_req_t;
 

@@ -267,7 +267,7 @@ static status_t hpet_init(void)
 static void hpet_deinit(void)
 {
     atomic_store(&overflowShouldStop, true);
-    wait_unblock(&overflowQueue, WAIT_ALL, EOK);
+    wait_unblock(&overflowQueue, WAIT_ALL, OK);
 
     while (process_has_thread(process_get_kernel(), overflowThreadTid))
     {

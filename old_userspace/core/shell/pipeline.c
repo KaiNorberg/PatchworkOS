@@ -88,7 +88,7 @@ status_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
             status_t status = open(&pipe, "/dev/pipe/clonr");
             if (IS_ERR(status))
             {
-                printf("shell: unable to open pipe (%s)\n", st_code_str(ST_CODE(status)));
+                printf("shell: unable to open pipe (%s)\n", status_code_str(STATUS_CODE(status)));
                 goto token_parse_error;
             }
 
@@ -120,7 +120,7 @@ status_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
             status_t status = open(&fd, tokens[i + 1]);
             if (IS_ERR(status))
             {
-                printf("shell: unable to open %s (%s)\n", tokens[i + 1], st_code_str(ST_CODE(status)));
+                printf("shell: unable to open %s (%s)\n", tokens[i + 1], status_code_str(STATUS_CODE(status)));
                 goto token_parse_error;
             }
 
@@ -146,7 +146,7 @@ status_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
             status_t status = open(&fd, tokens[i + 1]);
             if (IS_ERR(status))
             {
-                printf("shell: unable to open %s (%s)\n", tokens[i + 1], st_code_str(ST_CODE(status)));
+                printf("shell: unable to open %s (%s)\n", tokens[i + 1], status_code_str(STATUS_CODE(status)));
                 goto token_parse_error;
             }
 
@@ -172,7 +172,7 @@ status_t pipeline_init(pipeline_t* pipeline, const char* cmdline, fd_t stdin, fd
             status_t status = open(&fd, tokens[i + 1]);
             if (IS_ERR(status))
             {
-                printf("shell: unable to open %s (%s)\n", tokens[i + 1], st_code_str(ST_CODE(status)));
+                printf("shell: unable to open %s (%s)\n", tokens[i + 1], status_code_str(STATUS_CODE(status)));
                 goto token_parse_error;
             }
 

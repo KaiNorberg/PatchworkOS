@@ -24,6 +24,7 @@
 #include <libc/math.h>
 #include <libc/status.h>
 #include <stdatomic.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 

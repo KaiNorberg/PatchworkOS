@@ -13,13 +13,13 @@ double pow(double x, double y)
 
     if (x < 0.0)
     {
-        double int_part;
-        if (modf(y, &int_part) != 0.0)
+        double intPart;
+        if (modf(y, &intPart) != 0.0)
         {
             return NAN;
         }
         double res = exp2(y * log2(-x));
-        if (fmod(int_part, 2.0) != 0.0)
+        if (fmod(intPart, 2.0) != 0.0)
         {
             res = -res;
         }

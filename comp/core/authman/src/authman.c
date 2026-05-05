@@ -54,7 +54,7 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    gfx_t screen = GFX(address, width, height, pitch);
+    /*gfx_t screen = GFX(address, width, height, pitch);
 
     gfx_pixel_t* backbuffer = malloc(height * pitch);
     if (backbuffer == NULL)
@@ -70,14 +70,6 @@ int main(int argc, char** argv)
     if (IS_ERR(status))
     {
         printf("authman: failed to create gui %Y\n", status);
-        return EXIT_FAILURE;
-    }
-
-    gui_widget_t* testButton;
-    status = gui_button_new(gui_get_root(gui), 0, GFX_RECT_FROM_CENTER(width / 2, height / 2, 100, 100), &testButton);
-    if (IS_ERR(status))
-    {
-        printf("authman: failed to create button %Y\n", status);
         return EXIT_FAILURE;
     }
 
@@ -97,18 +89,12 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    gui_set_background(gui, GUI_THEME_WINDOW_BACKGROUND);
-
-    gui_image_t* image;
-    status = gui_image_load("/share/wallpaper/default.png", &image);
+    status = gui_load_config(gui, "/share/authman/style.scon");
     if (IS_ERR(status))
     {
-        printf("authman: failed to load image %Y\n", status);
+        printf("authman: failed to load config %Y\n", status);
         return EXIT_FAILURE;
     }
-
-    gui_set_wallpaper(gui, image, GUI_IMAGE_SCALE_TILE);
-    gui_widget_show(testButton);
 
     int32_t mouseX = 100;
     int32_t mouseY = 100;
@@ -158,7 +144,7 @@ int main(int argc, char** argv)
                 case '^':
                     gui_input_mouse(gui, mouseX, mouseY, 0, GUI_MOUSE_BUTTON_NONE, (1 << value));
                     break;
-                case '_':                    
+                case '_':
                     gui_input_mouse(gui, mouseX, mouseY, 0, (1 << value), GUI_MOUSE_BUTTON_NONE);
                     break;
                 default:
@@ -191,7 +177,7 @@ int main(int argc, char** argv)
 
         gfx_rect_t cursorBounds = gui_cursor_state_get_bounds(state);
         gfx_draw_copy(&screen, &back, cursorBounds, cursorBounds);
-    }
+    }*/
 
     /*gfx_t screen = GFX(address, width, height, pitch);
 

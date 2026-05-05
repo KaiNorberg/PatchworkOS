@@ -199,7 +199,7 @@ static void ioring_commit_cqe(ioring_ctx_t* ctx, iosqe_t* sqe, status_t status, 
     cqe->result = result;
 
     atomic_store_explicit(&ring->ctrl->ctail, tail + 1, memory_order_release);
-    wait_unblock(&ctx->waitQueue, WAIT_ALL, EOK);
+    wait_unblock(&ctx->waitQueue, WAIT_ALL, OK);
 }
 
 static status_t ioring_sqe_dummy(irp_t* irp)
@@ -214,9 +214,9 @@ static status_t ioring_complete(irp_t* irp, void* _ptr)
 
     ioring_ctx_t* ctx = irp->ctx;
     ioring_commit_cqe(ctx, &irp->sqe, irp->status, irp->result);
-
+    
     if (IS_ERR(irp->status) && !(irp->sqe.flags & IOSQE_HARDLINK))
-    {
+    {        
         irp_t* next = irp_chain_next(irp);
         if (next != NULL)
         {

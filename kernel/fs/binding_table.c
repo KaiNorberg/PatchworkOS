@@ -139,7 +139,7 @@ static status_t binding_table_add(binding_table_t* table, binding_t* binding)
 
 static void binding_table_remove(binding_table_t* table, binding_t* binding)
 {
-    if (binding->mode & MODE_LOCKED)
+    if (binding->mode & PATH_MODE_LOCKED)
     {
         return;
     }
@@ -244,7 +244,7 @@ bool binding_table_rcu_traverse(binding_table_t* table, binding_t** binding, den
     return traversed;
 }
 
-status_t binding_table_bind(binding_table_t* table, path_t* target, path_t* source, mode_t mode, binding_t** out)
+status_t binding_table_bind(binding_table_t* table, path_t* target, path_t* source, path_mode_t mode, binding_t** out)
 {
     if (table == NULL || !PATH_IS_VALID(target) || !PATH_IS_VALID(source))
     {

@@ -2,8 +2,8 @@
 #define _SYS_CPUID_H 1
 
 #include <libc/defs.h>
-#include <stdbool.h>
-#include <stdint.h>
+
+#include "_libc/uint32_t.h"
 
 /**
  * @brief CPU feature detection

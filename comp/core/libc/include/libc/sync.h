@@ -1,20 +1,19 @@
 #ifndef _SYS_SYNC_H
 #define _SYS_SYNC_H 1
 
-#include <libc/syscall.h>
-#include <stdatomic.h>
-#include <stdint.h>
-#include <stdio.h>
-
 #if defined(__cplusplus)
 extern "C"
 {
 #endif
 
+#include <libc/syscall.h>
+#include <stdatomic.h>
+
 #include "_libc/NULL.h"
 #include "_libc/PAGE_SIZE.h"
 #include "_libc/clock_t.h"
 #include "_libc/config.h"
+#include "_libc/uintptr_t.h"
 
 /**
  * @brief Synchronization control.

@@ -1,27 +1,27 @@
 #ifndef _SYS_FS_H
 #define _SYS_FS_H 1
 
-#include <alloca.h>
-#include <assert.h>
-#include <errno.h>
-#include <libc/status.h>
-#include <libc/syscall.h>
-#include <stdarg.h>
-#include <stdint.h>
-#include <stdlib.h>
-
 #if defined(__cplusplus)
 extern "C"
 {
 #endif
+
+#include <alloca.h>
+#include <libc/status.h>
+#include <libc/syscall.h>
+#include <sys/stat.h>
 
 #include "_libc/MAX_NAME.h"
 #include "_libc/MAX_PATH.h"
 #include "_libc/NULL.h"
 #include "_libc/clock_t.h"
 #include "_libc/config.h"
+#include "_libc/offsetof.h"
+#include "_libc/size_t.h"
 #include "_libc/ssize_t.h"
 #include "_libc/time_t.h"
+#include "_libc/uint16_t.h"
+#include "_libc/uint8_t.h"
 
 /**
  * @brief Filesystem interface.
@@ -156,6 +156,94 @@ typedef struct file_info
     char name[MAX_NAME];  ///< File name.
     char mode[MAX_NAME];  ///< File mode represented by their short-hand.
 } file_info_t;
+
+/**
+ * @brief Path flags and permissions.
+ * @enum path_mode_t
+ *
+ * We store both flags and permissions in the same enum but permissions are sometimes treated differently to flags.
+ */
+typedef enum path_mode
+{
+    PATH_MODE_NONE = 0,
+    PATH_MODE_READ = 1 << 0,    ///< Handled by the VFS.
+    PATH_MODE_WRITE = 1 << 1,   ///< Handled by the VFS.
+    PATH_MODE_EXECUTE = 1 << 2, ///< Handled by the VFS.
+    PATH_MODE_APPEND = 1 << 3,  ///< Should be implemented by the filesystem.
+    /**
+     * Handled by the VFS, if `PATH_MODE_DIRECTORY`, `PATH_MODE_SYMLINK` and `PATH_MODE_HARDLINK` are not specified,
+     * then a `IRP_MJ_CREATE` handler should create a regular file.
+     */
+    PATH_MODE_CREATE = 1 << 4,
+    PATH_MODE_DIRECTORY = 1 << 5, ///< Specifies what to create in a `IRP_MJ_CREATE` handler.
+    PATH_MODE_SYMLINK = 1 << 6,   ///< Specifies what to create in a `IRP_MJ_CREATE` handler.
+    PATH_MODE_HARDLINK = 1 << 7,  ///< Specifies what to create in a `IRP_MJ_CREATE` handler.
+    PATH_MODE_EXCLUSIVE = 1 << 8, ///< Handled by the VFS.
+    PATH_MODE_EXISTING = 1 << 9,  ///< Handled by the VFS.
+    PATH_MODE_TRUNCATE = 1 << 10, ///< Should be implemented by the filesystem.
+    PATH_MODE_NOFOLLOW = 1 << 11, ///< Handled by the VFS.
+    PATH_MODE_PARENTS = 1 << 12,  ///< Handled by the VFS.
+    PATH_MODE_LOCKED = 1 << 13,   ///< Handled by the VFS.
+    PATH_MODE_ALL_PERMS = PATH_MODE_READ | PATH_MODE_WRITE | PATH_MODE_EXECUTE,
+} path_mode_t;
+
+/**
+ * @brief Convert a path mode to a POSIX mode.
+ *
+ * @param mode The path mode to convert.
+ * @return The resulting POSIX mode.
+ */
+mode_t path_mode_to_posix(path_mode_t mode);
+
+/**
+ * @brief Convert a POSIX mode to a path mode.
+ *
+ * @param mode The POSIX mode to convert.
+ * @return The resulting path mode.
+ */
+path_mode_t path_posix_to_mode(mode_t mode);
+
+/**
+ * @brief Convert a path mode string to a POSIX mode.
+ *
+ * @param str The path mode string to convert.
+ * @param length The length of the string.
+ * @param out Output pointer to store the resulting POSIX mode.
+ * @return An appropriate status value.
+ */
+status_t path_string_to_posix(const char* str, size_t length, mode_t* out);
+
+/**
+ * @brief Convert a POSIX mode to its path mode string representation.
+ *
+ * @param mode The POSIX mode to convert.
+ * @param out The output string buffer.
+ * @param length The length of the output string buffer.
+ * @param outLength Output pointer to store the length of the resulting string.
+ * @return An appropriate status value.
+ */
+status_t path_posix_to_string(mode_t mode, char* out, uint64_t length, uint64_t* outLength);
+
+/**
+ * @brief Convert a string to its path mode representation.
+ *
+ * @param str The path mode string to convert.
+ * @param length The length of the string.
+ * @param out Output pointer to store the resulting path mode.
+ * @return An appropriate status value.
+ */
+status_t path_string_to_mode(const char* str, size_t length, path_mode_t* out);
+
+/**
+ * @brief Convert a path mode to its string representation.
+ *
+ * @param mode The path mode to convert.
+ * @param out The output string buffer.
+ * @param length The length of the output string buffer.
+ * @param outLength Output pointer to store the length of the resulting string.
+ * @return An appropriate status value.
+ */
+status_t path_mode_to_string(path_mode_t mode, char* out, uint64_t length, uint64_t* outLength);
 
 /** @} */
 

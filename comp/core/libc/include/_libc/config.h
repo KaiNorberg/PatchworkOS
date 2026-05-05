@@ -1,8 +1,6 @@
 #ifndef _INTERNAL_CONFIG_H
 #define _INTERNAL_CONFIG_H 1
 
-///////////////////////////////////////////////
-
 #if (__STDC_WANT_LIB_EXT1__ + 0) != 0
 #define _USE_ANNEX_K 1
 #else

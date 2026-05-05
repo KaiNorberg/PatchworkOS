@@ -524,7 +524,7 @@ clock_t gui_cursor_state_next_frame(gui_cursor_state_t* state, clock_t now)
     {
         return CLOCKS_NEVER;
     }
-    
+
     clock_t delay = (clock_t)(frame->delay * CLOCKS_PER_MS);
     clock_t elapsed = now - state->lastFrame;
     if (elapsed >= delay)

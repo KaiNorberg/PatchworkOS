@@ -123,7 +123,7 @@ void file_table_drop_all(file_table_t* table)
     }
 }
 
-void file_table_drop_mode(file_table_t* table, mode_t mode)
+void file_table_drop_mode(file_table_t* table, path_mode_t mode)
 {
     if (table == NULL)
     {

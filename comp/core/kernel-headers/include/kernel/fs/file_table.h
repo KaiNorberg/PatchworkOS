@@ -87,7 +87,7 @@ void file_table_drop_all(file_table_t* table);
  * @param table The file table.
  * @param mode The mode to close files with.
  */
-void file_table_drop_mode(file_table_t* table, mode_t mode);
+void file_table_drop_mode(file_table_t* table, path_mode_t mode);
 
 /**
  * @brief Drop a range of file descriptors.

@@ -4,6 +4,9 @@
 #include <kernel/log/log.h>
 #include <kernel/sched/clock.h>
 
+#include <assert.h>
+#include <stdio.h>
+
 static mutex_t mutex = MUTEX_CREATE(mutex);
 static dentry_t* announce = NULL;
 static stringstream_t stream = STRINGSTREAM_CREATE(stream);

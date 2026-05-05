@@ -1,7 +1,7 @@
 #pragma once
 
+#include <elf.h>
 #include <errno.h>
-#include <libc/elf.h>
 #include <stddef.h>
 #include <string.h>
 

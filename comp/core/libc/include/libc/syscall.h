@@ -1,14 +1,15 @@
 #ifndef _SYS_SYSCALL_H
 #define _SYS_SYSCALL_H 1
 
-#include <libc/defs.h>
-#include <libc/status.h>
-#include <stdint.h>
-
 #if defined(__cplusplus)
 extern "C"
 {
 #endif
+
+#include "../_libc/NULL.h"
+#include "../_libc/uint64_t.h"
+#include <libc/defs.h>
+#include <libc/status.h>
 
 /**
  * @brief Userspace System Calls.

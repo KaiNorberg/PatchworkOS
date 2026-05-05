@@ -1,7 +1,8 @@
 #ifndef _INTERNAL_CONTAINER_OF_H
 #define _INTERNAL_CONTAINER_OF_H 1
 
-#include <stddef.h>
+#include "offsetof.h"
+#include "size_t.h"
 
 /**
  * @brief Container of macro

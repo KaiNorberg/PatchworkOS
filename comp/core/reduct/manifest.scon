@@ -1,0 +1,9 @@
+(component
+    (description "A functional, immutable, S-expression based configuration and scripting language.")
+    (author "Kai Norberg")
+    (license MIT)
+    (dependencies
+        (libc 1.0.0)
+        (libm 1.0.0)
+    )
+)

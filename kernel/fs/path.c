@@ -18,85 +18,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct path_flag_short
-{
-    mode_t mode;
-} path_flag_short_t;
-
-static path_flag_short_t shortFlags[UINT8_MAX + 1] = {
-    ['r'] = {.mode = MODE_READ},
-    ['w'] = {.mode = MODE_WRITE},
-    ['x'] = {.mode = MODE_EXECUTE},
-    ['a'] = {.mode = MODE_APPEND},
-    ['c'] = {.mode = MODE_CREATE},
-    ['d'] = {.mode = MODE_DIRECTORY | MODE_CREATE},
-    ['s'] = {.mode = MODE_SYMLINK | MODE_CREATE},
-    ['h'] = {.mode = MODE_HARDLINK | MODE_CREATE},
-    ['e'] = {.mode = MODE_EXCLUSIVE},
-    ['E'] = {.mode = MODE_EXISTING},
-    ['t'] = {.mode = MODE_TRUNCATE},
-    ['l'] = {.mode = MODE_NOFOLLOW},
-    ['p'] = {.mode = MODE_PARENTS},
-    ['L'] = {.mode = MODE_LOCKED},
-};
-
-typedef struct path_flag
-{
-    mode_t mode;
-    const char* name;
-} path_flag_t;
-
-static const path_flag_t flags[] = {
-    {.mode = MODE_READ, .name = "read"},
-    {.mode = MODE_WRITE, .name = "write"},
-    {.mode = MODE_EXECUTE, .name = "execute"},
-    {.mode = MODE_APPEND, .name = "append"},
-    {.mode = MODE_CREATE, .name = "create"},
-    {.mode = MODE_DIRECTORY | MODE_CREATE, .name = "directory"},
-    {.mode = MODE_SYMLINK | MODE_CREATE, .name = "symlink"},
-    {.mode = MODE_HARDLINK | MODE_CREATE, .name = "hardlink"},
-    {.mode = MODE_EXCLUSIVE, .name = "exclusive"},
-    {.mode = MODE_EXISTING, .name = "existing"},
-    {.mode = MODE_TRUNCATE, .name = "truncate"},
-    {.mode = MODE_NOFOLLOW, .name = "nofollow"},
-    {.mode = MODE_PARENTS, .name = "parents"},
-    {.mode = MODE_LOCKED, .name = "locked"},
-};
-
-static mode_t path_flag_to_mode(const char* flag, size_t length)
-{
-    if (flag == NULL || length == 0)
-    {
-        return MODE_NONE;
-    }
-
-    for (size_t i = 0; i < ARRAY_SIZE(flags); i++)
-    {
-        size_t len = strnlen_s(flags[i].name, MAX_NAME);
-        if (len == length && strncmp(flag, flags[i].name, length) == 0)
-        {
-            return flags[i].mode;
-        }
-    }
-
-    mode_t combinedMode = MODE_NONE;
-    for (size_t i = 0; i < length; i++)
-    {
-        if (flag[i] < 0 || (uint8_t)flag[i] >= INT8_MAX)
-        {
-            return MODE_NONE;
-        }
-        mode_t mode = shortFlags[(uint8_t)flag[i]].mode;
-        if (mode == MODE_NONE)
-        {
-            return MODE_NONE;
-        }
-        combinedMode |= mode;
-    }
-
-    return combinedMode;
-}
-
 static inline bool path_is_char_valid(char ch)
 {
     static const bool forbidden[UINT8_MAX + 1] = {
@@ -363,19 +284,19 @@ static status_t path_lookup_complete(irp_t* irp, void* ctx)
 
         if (IS_CODE(irp->status, NOENT))
         {
-            if (isEnd && (state->mode & MODE_CREATE) && !(state->mode & MODE_EXISTING))
+            if (isEnd && (state->mode & PATH_MODE_CREATE) && !(state->mode & PATH_MODE_EXISTING))
             {
-                state->mode &= ~MODE_EXCLUSIVE;
+                state->mode &= ~PATH_MODE_EXCLUSIVE;
                 irp->status = OK;
                 irp_prep_create(irp, state->lookup, state->mode, state->payload);
                 irp_set_complete(irp, path_create_complete, state);
                 return vnode_call(state->dentry->vnode, irp);
             }
 
-            if (!isEnd && (state->mode & MODE_PARENTS))
+            if (!isEnd && (state->mode & PATH_MODE_PARENTS))
             {
                 irp->status = OK;
-                irp_prep_create(irp, state->lookup, MODE_DIRECTORY | MODE_CREATE, NULL);
+                irp_prep_create(irp, state->lookup, PATH_MODE_DIRECTORY | PATH_MODE_CREATE, NULL);
                 irp_set_complete(irp, path_create_complete, state);
                 return vnode_call(state->dentry->vnode, irp);
             }
@@ -387,7 +308,7 @@ static status_t path_lookup_complete(irp_t* irp, void* ctx)
 
     path_state_release(state);
 
-    if (DENTRY_IS_TYPE(state->lookup, FILE_TYPE_SYMLINK) && !(state->mode & MODE_NOFOLLOW))
+    if (DENTRY_IS_TYPE(state->lookup, FILE_TYPE_SYMLINK) && !(state->mode & PATH_MODE_NOFOLLOW))
     {
         return path_symlink(irp, state, state->lookup);
     }
@@ -434,7 +355,7 @@ static status_t path_walk_lookup(irp_t* irp, path_state_t* state, const char* na
 
     if (DENTRY_IS_POSITIVE(state->lookup))
     {
-        if (DENTRY_IS_TYPE(state->lookup, FILE_TYPE_SYMLINK) && !(state->mode & MODE_NOFOLLOW))
+        if (DENTRY_IS_TYPE(state->lookup, FILE_TYPE_SYMLINK) && !(state->mode & PATH_MODE_NOFOLLOW))
         {
             path_state_release(state);
             return path_symlink(irp, state, state->lookup);
@@ -482,7 +403,7 @@ static status_t path_done(irp_t* irp, path_state_t* state)
     }
     UNREF_DEFER(binding);
 
-    if (state->mode & MODE_EXCLUSIVE)
+    if (state->mode & PATH_MODE_EXCLUSIVE)
     {
         rcu_read_unlock();
         path_state_free(state);
@@ -584,7 +505,7 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state)
             binding_table_rcu_traverse(&state->root->bindings, &symlinkBinding, &symlinkDentry);
         }
 
-        if (DENTRY_IS_TYPE(symlinkDentry, FILE_TYPE_SYMLINK) && !(state->mode & MODE_NOFOLLOW))
+        if (DENTRY_IS_TYPE(symlinkDentry, FILE_TYPE_SYMLINK) && !(state->mode & PATH_MODE_NOFOLLOW))
         {
             return path_symlink(irp, state, symlinkDentry);
         }
@@ -596,7 +517,7 @@ static status_t path_walk_loop(irp_t* irp, path_state_t* state)
 
 static status_t path_verify(path_state_t* state, size_t length)
 {
-    state->mode = MODE_NONE;
+    state->mode = PATH_MODE_NONE;
     state->payload[0] = '\0';
 
     char* p = state->path;
@@ -657,8 +578,9 @@ static status_t path_verify(path_state_t* state, size_t length)
         }
 
         size_t tokenLength = p - token;
-        mode_t mode = path_flag_to_mode(token, tokenLength);
-        if (mode == MODE_NONE)
+        path_mode_t mode;
+        status_t status = path_string_to_mode(token, tokenLength, &mode);
+        if (IS_ERR(status) || mode == PATH_MODE_NONE)
         {
             return ERR(VFS, INVALFLAG);
         }
@@ -752,55 +674,21 @@ status_t path_to_name(const path_t* path, char* pathname, size_t length)
     return OK;
 }
 
-status_t mode_to_string(mode_t mode, char* out, uint64_t length, uint64_t* outLength)
-{
-    if (out == NULL || length == 0)
-    {
-        return ERR(VFS, INVAL);
-    }
-
-    uint64_t index = 0;
-    for (uint64_t i = 0; i < ARRAY_SIZE(flags); i++)
-    {
-        if (mode & flags[i].mode)
-        {
-            uint64_t nameLength = strnlen_s(flags[i].name, MAX_NAME);
-            if (index + nameLength + 1 >= length)
-            {
-                return ERR(VFS, NAMETOOLONG);
-            }
-
-            out[index] = ':';
-            index++;
-
-            memcpy(&out[index], flags[i].name, nameLength);
-            index += nameLength;
-        }
-    }
-
-    out[index] = '\0';
-    if (outLength != NULL)
-    {
-        *outLength = index;
-    }
-    return OK;
-}
-
-status_t mode_check(mode_t* mode, mode_t maxPerms)
+status_t mode_check(path_mode_t* mode, path_mode_t maxPerms)
 {
     if (mode == NULL)
     {
         return ERR(VFS, INVAL);
     }
 
-    if (((*mode & MODE_ALL_PERMS) & ~maxPerms) != MODE_NONE)
+    if (((*mode & PATH_MODE_ALL_PERMS) & ~maxPerms) != PATH_MODE_NONE)
     {
         return ERR(VFS, ACCESS);
     }
 
-    if ((*mode & MODE_ALL_PERMS) == MODE_NONE)
+    if ((*mode & PATH_MODE_ALL_PERMS) == PATH_MODE_NONE)
     {
-        *mode |= maxPerms & MODE_ALL_PERMS;
+        *mode |= maxPerms & PATH_MODE_ALL_PERMS;
     }
 
     return OK;

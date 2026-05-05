@@ -94,7 +94,7 @@ typedef enum
 
 /**
  * @brief Local APIC ICR Delivery Modes.
- * @enum lapic_icr_delivery_mode_t
+ * @enum lapic_icr_delivery_path_mode_t
  */
 typedef enum
 {
@@ -104,7 +104,7 @@ typedef enum
     LAPIC_ICR_NMI = (4 << 8),
     LAPIC_ICR_INIT = (5 << 8),
     LAPIC_ICR_STARTUP = (6 << 8)
-} lapic_icr_delivery_mode_t;
+} lapic_icr_delivery_path_mode_t;
 
 /**
  * @brief Local APIC ICR Flags.

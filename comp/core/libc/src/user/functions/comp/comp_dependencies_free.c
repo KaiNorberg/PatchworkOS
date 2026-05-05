@@ -7,7 +7,7 @@ void comp_dependencies_free(comp_dependency_t* deps, size_t count)
     {
         for (size_t i = 0; i < count; i++)
         {
-            scon_deinit(&deps[i].scon);
+            scon_free(deps[i].scon);
             free(deps[i].manifest);
         }
         free(deps);

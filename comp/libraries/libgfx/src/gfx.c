@@ -277,22 +277,22 @@ static inline uint64_t edge_get_right_mask(const gfx_poly_edge_t* e, int px)
     return mask;
 }
 
-static inline void gfx_fill_span(gfx_t* draw, int32_t start_x, int32_t end_x, int32_t y, gfx_pixel_t color,
+static inline void gfx_fill_span(gfx_t* draw, int32_t startX, int32_t endX, int32_t y, gfx_pixel_t color,
     gfx_blend_t blend)
 {
-    if (start_x >= end_x)
+    if (startX >= endX)
     {
         return;
     }
 
     if (blend == GFX_BLEND_NONE || blend == GFX_BLEND_SET || (blend == GFX_BLEND_ALPHA && color.a == 255))
     {
-        int32_t width = end_x - start_x;
-        memset32(GFX_GET_PIXEL(draw, start_x, y), color.argb, width);
+        int32_t width = endX - startX;
+        memset32(GFX_GET_PIXEL(draw, startX, y), color.argb, width);
     }
     else
     {
-        for (int32_t x = start_x; x < end_x; x++)
+        for (int32_t x = startX; x < endX; x++)
         {
             gfx_blend_pixel(draw, x, y, color, color.a, blend);
         }

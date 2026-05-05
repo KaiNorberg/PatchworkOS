@@ -116,6 +116,6 @@ void mutex_release(mutex_t* mtx)
     if (mtx->depth == 0)
     {
         mtx->owner = NULL;
-        wait_unblock(&mtx->waitQueue, 1, EOK);
+        wait_unblock(&mtx->waitQueue, 1, OK);
     }
 }

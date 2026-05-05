@@ -1,9 +1,10 @@
 #ifndef _SYS_DEFS_H
 #define _SYS_DEFS_H 1
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
+#if defined(__cplusplus)
+extern "C"
+{
+#endif
 
 /**
  * @brief Defines.
@@ -178,5 +179,9 @@
 #define HIDDEN __attribute__((visibility("hidden")))
 
 /** @} */
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif

@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <stdio.h>
 
 int snprintf(char* _RESTRICT s, size_t n, const char* _RESTRICT format, ...)

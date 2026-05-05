@@ -170,10 +170,15 @@ static status_t initrd_load(void)
     return OK;
 }
 
+extern char** environ;
+static char* envp[] = {NULL};
+
 int main(void)
 {
     printf("init: init process started\n");
 
+    environ = envp;
+    
     printf("init: binding sysfs to /sys within tmpfs\n");
     fd_t tmpfs;
     status_t status = iowalk(FDCWD, FDROOT, "/fs/tmpfs/clone:rwx", &tmpfs);
@@ -285,6 +290,8 @@ int main(void)
     // print_dir(FDROOT, 0);
 
     /// @todo Add configuration to specify what the init process should start.
+
+    printf("init: launching initial components\n");
 
     comp_options_t opts;
     opts.stdin = FDIN;

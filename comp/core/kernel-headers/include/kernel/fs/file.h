@@ -42,7 +42,7 @@ typedef struct poll_file poll_file_t;
 typedef struct file
 {
     ref_t ref;                ///< Reference counting.
-    mode_t mode;              ///< Specifies permissions and file behaviour.
+    path_mode_t mode;         ///< Specifies permissions and file behaviour.
     size_t pos;               ///< The current file position.
     path_t path;              ///< The opened path.
     void* data;               ///< Private filesystem data.
@@ -72,7 +72,7 @@ typedef struct file
  * from the binding are used.
  * @return On success, a pointer to the allocated file. On failure, `NULL`.
  */
-file_t* file_new(dentry_t* dentry, binding_t* binding, mode_t mode);
+file_t* file_new(dentry_t* dentry, binding_t* binding, path_mode_t mode);
 
 /**
  * @brief Send an IRP to the vnode of the specified file.

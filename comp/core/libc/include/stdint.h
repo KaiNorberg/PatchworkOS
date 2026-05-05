@@ -9,44 +9,42 @@ extern "C"
 #include "_libc/config.h"
 
 /* 7.18.1.1 Exact-width integer types */
-typedef __INT8_TYPE__ int8_t;
-typedef __UINT8_TYPE__ uint8_t;
-typedef __INT16_TYPE__ int16_t;
-typedef __UINT16_TYPE__ uint16_t;
-typedef __INT32_TYPE__ int32_t;
-typedef __UINT32_TYPE__ uint32_t;
-typedef __INT64_TYPE__ int64_t;
-typedef __UINT64_TYPE__ uint64_t;
+#include "_libc/int16_t.h"
+#include "_libc/int32_t.h"
+#include "_libc/int64_t.h"
+#include "_libc/int8_t.h"
+#include "_libc/uint16_t.h"
+#include "_libc/uint32_t.h"
+#include "_libc/uint64_t.h"
+#include "_libc/uint8_t.h"
 
 /* 7.18.1.2 Minimum-width integer types */
-typedef __INT_LEAST8_TYPE__ int_least8_t;
-typedef __INT_LEAST16_TYPE__ int_least16_t;
-typedef __INT_LEAST32_TYPE__ int_least32_t;
-typedef __INT_LEAST64_TYPE__ int_least64_t;
-
-typedef __UINT_LEAST8_TYPE__ uint_least8_t;
-typedef __UINT_LEAST16_TYPE__ uint_least16_t;
-typedef __UINT_LEAST32_TYPE__ uint_least32_t;
-typedef __UINT_LEAST64_TYPE__ uint_least64_t;
+#include "_libc/int_least16_t.h"
+#include "_libc/int_least32_t.h"
+#include "_libc/int_least64_t.h"
+#include "_libc/int_least8_t.h"
+#include "_libc/uint_least16_t.h"
+#include "_libc/uint_least32_t.h"
+#include "_libc/uint_least64_t.h"
+#include "_libc/uint_least8_t.h"
 
 /* 7.18.1.3 Fastest minimum-width integer types */
-typedef __INT_FAST8_TYPE__ int_fast8_t;
-typedef __INT_FAST16_TYPE__ int_fast16_t;
-typedef __INT_FAST32_TYPE__ int_fast32_t;
-typedef __INT_FAST64_TYPE__ int_fast64_t;
-
-typedef __UINT_FAST8_TYPE__ uint_fast8_t;
-typedef __UINT_FAST16_TYPE__ uint_fast16_t;
-typedef __UINT_FAST32_TYPE__ uint_fast32_t;
-typedef __UINT_FAST64_TYPE__ uint_fast64_t;
+#include "_libc/int_fast16_t.h"
+#include "_libc/int_fast32_t.h"
+#include "_libc/int_fast64_t.h"
+#include "_libc/int_fast8_t.h"
+#include "_libc/uint_fast16_t.h"
+#include "_libc/uint_fast32_t.h"
+#include "_libc/uint_fast64_t.h"
+#include "_libc/uint_fast8_t.h"
 
 /* 7.18.1.4 Integer types capable of holding object pointers */
-typedef __INTPTR_TYPE__ intptr_t;
-typedef __UINTPTR_TYPE__ uintptr_t;
+#include "_libc/intptr_t.h"
+#include "_libc/uintptr_t.h"
 
 /* 7.18.1.5 Greatest-width integer types */
-typedef __INTMAX_TYPE__ intmax_t;
-typedef __UINTMAX_TYPE__ uintmax_t;
+#include "_libc/intmax_t.h"
+#include "_libc/uintmax_t.h"
 
 /* 7.18.2 Limits of specified-width integer types */
 
@@ -162,14 +160,13 @@ typedef __UINTMAX_TYPE__ uintmax_t;
 
 #endif
 
-// Extension for 128-bit integers
+/* Extension for 128-bit integers */
+#include "_libc/int128_t.h"
+#include "_libc/uint128_t.h"
 
 #define INT128_MIN (-INT128_MAX - 1)
 #define INT128_MAX ((int128_t)((uint128_t)~0 >> 1))
 #define UINT128_MAX ((uint128_t)~0)
-
-typedef __int128_t int128_t;
-typedef __uint128_t uint128_t;
 
 #if _USE_ANNEX_K == 1
 #define RSIZE_MAX (__SIZE_MAX__ >> 1)

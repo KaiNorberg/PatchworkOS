@@ -1,13 +1,13 @@
 #define ELF_HEADER_INLINE
 
 #include <boot/boot_info.h>
+#include <elf.h>
 #include <gnu-efi/efi.h>
 #include <gnu-efi/efilib.h>
 #include <kernel/mem/paging.h>
 #include <kernel/mem/paging_types.h>
 #include <kernel/version.h>
 #include <libc/defs.h>
-#include <libc/elf.h>
 #include <libc/io.h>
 #include <libc/list.h>
 #include <libc/math.h>

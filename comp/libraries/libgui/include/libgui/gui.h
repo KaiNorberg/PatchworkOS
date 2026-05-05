@@ -4,18 +4,11 @@
 #include <libc/kbd.h>
 #include <libc/status.h>
 #include <libgfx/gfx.h>
-#include <libgui/button.h>
-#include <libgui/class.h>
-#include <libgui/event.h>
+#include <libgui/format.h>
 #include <libgui/key.h>
-#include <libgui/layout.h>
 #include <libgui/mouse.h>
 #include <libgui/widget.h>
-#include <libgui/image.h>
-#include <libgui/theme.h>
 #include <stdbool.h>
-
-typedef struct gui_layout gui_layout_t;
 
 /**
  * @brief Generic GUI widget library
@@ -23,35 +16,6 @@ typedef struct gui_layout gui_layout_t;
  * @ingroup comp
  *
  * The gui library provides a generic widget infrastructure for building graphical user interfaces.
- *
- * ## Widgets
- *
- * A interface is made up of a hierarchical tree of widgets (`gui_widget_t`), each widget is a member of a specific
- * class (`gui_class_t`) that defines its behavior, such as how it is initialized, measured, and how it handles events.
- *
- * All widgets can be passed to the `gui_widget_*` functions, however specific widget types such as `gui_button_t` can
- * also be passed to `gui_button_*` functions, these functions will check the widget class before performing the
- * operation. This pattern continues for all widget classes.
- *
- * ## Events
- *
- * Widgets communicate and react to user input through events (`gui_event_t`). Events include mouse movement, keyboard
- * input, focus changes, etc.
- *
- * One important event type is `GUI_EVENT_TYPE_COMMAND` which certain widgets will send to their parents to notify them
- * of high-level actions (e.g., a button being clicked).
- *
- * ## Layout
- *
- * The positioning of widgets can be managed manually or through a layout policy (`gui_layout_t`). A layout defines how
- * a parent widget should automatically arrange its children based on their desired measurements.
- *
- * ## Icons
- *
- * Widgets can optionally display an icon. Icon names should follow the [Freedesktop Icon Naming
- * Specification](https://specifications.freedesktop.org/icon-naming/latest/).
- *
- * @todo The widget library is currently unimplemented, its more of a design document.
  *
  * @{
  */
@@ -127,15 +91,6 @@ void gui_set_background(gui_t* gui, gfx_pixel_t color);
 gfx_pixel_t gui_get_background(gui_t* gui);
 
 /**
- * @brief Set the background wallpaper of the GUI.
- *
- * @param gui The GUI instance.
- * @param image The image to use as wallpaper, the caller remains owner of the image memory.
- * @param scale The scaling mode to use.
- */
-void gui_set_wallpaper(gui_t* gui, gui_image_t* image, gui_image_scale_t scale);
-
-/**
  * @brief Invalidate a specific area of the GUI, forcing it to be redrawn on the next tick.
  *
  * @param gui The GUI instance.
@@ -172,7 +127,8 @@ status_t gui_tick(gui_t* gui, clock_t delta);
  * @param released The buttons released since the last input.
  * @return An appropriate status value.
  */
-status_t gui_input_mouse(gui_t* gui, int32_t x, int32_t y, int32_t z, gui_mouse_buttons_t pressed, gui_mouse_buttons_t released);
+status_t gui_input_mouse(gui_t* gui, int32_t x, int32_t y, int32_t z, gui_mouse_buttons_t pressed,
+    gui_mouse_buttons_t released);
 
 /**
  * @brief Process keyboard input.

@@ -7,15 +7,9 @@ extern "C"
 #endif
 
 #include "_libc/config.h"
-
-typedef __INTMAX_TYPE__ intmax_t;
-typedef __UINTMAX_TYPE__ uintmax_t;
-
-typedef struct
-{
-    intmax_t quot;
-    intmax_t rem;
-} imaxdiv_t;
+#include "_libc/imaxdiv_t.h"
+#include "_libc/intmax_t.h"
+#include "_libc/uintmax_t.h"
 
 /* 7.8.1 Macros for format specifiers */
 

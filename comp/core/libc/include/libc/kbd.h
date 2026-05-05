@@ -1,8 +1,6 @@
 #ifndef _SYS_KBD_H
 #define _SYS_KBD_H 1
 
-#include <stdint.h>
-
 #if defined(__cplusplus)
 extern "C"
 {

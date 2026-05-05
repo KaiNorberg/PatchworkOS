@@ -308,7 +308,7 @@ static status_t concatfs_read_next(irp_t* irp, concatfs_read_state_t* state)
     {
         dentry_t* targetDentry = vnode->targets[fileData->layer];
 
-        fileData->currentFile = file_new(targetDentry, frame->file->path.binding, MODE_READ | MODE_DIRECTORY);
+        fileData->currentFile = file_new(targetDentry, frame->file->path.binding, PATH_MODE_READ | PATH_MODE_DIRECTORY);
         if (fileData->currentFile == NULL)
         {
             irp->status = ERR(FS, NOMEM);

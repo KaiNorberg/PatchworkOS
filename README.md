@@ -146,7 +146,9 @@ In this system one can consider binding a file to be nothing more than a conveni
 
 ### Standard Library
 
-The standard library (libc) is a superset of the ANSI C standard library, meaning that headers such as `<stdio.h>` and `<stdlib.h>` are included while POSIX headers such as `<unistd.h>` are not. Instead, the `sys` directory provides a set of PatchworkOS-specific headers such as `<libc/io.h>` and `<libc/proc.h>`.
+The standard library (libc) is a superset of the ANSI C standard library, meaning that headers such as `<stdio.h>` and `<stdlib.h>` are included while POSIX headers such as `<unistd.h>` are generally not included, work is ongoing to integrate certain POSIX headers when they become needed.
+
+Instead, the `libc` directory provides a set of PatchworkOS-specific headers such as `<libc/io.h>` and `<libc/proc.h>`.
 
 Overall, an attempt is made to reuse and integrate our extensions cleanly without duplicating the ANSI sections of the standard library, for example the C11 `<threads.h>` header provides threading with `<libc/proc.h>` intentionally mirroring its API.
 
@@ -242,12 +244,12 @@ iowalk(FDCWD, FDROOT, "/dev/pipe/clone", &out);
 
 proc_fd_t fds = {{.parent = in, .child = 0}, {.parent = out, .child = 1}};
 fd_t proc;
-proc_create(FDCWD, FDROOT, PROC_ARGS("/path/to/program"), &fds, ARRAY_SIZE(fds), PRIO_MAX_USER, PROC_DEFAULT, &proc);
+proc_create(FDCWD, FDROOT, PROC_ARGS("/path/to/program"), PROC_ENVP_INHERIT, &fds, ARRAY_SIZE(fds), PRIO_MAX_USER, PROC_DEFAULT, &proc);
 ```
 
 We first create two pipes by opening the special file `/dev/pipe/clone` twice.
 
-Then we create a new process using the `proc_create()` function. This function takes in several arguments, first it takes in the root and current working directory to use when resolving paths, then it takes in a `proc_args_t` structure containing the command line arguments for the process which we use the `PROC_ARGS()` helper to construct. The second argument is an array of `proc_fd_t` structures allowing us to pass file descriptors to the child, where each `proc_fd_t` structure contains a parent file descriptor and a child file descriptor. The third argument is the size of this array which we use the `ARRAY_SIZE()` helper to compute. The fourth and fifth arguments are the process's priority and flags, and the sixth argument is an output pointer for a file descriptor to the child's proc directory containing files for manipulating the child.
+Then we create a new process using the `proc_create()` function. This function takes in several arguments, first it takes in the root and current working directory to use when resolving paths, then it takes in a `proc_args_t` structure containing the command line arguments for the process which we use the `PROC_ARGS()` helper to construct. After that we use a similar system to specify the child environment varibles, using a `proc_envp_t` structure. The next argument is an array of `proc_fd_t` structures allowing us to pass file descriptors to the child, where each `proc_fd_t` structure contains a parent file descriptor and a child file descriptor. After that is the size of this array which we use the `ARRAY_SIZE()` helper to compute. The next arguments are the process's priority and flags. Finally, the last argument is an output pointer for a file descriptor to the child's proc directory containing files for manipulating the child.
 
 We could optimize the pipe creation by walking to the second pipe relative to the first one. This optimization can be applied any time we wish to open the same file multiple times:
 
@@ -261,10 +263,6 @@ iowalk(in, FDROOT, ".", &out);
 It's important to note that `proc_create()` is not a system call; it's a wrapper around the `/proc/clone` file which when opened returns the root of the new processes proc directory. The kernel does nothing more than provide an empty address space that `proc_create()` fills using the `mem` file in the child's proc directory.
 
 A process will be freed when its reference count reaches zero, as such "killing" a process is merely freeing its threads to drop their references to the process.
-
-### Environment Variables
-
-Environment variables are typically a set of key-value pairs that provide a simple way to configure programs. This concept of environment variables maps cleanly to a directory containing files, where the name of the file is the key and its contents are the value. As such, environment variables are provided via a binding in the `/env` directory. This directory could either be a real directory, allowing the user to manage environment variables via the filesystem, or one could create a tmpfs instance and use that as the `/env` directory.
 
 ### Notes/Signals
 

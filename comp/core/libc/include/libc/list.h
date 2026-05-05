@@ -1,13 +1,15 @@
 #ifndef _SYS_LIST_H
 #define _SYS_LIST_H 1
 
+#if defined(__cplusplus)
+extern "C"
+{
+#endif
+
 #include "_libc/CONTAINER_OF.h"
 #include "_libc/NULL.h"
-
 #include <assert.h>
 #include <stdatomic.h>
-#include <stdbool.h>
-#include <stdint.h>
 
 /**
  * @brief Doubly linked list header.
@@ -528,6 +530,10 @@ static inline void list_splice(list_t* dest, list_t* src)
 
     list_init(src);
 }
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif
 

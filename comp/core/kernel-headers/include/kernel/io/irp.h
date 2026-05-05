@@ -61,15 +61,15 @@ typedef struct irp irp_t;
  *
  * There are two ways that an IRP can be completed, immediately or delayed.
  *
- * To immediately complete an IRP simply return any status that is not an informational `ST_CODE_PENDING` or
- * `ST_CODE_COMPLETE` status from the function invoked by any of the "call" functions.
+ * To immediately complete an IRP simply return any status that is not an informational `STATUS_CODE_PENDING` or
+ * `STATUS_CODE_COMPLETE` status from the function invoked by any of the "call" functions.
  *
- * To delay the completion of an IRP, return an informational `ST_CODE_PENDING` status. This indicates that the
+ * To delay the completion of an IRP, return an informational `STATUS_CODE_PENDING` status. This indicates that the
  * subsystem has taken ownership of the IRP and will complete it at a later time by calling `irp_complete()`.
  *
  * To indicate that the IRP has already been completed, return an informational
- * `ST_CODE_COMPLETE` status. This is usefull if a handler invokes another handler, for example when `irp_call()`
- * completes an IRP it will return an informational `ST_CODE_COMPLETE` status, making sure that a lower `irp_call()`
+ * `STATUS_CODE_COMPLETE` status. This is usefull if a handler invokes another handler, for example when `irp_call()`
+ * completes an IRP it will return an informational `STATUS_CODE_COMPLETE` status, making sure that a lower `irp_call()`
  * does not try to complete the same IRP again.
  *
  * For convenience, the `irp_delay()` helper can be used to add an IRP to a list and a timeout queue, while also setting
@@ -299,7 +299,7 @@ typedef uint16_t irp_flags_t;          ///< IRP frame flags type.
  * @brief IRP function type.
  *
  * @param irp The IRP to send.
- * @result A informational `ST_CODE_PENDING` or `ST_CODE_COMPLETE` status value if the IRP was not completed
+ * @result A informational `STATUS_CODE_PENDING` or `STATUS_CODE_COMPLETE` status value if the IRP was not completed
  * immediately, otherwise an appropriate status value.
  */
 typedef status_t (*irp_handler_t)(irp_t* irp);
@@ -309,8 +309,8 @@ typedef status_t (*irp_handler_t)(irp_t* irp);
  *
  * @param irp The IRP.
  * @param ctx The context pointer from the `irp_frame_t` structure.
- * @result A informational `ST_CODE_PENDING` or `ST_CODE_COMPLETE` status value if the IRP requires more processing,
- * otherwise an appropriate status value.
+ * @result A informational `STATUS_CODE_PENDING` or `STATUS_CODE_COMPLETE` status value if the IRP requires more
+ * processing, otherwise an appropriate status value.
  */
 typedef status_t (*irp_complete_t)(irp_t* irp, void* ctx);
 
@@ -404,7 +404,7 @@ typedef struct irp_frame
         struct
         {
             dentry_t* dentry;    ///< The dentry to create.
-            mode_t mode;         ///< The mode of the new file.
+            path_mode_t mode;    ///< The mode of the new file.
             const char* payload; ///< The payload from the path.
         } create;
         uint64_t args[IRP_ARGS_MAX]; ///< Generic arguments.
@@ -549,8 +549,8 @@ status_t irp_call(irp_t* irp, irp_handler_t func);
  * for the IRP to be returned to its pool.
  *
  * @param irp The IRP to complete.
- * @param status The status of the completed operation, if an informational `ST_CODE_PENDING` or `ST_CODE_COMPLETE` than
- * this becomes a no-op.
+ * @param status The status of the completed operation, if an informational `STATUS_CODE_PENDING` or
+ * `STATUS_CODE_COMPLETE` than this becomes a no-op.
  */
 void irp_complete(irp_t* irp, status_t status);
 
@@ -970,7 +970,7 @@ static inline void irp_prep_reclaim(irp_t* irp)
  *
  * @see `IRP_MJ_CREATE`
  */
-static inline void irp_prep_create(irp_t* irp, dentry_t* dentry, mode_t mode, const char* payload)
+static inline void irp_prep_create(irp_t* irp, dentry_t* dentry, path_mode_t mode, const char* payload)
 {
     irp_frame_t* next = irp_next(irp);
     assert(next != NULL);

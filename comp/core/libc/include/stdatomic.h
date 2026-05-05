@@ -30,9 +30,38 @@
 #ifndef _STDATOMIC_H_
 #define _STDATOMIC_H_ 1
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
+#include "_libc/bool.h"
+#include "_libc/int16_t.h"
+#include "_libc/int32_t.h"
+#include "_libc/int64_t.h"
+#include "_libc/int8_t.h"
+#include "_libc/int_fast16_t.h"
+#include "_libc/int_fast32_t.h"
+#include "_libc/int_fast64_t.h"
+#include "_libc/int_fast8_t.h"
+#include "_libc/int_least16_t.h"
+#include "_libc/int_least32_t.h"
+#include "_libc/int_least64_t.h"
+#include "_libc/int_least8_t.h"
+#include "_libc/intmax_t.h"
+#include "_libc/intptr_t.h"
+#include "_libc/ptrdiff_t.h"
+#include "_libc/size_t.h"
+#include "_libc/uint16_t.h"
+#include "_libc/uint32_t.h"
+#include "_libc/uint64_t.h"
+#include "_libc/uint8_t.h"
+#include "_libc/uint_fast16_t.h"
+#include "_libc/uint_fast32_t.h"
+#include "_libc/uint_fast64_t.h"
+#include "_libc/uint_fast8_t.h"
+#include "_libc/uint_least16_t.h"
+#include "_libc/uint_least32_t.h"
+#include "_libc/uint_least64_t.h"
+#include "_libc/uint_least8_t.h"
+#include "_libc/uintmax_t.h"
+#include "_libc/uintptr_t.h"
+#include "_libc/wchar_t.h"
 
 #ifndef __GNUC_PREREQ
 #if defined __GNUC__ && defined __GNUC_MINOR__

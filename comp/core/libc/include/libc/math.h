@@ -1,7 +1,12 @@
 #ifndef _SYS_MATH_H
 #define _SYS_MATH_H 1
 
-#include <stdint.h>
+#if defined(__cplusplus)
+extern "C"
+{
+#endif
+
+#include "../_libc/uint64_t.h"
 
 /**
  * @brief Helper Macros for math operations.
@@ -46,6 +51,10 @@ static inline uint64_t count_set_bits(uint64_t x)
     uint64_t x64 = x32 + (x32 >> 32);
     return x64 & 0xff;
 }
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif
 

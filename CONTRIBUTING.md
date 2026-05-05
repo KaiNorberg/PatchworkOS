@@ -43,14 +43,6 @@ Follow the formatting outlined in the [.clang-format](https://github.com/KaiNorb
 
 Applying formatting is as simple as running `make format`, always run this before pushing a commit.
 
-### Error Handling
-
-In the kernel `errno` should be used to store error codes, all functions that may fail should either propagate an error from a lower-level function or set `errno` directly.
-
-Functions should communicate that an error has occurred by returning either `ERR` or `NULL` depending on if they return an integer or a pointer.
-
-The exception to these rules are functions that may be called asynchronously, these should directly return a `errno_t` with `EOK` representing no error.
-
 ### Other Rules
 
 - In if statements, be explicit, write `ptr == NULL` not `!ptr`. Booleans are an exception (`if (flag)` is fine).

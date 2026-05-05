@@ -8,6 +8,9 @@ extern "C"
 
 #include "_libc/NULL.h"
 #include "_libc/config.h"
+#include "_libc/div_t.h"
+#include "_libc/ldiv_t.h"
+#include "_libc/lldiv_t.h"
 #include "_libc/size_t.h"
 
 char* lltoa(long long number, char* str, int base);
@@ -69,24 +72,6 @@ void qsort(void* base, size_t nmemb, size_t size, int (*compar)(const void*, con
 int abs(int j);
 long int labs(long int j);
 long long int llabs(long long int j);
-
-typedef struct
-{
-    int quot;
-    int rem;
-} div_t;
-
-typedef struct
-{
-    long int quot;
-    long int rem;
-} ldiv_t;
-
-typedef struct
-{
-    long long int quot;
-    long long int rem;
-} lldiv_t;
 
 div_t div(int numer, int denom);
 ldiv_t ldiv(long int numer, long int denom);

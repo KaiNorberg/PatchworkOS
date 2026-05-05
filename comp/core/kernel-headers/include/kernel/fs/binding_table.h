@@ -117,7 +117,7 @@ bool binding_table_rcu_traverse(binding_table_t* table, binding_t** binding, den
  * @param out Output pointer to store the new binding, can be `NULL`.
  * @return An appropriate status value.
  */
-status_t binding_table_bind(binding_table_t* table, path_t* target, path_t* source, mode_t mode, binding_t** out);
+status_t binding_table_bind(binding_table_t* table, path_t* target, path_t* source, path_mode_t mode, binding_t** out);
 
 /**
  * @brief Remove a binding in a table.

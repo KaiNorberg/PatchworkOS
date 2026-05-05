@@ -18,14 +18,14 @@
 
 /**
  * @brief APIC Timer Modes.
- * @enum apic_timer_mode_t
+ * @enum apic_timer_path_mode_t
  */
 typedef enum
 {
     APIC_TIMER_MASKED = 0x10000, ///< Timer is masked (disabled)
     APIC_TIMER_PERIODIC = 0x20000,
     APIC_TIMER_ONE_SHOT = 0x00000
-} apic_timer_mode_t;
+} apic_timer_path_mode_t;
 
 /**
  * @brief APIC Timer Divider Values.

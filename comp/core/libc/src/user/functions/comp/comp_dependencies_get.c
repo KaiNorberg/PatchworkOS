@@ -68,7 +68,8 @@ status_t comp_dependencies_get(const char* name, const char* version, comp_depen
         {
             memcpy_s(deps[i].name, ARRAY_SIZE(deps[i].name), req->name, ARRAY_SIZE(req->name));
             deps[i].version = req->version;
-            scon_transfer(&deps[i].scon, &req->scon);
+            deps[i].scon = req->scon;
+            req->scon = NULL;
             deps[i].manifest = req->manifest;
             deps[i].manifestLength = req->manifestLength;
             req->manifest = NULL;
